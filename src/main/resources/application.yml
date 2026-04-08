@@ -1,0 +1,18 @@
+spring:
+  # 数据库连接配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/medical_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+    username: root # 你的MySQL账号
+    password: 123456  # 你的MySQL密码
+  # 关闭默认模板引擎（若不用）
+  thymeleaf:
+    enabled: false
+
+# MyBatis-Plus配置（若使用）
+mybatis-plus:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.example.medical.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

@@ -1,5 +1,1 @@
-{
-  "src": [
-    "pages/Index"
-  ]
-}
+{"src": ["pages/Index", "pages/Login", "pages/HomePage", "pages/MedicalPage", "pages/RehabPage", "pages/SciencePage", "pages/HospitalPage", "pages/DepartmentPage", "pages/HealthRecords", "pages/Appointments", "pages/Medications", "pages/Profile", "pages/AddAppointmentPage", "pages/RehabListPage", "pages/Rehab3DPage", "pages/ScienceListPage", "pages/ScienceDetailPage", "pages/DeviceDiscoveryPage", "pages/RiskAssessmentPage"]}

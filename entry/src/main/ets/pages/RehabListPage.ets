@@ -1,7 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { IconCard } from '../components/Card';
 
 export interface RehabCourse {
   id: string;

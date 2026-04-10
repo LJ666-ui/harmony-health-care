@@ -3,10 +3,13 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { Card } from '../components/Card';
 import { Hospital } from '../models/HealthData';
+import { GlobalTheme } from '../global';
 
 @Entry
 @Component
 struct HospitalPage {
+  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+
   @State hospitals: Hospital[] = [
     {
       id: '1',
@@ -64,40 +67,65 @@ struct HospitalPage {
     }
   ];
 
+  aboutToAppear(): void {
+    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
+      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    } else {
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+    }
+  }
+
+  openARNavigation(): void {
+    router.pushUrl({ url: 'pages/ARNavigationPage' });
+  }
+
   build() {
     Column() {
       Header({ title: '医院列表', showBack: true });
 
-      Column({ space: 16 }) {
-        Text('医院列表')
-          .fontSize(24)
-          .fontWeight('bold')
-          .fontColor('#1677FF')
-          .margin({ top: 20, bottom: 16 });
+      Scroll() {
+        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
+          Text('医院列表')
+            .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
+            .fontWeight('bold')
+            .fontColor('#1677FF')
+            .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
 
-        List() {
-          ForEach(this.hospitals, (item: Hospital) => {
-            ListItem() {
-              Card({
-                title: item.name,
-                value: item.distance + 'km | ⭐' + item.rating.toFixed(1) + '分',
-                description: item.address,
-                status: '查看科室'
-              })
-                .onClick(() => {
-                  router.pushUrl({ url: 'pages/DepartmentPage' });
-                });
-            }
-          }, (item: Hospital) => item.id);
+          Button('🧭 院内AR导航')
+            .width('100%')
+            .height(GlobalTheme.getButtonHeight(this.isElderMode))
+            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+            .fontColor('#FFFFFF')
+            .backgroundColor('#1677FF')
+            .borderRadius(12)
+            .onClick(() => this.openARNavigation());
+
+          List({ space: 12 }) {
+            ForEach(this.hospitals, (item: Hospital) => {
+              ListItem() {
+                Card({
+                  title: item.name,
+                  value: item.distance + 'km | ⭐' + item.rating.toFixed(1) + '分',
+                  description: item.address,
+                  status: '查看科室'
+                })
+                  .onClick(() => {
+                    router.pushUrl({ url: 'pages/DepartmentPage' });
+                  });
+              }
+            }, (item: Hospital) => item.id);
+          }
+          .width('100%')
+          .layoutWeight(1)
+          .borderRadius(8);
         }
-        .width('100%')
-        .height('70%')
-        .borderRadius(8);
+        .width('85%')
+        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
       .flexGrow(1)
-      .width('80%')
-      .justifyContent(FlexAlign.Center)
-      .alignItems(HorizontalAlign.Center);
+      .scrollBar(BarState.Off)
+      .align(Alignment.Top)
+      .layoutWeight(1);
 
       Footer({ activeIndex: 1 });
     }

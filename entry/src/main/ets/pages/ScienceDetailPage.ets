@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { GlobalTheme } from '../global';
 
 interface ArticleDetail {
   id: string;
@@ -14,6 +15,8 @@ interface ArticleDetail {
 @Entry
 @Component
 struct ScienceDetailPage {
+  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+
   @State articleId: string = '';
   @State isFavorited: boolean = false;
   @State showFavoriteToast: boolean = false;
@@ -174,6 +177,12 @@ struct ScienceDetailPage {
   }
 
   aboutToAppear(): void {
+    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
+      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    } else {
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+    }
+
     const params = router.getParams() as Record<string, string>;
     if (params?.articleId) {
       this.articleId = params.articleId;
@@ -193,60 +202,60 @@ struct ScienceDetailPage {
       Header({ title: '文章详情', showBack: true });
 
       Scroll() {
-        Column({ space: 16 }) {
+        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
           Column() {
             Text(this.getCurrentArticle().coverIcon)
-              .fontSize(80)
-              .margin({ bottom: 12 });
+              .fontSize(this.isElderMode ? 96 : 80)
+              .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
 
             Text(this.getCurrentArticle().title)
-              .fontSize(22)
+              .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
               .fontWeight('bold')
-              .fontColor('#333333')
+              .fontColor(GlobalTheme.TEXT_PRIMARY)
               .textAlign(TextAlign.Center)
-              .margin({ bottom: 8 });
+              .margin({ bottom: GlobalTheme.getSpacingSM(this.isElderMode) });
 
-            Row({ space: 16 }) {
+            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
               Text(`📅 ${this.getCurrentArticle().publishTime}`)
-                .fontSize(13)
-                .fontColor('#999999');
+                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                .fontColor(GlobalTheme.TEXT_HINT);
 
               Text(`📁 ${this.getCurrentArticle().category}`)
-                .fontSize(13)
-                .fontColor('#1677FF')
-                .backgroundColor('#1677FF10')
-                .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-                .borderRadius(4);
+                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                .fontColor(GlobalTheme.THEME_COLOR)
+                .backgroundColor(GlobalTheme.THEME_COLOR + '15')
+                .padding({ left: GlobalTheme.getSpacingSM(this.isElderMode), right: GlobalTheme.getSpacingSM(this.isElderMode), top: GlobalTheme.getSpacingXS(this.isElderMode), bottom: GlobalTheme.getSpacingXS(this.isElderMode) })
+                .borderRadius(GlobalTheme.RADIUS_SM);
             }
             .justifyContent(FlexAlign.Center)
             .width('100%');
           }
           .width('100%')
-          .padding(24)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(16)
-          .border({ width: 1, color: '#F0F0F0' })
+          .padding(GlobalTheme.getSpacingLG(this.isElderMode))
+          .backgroundColor(GlobalTheme.CARD_BG)
+          .borderRadius(GlobalTheme.RADIUS_LG)
+          .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
           .alignItems(HorizontalAlign.Center);
 
-          Column({ space: 14 }) {
+          Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
             ForEach(this.getCurrentArticle().content, (paragraph: string, index: number) => {
               Text(paragraph)
-                .fontSize(15)
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
                 .fontColor('#444444')
-                .lineHeight(24)
+                .lineHeight(this.isElderMode ? 28 : 24)
                 .width('100%')
                 .textAlign(TextAlign.Start);
             }, (paragraph: string, index: number) => `${this.articleId}-p-${index}`);
           }
           .width('100%')
-          .padding(20)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12)
-          .border({ width: 1, color: '#F0F0F0' })
+          .padding(GlobalTheme.getSpacingLG(this.isElderMode))
+          .backgroundColor(GlobalTheme.CARD_BG)
+          .borderRadius(GlobalTheme.RADIUS_MD)
+          .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
           .alignItems(HorizontalAlign.Start);
         }
         .width('85%')
-        .padding({ top: 16, bottom: 80 });
+        .padding({ top: GlobalTheme.getSpacingMD(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) * 4 });
       }
       .flexGrow(1)
       .scrollBar(BarState.Off)
@@ -255,17 +264,17 @@ struct ScienceDetailPage {
       Column() {
         Button(this.isFavorited ? '❤️ 已收藏' : '🤍 收藏文章')
           .width('85%')
-          .height(48)
-          .fontSize(16)
-          .fontColor(this.isFavorited ? '#FFFFFF' : '#1677FF')
-          .backgroundColor(this.isFavorited ? '#FF4D4F' : '#FFFFFF')
-          .borderRadius(24)
-          .border({ width: this.isFavorited ? 0 : 1.5, color: '#1677FF' })
+          .height(GlobalTheme.getButtonHeight(this.isElderMode))
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+          .fontColor(this.isFavorited ? '#FFFFFF' : GlobalTheme.THEME_COLOR)
+          .backgroundColor(this.isFavorited ? GlobalTheme.ERROR_COLOR : GlobalTheme.CARD_BG)
+          .borderRadius(GlobalTheme.RADIUS_LG)
+          .border({ width: this.isFavorited ? 0 : 1.5, color: GlobalTheme.THEME_COLOR })
           .onClick(() => this.handleFavorite());
       }
       .width('100%')
-      .padding({ top: 8, bottom: 16 })
-      .backgroundColor('#FFFFFF')
+      .padding({ top: GlobalTheme.getSpacingSM(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) })
+      .backgroundColor(GlobalTheme.CARD_BG)
       .shadow({
         radius: 12,
         color: '#00000012',
@@ -277,6 +286,6 @@ struct ScienceDetailPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F7FA');
+    .backgroundColor(GlobalTheme.BG_COLOR);
   }
 }

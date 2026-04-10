@@ -26,7 +26,12 @@ struct VoiceAssistantPage {
     { id: '2', icon: '🗺️', title: '打开院内AR导航', description: '智能导航到科室位置', targetPage: 'pages/ARNavigationPage' },
     { id: '3', icon: '📊', title: '查询健康记录', description: '查看历史健康数据', targetPage: 'pages/HealthRecords' },
     { id: '4', icon: '💊', title: '设置用药提醒', description: '管理药物服用时间', targetPage: 'pages/Medications' },
-    { id: '5', icon: '⚠️', title: '查看健康风险评估', description: '获取个性化风险报告', targetPage: 'pages/RiskAssessmentPage' }
+    { id: '5', icon: '⚠️', title: '查看健康风险评估', description: '获取个性化风险报告', targetPage: 'pages/RiskAssessmentPage' },
+    { id: '6', icon: '🏥', title: '查找附近医院', description: '搜索周边医疗机构', targetPage: 'pages/HospitalPage' },
+    { id: '7', icon: '🧘', title: '开始康复训练', description: '进入康复课程列表', targetPage: 'pages/RehabListPage' },
+    { id: '8', icon: '📖', title: '阅读健康科普文章', description: '浏览医学知识库', targetPage: 'pages/ScienceListPage' },
+    { id: '9', icon: '⌚', title: '连接智能设备', description: '配对健康监测设备', targetPage: 'pages/DeviceDiscoveryPage' },
+    { id: '10', icon: '🔒', title: '查看隐私设置', description: '管理数据访问权限', targetPage: 'pages/PrivacyPage' }
   ];
 
   aboutToAppear(): void {

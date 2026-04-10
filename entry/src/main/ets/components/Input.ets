@@ -106,13 +106,14 @@ export struct SearchInput {
 @Component
 export struct FormInputGroup {
   // 表单项
-  @BuilderParam children?: () => void;
+  @BuilderParam children: () => void = this.defaultChildren;
+
+  @Builder
+  private defaultChildren() {}
 
   build() {
     Column({ space: 16 }) {
-      if (this.children) {
-        this.children()
-      }
+      this.children()
     }
     .width('100%')
   }
@@ -123,15 +124,18 @@ export struct FormInputGroup {
 export struct FormInputItem {
   // 标签
   private label: string = '';
-  
+
   // 是否必填
   private required: boolean = false;
-  
+
   // 错误信息
   private error?: string = '';
-  
+
   // 输入框内容
-  @BuilderParam content?: () => void;
+  @BuilderParam content: () => void = this.defaultContent;
+
+  @Builder
+  private defaultContent() {}
 
   build() {
     Column({ space: 4 }) {
@@ -141,7 +145,7 @@ export struct FormInputItem {
           .fontSize(14)
           .fontColor('#1a1a1a')
           .fontWeight('medium')
-        
+
         if (this.required) {
           Text('*')
             .fontSize(14)
@@ -152,9 +156,7 @@ export struct FormInputItem {
       .width('100%')
 
       // 输入框内容
-      if (this.content) {
-        this.content()
-      }
+      this.content()
 
       // 错误信息
       if (this.error) {

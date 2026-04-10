@@ -1,7 +1,10 @@
 @Component
 export struct PullRefresh {
   @Prop onRefresh: () => void = () => {};
-  @Prop children: () => void = () => {};
+  @BuilderParam content: () => void = this.defaultContent;
+
+  @Builder
+  private defaultContent() {}
 
   @State isRefreshing: boolean = false;
   @State refreshText: string = '下拉刷新';
@@ -24,7 +27,7 @@ export struct PullRefresh {
         .justifyContent(FlexAlign.Center);
       }
 
-      this.children();
+      this.content();
     }
     .onTouch((event) => {
       if (event.type === TouchType.Down) {

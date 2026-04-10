@@ -3,6 +3,130 @@
     {
       "name": "start_window_background",
       "value": "#FFFFFF"
+    },
+    {
+      "name": "primary",
+      "value": "#4a90e2"
+    },
+    {
+      "name": "primary_light",
+      "value": "#e3f2fd"
+    },
+    {
+      "name": "primary_dark",
+      "value": "#1565c0"
+    },
+    {
+      "name": "secondary",
+      "value": "#96ceb4"
+    },
+    {
+      "name": "secondary_light",
+      "value": "#e8f5e9"
+    },
+    {
+      "name": "secondary_dark",
+      "value": "#388e3c"
+    },
+    {
+      "name": "success",
+      "value": "#4CAF50"
+    },
+    {
+      "name": "success_light",
+      "value": "#e8f5e9"
+    },
+    {
+      "name": "warning",
+      "value": "#FF9800"
+    },
+    {
+      "name": "warning_light",
+      "value": "#fff3e0"
+    },
+    {
+      "name": "error",
+      "value": "#F44336"
+    },
+    {
+      "name": "error_light",
+      "value": "#ffebee"
+    },
+    {
+      "name": "info",
+      "value": "#2196F3"
+    },
+    {
+      "name": "info_light",
+      "value": "#e3f2fd"
+    },
+    {
+      "name": "background",
+      "value": "#f5f5f5"
+    },
+    {
+      "name": "surface",
+      "value": "#ffffff"
+    },
+    {
+      "name": "surface_variant",
+      "value": "#f8f9fa"
+    },
+    {
+      "name": "on_surface",
+      "value": "#1a1a1a"
+    },
+    {
+      "name": "on_surface_variant",
+      "value": "#666666"
+    },
+    {
+      "name": "outline",
+      "value": "#e0e0e0"
+    },
+    {
+      "name": "outline_variant",
+      "value": "#cccccc"
+    },
+    {
+      "name": "shadow",
+      "value": "#00000010"
+    },
+    {
+      "name": "shadow_light",
+      "value": "#00000008"
+    },
+    {
+      "name": "health_heart",
+      "value": "#ff6b6b"
+    },
+    {
+      "name": "health_blood",
+      "value": "#4ecdc4"
+    },
+    {
+      "name": "health_sugar",
+      "value": "#45b7d1"
+    },
+    {
+      "name": "health_weight",
+      "value": "#96ceb4"
+    },
+    {
+      "name": "health_oxygen",
+      "value": "#9b59b6"
+    },
+    {
+      "name": "health_temperature",
+      "value": "#f5a623"
+    },
+    {
+      "name": "health_steps",
+      "value": "#54a0ff"
+    },
+    {
+      "name": "health_calories",
+      "value": "#ff9ff3"
     }
   ]
 }

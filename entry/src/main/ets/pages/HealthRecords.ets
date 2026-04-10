@@ -111,6 +111,8 @@ struct HealthRecords {
             .onClick(() => {
               router.pushUrl({ url: 'pages/RiskAssessmentPage' });
             });
+
+
         }
         .width('85%')
         .padding({ top: 20, bottom: 24 });

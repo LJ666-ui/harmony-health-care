@@ -1,5 +1,4 @@
 import { router } from '@kit.ArkUI';
-import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 
 export interface ScienceArticle {
@@ -15,6 +14,8 @@ export interface ScienceArticle {
 @Entry
 @Component
 struct ScienceListPage {
+  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+
   @State articles: ScienceArticle[] = [
     {
       id: '1',
@@ -72,102 +73,109 @@ struct ScienceListPage {
     }
   ];
 
+  aboutToAppear(): void {
+    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
+      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    }
+  }
+
   build() {
     Column() {
-      Header({ title: '健康科普', showBack: true });
+      Row() {
+        Text('←')
+          .fontSize(24)
+          .fontColor('#1677FF')
+          .width(40)
+          .height(40)
+          .textAlign(TextAlign.Center)
+          .backgroundColor('#E6F4FF')
+          .borderRadius(20)
+          .onClick(() => {
+            router.back();
+          })
+        Text('健康科普')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+        Text('').width(40)
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#FFFFFF')
+      .padding({ left: 16, right: 16 })
+      .justifyContent(FlexAlign.Center)
 
-      Scroll() {
-        Column({ space: 14 }) {
-          Text('健康科普')
-            .fontSize(22)
-            .fontWeight('bold')
-            .fontColor('#1677FF')
-            .margin({ top: 16, bottom: 8 });
+      List() {
+        ForEach(this.articles, (article: ScienceArticle) => {
+          ListItem() {
+            Row() {
+              Column() {
+                Text(article.coverIcon).fontSize(36)
+              }
+              .width(64)
+              .height(64)
+              .backgroundColor('#F0F5FF')
+              .borderRadius(12)
+              .justifyContent(FlexAlign.Center)
+              .alignItems(HorizontalAlign.Center)
 
-          List({ space: 12 }) {
-            ForEach(this.articles, (article: ScienceArticle) => {
-              ListItem() {
-                Column() {
-                  Row({ space: 14 }) {
-                    Column() {
-                      Text(article.coverIcon)
-                        .fontSize(40);
-                    }
-                    .width(72)
-                    .height(72)
-                    .backgroundColor('#F0F5FF')
-                    .borderRadius(12)
-                    .justifyContent(FlexAlign.Center)
-                    .alignItems(HorizontalAlign.Center)
-                    .flexShrink(0);
+              Column() {
+                Text(article.title)
+                  .fontSize(this.isElderMode ? 20 : 16)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#333333')
+                  .maxLines(2)
 
-                    Column({ space: 6 }) {
-                      Text(article.title)
-                        .fontSize(16)
-                        .fontWeight('bold')
-                        .fontColor('#333333')
-                        .maxLines(2)
-                        .textOverflow({ overflow: TextOverflow.Ellipsis });
+                Text(article.summary)
+                  .fontSize(this.isElderMode ? 16 : 13)
+                  .fontColor('#999999')
+                  .maxLines(2)
+                  .margin({ top: 6 })
 
-                      Text(article.summary)
-                        .fontSize(13)
-                        .fontColor('#888888')
-                        .maxLines(2)
-                        .textOverflow({ overflow: TextOverflow.Ellipsis });
+                Row() {
+                  Text(article.category)
+                    .fontSize(11)
+                    .fontColor('#1677FF')
+                    .backgroundColor('#E6F4FF')
+                    .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                    .borderRadius(4)
 
-                      Row({ space: 12 }) {
-                        Text(article.category)
-                          .fontSize(11)
-                          .fontColor('#1677FF')
-                          .backgroundColor('#1677FF10')
-                          .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-                          .borderRadius(4);
+                  Text(`👁 ${article.readCount}`)
+                    .fontSize(11)
+                    .fontColor('#999999')
+                    .margin({ left: 12 })
 
-                        Text(`👁 ${article.readCount}`)
-                          .fontSize(11)
-                          .fontColor('#999999');
-
-                        Blank();
-
-                        Text(article.publishTime)
-                          .fontSize(11)
-                          .fontColor('#BBBBBB');
-                      }
-                      .width('100%');
-                    }
-                    .layoutWeight(1)
-                    .alignItems(HorizontalAlign.Start);
-                  }
+                  Text(article.publishTime)
+                    .fontSize(11)
+                    .fontColor('#BBBBBB')
                 }
                 .width('100%')
-                .padding(16)
-                .backgroundColor('#FFFFFF')
-                .borderRadius(12)
-                .border({ width: 1, color: '#F0F0F0' })
-                .shadow({
-                  radius: 8,
-                  color: '#00000008',
-                  offsetX: 0,
-                  offsetY: 3
-                })
-                .onClick(() => {
-                  router.pushUrl({
-                    url: 'pages/ScienceDetailPage',
-                    params: { articleId: article.id }
-                  });
-                });
+                .margin({ top: 8 })
               }
-            }, (article: ScienceArticle) => article.id);
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+              .margin({ left: 12 })
+            }
           }
           .width('100%')
-          .layoutWeight(1);
-        }
-        .width('85%')
-        .padding({ bottom: 24 });
+          .margin({ bottom: 10 })
+          .padding(14)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(12)
+          .border({ width: 1, color: '#F0F0F0' })
+          .onClick(() => {
+            router.pushUrl({
+              url: 'pages/ScienceDetailPage',
+              params: { articleId: article.id }
+            });
+          });
+        }, (article: ScienceArticle) => article.id);
       }
-      .flexGrow(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
+      .width('100%')
+      .layoutWeight(1)
+      .padding({ left: '7.5%', right: '7.5%' })
 
       Footer({ activeIndex: 3 });
     }

@@ -1,41 +1,60 @@
 import { router } from '@kit.ArkUI';
-import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 
 @Entry
 @Component
 struct SciencePage {
-  build() : void {
+  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+
+  aboutToAppear(): void {
+    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
+      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    }
+  }
+
+  build(): void {
     Column() {
-      // 顶部导航栏
-      Header({ 
-        title: '科普', 
-        showBack: false
-      });
-      
-      // 中间内容区
-      Column({
-        space: 16
-      }) {
-        // 页面标题
-        Text('科普模块')
+      Text('健康科普')
+        .width('100%')
+        .height(56)
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333')
+        .backgroundColor('#FFFFFF')
+        .textAlign(TextAlign.Center)
+
+      Column() {
+        Text('健康知识')
           .fontSize(24)
-          .fontWeight('bold')
+          .fontWeight(FontWeight.Bold)
           .fontColor('#1677FF')
-          .margin({ top: 20, bottom: 16 });
-        
-        // 科普模块内容
-        Text('科普模块页面')
+
+        Text('了解健康知识，守护家人健康')
           .fontSize(16)
           .fontColor('#666666')
-          .margin({ top: 40 });
+          .margin({ top: 8 })
+
+        Text('科普文章')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .margin({ top: 24 })
+          .width('100%')
+          .height(80)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(12)
+          .textAlign(TextAlign.Center)
+          .padding({ top: 28 })
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/ScienceListPage' });
+          })
       }
-      .flexGrow(1)
-      .width('80%')
-      .justifyContent(FlexAlign.Center)
-      .alignItems(HorizontalAlign.Center);
-      
-      // 底部Tab栏
+      .layoutWeight(1)
+      .width('100%')
+      .justifyContent(FlexAlign.Start)
+      .alignItems(HorizontalAlign.Center)
+      .padding({ top: 32 })
+
       Footer({ activeIndex: 3 });
     }
     .width('100%')

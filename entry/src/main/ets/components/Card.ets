@@ -1,84 +1,61 @@
+import { GlobalTheme } from '../global';
+
 @Component
 export struct Card {
   @Prop title: string = '';
   @Prop value: string = '';
   @Prop description: string = '';
   @Prop status: string = '';
+  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+
+  @State isPressed: boolean = false;
 
   build() {
     Column() {
       Row() {
         Text(this.title)
-          .fontSize(16)
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
           .fontWeight('bold')
-          .fontColor('#333333');
+          .fontColor(GlobalTheme.TEXT_PRIMARY);
         Blank().layoutWeight(1);
         Text(this.status)
-          .fontSize(14)
-          .fontColor('#1677FF');
+          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+          .fontColor(GlobalTheme.THEME_COLOR);
       }
-      .margin({ bottom: 8 });
-      
+      .margin({ bottom: GlobalTheme.getSpacingSM(this.isElderMode) });
+
       Text(this.value)
-        .fontSize(20)
+        .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
         .fontWeight('bold')
-        .fontColor('#333333')
+        .fontColor(GlobalTheme.TEXT_PRIMARY)
         .margin({ bottom: 4 });
-      
+
       Text(this.description)
-        .fontSize(14)
-        .fontColor('#666666');
+        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+        .fontColor(GlobalTheme.TEXT_SECONDARY);
     }
     .width('100%')
-    .padding(16)
+    .padding(GlobalTheme.getSpacingMD(this.isElderMode))
     .backgroundColor('#FFFFFF')
-    .borderRadius(8)
-    .margin({ bottom: 12 })
-    .border({ width: 1, color: '#f0f0f0' });
-  }
-}
-
-@Component
-export struct IconCard {
-  @Prop icon: string = '';
-  @Prop iconColor: string = '';
-  @Prop iconBackgroundColor: string = '';
-  @Prop title: string = '';
-  @Prop description: string = '';
-
-  build() {
-    Column() {
-      Row() {
-        Column() {
-          Text(this.icon)
-            .fontSize(32)
-            .fontColor(this.iconColor);
-        }
-        .width(64)
-        .height(64)
-        .backgroundColor(this.iconBackgroundColor)
-        .borderRadius(32)
-        .justifyContent(FlexAlign.Center)
-        .alignItems(HorizontalAlign.Center)
-        .margin({ right: 16 });
-
-        Column() {
-          Text(this.title)
-            .fontSize(18)
-            .fontWeight('bold')
-            .fontColor('#333333')
-            .margin({ bottom: 4 });
-          Text(this.description)
-            .fontSize(14)
-            .fontColor('#666666');
-        }
-        .layoutWeight(1);
+    .borderRadius(GlobalTheme.RADIUS_MD)
+    .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
+    .scale({ x: this.isPressed ? 0.97 : 1, y: this.isPressed ? 0.97 : 1 })
+    .shadow({
+      radius: this.isPressed ? 12 : 8,
+      color: this.isPressed ? '#1677FF30' : GlobalTheme.SHADOW_COLOR,
+      offsetX: 0,
+      offsetY: this.isPressed ? 4 : 2
+    })
+    .animation({
+      duration: 150,
+      curve: Curve.EaseInOut
+    })
+    .onTouch((event) => {
+      if (event.type === TouchType.Down) {
+        this.isPressed = true;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        this.isPressed = false;
       }
-    }
-    .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(8)
-    .border({ width: 1, color: '#f0f0f0' });
+    });
   }
 }

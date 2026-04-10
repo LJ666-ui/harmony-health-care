@@ -80,6 +80,46 @@ struct Profile {
           Row({
             space: 12
           }) {
+            Text('我的健康')
+              .fontSize(16)
+              .fontColor('#333333');
+            Blank()
+              .layoutWeight(1);
+            Text('›')
+              .fontSize(20)
+              .fontColor('#999999');
+          }
+          .width('100%')
+          .padding(16)
+          .backgroundColor('#FFFFFF')
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/HealthPage' });
+          });
+
+          Row({
+            space: 12
+          }) {
+            Text('我的病历')
+              .fontSize(16)
+              .fontColor('#333333');
+            Blank()
+              .layoutWeight(1);
+            Text('›')
+              .fontSize(20)
+              .fontColor('#999999');
+          }
+          .width('100%')
+          .padding(16)
+          .backgroundColor('#FFFFFF')
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/MedicalRecord' });
+          });
+
+
+
+          Row({
+            space: 12
+          }) {
             Text('账号设置')
               .fontSize(16)
               .fontColor('#333333');

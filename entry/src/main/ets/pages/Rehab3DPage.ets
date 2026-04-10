@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { GlobalTheme } from '../global';
 
 interface CourseConfig {
   id: string;
@@ -14,6 +15,8 @@ interface CourseConfig {
 @Entry
 @Component
 struct Rehab3DPage {
+  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+
   @State isPlaying: boolean = false;
   @State currentStep: number = 0;
   @State selectedCourseId: string = '1';
@@ -68,6 +71,14 @@ struct Rehab3DPage {
 
   getProgressPercent(): number {
     return ((this.currentStep + 1) / this.getCurrentSteps().length) * 100;
+  }
+
+  aboutToAppear(): void {
+    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
+      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    } else {
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+    }
   }
 
   aboutToDisappear(): void {
@@ -164,26 +175,26 @@ struct Rehab3DPage {
       Header({ title: '3D康复训练', showBack: true });
 
       Scroll() {
-        Column({ space: 16 }) {
+        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
           Text('3D 康复训练')
-            .fontSize(22)
+            .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
             .fontWeight('bold')
-            .fontColor('#1677FF')
-            .margin({ top: 16, bottom: 4 });
+            .fontColor(GlobalTheme.THEME_COLOR)
+            .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingXS(this.isElderMode) });
 
-          Row({ space: 8 }) {
+          Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
             ForEach(this.courseConfigs, (course: CourseConfig) => {
               Column() {
                 Text(course.icon)
-                  .fontSize(20);
+                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
                 Text(course.name.length > 4 ? course.name.substring(0, 4) : course.name)
-                  .fontSize(10)
-                  .fontColor(this.selectedCourseId === course.id ? '#FFFFFF' : '#666666')
-                  .margin({ top: 2 })
+                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                  .fontColor(this.selectedCourseId === course.id ? '#FFFFFF' : GlobalTheme.TEXT_SECONDARY)
+                  .margin({ top: GlobalTheme.getSpacingXS(this.isElderMode) })
               }
-              .padding({ top: 6, bottom: 6, left: 10, right: 10 })
+              .padding({ top: GlobalTheme.getSpacingSM(this.isElderMode), bottom: GlobalTheme.getSpacingSM(this.isElderMode), left: GlobalTheme.getSpacingMD(this.isElderMode), right: GlobalTheme.getSpacingMD(this.isElderMode) })
               .backgroundColor(this.selectedCourseId === course.id ? this.getCurrentCourse().color : '#F5F5F5')
-              .borderRadius(20)
+              .borderRadius(GlobalTheme.RADIUS_LG)
               .border(this.selectedCourseId === course.id ? { width: 1.5, color: this.getCurrentCourse().color } : { width: 0 })
               .onClick(() => this.handleCourseSelect(course.id))
             }, (course: CourseConfig) => course.id)
@@ -195,7 +206,7 @@ struct Rehab3DPage {
             Stack({ alignContent: Alignment.Bottom }) {
               Column() {
                 Text(this.getCurrentCourse().icon)
-                  .fontSize(90)
+                  .fontSize(this.isElderMode ? 100 : 90)
                   .scale({ x: this.scaleValue, y: this.scaleValue })
                   .rotate({ angle: this.isPlaying ? Math.sin(this.rotateAngle * Math.PI / 180) * 8 : 0 })
                   .animation({
@@ -204,26 +215,26 @@ struct Rehab3DPage {
                     iterations: -1,
                     playMode: PlayMode.Alternate
                   })
-                  .margin({ bottom: 8 });
+                  .margin({ bottom: GlobalTheme.getSpacingSM(this.isElderMode) });
 
                 Text(this.getCurrentCourse().iconLabel)
-                  .fontSize(14)
+                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
                   .fontWeight('bold')
                   .fontColor(this.getCurrentCourse().color)
                   .backgroundColor(`${this.getCurrentCourse().color}15`)
-                  .padding({ left: 16, right: 16, top: 4, bottom: 4 })
-                  .borderRadius(12);
+                  .padding({ left: GlobalTheme.getSpacingMD(this.isElderMode), right: GlobalTheme.getSpacingMD(this.isElderMode), top: GlobalTheme.getSpacingXS(this.isElderMode), bottom: GlobalTheme.getSpacingXS(this.isElderMode) })
+                  .borderRadius(GlobalTheme.RADIUS_MD);
 
                 Text(this.getCurrentSteps()[this.currentStep])
-                  .fontSize(18)
+                  .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
                   .fontWeight('bold')
-                  .fontColor('#333333')
-                  .margin({ top: 12 });
+                  .fontColor(GlobalTheme.TEXT_PRIMARY)
+                  .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode) });
 
                 Text(`步骤 ${this.currentStep + 1} / ${this.getCurrentSteps().length}`)
-                  .fontSize(13)
-                  .fontColor('#999999')
-                  .margin({ top: 4 });
+                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                  .fontColor(GlobalTheme.TEXT_HINT)
+                  .margin({ top: GlobalTheme.getSpacingXS(this.isElderMode) });
               }
               .width('100%')
               .height('100%')
@@ -232,7 +243,7 @@ struct Rehab3DPage {
 
               Row() {
                 Text(`进度 ${Math.round(this.getProgressPercent())}%`)
-                  .fontSize(12)
+                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                   .fontColor('#FFFFFF')
               }
               .width(`${this.getProgressPercent()}%`)
@@ -251,7 +262,7 @@ struct Rehab3DPage {
           }
           .width('100%')
           .backgroundColor('#FAFBFF')
-          .borderRadius(16)
+          .borderRadius(GlobalTheme.RADIUS_LG)
           .border({ width: 2, color: `${this.getCurrentCourse().color}40` })
           .shadow({
             radius: 20,
@@ -261,14 +272,14 @@ struct Rehab3DPage {
           })
           .clip(true);
 
-          Row({ space: 16 }) {
+          Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
             Button(this.isPlaying ? '⏸ 暂停' : '▶ 播放')
               .layoutWeight(1)
-              .height(46)
-              .fontSize(15)
+              .height(GlobalTheme.getButtonHeight(this.isElderMode))
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
               .fontColor('#FFFFFF')
-              .backgroundColor(this.isPlaying ? '#FAAD14' : this.getCurrentCourse().color)
-              .borderRadius(23)
+              .backgroundColor(this.isPlaying ? GlobalTheme.WARNING_COLOR : this.getCurrentCourse().color)
+              .borderRadius(GlobalTheme.RADIUS_LG)
               .shadow(this.isPlaying ? undefined : {
                 radius: 8,
                 color: `${this.getCurrentCourse().color}50`,
@@ -279,70 +290,70 @@ struct Rehab3DPage {
 
             Button('🔄 重置')
               .layoutWeight(1)
-              .height(46)
-              .fontSize(15)
-              .fontColor('#666666')
-              .backgroundColor('#F0F0F0')
-              .borderRadius(23)
+              .height(GlobalTheme.getButtonHeight(this.isElderMode))
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontColor(GlobalTheme.TEXT_SECONDARY)
+              .backgroundColor(GlobalTheme.BORDER_COLOR)
+              .borderRadius(GlobalTheme.RADIUS_LG)
               .onClick(() => this.handleReset());
           }
           .width('100%');
 
           Text('训练步骤')
-            .fontSize(17)
+            .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
             .fontWeight('bold')
-            .fontColor('#333333')
+            .fontColor(GlobalTheme.TEXT_PRIMARY)
             .width('100%')
-            .margin({ top: 4 });
+            .margin({ top: GlobalTheme.getSpacingXS(this.isElderMode) });
 
-          List({ space: 8 }) {
+          List({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
             ForEach(this.getCurrentSteps(), (step: string, index: number) => {
               ListItem() {
                 Row() {
                   Column() {
                     Text(`${index + 1}`)
-                      .fontSize(13)
+                      .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
                       .fontWeight('bold')
                       .fontColor(this.currentStep === index ? '#FFFFFF' : this.getCurrentCourse().color);
                   }
                   .width(30)
                   .height(30)
                   .backgroundColor(this.currentStep === index ? this.getCurrentCourse().color : `${this.getCurrentCourse().color}15`)
-                  .borderRadius(15)
+                  .borderRadius(GlobalTheme.RADIUS_LG)
                   .justifyContent(FlexAlign.Center)
                   .alignItems(HorizontalAlign.Center);
 
-                  Column({ space: 2 }) {
+                  Column({ space: GlobalTheme.getSpacingXS(this.isElderMode) }) {
                     Text(step)
-                      .fontSize(15)
-                      .fontColor(this.currentStep === index ? this.getCurrentCourse().color : '#333333')
+                      .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                      .fontColor(this.currentStep === index ? this.getCurrentCourse().color : GlobalTheme.TEXT_PRIMARY)
                       .fontWeight(this.currentStep === index ? 'bold' : 'normal');
 
                     if (this.currentStep === index && this.isPlaying) {
                       Text('正在执行...')
-                        .fontSize(11)
+                        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                         .fontColor(this.getCurrentCourse().color);
                     } else if (index < this.currentStep) {
                       Text('已完成')
-                        .fontSize(11)
-                        .fontColor('#52C41A');
+                        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                        .fontColor(GlobalTheme.SUCCESS_COLOR);
                     }
                   }
                   .layoutWeight(1)
                   .alignItems(HorizontalAlign.Start)
-                  .margin({ left: 12 });
+                  .margin({ left: GlobalTheme.getSpacingMD(this.isElderMode) });
 
                   Text(index < this.currentStep ? '✅' : (this.currentStep === index && this.isPlaying ? '🔵' : '○'))
-                    .fontSize(18)
-                    .fontColor(index < this.currentStep ? '#52C41A' : (this.currentStep === index && this.isPlaying ? this.getCurrentCourse().color : '#CCCCCC'));
+                    .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
+                    .fontColor(index < this.currentStep ? GlobalTheme.SUCCESS_COLOR : (this.currentStep === index && this.isPlaying ? this.getCurrentCourse().color : GlobalTheme.TEXT_LIGHT));
                 }
                 .width('100%')
-                .padding({ left: 14, right: 14, top: 12, bottom: 12 })
-                .backgroundColor(this.currentStep === index ? `${this.getCurrentCourse().color}08` : '#FFFFFF')
-                .borderRadius(10)
+                .padding({ left: GlobalTheme.getSpacingMD(this.isElderMode), right: GlobalTheme.getSpacingMD(this.isElderMode), top: GlobalTheme.getSpacingSM(this.isElderMode), bottom: GlobalTheme.getSpacingSM(this.isElderMode) })
+                .backgroundColor(this.currentStep === index ? `${this.getCurrentCourse().color}08` : GlobalTheme.CARD_BG)
+                .borderRadius(GlobalTheme.RADIUS_MD)
                 .border({
                   width: this.currentStep === index ? 1.5 : 1,
-                  color: this.currentStep === index ? `${this.getCurrentCourse().color}60` : '#F0F0F0'
+                  color: this.currentStep === index ? `${this.getCurrentCourse().color}60` : GlobalTheme.BORDER_COLOR
                 })
                 .shadow(this.currentStep === index ? {
                   radius: 6,
@@ -356,7 +367,7 @@ struct Rehab3DPage {
           }
           .width('100%')
           .layoutWeight(1)
-          .padding({ top: 4, bottom: 16 });
+          .padding({ top: GlobalTheme.getSpacingXS(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
         }
         .flexGrow(1)
         .width('85%')
@@ -370,6 +381,6 @@ struct Rehab3DPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F7FA');
+    .backgroundColor(GlobalTheme.BG_COLOR);
   }
 }

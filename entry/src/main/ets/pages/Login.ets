@@ -1,8 +1,17 @@
 import { router } from '@kit.ArkUI';
+import { promptAction } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { Input } from '../components/Input';
+import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
+
+interface UserInfo {
+  username: string;
+  avatar: string;
+  age: number;
+  gender: string;
+}
 
 @Entry
 @Component
@@ -11,17 +20,72 @@ struct Login {
 
   @State username: string = '';
   @State password: string = '';
+  @State isLoading: boolean = false;
+  @State errorMessage: string = '';
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+
+    const isLoggedIn = AppStorage.get<boolean>('isLoggedIn');
+    if (isLoggedIn) {
+      router.replaceUrl({ url: 'pages/HomePage' });
+    }
+  }
+
+  validateForm(): boolean {
+    this.errorMessage = '';
+
+    if (!this.username || this.username.trim() === '') {
+      this.errorMessage = '请输入账号';
+      return false;
+    }
+
+    if (!this.password || this.password.trim() === '') {
+      this.errorMessage = '请输入密码';
+      return false;
+    }
+
+    if (this.password.length < 6) {
+      this.errorMessage = '密码长度不能少于6位';
+      return false;
+    }
+
+    return true;
   }
 
   handleLogin(): void {
-    if (this.username && this.password) {
-      router.pushUrl({ url: 'pages/HomePage' });
+    if (!this.validateForm()) {
+      promptAction.showToast({
+        message: this.errorMessage,
+        duration: 2000
+      });
+      return;
     }
+
+    this.isLoading = true;
+
+    setTimeout(() => {
+      const mockUserInfo: UserInfo = {
+        username: '张三',
+        avatar: '',
+        age: 65,
+        gender: '男'
+      };
+
+      AppStorage.setOrCreate<UserInfo>('userInfo', mockUserInfo);
+      AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+
+      promptAction.showToast({
+        message: '登录成功',
+        duration: 1500
+      });
+
+      setTimeout(() => {
+        router.replaceUrl({ url: 'pages/HomePage' });
+      }, 500);
+    }, 1500);
   }
 
   build() {
@@ -50,6 +114,7 @@ struct Login {
             text: $username,
             onChange: (value) => {
               this.username = value;
+              this.errorMessage = '';
             }
           })
 
@@ -59,24 +124,40 @@ struct Login {
             text: $password,
             onChange: (value) => {
               this.password = value;
+              this.errorMessage = '';
             }
           })
 
-          Button('登录')
-            .width('100%')
-            .height(GlobalTheme.getButtonHeight(this.isElderMode))
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor('#FFFFFF')
-            .backgroundColor(GlobalTheme.THEME_COLOR)
-            .borderRadius(GlobalTheme.RADIUS_MD)
-            .shadow({
-              radius: 8,
-              color: '#1677FF30',
-              offsetX: 0,
-              offsetY: 4
-            })
-            .onClick(() => this.handleLogin());
+          if (this.errorMessage) {
+            Text(this.errorMessage)
+              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+              .fontColor('#FF4D4F')
+              .width('100%')
+              .padding(8)
+              .backgroundColor('#FFF2F0')
+              .borderRadius(8)
+              .textAlign(TextAlign.Center);
+          }
+
+          if (this.isLoading) {
+            Loading();
+          } else {
+            Button('登录')
+              .width('100%')
+              .height(GlobalTheme.getButtonHeight(this.isElderMode))
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontWeight('bold')
+              .fontColor('#FFFFFF')
+              .backgroundColor(GlobalTheme.THEME_COLOR)
+              .borderRadius(GlobalTheme.RADIUS_MD)
+              .shadow({
+                radius: 8,
+                color: '#1677FF30',
+                offsetX: 0,
+                offsetY: 4
+              })
+              .onClick(() => this.handleLogin());
+          }
 
           Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
             Text('忘记密码？')

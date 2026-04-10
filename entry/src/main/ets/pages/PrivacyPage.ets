@@ -45,11 +45,16 @@ struct PrivacyPage {
   ];
 
   @State accessLogs: AccessLog[] = [
-    { id: '1', visitor: '张医生', time: '2026-04-10 09:30', content: '查看血压历史记录', permissionType: '读取' },
-    { id: '2', visitor: '智能手环', time: '2026-04-09 14:20', content: '同步心率数据至云端', permissionType: '写入' },
-    { id: '3', visitor: '李医生', time: '2026-04-08 08:15', content: '访问患者健康档案', permissionType: '读取' },
-    { id: '4', visitor: '系统管理员', time: '2026-04-07 16:45', content: '导出年度体检报告', permissionType: '导出' },
-    { id: '5', visitor: '血压监测仪', time: '2026-04-06 11:00', content: '上传今日测量数据', permissionType: '写入' }
+    { id: '1', visitor: '张医生', time: '2026-04-11 09:30', content: '查看血压历史记录', permissionType: '读取' },
+    { id: '2', visitor: '李护士', time: '2026-04-10 14:20', content: '更新用药提醒设置', permissionType: '修改' },
+    { id: '3', visitor: '系统管理员', time: '2026-04-09 16:45', content: '导出健康数据报告', permissionType: '读取' },
+    { id: '4', visitor: '王医生', time: '2026-04-08 10:15', content: '查看血糖监测数据', permissionType: '读取' },
+    { id: '5', visitor: '赵医生', time: '2026-04-07 11:00', content: '修改预约信息', permissionType: '修改' },
+    { id: '6', visitor: '刘医生', time: '2026-04-06 09:00', content: '查看康复训练进度', permissionType: '读取' },
+    { id: '7', visitor: '用户本人', time: '2026-04-05 20:30', content: '登录账户', permissionType: '登录' },
+    { id: '8', visitor: '陈医生', time: '2026-04-04 15:40', content: '查看体检报告', permissionType: '读取' },
+    { id: '9', visitor: '孙护士', time: '2026-04-03 13:25', content: '更新个人信息', permissionType: '修改' },
+    { id: '10', visitor: '周医生', time: '2026-04-02 08:50', content: '查看设备连接状态', permissionType: '读取' }
   ];
 
   aboutToAppear(): void {

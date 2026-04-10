@@ -21,55 +21,136 @@ struct ScienceListPage {
       id: '1',
       title: '高血压患者的日常饮食指南',
       coverIcon: '🩺',
-      summary: '科学合理的饮食是控制血压的重要手段，本文详细介绍高血压患者应遵循的饮食原则和注意事项。',
+      summary: '科学合理的饮食是控制血压的重要手段，本文详细介绍高血压患者应遵循的DASH饮食原则...',
       publishTime: '2026-04-08',
       category: '心血管健康',
       readCount: '3.2k'
     },
     {
       id: '2',
-      title: '颈椎病预防与康复锻炼方法',
+      title: '老年人如何预防跌倒？骨科专家支招',
       coverIcon: '🦴',
-      summary: '长期伏案工作容易导致颈椎问题，学习正确的坐姿和颈部锻炼方法，有效预防和缓解颈椎病。',
+      summary: '跌倒是老年人致伤致残的主要原因之一，了解科学的预防措施可以有效降低风险...',
       publishTime: '2026-04-07',
-      category: '骨科康复',
+      category: '骨科健康',
       readCount: '2.8k'
     },
     {
       id: '3',
       title: '糖尿病患者的运动处方',
-      coverIcon: '🏃',
-      summary: '适度运动对糖尿病患者血糖控制有显著帮助，了解适合的运动类型、强度和时间安排。',
-      publishTime: '2026-04-05',
-      category: '内分泌',
+      coverIcon: '💊',
+      summary: '适度运动对血糖控制有显著效果，但需掌握正确方法和注意事项，避免低血糖发生...',
+      publishTime: '2026-04-06',
+      category: '内分泌管理',
       readCount: '4.1k'
     },
     {
       id: '4',
-      title: '老年人跌倒风险评估与预防',
-      coverIcon: '🧓',
-      summary: '老年人跌倒是常见的意外伤害，掌握风险评估方法和预防措施，保护家人安全。',
-      publishTime: '2026-04-03',
-      category: '老年医学',
-      readCount: '1.9k'
+      title: '颈椎病的康复训练方法',
+      coverIcon: '🧘',
+      summary: '长期低头看手机导致颈椎问题日益年轻化，这套康复训练动作每天10分钟有效缓解...',
+      publishTime: '2026-04-05',
+      category: '骨科健康',
+      readCount: '5.3k'
     },
     {
       id: '5',
-      title: '心理健康：焦虑与抑郁的自我调节',
-      coverIcon: '🧠',
-      summary: '现代生活压力下，心理问题日益普遍。学会识别情绪信号，掌握科学的自我调节方法。',
-      publishTime: '2026-04-01',
-      category: '心理健康',
-      readCount: '5.6k'
+      title: '如何正确测量血压？家庭自测指南',
+      coverIcon: '📊',
+      summary: '血压测量的时间、姿势、频率都会影响结果准确性，学会正确的自测方法至关重要...',
+      publishTime: '2026-04-04',
+      category: '心血管健康',
+      readCount: '3.7k'
     },
     {
       id: '6',
-      title: '春季过敏防治全攻略',
-      coverIcon: '🌸',
-      summary: '花粉、柳絮等过敏原在春季活跃，了解过敏症状识别、预防措施及合理用药建议。',
+      title: '骨质疏松的早期信号与防治',
+      coverIcon: '🦴',
+      summary: '骨质疏松被称为"沉默的杀手"，早期发现并干预可有效预防骨折风险...',
+      publishTime: '2026-04-03',
+      category: '骨科健康',
+      readCount: '2.9k'
+    },
+    {
+      id: '7',
+      title: '老年痴呆症的预防与早期识别',
+      coverIcon: '🧠',
+      summary: '阿尔茨海默病发病率逐年上升，保持社交活动、规律运动和脑力训练可延缓认知衰退...',
+      publishTime: '2026-04-02',
+      category: '神经科',
+      readCount: '4.5k'
+    },
+    {
+      id: '8',
+      title: '合理用药：避免药物相互作用的实用指南',
+      coverIcon: '💉',
+      summary: '老年人常服用多种药物，了解药物相互作用机制，避免不良反应的发生...',
+      publishTime: '2026-04-01',
+      category: '用药安全',
+      readCount: '3.0k'
+    },
+    {
+      id: '9',
+      title: '膝关节疼痛的自我康复方案',
+      coverIcon: '🦵',
+      summary: '膝关节炎是最常见的关节疾病之一，通过肌肉强化训练和生活方式调整可明显改善症状...',
+      publishTime: '2026-03-30',
+      category: '骨科健康',
+      readCount: '3.8k'
+    },
+    {
+      id: '10',
+      title: '失眠怎么办？中医调理睡眠质量的方法',
+      coverIcon: '😴',
+      summary: '长期失眠影响身心健康，中医通过穴位按摩、药膳调理等方法帮助改善睡眠...',
       publishTime: '2026-03-28',
-      category: '过敏防治',
-      readCount: '2.3k'
+      category: '中医养生',
+      readCount: '4.2k'
+    },
+    {
+      id: '11',
+      title: '心血管疾病的风险因素筛查清单',
+      coverIcon: '❤️',
+      summary: '高血压、高血脂、糖尿病、吸烟等都是心血管疾病的危险因素，定期筛查早预防...',
+      publishTime: '2026-03-25',
+      category: '心血管健康',
+      readCount: '2.7k'
+    },
+    {
+      id: '12',
+      title: '腰椎间盘突出的保守治疗方法',
+      coverIcon: '🔙',
+      summary: '80%的腰椎间盘突出可通过保守治疗缓解，包括卧床休息、物理治疗和康复训练...',
+      publishTime: '2026-03-22',
+      category: '骨科健康',
+      readCount: '5.1k'
+    },
+    {
+      id: '13',
+      title: '疫苗接种：老年人的免疫保护伞',
+      coverIcon: '💉',
+      summary: '流感疫苗、肺炎球菌疫苗、带状疱疹疫苗等对老年人尤为重要，建议按时接种...',
+      publishTime: '2026-03-20',
+      category: '疾病预防',
+      readCount: '3.4k'
+    },
+    {
+      id: '14',
+      title: '如何选择合适的助行器？康复师教你选',
+      coverIcon: '🚶',
+      summary: '拐杖、助行器、轮椅各有适用场景，根据身体状况和需求选择最合适的辅助器具...',
+      publishTime: '2026-03-18',
+      category: '康复护理',
+      readCount: '2.5k'
+    },
+    {
+      id: '15',
+      title: '春季过敏季：过敏性鼻炎的应对策略',
+      coverIcon: '🌸',
+      summary: '花粉、尘螨等过敏原在春季活跃，通过环境控制和药物治疗可有效缓解症状...',
+      publishTime: '2026-03-15',
+      category: '耳鼻喉科',
+      readCount: '3.6k'
     }
   ];
 

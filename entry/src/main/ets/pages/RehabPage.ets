@@ -54,7 +54,7 @@ struct RehabPage {
             Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
               Column() {
                 Text(service.icon)
-                  .fontSize(32)
+                  .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
                   .fontColor(GlobalTheme.THEME_COLOR);
               }
               .width(64)
@@ -79,7 +79,7 @@ struct RehabPage {
               .margin({ left: GlobalTheme.getSpacingMD(this.isElderMode) });
 
               Text('›')
-                .fontSize(24)
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
                 .fontColor('#CCCCCC');
             }
             .width('100%')
@@ -101,10 +101,10 @@ struct RehabPage {
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .layoutWeight(1);
+      .align(Alignment.Top);
 
       Footer({ activeIndex: 2 });
     }

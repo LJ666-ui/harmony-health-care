@@ -1,23 +1,32 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { GlobalTheme } from '../global';
 
 @Entry
 @Component
 struct HealthPage {
+  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+
+  aboutToAppear(): void {
+    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
+      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    }
+  }
+
   build() {
     Column() {
       Header({ title: '我的健康', showBack: true })
 
       Column({ space: 20 }) {
         Text('我的健康')
-          .fontSize(24)
+          .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
           .fontWeight('bold')
           .fontColor('#1677FF')
           .margin({ top: 20, bottom: 16 })
 
         Text('欢迎使用健康管理功能')
-          .fontSize(16)
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
           .fontColor('#666666')
           .margin({ bottom: 32 })
 
@@ -37,12 +46,12 @@ struct HealthPage {
 
           Column() {
             Text('用药提醒')
-              .fontSize(18)
+              .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
               .fontWeight('bold')
               .fontColor('#333333')
               .margin({ bottom: 4 });
             Text('管理您的用药计划和提醒')
-              .fontSize(14)
+              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
               .fontColor('#666666');
           }
           .layoutWeight(1)
@@ -50,12 +59,12 @@ struct HealthPage {
           .margin({ left: 16 });
 
           Text('›')
-            .fontSize(20)
+            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
             .fontColor('#999999')
             .margin({ right: 8 });
         }
         .width('100%')
-        .padding(16)
+        .padding(GlobalTheme.getSpacingMD(this.isElderMode))
         .backgroundColor('#FFFFFF')
         .borderRadius(8)
         .border({ width: 1, color: '#f0f0f0' })
@@ -67,7 +76,7 @@ struct HealthPage {
         Row() {
           Column() {
             Text('📋')
-              .fontSize(32)
+              .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
               .fontColor('#1677FF');
           }
           .width(64)
@@ -79,12 +88,12 @@ struct HealthPage {
 
           Column() {
             Text('健康记录')
-              .fontSize(18)
+              .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
               .fontWeight('bold')
               .fontColor('#333333')
               .margin({ bottom: 4 });
             Text('查看和管理您的健康数据')
-              .fontSize(14)
+              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
               .fontColor('#666666');
           }
           .layoutWeight(1)
@@ -92,12 +101,12 @@ struct HealthPage {
           .margin({ left: 16 });
 
           Text('›')
-            .fontSize(20)
+            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
             .fontColor('#999999')
             .margin({ right: 8 });
         }
         .width('100%')
-        .padding(16)
+        .padding(GlobalTheme.getSpacingMD(this.isElderMode))
         .backgroundColor('#FFFFFF')
         .borderRadius(8)
         .border({ width: 1, color: '#f0f0f0' })
@@ -109,7 +118,7 @@ struct HealthPage {
         Row() {
           Column() {
             Text('📊')
-              .fontSize(32)
+              .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
               .fontColor('#1677FF');
           }
           .width(64)
@@ -121,12 +130,12 @@ struct HealthPage {
 
           Column() {
             Text('健康风险评估')
-              .fontSize(18)
+              .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
               .fontWeight('bold')
               .fontColor('#333333')
               .margin({ bottom: 4 });
             Text('评估您的健康风险状况')
-              .fontSize(14)
+              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
               .fontColor('#666666');
           }
           .layoutWeight(1)
@@ -134,12 +143,12 @@ struct HealthPage {
           .margin({ left: 16 });
 
           Text('›')
-            .fontSize(20)
+            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
             .fontColor('#999999')
             .margin({ right: 8 });
         }
         .width('100%')
-        .padding(16)
+        .padding(GlobalTheme.getSpacingMD(this.isElderMode))
         .backgroundColor('#FFFFFF')
         .borderRadius(8)
         .border({ width: 1, color: '#f0f0f0' })
@@ -147,7 +156,7 @@ struct HealthPage {
           router.pushUrl({ url: 'pages/RiskAssessmentPage' });
         })
       }
-      .flexGrow(1)
+      .layoutWeight(1)
       .width('80%')
       .padding({ top: 10, bottom: 20 })
       .justifyContent(FlexAlign.Start)

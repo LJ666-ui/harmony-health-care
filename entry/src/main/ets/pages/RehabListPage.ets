@@ -2,6 +2,7 @@ import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 export interface RehabCourse {
   id: string;
@@ -111,6 +112,18 @@ struct RehabListPage {
     }
   ];
 
+  @State isRefreshing: boolean = false;
+
+  handleRefresh(): void {
+    this.isRefreshing = true;
+
+    setTimeout(() => {
+      this.isRefreshing = false;
+
+      ToastUtil.refreshSuccess();
+    }, 1500);
+  }
+
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
@@ -189,7 +202,8 @@ struct RehabListPage {
         .width('85%')
         .padding({ bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top);
 

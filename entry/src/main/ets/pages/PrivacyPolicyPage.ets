@@ -225,10 +225,10 @@ struct PrivacyPolicyPage {
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .layoutWeight(1);
+      .align(Alignment.Top);
 
       Footer({ activeIndex: 4 });
     }

@@ -369,11 +369,13 @@ struct Rehab3DPage {
           .layoutWeight(1)
           .padding({ top: GlobalTheme.getSpacingXS(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
         }
-        .flexGrow(1)
+        .height(0)
+        .layoutWeight(1)
         .width('85%')
         .alignItems(HorizontalAlign.Center);
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top);
 

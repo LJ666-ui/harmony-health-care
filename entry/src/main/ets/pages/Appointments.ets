@@ -1,12 +1,9 @@
 import { router } from '@kit.ArkUI';
-import { promptAction } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { Card } from '../components/Card';
-import { EmptyState } from '../components/EmptyState';
-import { ClickFeedback, ButtonWithFeedback } from '../components/ClickFeedback';
 import { Appointment } from '../models/HealthData';
 import { GlobalTheme } from '../global';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 @Entry
 @Component
@@ -18,6 +15,7 @@ struct Appointments {
   @State selectedStatus: string = '全部';
   @State showCancelDialog: boolean = false;
   @State selectedAppointment: Appointment | null = null;
+  @State isRefreshing: boolean = false;
 
   private statusOptions: string[] = ['全部', '待确认', '已确认', '已完成', '已取消'];
 
@@ -118,10 +116,7 @@ struct Appointments {
 
   handleCancelClick(appointment: Appointment): void {
     if (appointment.status !== 'confirmed' && appointment.status !== 'pending') {
-      promptAction.showToast({
-        message: '该预约无法取消',
-        duration: 1500
-      });
+      ToastUtil.showWarning('该预约无法取消');
       return;
     }
 
@@ -139,10 +134,7 @@ struct Appointments {
 
       this.applyStatusFilter();
 
-      promptAction.showToast({
-        message: '取消成功',
-        duration: 1500
-      });
+      ToastUtil.cancelSuccess();
     }
 
     this.showCancelDialog = false;
@@ -152,6 +144,179 @@ struct Appointments {
   cancelCancel(): void {
     this.showCancelDialog = false;
     this.selectedAppointment = null;
+  }
+
+  handleRefresh(): void {
+    this.isRefreshing = true;
+
+    setTimeout(() => {
+      this.loadAppointments();
+      this.isRefreshing = false;
+
+      ToastUtil.refreshSuccess();
+    }, 1500);
+  }
+
+  @Builder
+  buildCancelButtonDialog() {
+    Stack() {
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('#00000080')
+        .onClick(() => this.cancelCancel());
+
+      Column({ space: 16 }) {
+        Text('⚠️ 取消预约')
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+          .fontWeight('bold')
+          .fontColor('#333333');
+
+        Text(`确定要取消 ${this.selectedAppointment?.hospital} 的${this.selectedAppointment?.specialty}预约吗？`)
+          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+          .fontColor('#666666')
+          .textAlign(TextAlign.Center);
+
+        Row({ space: 12 }) {
+          Button('再想想')
+            .layoutWeight(1)
+            .height(40)
+            .fontSize(14)
+            .fontColor('#666666')
+            .backgroundColor('#F5F5F5')
+            .borderRadius(20)
+            .onClick(() => this.cancelCancel());
+
+          Button('确认取消')
+            .layoutWeight(1)
+            .height(40)
+            .fontSize(14)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#FF4D4F')
+            .borderRadius(20)
+            .onClick(() => this.confirmCancel());
+        }
+        .width('100%');
+      }
+      .width('80%')
+      .padding(20)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(12);
+    }
+    .width('100%')
+    .height('100%')
+    .position({ x: 0, y: 0 });
+  }
+
+  @Builder
+  buildAppointmentListContent() {
+    if (this.filteredAppointments.length === 0) {
+      Column({ space: 20 }) {
+        Text('📅')
+          .fontSize(64)
+          .margin({ top: 40, bottom: 12 });
+
+        Text('暂无预约记录')
+          .fontSize(18)
+          .fontWeight('bold')
+          .fontColor('#333333');
+
+        Text('点击下方按钮添加新预约')
+          .fontSize(14)
+          .fontColor('#999999')
+          .textAlign(TextAlign.Center)
+          .width('80%');
+
+        Button('+ 新增预约')
+          .height(44)
+          .padding({ left: 28, right: 28 })
+          .fontSize(15)
+          .fontColor('#FFFFFF')
+          .backgroundColor('#1677FF')
+          .borderRadius(22)
+          .margin({ top: 8 })
+          .onClick(() => router.pushUrl({ url: 'pages/AddAppointmentPage' }));
+      }
+      .width('100%')
+      .height(350)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center);
+    } else {
+      List() {
+        ForEach(this.filteredAppointments, (item: Appointment) => {
+          ListItem() {
+            Column() {
+              Column() {
+                Row() {
+                  Text(item.hospital)
+                    .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                    .fontWeight('bold')
+                    .fontColor(GlobalTheme.TEXT_PRIMARY);
+
+                  Blank();
+
+                  Text(this.getStatusText(item.status))
+                    .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                    .fontColor(GlobalTheme.THEME_COLOR);
+                }
+                .margin({ bottom: GlobalTheme.getSpacingSM(this.isElderMode) });
+
+                Text(item.specialty + ' · ' + item.doctor)
+                  .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
+                  .fontWeight('bold')
+                  .fontColor(GlobalTheme.TEXT_PRIMARY)
+                  .margin({ bottom: 4 });
+
+                Text(item.date + ' ' + item.time)
+                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                  .fontColor(GlobalTheme.TEXT_SECONDARY);
+              }
+              .width('100%')
+              .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+              .backgroundColor('#FFFFFF')
+              .borderRadius(GlobalTheme.RADIUS_MD)
+              .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
+              .onClick(() => {
+                console.log('预约项被点击:', item.id);
+              });
+
+              Row() {
+                Text(`📍 ${item.location}`)
+                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                  .fontColor('#999999');
+
+                Blank();
+
+                if (item.status === 'confirmed' || item.status === 'pending') {
+                  Button('取消预约')
+                    .height(32)
+                    .fontSize(12)
+                    .fontColor('#1677FF')
+                    .backgroundColor('#FFFFFF')
+                    .border({ width: 1, color: '#1677FF' })
+                    .borderRadius(16)
+                    .onClick(() => this.handleCancelClick(item));
+                }
+              }
+              .width('100%')
+              .padding({ top: 8 });
+
+              if (item.notes) {
+                Text(`备注：${item.notes}`)
+                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                  .fontColor('#666666')
+                  .width('100%')
+                  .padding({ top: 4 });
+              }
+            }
+            .width('100%');
+          }
+        }, (item: Appointment) => item.id);
+      }
+      .width('100%')
+      .height(0)
+      .layoutWeight(1);
+    }
   }
 
   build() {
@@ -167,150 +332,51 @@ struct Appointments {
             .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
 
           Scroll() {
-            Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
-              ForEach(this.statusOptions, (status: string) => {
-                Text(status)
-                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                  .fontColor(this.selectedStatus === status ? '#FFFFFF' : '#666666')
-                  .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                  .backgroundColor(this.selectedStatus === status ? '#1677FF' : '#F0F0F0')
-                  .borderRadius(16)
-                  .onClick(() => this.handleStatusChange(status));
-              })
-            }
-          }
-          .scrollable(ScrollDirection.Horizontal)
-          .width('100%');
-
-          if (this.filteredAppointments.length === 0) {
-            EmptyState({
-              icon: '📅',
-              title: '暂无预约记录',
-              description: '点击下方按钮添加新预约',
-              buttonText: '+ 新增预约',
-              onAdd: () => {
-                router.pushUrl({ url: 'pages/AddAppointmentPage' });
+              Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
+                ForEach(this.statusOptions, (status: string) => {
+                  Text(status)
+                    .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                    .fontColor(this.selectedStatus === status ? '#FFFFFF' : '#666666')
+                    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                    .backgroundColor(this.selectedStatus === status ? '#1677FF' : '#F0F0F0')
+                    .borderRadius(16)
+                    .onClick(() => this.handleStatusChange(status));
+                })
               }
-            });
-          } else {
-            List() {
-              ForEach(this.filteredAppointments, (item: Appointment) => {
-                ListItem() {
-                  Column() {
-                    ClickFeedback({
-                      onItemClick: () => {
-                        console.log('预约项被点击:', item.id);
-                      },
-                      content: () => {
-                        Card({
-                          title: item.hospital,
-                          value: item.specialty + ' · ' + item.doctor,
-                          description: item.date + ' ' + item.time,
-                          status: this.getStatusText(item.status)
-                        });
-                      }
-                    });
-
-                    Row() {
-                      Text(`📍 ${item.location}`)
-                        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                        .fontColor('#999999');
-
-                      Blank();
-
-                      if (item.status === 'confirmed' || item.status === 'pending') {
-                        ButtonWithFeedback({
-                          text: '取消预约',
-                          type: 'outline',
-                          btnSize: 'small',
-                          onItemClick: () => this.handleCancelClick(item)
-                        });
-                      }
-                    }
-                    .width('100%')
-                    .padding({ top: 8 });
-
-                    if (item.notes) {
-                      Text(`备注：${item.notes}`)
-                        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                        .fontColor('#666666')
-                        .width('100%')
-                        .padding({ top: 4 });
-                    }
-                  }
-                  .width('100%');
-                }
-              }, (item: Appointment) => item.id);
             }
-            .width('100%')
-            .layoutWeight(1);
+            .scrollable(ScrollDirection.Horizontal)
+
+            this.buildAppointmentListContent()
+
+            Button('新增预约')
+              .width('100%')
+              .height(48)
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#1677FF')
+              .borderRadius(24)
+              .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode) })
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/AddAppointmentPage' });
+              });
           }
-
-          ButtonWithFeedback({
-            text: '新增预约',
-            type: 'primary',
-            btnSize: 'large',
-            onItemClick: () => {
-              router.pushUrl({ url: 'pages/AddAppointmentPage' });
-            }
-          })
-            .width('100%')
-            .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode) });
-        }
-        .width('85%')
-        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
+          .width('85%')
+          .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top);
 
-      if (this.showCancelDialog && this.selectedAppointment) {
-        Stack() {
-          Column()
-            .width('100%')
-            .height('100%')
-            .backgroundColor('#00000080')
-            .onClick(() => this.cancelCancel());
-
-          Column({ space: 16 }) {
-            Text('⚠️ 取消预约')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontWeight('bold')
-              .fontColor('#333333');
-
-            Text(`确定要取消 ${this.selectedAppointment.hospital} 的${this.selectedAppointment.specialty}预约吗？`)
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor('#666666')
-              .textAlign(TextAlign.Center);
-
-            Row({ space: 12 }) {
-              ButtonWithFeedback({
-                text: '再想想',
-                type: 'secondary',
-                btnSize: 'medium',
-                onItemClick: () => this.cancelCancel()
-              })
-                .layoutWeight(1);
-
-              ButtonWithFeedback({
-                text: '确认取消',
-                type: 'danger',
-                btnSize: 'medium',
-                onItemClick: () => this.confirmCancel()
-              })
-                .layoutWeight(1);
-            }
-            .width('100%');
-          }
-          .width('80%')
-          .padding(20)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12);
+      Stack() {
+        if (this.showCancelDialog && this.selectedAppointment) {
+          this.buildCancelButtonDialog();
         }
-        .width('100%')
-        .height('100%')
-        .position({ x: 0, y: 0 });
       }
+      .width('100%')
+      .height(0)
+      .layoutWeight(1);
 
       Footer({ activeIndex: 0 });
     }

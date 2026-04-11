@@ -1,10 +1,9 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { Card } from '../components/Card';
-import { ClickFeedback, ButtonWithFeedback } from '../components/ClickFeedback';
 import { Medication } from '../models/HealthData';
 import { GlobalTheme } from '../global';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 @Entry
 @Component
@@ -134,6 +133,18 @@ struct Medications {
     }
   ];
 
+  @State isRefreshing: boolean = false;
+
+  handleRefresh(): void {
+    this.isRefreshing = true;
+
+    setTimeout(() => {
+      this.isRefreshing = false;
+
+      ToastUtil.refreshSuccess();
+    }, 1500);
+  }
+
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
@@ -155,42 +166,66 @@ struct Medications {
             .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
 
           List() {
-            ForEach(this.medications, (item: Medication) => {
-              ListItem() {
-                ClickFeedback({
-                  onItemClick: () => {
-                    console.log('药物项被点击:', item.id);
-                  },
-                  content: () => {
-                    Card({
-                      title: item.name,
-                      value: item.dosage + ' - ' + item.frequency,
-                      description: item.times.join(', '),
-                      status: item.status === 'taken' ? '已服用' : '待服用'
-                    });
-                  }
-                });
-              }
-            }, (item: Medication) => item.id);
-          }
-          .width('100%')
-          .layoutWeight(1);
+              ForEach(this.medications, (item: Medication) => {
+                ListItem() {
+                  Column() {
+                    Row() {
+                      Text(item.name)
+                        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                        .fontWeight('bold')
+                        .fontColor(GlobalTheme.TEXT_PRIMARY);
 
-          ButtonWithFeedback({
-            text: '添加药物',
-            type: 'primary',
-            btnSize: 'large',
-            onItemClick: () => {
-              console.log('添加药物');
+                      Blank();
+
+                      Text(item.status === 'taken' ? '已服用' : '待服用')
+                        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                        .fontColor(item.status === 'taken' ? '#52C41A' : GlobalTheme.THEME_COLOR);
+                    }
+                    .margin({ bottom: GlobalTheme.getSpacingSM(this.isElderMode) });
+
+                    Text(item.dosage + ' - ' + item.frequency)
+                      .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
+                      .fontWeight('bold')
+                      .fontColor(GlobalTheme.TEXT_PRIMARY)
+                      .margin({ bottom: 4 });
+
+                    Text(item.times.join(', '))
+                      .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                      .fontColor(GlobalTheme.TEXT_SECONDARY);
+                  }
+                  .width('100%')
+                  .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+                  .backgroundColor('#FFFFFF')
+                  .borderRadius(GlobalTheme.RADIUS_MD)
+                  .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
+                  .onClick(() => {
+                    console.log('药物项被点击:', item.id);
+                  });
+                }
+              }, (item: Medication) => item.id);
             }
-          })
             .width('100%')
-            .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode) });
-        }
-        .width('85%')
-        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
+            .height(0)
+            .layoutWeight(1);
+
+            Button('添加药物')
+              .width('100%')
+              .height(48)
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#1677FF')
+              .borderRadius(24)
+              .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode) })
+              .onClick(() => {
+                console.log('添加药物');
+              });
+          }
+          .width('85%')
+          .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top);
 

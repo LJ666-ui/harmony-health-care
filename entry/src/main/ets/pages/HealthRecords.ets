@@ -1,13 +1,4 @@
 import { router } from '@kit.ArkUI';
-import { promptAction } from '@kit.ArkUI';
-import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
-import { Card } from '../components/Card';
-import { EmptyState } from '../components/EmptyState';
-import { Loading } from '../components/Loading';
-import { PullRefresh } from '../components/PullRefresh';
-import { ClickFeedback, ButtonWithFeedback } from '../components/ClickFeedback';
-import { HealthRecord } from '../models/HealthData';
 import { GlobalTheme } from '../global';
 
 @Entry
@@ -15,309 +6,202 @@ import { GlobalTheme } from '../global';
 struct HealthRecords {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State records: HealthRecord[] = [];
-  @State filteredRecords: HealthRecord[] = [];
-  @State isLoading: boolean = false;
-  @State isRefreshing: boolean = false;
-  @State selectedType: string = '全部';
-  @State currentPage: number = 1;
-  @State pageSize: number = 5;
+  @State selectedType: string = '血压';
+  @State selectedTimeRange: string = '7天';
 
-  private recordTypes: string[] = ['全部', '血压', '血糖', '心率', '体温', '体重', '睡眠'];
-
-  private defaultRecords: HealthRecord[] = [
-    {
-      id: '1',
-      type: '血压',
-      value: '120/80',
-      unit: 'mmHg',
-      date: '2026-04-11',
-      time: '08:30',
-      notes: '晨起测量，血压正常范围，继续保持低盐饮食',
-      icon: '',
-      color: '#1677FF',
-      createdAt: 0,
-      updatedAt: 0
-    },
-    {
-      id: '2',
-      type: '血压',
-      value: '145/92',
-      unit: 'mmHg',
-      date: '2026-04-10',
-      time: '18:20',
-      notes: '晚餐后测量略高，建议减少钠盐摄入，明日复测',
-      icon: '',
-      color: '#FF4D4F',
-      createdAt: 0,
-      updatedAt: 0
-    },
-    {
-      id: '3',
-      type: '血糖',
-      value: '5.6',
-      unit: 'mmol/L',
-      date: '2026-04-11',
-      time: '07:00',
-      notes: '空腹血糖正常，餐后2小时需监测',
-      icon: '',
-      color: '#52C41A',
-      createdAt: 0,
-      updatedAt: 0
-    },
-    {
-      id: '4',
-      type: '血糖',
-      value: '9.8',
-      unit: 'mmol/L',
-      date: '2026-04-10',
-      time: '12:30',
-      notes: '餐后血糖偏高，注意控制碳水化合物摄入量',
-      icon: '',
-      color: '#FAAD14',
-      createdAt: 0,
-      updatedAt: 0
-    },
-    {
-      id: '5',
-      type: '心率',
-      value: '72',
-      unit: '次/分',
-      date: '2026-04-11',
-      time: '09:00',
-      notes: '静息心率正常，心律齐',
-      icon: '',
-      color: '#1677FF',
-      createdAt: 0,
-      updatedAt: 0
-    }
-  ];
-
-  aboutToAppear(): void {
-    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
-      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
-    } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
-    }
-
-    this.loadRecords();
-  }
-
-  loadRecords(): void {
-    const storedRecords = AppStorage.get<HealthRecord[]>('healthRecords');
-    if (storedRecords && storedRecords.length > 0) {
-      this.records = storedRecords;
-    } else {
-      this.records = [...this.defaultRecords];
-    }
-
-    this.applyFilter();
-  }
-
-  applyFilter(): void {
-    if (this.selectedType === '全部') {
-      this.filteredRecords = [...this.records];
-    } else {
-      this.filteredRecords = this.records.filter(item => item.type === this.selectedType);
-    }
-
-    this.currentPage = 1;
-  }
-
-  get paginatedRecords(): HealthRecord[] {
-    const start = (this.currentPage - 1) * this.pageSize;
-    const end = start + this.pageSize;
-    return this.filteredRecords.slice(start, end);
-  }
-
-  get totalPages(): number {
-    return Math.ceil(this.filteredRecords.length / this.pageSize);
-  }
-
-  get hasRecords(): boolean {
-    return this.filteredRecords.length > 0;
-  }
-
-  handleRefresh(): void {
-    this.isRefreshing = true;
-
-    setTimeout(() => {
-      this.loadRecords();
-      this.isRefreshing = false;
-
-      promptAction.showToast({
-        message: '刷新成功',
-        duration: 1500
-      });
-    }, 1500);
-  }
-
-  handleAddRecord(): void {
-    const newRecord: HealthRecord = {
-      id: Date.now().toString(),
-      type: '体温',
-      value: '36.8',
-      unit: '℃',
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toTimeString().slice(0, 5),
-      notes: '新增测试记录',
-      icon: '',
-      color: '#52C41A',
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-
-    this.records.unshift(newRecord);
-    AppStorage.setOrCreate<HealthRecord[]>('healthRecords', this.records);
-
-    this.applyFilter();
-
-    promptAction.showToast({
-      message: '添加成功',
-      duration: 1500
-    });
-  }
-
-  handleTypeChange(type: string): void {
-    this.selectedType = type;
-    this.applyFilter();
-  }
-
-  handlePageChange(page: number): void {
-    if (page >= 1 && page <= this.totalPages) {
-      this.currentPage = page;
-    }
-  }
+  private chartTypes: string[] = ['血压', '血糖'];
+  private timeRanges: string[] = ['7天', '30天', '90天'];
+  private recordTypes: string[] = ['全部', '血压', '血糖', '心率', '体温'];
 
   build() {
     Column() {
-      Header({ title: '健康记录', showBack: true });
+      Text('← 返回')
+        .fontSize(16)
+        .fontColor('#1677FF')
+        .padding(12)
+        .width('100%')
+        .onClick(() => {
+          router.back();
+        });
 
       Scroll() {
-        PullRefresh({
-          onRefresh: () => this.handleRefresh(),
-          isRefreshing: this.isRefreshing
-        }) {
-          Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-            Text('健康记录')
-              .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
+        Column({ space: 16 }) {
+          Text('健康记录')
+            .fontSize(24)
+            .fontWeight('bold')
+            .fontColor('#1677FF')
+            .margin({ top: 16, bottom: 12 });
+
+          Column() {
+            Text('📈 数据趋势')
+              .fontSize(18)
               .fontWeight('bold')
-              .fontColor('#1677FF')
-              .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
+              .fontColor('#333333')
+              .margin({ bottom: 12 });
+
+            Row({ space: 8 }) {
+              ForEach(this.chartTypes, (type: string) => {
+                Text(type)
+                  .fontSize(14)
+                  .fontColor(this.selectedType === type ? '#FFFFFF' : '#666666')
+                  .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                  .backgroundColor(this.selectedType === type ? '#1677FF' : '#F0F0F0')
+                  .borderRadius(16)
+                  .onClick(() => { this.selectedType = type; });
+              });
+
+              Blank();
+
+              ForEach(this.timeRanges, (range: string) => {
+                Text(range)
+                  .fontSize(12)
+                  .fontColor(this.selectedTimeRange === range ? '#FFFFFF' : '#666666')
+                  .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                  .backgroundColor(this.selectedTimeRange === range ? '#52C41A' : '#F5F5F5')
+                  .borderRadius(14)
+                  .onClick(() => { this.selectedTimeRange = range; });
+              });
+            }
+            .width('100%');
+
+            Column() {
+              Text(`📊 ${this.selectedType} 数据 - ${this.selectedTimeRange}`)
+                .fontSize(16)
+                .fontWeight('bold')
+                .fontColor('#333333')
+                .margin({ bottom: 12 })
+
+              ForEach(['04-11', '04-12', '04-13', '04-14', '04-15'], (date: string) => {
+                Row() {
+                  Text(date)
+                    .fontSize(12)
+                    .fontColor('#666666')
+                    .width(60)
+
+                  Column() {
+                    Text(`${Math.floor(115 + Math.random() * 30)}/${Math.floor(60 + Math.random() * 20)}`)
+                      .fontSize(14)
+                      .fontWeight('bold')
+                      .fontColor('#1677FF')
+
+                    Text('正常')
+                      .fontSize(11)
+                      .fontColor('#52C41A');
+                  }
+                  .layoutWeight(1)
+                  .alignItems(HorizontalAlign.Start)
+                }
+                .width('100%')
+                .padding(10)
+                .backgroundColor('#FAFAFA')
+                .borderRadius(8)
+                .margin({ bottom: 6 });
+              });
+            }
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#FFFFFF')
+            .borderRadius(12);
+          }
+          .width('85%');
+
+          Column() {
+            Text('📋 健康记录列表')
+              .fontSize(18)
+              .fontWeight('bold')
+              .fontColor('#333333')
+              .margin({ bottom: 12 });
 
             Scroll() {
-              Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
+              Row({ space: 8 }) {
                 ForEach(this.recordTypes, (type: string) => {
                   Text(type)
-                    .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                    .fontColor(this.selectedType === type ? '#FFFFFF' : '#666666')
+                    .fontSize(13)
+                    .fontColor('#666666')
                     .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                    .backgroundColor(this.selectedType === type ? '#1677FF' : '#F0F0F0')
+                    .backgroundColor('#F0F0F0')
                     .borderRadius(16)
-                    .onClick(() => this.handleTypeChange(type));
-                })
+                });
               }
             }
             .scrollable(ScrollDirection.Horizontal)
             .width('100%');
 
-            if (!this.hasRecords) {
-              EmptyState({
-                icon: '📋',
-                title: '暂无健康记录',
-                description: '点击下方按钮添加您的第一条健康数据',
-                buttonText: '+ 添加记录',
-                onAdd: () => this.handleAddRecord()
-              });
-            } else {
-              List({ space: 8 }) {
-                ForEach(this.paginatedRecords, (item: HealthRecord) => {
-                  ListItem() {
-                    Column() {
-                      ClickFeedback({
-                        onItemClick: () => {
-                          console.log('健康记录项被点击:', item.id);
-                        },
-                        content: () => {
-                          Card({
-                            title: item.type,
-                            value: item.value + item.unit,
-                            description: item.date + ' ' + item.time,
-                            status: '正常'
-                          });
-                        }
-                      });
-
-                      if (item.notes) {
-                        Text(item.notes)
-                          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                          .fontColor('#999999')
-                          .margin({ top: 4 });
-                      }
-                    }
-                  }
-                }, (item: HealthRecord) => item.id);
-              }
-              .width('100%')
-              .height(0)
-              .layoutWeight(1);
-
-              if (this.totalPages > 1) {
-                Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-                  Button('上一页')
-                    .enabled(this.currentPage > 1)
-                    .opacity(this.currentPage > 1 ? 1 : 0.5)
-                    .height(32)
-                    .fontSize(12)
-                    .onClick(() => this.handlePageChange(this.currentPage - 1));
-
-                  Text(`${this.currentPage} / ${this.totalPages}`)
-                    .fontSize(12)
-                    .fontColor('#666666');
-
-                  Button('下一页')
-                    .enabled(this.currentPage < this.totalPages)
-                    .opacity(this.currentPage < this.totalPages ? 1 : 0.5)
-                    .height(32)
-                    .fontSize(12)
-                    .onClick(() => this.handlePageChange(this.currentPage + 1));
+            ForEach([1, 2, 3], (_: number) => {
+              Column() {
+                Row() {
+                  Text('📊 血压')
+                    .fontSize(15)
+                    .fontWeight('bold')
+                    .fontColor('#333333');
+                  Blank();
+                  Text('120/80 mmHg')
+                    .fontSize(14)
+                    .fontWeight('bold')
+                    .fontColor('#1677FF');
                 }
-                .width('100%')
-                .justifyContent(FlexAlign.Center)
-                .margin({ top: 8 });
-              }
-            }
+                .width('100%');
 
-            ButtonWithFeedback({
-              text: '+ 添加记录',
-              type: 'primary',
-              btnSize: 'large',
-              onItemClick: () => this.handleAddRecord()
-            })
-              .width('100%')
-              .margin({ top: 8 });
+                Text('2026-04-12 09:30')
+                  .fontSize(12)
+                  .fontColor('#999999')
+                  .width('100%')
+                  .margin({ top: 4 });
 
-            ButtonWithFeedback({
-              text: '📊 健康风险评估',
-              type: 'primary',
-              btnSize: 'large',
-              onItemClick: () => {
-                router.pushUrl({ url: 'pages/RiskAssessmentPage' });
+                Text('备注：血压正常范围')
+                  .fontSize(12)
+                  .fontColor('#666666')
+                  .width('100%')
+                  .margin({ top: 4 });
               }
-            })
               .width('100%')
+              .padding(12)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(10)
               .margin({ top: 8 });
+            });
           }
-          .width('85%')
-          .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
-        }
-      }
-      .scrollable(ScrollDirection.Vertical)
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
+          .width('85%');
 
-      Footer({ activeIndex: 0 });
+          Button('+ 添加记录')
+            .width('85%')
+            .height(48)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#1677FF')
+            .borderRadius(24)
+            .margin({ top: 16 });
+
+          Button('📊 健康风险评估')
+            .width('85%')
+            .height(48)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#52C41A')
+            .borderRadius(24)
+            .margin({ top: 8 });
+        }
+        .width('100%')
+        .padding({ bottom: 80 });
+      }
+      .height(0)
+      .layoutWeight(1)
+      .scrollBar(BarState.Off);
+
+      Row() {
+        Text('🏠').fontSize(20).margin(8);
+        Text('📋').fontSize(20).margin(8).fontColor('#1677FF');
+        Text('💊').fontSize(20).margin(8);
+        Text('📚').fontSize(20).margin(8);
+        Text('👤').fontSize(20).margin(8);
+      }
+      .justifyContent(FlexAlign.SpaceEvenly)
+      .width('100%')
+      .padding(8)
+      .backgroundColor('#FFFFFF')
+      .shadow({ radius: 4, color: '#00000010', offsetX: 0, offsetY: -2 });
     }
     .width('100%')
     .height('100%')

@@ -257,7 +257,8 @@ struct ScienceDetailPage {
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingMD(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) * 4 });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top);
 

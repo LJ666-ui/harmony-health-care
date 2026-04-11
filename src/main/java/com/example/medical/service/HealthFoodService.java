@@ -9,10 +9,14 @@ public interface HealthFoodService extends IService<HealthFood> {
      * 分页查询健康食材
      * @param page 当前页
      * @param pageSize 每页条数
+     * @param foodName 食材名称（可选）
      * @param applicableDisease 适用病症（可选）
+     * @param dietTherapy 食疗作用（可选）
+     * @param efficacy 功效（可选）
+     * @param dietaryTaboo 饮食禁忌（可选）
      * @return 分页结果
      */
-    PageResult<HealthFood> pageQuery(int page, int pageSize, String applicableDisease);
+    PageResult<HealthFood> pageQuery(int page, int pageSize, String foodName, String applicableDisease, String dietTherapy, String efficacy, String dietaryTaboo);
 
     /**
      * 根据ID查询食材详情

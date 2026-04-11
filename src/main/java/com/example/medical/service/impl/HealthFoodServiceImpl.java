@@ -13,14 +13,26 @@ import org.springframework.stereotype.Service;
 public class HealthFoodServiceImpl extends ServiceImpl<HealthFoodMapper, HealthFood> implements HealthFoodService {
 
     @Override
-    public PageResult<HealthFood> pageQuery(int page, int pageSize, String applicableDisease) {
+    public PageResult<HealthFood> pageQuery(int page, int pageSize, String foodName, String applicableDisease, String dietTherapy, String efficacy, String dietaryTaboo) {
         // 构建分页对象
         Page<HealthFood> pageInfo = new Page<>(page, pageSize);
         
         // 构建查询条件
         LambdaQueryWrapper<HealthFood> wrapper = new LambdaQueryWrapper<>();
+        if (foodName != null && !foodName.isEmpty()) {
+            wrapper.like(HealthFood::getFoodName, foodName);
+        }
         if (applicableDisease != null && !applicableDisease.isEmpty()) {
             wrapper.like(HealthFood::getApplicableDisease, applicableDisease);
+        }
+        if (dietTherapy != null && !dietTherapy.isEmpty()) {
+            wrapper.like(HealthFood::getDietTherapy, dietTherapy);
+        }
+        if (efficacy != null && !efficacy.isEmpty()) {
+            wrapper.like(HealthFood::getEfficacy, efficacy);
+        }
+        if (dietaryTaboo != null && !dietaryTaboo.isEmpty()) {
+            wrapper.like(HealthFood::getDietaryTaboo, dietaryTaboo);
         }
         
         // 执行分页查询

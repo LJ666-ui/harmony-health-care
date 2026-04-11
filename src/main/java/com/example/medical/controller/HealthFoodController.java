@@ -28,9 +28,13 @@ public class HealthFoodController {
     public Result<PageResult<HealthFood>> pageList(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String applicableDisease) {
+            @RequestParam(required = false) String foodName,
+            @RequestParam(required = false) String applicableDisease,
+            @RequestParam(required = false) String dietTherapy,
+            @RequestParam(required = false) String efficacy,
+            @RequestParam(required = false) String dietaryTaboo) {
         try {
-            PageResult<HealthFood> result = healthFoodService.pageQuery(page, pageSize, applicableDisease);
+            PageResult<HealthFood> result = healthFoodService.pageQuery(page, pageSize, foodName, applicableDisease, dietTherapy, efficacy, dietaryTaboo);
             return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();

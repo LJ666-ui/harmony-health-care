@@ -38,7 +38,7 @@ struct ARNavigationPage {
       Column() {
         Row() {
           Text('←')
-            .fontSize(28)
+            .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
             .fontColor('#FFFFFF')
             .width(44)
             .height(44)
@@ -98,7 +98,7 @@ struct ARNavigationPage {
             Row({ space: 8 }) {
               ForEach([1, 2, 3], (item: number) => {
                 Text('—')
-                  .fontSize(20)
+                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
                   .fontColor('#1677FF80');
               })
             }

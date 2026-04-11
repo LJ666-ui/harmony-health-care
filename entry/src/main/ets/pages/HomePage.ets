@@ -98,11 +98,19 @@ struct HomePage {
 
   handleCardClick(card: FeatureCard): void {
     this.clickedCard = card.id;
+    console.log('准备跳转到:', card.url);
     setTimeout(() => {
       try {
-        router.pushUrl({ url: card.url });
+        router.pushUrl({
+          url: card.url,
+          params: { from: 'HomePage' }
+        }).then(() => {
+          console.log('跳转成功:', card.url);
+        }).catch((err: Error) => {
+          console.error('跳转失败:', err.message, card.url);
+        });
       } catch (e) {
-        console.error('路由跳转失败:', e);
+        console.error('路由跳转异常:', e);
       }
     }, 150);
   }
@@ -233,10 +241,10 @@ struct HomePage {
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .layoutWeight(1);
+      .align(Alignment.Top);
 
       Footer({ activeIndex: 0 });
     }

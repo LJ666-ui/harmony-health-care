@@ -7,7 +7,6 @@ export struct PullRefresh {
   private defaultContent() {}
 
   @State isRefreshing: boolean = false;
-  @State refreshText: string = '下拉刷新';
 
   build() {
     Column() {
@@ -29,18 +28,22 @@ export struct PullRefresh {
 
       this.content();
     }
-    .onTouch((event) => {
-      if (event.type === TouchType.Down) {
-        this.refreshText = '下拉刷新';
-      } else if (event.type === TouchType.Up && !this.isRefreshing) {
-        this.isRefreshing = true;
-        this.refreshText = '正在刷新...';
+    .onTouch((event: TouchEvent) => {
+      try {
+        if (event.type === TouchType.Up && !this.isRefreshing) {
+          this.isRefreshing = true;
 
-        setTimeout(() => {
-          this.onRefresh();
-          this.isRefreshing = false;
-          this.refreshText = '刷新完成';
-        }, 1500);
+          setTimeout(() => {
+            try {
+              this.onRefresh();
+            } catch (e) {
+              console.error('PullRefresh onRefresh error:', e);
+            }
+            this.isRefreshing = false;
+          }, 1500);
+        }
+      } catch (e) {
+        console.error('PullRefresh onTouch error:', e);
       }
     });
   }

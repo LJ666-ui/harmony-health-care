@@ -1,10 +1,10 @@
 import { router } from '@kit.ArkUI';
-import { promptAction } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { Input } from '../components/Input';
 import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 interface UserInfo {
   username: string;
@@ -57,10 +57,7 @@ struct Login {
 
   handleLogin(): void {
     if (!this.validateForm()) {
-      promptAction.showToast({
-        message: this.errorMessage,
-        duration: 2000
-      });
+      ToastUtil.showError(this.errorMessage, 2000);
       return;
     }
 
@@ -77,10 +74,7 @@ struct Login {
       AppStorage.setOrCreate<UserInfo>('userInfo', mockUserInfo);
       AppStorage.setOrCreate<boolean>('isLoggedIn', true);
 
-      promptAction.showToast({
-        message: '登录成功',
-        duration: 1500
-      });
+      ToastUtil.loginSuccess();
 
       setTimeout(() => {
         router.replaceUrl({ url: 'pages/HomePage' });
@@ -184,10 +178,10 @@ struct Login {
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .layoutWeight(1);
+      .align(Alignment.Top);
 
       Footer({ activeIndex: 4 });
     }

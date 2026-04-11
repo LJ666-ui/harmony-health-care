@@ -1,5 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { Footer } from '../components/Footer';
+import { ToastUtil } from '../common/utils/ToastUtil';
+import { GlobalTheme } from '../global';
 
 export interface ScienceArticle {
   id: string;
@@ -154,6 +156,18 @@ struct ScienceListPage {
     }
   ];
 
+  @State isRefreshing: boolean = false;
+
+  handleRefresh(): void {
+    this.isRefreshing = true;
+
+    setTimeout(() => {
+      this.isRefreshing = false;
+
+      ToastUtil.refreshSuccess();
+    }, 1500);
+  }
+
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
@@ -164,7 +178,7 @@ struct ScienceListPage {
     Column() {
       Row() {
         Text('←')
-          .fontSize(24)
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
           .fontColor('#1677FF')
           .width(40)
           .height(40)
@@ -188,75 +202,85 @@ struct ScienceListPage {
       .padding({ left: 16, right: 16 })
       .justifyContent(FlexAlign.Center)
 
-      List() {
-        ForEach(this.articles, (article: ScienceArticle) => {
-          ListItem() {
-            Row() {
-              Column() {
-                Text(article.coverIcon).fontSize(36)
-              }
-              .width(64)
-              .height(64)
-              .backgroundColor('#F0F5FF')
-              .borderRadius(12)
-              .justifyContent(FlexAlign.Center)
-              .alignItems(HorizontalAlign.Center)
+      Scroll() {
+        Column() {
+          List() {
+              ForEach(this.articles, (article: ScienceArticle) => {
+                ListItem() {
+                  Row() {
+                    Column() {
+                      Text(article.coverIcon).fontSize(36)
+                    }
+                    .width(64)
+                    .height(64)
+                    .backgroundColor('#F0F5FF')
+                    .borderRadius(12)
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
 
-              Column() {
-                Text(article.title)
-                  .fontSize(this.isElderMode ? 20 : 16)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor('#333333')
-                  .maxLines(2)
+                    Column() {
+                      Text(article.title)
+                        .fontSize(this.isElderMode ? 20 : 16)
+                        .fontWeight(FontWeight.Bold)
+                        .fontColor('#333333')
+                        .maxLines(2)
 
-                Text(article.summary)
-                  .fontSize(this.isElderMode ? 16 : 13)
-                  .fontColor('#999999')
-                  .maxLines(2)
-                  .margin({ top: 6 })
+                      Text(article.summary)
+                        .fontSize(this.isElderMode ? 16 : 13)
+                        .fontColor('#999999')
+                        .maxLines(2)
+                        .margin({ top: 6 })
 
-                Row() {
-                  Text(article.category)
-                    .fontSize(11)
-                    .fontColor('#1677FF')
-                    .backgroundColor('#E6F4FF')
-                    .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-                    .borderRadius(4)
+                      Row() {
+                        Text(article.category)
+                          .fontSize(11)
+                          .fontColor('#1677FF')
+                          .backgroundColor('#E6F4FF')
+                          .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                          .borderRadius(4)
 
-                  Text(`👁 ${article.readCount}`)
-                    .fontSize(11)
-                    .fontColor('#999999')
+                        Text(`👁 ${article.readCount}`)
+                          .fontSize(11)
+                          .fontColor('#999999')
+                          .margin({ left: 12 })
+
+                        Text(article.publishTime)
+                          .fontSize(11)
+                          .fontColor('#BBBBBB')
+                      }
+                      .width('100%')
+                      .margin({ top: 8 })
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start)
                     .margin({ left: 12 })
-
-                  Text(article.publishTime)
-                    .fontSize(11)
-                    .fontColor('#BBBBBB')
+                  }
                 }
                 .width('100%')
-                .margin({ top: 8 })
-              }
-              .layoutWeight(1)
-              .alignItems(HorizontalAlign.Start)
-              .margin({ left: 12 })
+                .margin({ bottom: 10 })
+                .padding(14)
+                .backgroundColor('#FFFFFF')
+                .borderRadius(12)
+                .border({ width: 1, color: '#F0F0F0' })
+                .onClick(() => {
+                  router.pushUrl({
+                    url: 'pages/ScienceDetailPage',
+                    params: { articleId: article.id }
+                  });
+                });
+              }, (article: ScienceArticle) => article.id);
             }
+            .width('100%')
+            .height(0)
+            .layoutWeight(1);
           }
-          .width('100%')
-          .margin({ bottom: 10 })
-          .padding(14)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12)
-          .border({ width: 1, color: '#F0F0F0' })
-          .onClick(() => {
-            router.pushUrl({
-              url: 'pages/ScienceDetailPage',
-              params: { articleId: article.id }
-            });
-          });
-        }, (article: ScienceArticle) => article.id);
+        .width('85%')
+        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .width('100%')
+      .height(0)
       .layoutWeight(1)
-      .padding({ left: '7.5%', right: '7.5%' })
+      .scrollBar(BarState.Off)
+      .align(Alignment.Top);
 
       Footer({ activeIndex: 3 });
     }

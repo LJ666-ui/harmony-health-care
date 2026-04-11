@@ -128,7 +128,7 @@ struct MedicalRecord {
         Button('查看历史病历')
           .width('100%')
           .height(48)
-          .fontSize(16)
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
           .fontWeight('medium')
           .fontColor('#FFFFFF')
           .backgroundColor('#1677FF')

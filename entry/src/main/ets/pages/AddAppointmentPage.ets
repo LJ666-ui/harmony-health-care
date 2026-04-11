@@ -1,10 +1,10 @@
 import { router } from '@kit.ArkUI';
-import { promptAction } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { ButtonWithFeedback } from '../components/ClickFeedback';
 import { Appointment } from '../models/HealthData';
 import { GlobalTheme } from '../global';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 @Entry
 @Component
@@ -78,10 +78,7 @@ struct AddAppointmentPage {
 
   handleSubmit(): void {
     if (!this.validateForm()) {
-      promptAction.showToast({
-        message: this.errorMessage,
-        duration: 2000
-      });
+      ToastUtil.showError(this.errorMessage, 2000);
       return;
     }
 
@@ -106,10 +103,7 @@ struct AddAppointmentPage {
     appointments.unshift(newAppointment);
     AppStorage.setOrCreate<Appointment[]>('appointments', appointments);
 
-    promptAction.showToast({
-      message: '预约提交成功',
-      duration: 1500
-    });
+    ToastUtil.submitSuccess();
 
     setTimeout(() => {
       router.back();
@@ -284,7 +278,8 @@ struct AddAppointmentPage {
         .width('85%')
         .padding({ bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top);
 

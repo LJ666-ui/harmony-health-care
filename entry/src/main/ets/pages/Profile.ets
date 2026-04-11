@@ -111,7 +111,7 @@ struct Profile {
             ForEach(this.menuItems, (item: MenuItem) => {
               Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
                 Text(item.icon)
-                  .fontSize(24);
+                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
 
                 Text(item.title)
                   .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
@@ -155,10 +155,10 @@ struct Profile {
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .layoutWeight(1);
+      .align(Alignment.Top);
 
       Footer({ activeIndex: 4 });
     }

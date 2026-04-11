@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { GlobalTheme } from '../global';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 interface BleDevice {
   id: string;
@@ -28,6 +29,17 @@ struct DeviceDiscoveryPage {
   ];
 
   @State isScanning: boolean = false;
+  @State isRefreshing: boolean = false;
+
+  handleRefresh(): void {
+    this.isRefreshing = true;
+
+    setTimeout(() => {
+      this.isRefreshing = false;
+
+      ToastUtil.refreshSuccess();
+    }, 1500);
+  }
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -215,7 +227,8 @@ struct DeviceDiscoveryPage {
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) * 2 });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top);
     }

@@ -106,7 +106,7 @@ struct PrivacySettingPage {
                 .layoutWeight(1);
 
               Text('›')
-                .fontSize(24)
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
                 .fontColor('#1677FF');
             }
             .width('100%')
@@ -143,9 +143,9 @@ struct PrivacySettingPage {
               Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
                 Column({ space: 4 }) {
                   Text(item.icon)
-                    .fontSize(24);
+                    .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
                   Text(`[${item.type}]`)
-                    .fontSize(10)
+                    .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                     .fontColor('#999999');
                 }
                 .alignItems(HorizontalAlign.Center);
@@ -196,7 +196,7 @@ struct PrivacySettingPage {
             ForEach(this.permissionItems, (item: PermissionItem) => {
               Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
                 Text(item.icon)
-                  .fontSize(24);
+                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
 
                 Column({ space: 4 }) {
                   Text(item.name)
@@ -299,10 +299,10 @@ struct PrivacySettingPage {
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }
-      .flexGrow(1)
+      .height(0)
+      .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .layoutWeight(1);
+      .align(Alignment.Top);
 
       Footer({ activeIndex: 4 });
     }

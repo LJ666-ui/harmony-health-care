@@ -18,25 +18,31 @@ public interface HealthRecordService extends IService<HealthRecord> {
     /**
      * 查询当前用户的所有记录
      * @param userId 用户ID
+     * @param accessUserId 访问者用户ID
+     * @param accessIp 访问者IP地址
      * @return 健康记录列表
      */
-    List<HealthRecord> findByUserId(Long userId);
+    List<HealthRecord> findByUserId(Long userId, Long accessUserId, String accessIp);
 
     /**
      * 按用户ID + 时间范围筛选记录
      * @param userId 用户ID
      * @param startTime 开始时间
      * @param endTime 结束时间
+     * @param accessUserId 访问者用户ID
+     * @param accessIp 访问者IP地址
      * @return 健康记录列表
      */
-    List<HealthRecord> findByUserIdAndTimeRange(Long userId, Date startTime, Date endTime);
+    List<HealthRecord> findByUserIdAndTimeRange(Long userId, Date startTime, Date endTime, Long accessUserId, String accessIp);
 
     /**
      * 分页查询个人记录
      * @param userId 用户ID
      * @param page 当前页
      * @param size 每页条数
+     * @param accessUserId 访问者用户ID
+     * @param accessIp 访问者IP地址
      * @return 分页结果
      */
-    PageResult<HealthRecord> findByUserIdWithPage(Long userId, Integer page, Integer size);
+    PageResult<HealthRecord> findByUserIdWithPage(Long userId, Integer page, Integer size, Long accessUserId, String accessIp);
 }

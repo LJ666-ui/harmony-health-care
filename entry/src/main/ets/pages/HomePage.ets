@@ -4,6 +4,7 @@ import { Footer } from '../components/Footer';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { GlobalTheme } from '../global';
+import { AccessibilityConfig, FontSizeLevel, ColorMode } from '../utils/AccessibilityConfig';
 
 interface UserInfo {
   username: string;
@@ -32,6 +33,8 @@ interface HomeStats {
 @Component
 struct HomePage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @StorageLink('fontSizeLevel') currentFontSizeLevel: string = 'medium';
+  @StorageLink('colorMode') currentColorMode: string = 'normal';
 
   @State clickedCard: number = -1;
   @State isLoading: boolean = true;
@@ -45,8 +48,9 @@ struct HomePage {
     { id: 2, icon: '💊', title: '用药管理', description: '跟踪您的用药情况', url: 'pages/Medications' },
     { id: 3, icon: '🤖', title: 'AI健康顾问', description: '智能健康问答助手', url: 'pages/AiChatPage' },
     { id: 4, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
-    { id: 5, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
-    { id: 6, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
+    { id: 5, icon: '🌿', title: '药材百科', description: '中药材知识库查询', url: 'pages/HerbalListPage' },
+    { id: 6, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
+    { id: 7, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
   ];
 
   aboutToAppear(): void {
@@ -55,6 +59,16 @@ struct HomePage {
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
     }
+
+    if (AppStorage.get<string>('fontSizeLevel') === undefined) {
+      AppStorage.setOrCreate<string>('fontSizeLevel', 'medium');
+    }
+    this.currentFontSizeLevel = AppStorage.get<string>('fontSizeLevel') ?? 'medium';
+
+    if (AppStorage.get<string>('colorMode') === undefined) {
+      AppStorage.setOrCreate<string>('colorMode', 'normal');
+    }
+    this.currentColorMode = AppStorage.get<string>('colorMode') ?? 'normal';
 
     this.loadHomeData();
   }
@@ -122,7 +136,7 @@ struct HomePage {
       Header({ title: '首页', showBack: true });
 
       Scroll() {
-        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
+        Column({ space: AccessibilityConfig.getSpacingLG() }) {
           if (this.isLoading) {
             Loading();
           } else if (this.hasError) {
@@ -135,13 +149,13 @@ struct HomePage {
             });
           } else {
             Text('星云医疗助手')
-              .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
+              .fontSize(AccessibilityConfig.getFontSizeTitle())
               .fontWeight('bold')
-              .fontColor(GlobalTheme.THEME_COLOR)
-              .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
+              .fontColor(AccessibilityConfig.getThemeColor())
+              .margin({ top: AccessibilityConfig.getSpacingLG(), bottom: AccessibilityConfig.getSpacingMD() });
 
             if (this.userInfo) {
-              Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+              Row({ space: AccessibilityConfig.getSpacingMD() }) {
                 Column() {
                   Text('👤')
                     .fontSize(40)
@@ -154,26 +168,26 @@ struct HomePage {
 
                 Column({ space: 4 }) {
                   Text(`您好，${this.userInfo.username}`)
-                    .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                    .fontSize(AccessibilityConfig.getFontSizeBody())
                     .fontWeight('bold')
-                    .fontColor('#333333');
+                    .fontColor(AccessibilityConfig.getTextPrimary());
 
                   Text(`${this.userInfo.age}岁 | ${this.userInfo.gender}`)
-                    .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                    .fontColor('#666666');
+                    .fontSize(AccessibilityConfig.getFontSizeSmall())
+                    .fontColor(AccessibilityConfig.getTextSecondary());
                 }
                 .layoutWeight(1)
                 .alignItems(HorizontalAlign.Start);
               }
               .width('100%')
-              .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-              .backgroundColor('#FFFFFF')
-              .borderRadius(GlobalTheme.RADIUS_MD)
-              .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
+              .padding(AccessibilityConfig.getSpacingMD())
+              .backgroundColor(AccessibilityConfig.getCardBgColor())
+              .borderRadius(12)
+              .margin({ bottom: AccessibilityConfig.getSpacingMD() });
             }
 
             if (this.homeStats) {
-              Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
+              Row({ space: AccessibilityConfig.getSpacingSM() }) {
                 this.buildStatCard('👟', '今日步数', `${this.homeStats.todaySteps.toLocaleString()}步`, '#52C41A');
                 this.buildStatCard('📅', '本周预约', `${this.homeStats.weekAppointments}个`, '#1677FF');
                 this.buildStatCard('⭐', '健康评分', `${this.homeStats.healthScore}分`, '#FAAD14');
@@ -182,46 +196,46 @@ struct HomePage {
             }
 
             Text('为您提供全方位的智慧医疗服务')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor(GlobalTheme.TEXT_SECONDARY)
-              .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
+              .fontSize(AccessibilityConfig.getFontSizeBody())
+              .fontColor(AccessibilityConfig.getTextSecondary())
+              .margin({ top: AccessibilityConfig.getSpacingMD(), bottom: AccessibilityConfig.getSpacingMD() });
 
-            Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+            Column({ space: AccessibilityConfig.getSpacingMD() }) {
               ForEach(this.featureCards, (card: FeatureCard) => {
-                Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+                Row({ space: AccessibilityConfig.getSpacingMD() }) {
                   Column() {
                     Text(card.icon)
                       .fontSize(32)
-                      .fontColor(this.clickedCard === card.id ? '#FFFFFF' : GlobalTheme.THEME_COLOR);
+                      .fontColor(this.clickedCard === card.id ? '#FFFFFF' : AccessibilityConfig.getThemeColor());
                   }
                   .width(64)
                   .height(64)
-                  .backgroundColor(this.clickedCard === card.id ? GlobalTheme.THEME_COLOR : GlobalTheme.THEME_COLOR + '20')
+                  .backgroundColor(this.clickedCard === card.id ? AccessibilityConfig.getThemeColor() : AccessibilityConfig.getActiveBgColor())
                   .borderRadius(32)
                   .justifyContent(FlexAlign.Center)
                   .alignItems(HorizontalAlign.Center);
 
                   Column({ space: 8 }) {
                     Text(card.title)
-                      .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                      .fontSize(AccessibilityConfig.getFontSizeBody())
                       .fontWeight('bold')
-                      .fontColor('#333333');
+                      .fontColor(AccessibilityConfig.getTextPrimary());
 
                     Text(this.clickedCard === card.id ? '正在跳转...' : card.description)
-                      .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                      .fontColor(this.clickedCard === card.id ? GlobalTheme.THEME_COLOR : '#666666');
+                      .fontSize(AccessibilityConfig.getFontSizeSmall())
+                      .fontColor(this.clickedCard === card.id ? AccessibilityConfig.getThemeColor() : AccessibilityConfig.getTextSecondary());
                   }
                   .layoutWeight(1)
                   .alignItems(HorizontalAlign.Start)
-                  .margin({ left: GlobalTheme.getSpacingMD(this.isElderMode) });
+                  .margin({ left: AccessibilityConfig.getSpacingMD() });
                 }
                 .width('100%')
-                .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-                .backgroundColor(this.clickedCard === card.id ? '#E6F4FF' : '#FFFFFF')
-                .borderRadius(GlobalTheme.RADIUS_MD)
+                .padding(AccessibilityConfig.getSpacingMD())
+                .backgroundColor(this.clickedCard === card.id ? '#E6F4FF' : AccessibilityConfig.getCardBgColor())
+                .borderRadius(12)
                 .border({
                   width: this.clickedCard === card.id ? 2 : 1,
-                  color: this.clickedCard === card.id ? GlobalTheme.THEME_COLOR : GlobalTheme.BORDER_COLOR
+                  color: this.clickedCard === card.id ? AccessibilityConfig.getThemeColor() : AccessibilityConfig.getBorderColor()
                 })
                 .shadow(this.clickedCard === card.id ? {
                   radius: 12,
@@ -230,7 +244,7 @@ struct HomePage {
                   offsetY: 4
                 } : {
                   radius: 8,
-                  color: GlobalTheme.SHADOW_COLOR,
+                  color: AccessibilityConfig.getShadowColor(),
                   offsetX: 0,
                   offsetY: 2
                 })
@@ -241,7 +255,7 @@ struct HomePage {
           }
         }
         .width('85%')
-        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
+        .padding({ top: AccessibilityConfig.getSpacingLG(), bottom: AccessibilityConfig.getSpacingLG() });
       }
       .height(0)
       .layoutWeight(1)
@@ -252,7 +266,7 @@ struct HomePage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(GlobalTheme.BG_COLOR);
+    .backgroundColor(AccessibilityConfig.getBgColor());
   }
 
   @Builder
@@ -262,18 +276,18 @@ struct HomePage {
         .fontSize(28);
 
       Text(value)
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+        .fontSize(AccessibilityConfig.getFontSizeBody())
         .fontWeight('bold')
         .fontColor(color);
 
       Text(label)
-        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-        .fontColor('#666666');
+        .fontSize(AccessibilityConfig.getFontSizeTiny())
+        .fontColor(AccessibilityConfig.getTextSecondary());
     }
     .layoutWeight(1)
-    .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-    .backgroundColor('#FFFFFF')
-    .borderRadius(GlobalTheme.RADIUS_MD)
+    .padding(AccessibilityConfig.getSpacingMD())
+    .backgroundColor(AccessibilityConfig.getCardBgColor())
+    .borderRadius(12)
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center);
   }

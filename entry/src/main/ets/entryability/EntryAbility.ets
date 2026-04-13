@@ -1,6 +1,7 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { AccessibilityConfig, FontSizeLevel, ColorMode, AnimationMode } from '../utils/AccessibilityConfig';
 
 const DOMAIN = 0x0000;
 
@@ -11,7 +12,29 @@ export default class EntryAbility extends UIAbility {
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
+
+    this.initAccessibilitySettings();
+
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
+  }
+
+  private initAccessibilitySettings(): void {
+    if (AppStorage.get<string>('fontSizeLevel') === undefined) {
+      AppStorage.setOrCreate<string>('fontSizeLevel', FontSizeLevel.MEDIUM);
+    }
+    if (AppStorage.get<string>('colorMode') === undefined) {
+      AppStorage.setOrCreate<string>('colorMode', ColorMode.NORMAL);
+    }
+    if (AppStorage.get<string>('animationMode') === undefined) {
+      AppStorage.setOrCreate<string>('animationMode', AnimationMode.NORMAL);
+    }
+    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
+      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    }
+    if (AppStorage.get<boolean>('ttsEnabled') === undefined) {
+      AppStorage.setOrCreate<boolean>('ttsEnabled', false);
+    }
+    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Accessibility settings initialized');
   }
 
   onDestroy(): void {

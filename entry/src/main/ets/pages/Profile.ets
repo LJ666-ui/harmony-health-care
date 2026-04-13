@@ -1,7 +1,9 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { GlobalTheme } from '../global';
+import { AccessibilitySettingsPanel, FirstTimeGuide } from '../components/GuideComponents';
+import { NetworkStatusBanner } from '../components/ErrorComponents';
+import { AccessibilityConfig } from '../utils/AccessibilityConfig';
 
 interface MenuItem {
   icon: string;
@@ -15,11 +17,16 @@ interface MenuItem {
 struct Profile {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
+  @State showAccessibilityPanel: boolean = false;
+
   @State menuItems: MenuItem[] = [
     { icon: '📱', title: '设备绑定', color: '#1677FF', url: 'pages/DeviceDiscoveryPage' },
     { icon: '🎤', title: '语音助手', color: '#1677FF', url: 'pages/VoiceAssistantPage' },
+    { icon: '📊', title: '健康统计', color: '#52C41A', url: 'pages/StatisticsPage' },
+    { icon: '🏆', title: '社区排行榜', color: '#FAAD14', url: 'pages/RankingPage' },
+    { icon: '♿', title: '无障碍设置', color: '#722ED1', url: '' },
     { icon: '⚙️', title: '账号设置', color: '#333333', url: '' },
-    { icon: '🔒', title: '隐私设置', color: '#1677FF', url: 'pages/PrivacyPage' },
+    { icon: '🔒', title: '隐私与安全', color: '#1677FF', url: 'pages/PrivacySettingPage' },
     { icon: 'ℹ️', title: '关于我们', color: '#333333', url: '' }
   ];
 
@@ -35,6 +42,10 @@ struct Profile {
   }
 
   handleMenuClick(item: MenuItem): void {
+    if (item.title === '无障碍设置') {
+      this.showAccessibilityPanel = true;
+      return;
+    }
     if (item.url) {
       try {
         router.pushUrl({ url: item.url });
@@ -45,125 +56,157 @@ struct Profile {
   }
 
   build() {
-    Column() {
-      Header({
-        title: '个人中心',
-        showBack: true
-      });
-
-      Scroll() {
-        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
-          Text('我的')
-            .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor(GlobalTheme.THEME_COLOR)
-            .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-          Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-              Circle()
-                .width(80)
-                .height(80)
-                .fill('#4a90e220')
-                .stroke(GlobalTheme.THEME_COLOR);
-
-              Column({ space: 8 }) {
-                Text('星云用户')
-                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                  .fontWeight('bold')
-                  .fontColor('#333333');
-                Text('138****1234')
-                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                  .fontColor('#666666');
-              }
-              .alignItems(HorizontalAlign.Start);
+    Stack({ alignContent: Alignment.TopStart }) {
+      Column() {
+        Header({
+          title: '个人中心',
+          showBack: true,
+          rightAction: {
+            icon: '♿',
+            label: '无障碍设置',
+            onClick: () => {
+              this.showAccessibilityPanel = true;
             }
-            .width('100%')
-            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-            .backgroundColor('#FFFFFF')
-            .borderRadius(GlobalTheme.RADIUS_MD)
-            .border({ width: 1, color: GlobalTheme.BORDER_COLOR });
           }
+        });
 
-          Column({ space: 1 }) {
-            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-              Text('👴 老年模式')
-                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                .fontColor('#333333')
-                .fontWeight('bold');
+        Scroll() {
+          Column({ space: AccessibilityConfig.getSpacingLG() }) {
+            Text('我的')
+              .fontSize(AccessibilityConfig.getFontSizeTitle())
+              .fontWeight(FontWeight.Bold)
+              .fontColor(AccessibilityConfig.getThemeColor())
+              .margin({
+                top: AccessibilityConfig.getSpacingLG(),
+                bottom: AccessibilityConfig.getSpacingMD()
+              });
 
-              Blank();
+            Column({ space: AccessibilityConfig.getSpacingMD() }) {
+              Row({ space: AccessibilityConfig.getSpacingMD() }) {
+                Circle()
+                  .width(80)
+                  .height(80)
+                  .fill('#4a90e220')
+                  .stroke(AccessibilityConfig.getThemeColor());
 
-              Text(this.isElderMode ? '已开启' : '已关闭')
-                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                .fontColor(this.isElderMode ? GlobalTheme.SUCCESS_COLOR : '#999999')
-                .backgroundColor(this.isElderMode ? '#F6FFED' : '#F5F5F5')
-                .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-                .borderRadius(10);
+                Column({ space: 8 }) {
+                  Text('星云用户')
+                    .fontSize(AccessibilityConfig.getFontSizeBody())
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor(AccessibilityConfig.getTextPrimary());
+
+                  Text('138****1234')
+                    .fontSize(AccessibilityConfig.getFontSizeSmall())
+                    .fontColor(AccessibilityConfig.getTextSecondary());
+                }
+                .alignItems(HorizontalAlign.Start);
+              }
+              .width('100%')
+              .padding(AccessibilityConfig.getSpacingMD())
+              .backgroundColor(AccessibilityConfig.getCardBgColor())
+              .borderRadius(12)
+              .border({ width: 1, color: AccessibilityConfig.getBorderColor() });
             }
-            .width('100%')
-            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-            .backgroundColor('#FFFFFF')
-            .borderRadius({ topLeft: GlobalTheme.RADIUS_MD, topRight: GlobalTheme.RADIUS_MD })
-            .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
-            .onClick(() => this.toggleElderMode());
 
-            ForEach(this.menuItems, (item: MenuItem) => {
-              Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-                Text(item.icon)
-                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
-
-                Text(item.title)
-                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                  .fontColor(item.color)
-                  .fontWeight(item.color === '#1677FF' ? FontWeight.Bold : FontWeight.Normal);
+            Column({ space: 1 }) {
+              Row({ space: AccessibilityConfig.getSpacingMD() }) {
+                Text('👴 老年模式')
+                  .fontSize(AccessibilityConfig.getFontSizeBody())
+                  .fontColor(AccessibilityConfig.getTextPrimary())
+                  .fontWeight(FontWeight.Bold);
 
                 Blank();
 
-                Text('›')
-                  .fontSize(28)
-                  .fontColor('#999999');
+                Text(this.isElderMode ? '已开启' : '已关闭')
+                  .fontSize(AccessibilityConfig.getFontSizeSmall())
+                  .fontColor(this.isElderMode ? AccessibilityConfig.getSuccessColor() : AccessibilityConfig.getTextHint())
+                  .backgroundColor(this.isElderMode ? '#F6FFED' : '#F5F5F5')
+                  .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                  .borderRadius(10);
               }
               .width('100%')
-              .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-              .backgroundColor('#FFFFFF')
-              .onClick(() => this.handleMenuClick(item));
-            }, (item: MenuItem) => item.title);
+              .padding(AccessibilityConfig.getSpacingMD())
+              .backgroundColor(AccessibilityConfig.getCardBgColor())
+              .borderRadius({ topLeft: 12, topRight: 12 })
+              .border({ width: 1, color: AccessibilityConfig.getBorderColor() })
+              .accessibilityText(`老年模式，当前${this.isElderMode ? '已开启' : '已关闭'}`)
+              .onClick(() => this.toggleElderMode());
+
+              ForEach(this.menuItems, (item: MenuItem) => {
+                Row({ space: AccessibilityConfig.getSpacingMD() }) {
+                  Text(item.icon)
+                    .fontSize(AccessibilityConfig.getFontSizeBody());
+
+                  Text(item.title)
+                    .fontSize(AccessibilityConfig.getFontSizeBody())
+                    .fontColor(item.color)
+                    .fontWeight(item.color === '#1677FF' || item.color === '#722ED1' ? FontWeight.Bold : FontWeight.Normal);
+
+                  Blank();
+
+                  Text('›')
+                    .fontSize(28)
+                    .fontColor(AccessibilityConfig.getTextHint());
+                }
+                .width('100%')
+                .padding(AccessibilityConfig.getSpacingMD())
+                .backgroundColor(AccessibilityConfig.getCardBgColor())
+                .accessibilityText(`${item.title}`)
+                .onClick(() => this.handleMenuClick(item));
+              }, (item: MenuItem) => item.title);
+            }
+            .borderRadius(12)
+            .border({ width: 1, color: AccessibilityConfig.getBorderColor() });
+
+            Button('退出登录')
+              .width('100%')
+              .height(AccessibilityConfig.getButtonHeight())
+              .fontSize(AccessibilityConfig.getFontSizeButton())
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#FFFFFF')
+              .backgroundColor(AccessibilityConfig.getThemeColor())
+              .borderRadius(AccessibilityConfig.getButtonHeight() / 2)
+              .shadow({
+                radius: 8,
+                color: '#1677FF30',
+                offsetX: 0,
+                offsetY: 4
+              })
+              .margin({
+                top: AccessibilityConfig.getSpacingLG(),
+                bottom: AccessibilityConfig.getSpacingLG()
+              })
+              .accessibilityText('退出登录按钮')
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/Login' });
+              });
           }
-          .borderRadius(GlobalTheme.RADIUS_MD)
-          .border({ width: 1, color: GlobalTheme.BORDER_COLOR });
-
-          Button('退出登录')
-            .width('100%')
-            .height(GlobalTheme.getButtonHeight(this.isElderMode))
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor('#FFFFFF')
-            .backgroundColor(GlobalTheme.THEME_COLOR)
-            .borderRadius(GlobalTheme.RADIUS_MD)
-            .shadow({
-              radius: 8,
-              color: '#1677FF30',
-              offsetX: 0,
-              offsetY: 4
-            })
-            .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) })
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/Login' });
-            });
+          .width('85%')
+          .padding({
+            top: AccessibilityConfig.getSpacingLG(),
+            bottom: AccessibilityConfig.getSpacingLG()
+          });
         }
-        .width('85%')
-        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
-      }
-      .height(0)
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
+        .height(0)
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top);
 
-      Footer({ activeIndex: 4 });
+        Footer({ activeIndex: 4 });
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(AccessibilityConfig.getBgColor());
+
+      if (this.showAccessibilityPanel) {
+        AccessibilitySettingsPanel({
+          onDismiss: () => {
+            this.showAccessibilityPanel = false;
+          }
+        });
+      }
     }
     .width('100%')
-    .height('100%')
-    .backgroundColor(GlobalTheme.BG_COLOR);
+    .height('100%');
   }
 }

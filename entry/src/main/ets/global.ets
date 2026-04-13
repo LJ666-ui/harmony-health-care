@@ -1,3 +1,5 @@
+import { AccessibilityConfig, FontSizeLevel } from './utils/AccessibilityConfig';
+
 export class GlobalTheme {
   static readonly IS_OLD_MODE_KEY: string = 'isOldModeEnabled';
 
@@ -15,6 +17,116 @@ export class GlobalTheme {
 
   static readonly BORDER_COLOR: string = '#F0F0F0';
   static readonly SHADOW_COLOR: string = '#00000008';
+
+  static getFontSizeTitle(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getFontSizeTitle();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.FONT_SIZE_TITLE_ELDER : GlobalTheme.FONT_SIZE_TITLE_NORMAL;
+    }
+    return AccessibilityConfig.getFontSizeTitle();
+  }
+
+  static getFontSizeSubtitle(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getFontSizeSubtitle();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.FONT_SIZE_SUBTITLE_ELDER : GlobalTheme.FONT_SIZE_SUBTITLE_NORMAL;
+    }
+    return AccessibilityConfig.getFontSizeSubtitle();
+  }
+
+  static getFontSizeBody(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getFontSizeBody();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.FONT_SIZE_BODY_ELDER : GlobalTheme.FONT_SIZE_BODY_NORMAL;
+    }
+    return AccessibilityConfig.getFontSizeBody();
+  }
+
+  static getFontSizeSmall(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getFontSizeSmall();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.FONT_SIZE_SMALL_ELDER : GlobalTheme.FONT_SIZE_SMALL_NORMAL;
+    }
+    return AccessibilityConfig.getFontSizeSmall();
+  }
+
+  static getFontSizeTiny(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getFontSizeTiny();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.FONT_SIZE_TINY_ELDER : GlobalTheme.FONT_SIZE_TINY_NORMAL;
+    }
+    return AccessibilityConfig.getFontSizeTiny();
+  }
+
+  static getButtonHeight(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getButtonHeight();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.BUTTON_HEIGHT_ELDER : GlobalTheme.BUTTON_HEIGHT_NORMAL;
+    }
+    return AccessibilityConfig.getButtonHeight();
+  }
+
+  static getSpacingXS(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getSpacingXS();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.SPACING_XS_ELDER : GlobalTheme.SPACING_XS_NORMAL;
+    }
+    return AccessibilityConfig.getSpacingXS();
+  }
+
+  static getSpacingSM(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getSpacingSM();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.SPACING_SM_ELDER : GlobalTheme.SPACING_SM_NORMAL;
+    }
+    return AccessibilityConfig.getSpacingSM();
+  }
+
+  static getSpacingMD(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getSpacingMD();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.SPACING_MD_ELDER : GlobalTheme.SPACING_MD_NORMAL;
+    }
+    return AccessibilityConfig.getSpacingMD();
+  }
+
+  static getSpacingLG(isElderMode?: boolean): number {
+    const useAccessibility = AppStorage.get<string>('fontSizeLevel') !== undefined;
+    if (useAccessibility) {
+      return AccessibilityConfig.getSpacingLG();
+    }
+    if (isElderMode !== undefined) {
+      return isElderMode ? GlobalTheme.SPACING_LG_ELDER : GlobalTheme.SPACING_LG_NORMAL;
+    }
+    return AccessibilityConfig.getSpacingLG();
+  }
 
   static readonly FONT_SIZE_TITLE_NORMAL: number = 24;
   static readonly FONT_SIZE_TITLE_ELDER: number = 30;
@@ -49,44 +161,4 @@ export class GlobalTheme {
   static readonly RADIUS_SM: number = 8;
   static readonly RADIUS_MD: number = 12;
   static readonly RADIUS_LG: number = 16;
-
-  static getFontSizeTitle(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.FONT_SIZE_TITLE_ELDER : GlobalTheme.FONT_SIZE_TITLE_NORMAL;
-  }
-
-  static getFontSizeSubtitle(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.FONT_SIZE_SUBTITLE_ELDER : GlobalTheme.FONT_SIZE_SUBTITLE_NORMAL;
-  }
-
-  static getFontSizeBody(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.FONT_SIZE_BODY_ELDER : GlobalTheme.FONT_SIZE_BODY_NORMAL;
-  }
-
-  static getFontSizeSmall(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.FONT_SIZE_SMALL_ELDER : GlobalTheme.FONT_SIZE_SMALL_NORMAL;
-  }
-
-  static getFontSizeTiny(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.FONT_SIZE_TINY_ELDER : GlobalTheme.FONT_SIZE_TINY_NORMAL;
-  }
-
-  static getButtonHeight(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.BUTTON_HEIGHT_ELDER : GlobalTheme.BUTTON_HEIGHT_NORMAL;
-  }
-
-  static getSpacingXS(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.SPACING_XS_ELDER : GlobalTheme.SPACING_XS_NORMAL;
-  }
-
-  static getSpacingSM(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.SPACING_SM_ELDER : GlobalTheme.SPACING_SM_NORMAL;
-  }
-
-  static getSpacingMD(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.SPACING_MD_ELDER : GlobalTheme.SPACING_MD_NORMAL;
-  }
-
-  static getSpacingLG(isElderMode: boolean): number {
-    return isElderMode ? GlobalTheme.SPACING_LG_ELDER : GlobalTheme.SPACING_LG_NORMAL;
-  }
 }

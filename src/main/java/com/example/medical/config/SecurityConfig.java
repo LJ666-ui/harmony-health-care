@@ -23,6 +23,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/user/login",
                         "/user/register",
+                        "/ai/**",
                         "/error"
                 );
     }

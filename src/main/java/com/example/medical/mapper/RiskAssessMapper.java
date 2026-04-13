@@ -1,9 +1,9 @@
 package com.example.medical.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.example.medical.entity.HealthStandard;
+import com.example.medical.entity.RiskAssess;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface HealthStandardMapper extends BaseMapper<HealthStandard> {
+public interface RiskAssessMapper extends BaseMapper<RiskAssess> {
 }

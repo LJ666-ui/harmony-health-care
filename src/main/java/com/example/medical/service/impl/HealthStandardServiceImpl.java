@@ -1,91 +1,91 @@
 package com.example.medical.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.example.medical.common.HealthCheckResult;
 import com.example.medical.entity.HealthStandard;
 import com.example.medical.mapper.HealthStandardMapper;
 import com.example.medical.service.HealthStandardService;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class HealthStandardServiceImpl extends ServiceImpl<HealthStandardMapper, HealthStandard> implements HealthStandardService {
+
     @Override
-    public HealthCheckResult checkIndicator(String indicatorName, double value) {
-        HealthCheckResult result = new HealthCheckResult();
+    public Map<String, Object> checkIndicator(String indicatorName, double value) {
+        Map<String, Object> result = new HashMap<>();
         
-        // 构建查询条件
-        LambdaQueryWrapper<HealthStandard> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(HealthStandard::getIndicatorName, indicatorName);
-        wrapper.eq(HealthStandard::getIsDeleted, 0);
+        // 查询相关指标标准
+        QueryWrapper<HealthStandard> queryWrapper = new QueryWrapper<>();
+        queryWrapper.like("indicator_name", indicatorName);
+        List<HealthStandard> standards = list(queryWrapper);
         
-        // 查询指标标准
-        HealthStandard standard = baseMapper.selectOne(wrapper);
-        
-        if (standard == null) {
-            result.setIsNormal(false);
-            result.setStatus("error");
-            result.setMessage("未找到该指标的标准值");
+        if (standards.isEmpty()) {
+            result.put("status", "error");
+            result.put("message", "未找到相关指标标准");
             return result;
         }
         
-        // 判断数值是否在正常范围
-        boolean isNormal = true;
-        String status = "normal";
-        String message = "指标正常";
+        BigDecimal valueBD = new BigDecimal(value);
+        HealthStandard matchedStandard = null;
         
-        if (standard.getMinValue() != null && value < standard.getMinValue().doubleValue()) {
-            isNormal = false;
-            status = "low";
-            message = "指标偏低";
-        } else if (standard.getMaxValue() != null && value > standard.getMaxValue().doubleValue()) {
-            isNormal = false;
-            status = "high";
-            message = "指标偏高";
+        // 匹配指标值对应的标准
+        for (HealthStandard standard : standards) {
+            BigDecimal minValue = standard.getMinValue();
+            BigDecimal maxValue = standard.getMaxValue();
+            
+            boolean isMatch = false;
+            if (minValue == null && maxValue != null) {
+                // 小于等于最大值
+                isMatch = valueBD.compareTo(maxValue) <= 0;
+            } else if (minValue != null && maxValue == null) {
+                // 大于等于最小值
+                isMatch = valueBD.compareTo(minValue) >= 0;
+            } else if (minValue != null && maxValue != null) {
+                // 在最小值和最大值之间
+                isMatch = valueBD.compareTo(minValue) >= 0 && valueBD.compareTo(maxValue) <= 0;
+            }
+            
+            if (isMatch) {
+                matchedStandard = standard;
+                break;
+            }
         }
         
-        // 设置结果
-        result.setIsNormal(isNormal);
-        result.setStatus(status);
-        result.setMessage(message);
-        result.setStandard(standard);
-        result.setValue(value);
-        result.setUnit(standard.getUnit());
+        if (matchedStandard != null) {
+            result.put("status", "success");
+            result.put("standard", matchedStandard);
+            result.put("message", "指标检测完成");
+        } else {
+            result.put("status", "warning");
+            result.put("message", "未找到匹配的指标标准");
+        }
         
         return result;
     }
-    
+
     @Override
     public List<HealthStandard> getAllStandards() {
-        LambdaQueryWrapper<HealthStandard> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(HealthStandard::getIsDeleted, 0);
-        return baseMapper.selectList(wrapper);
+        return list();
     }
-    
-    @Override
-    public HealthStandard getById(Long id) {
-        return baseMapper.selectById(id);
-    }
-    
+
     @Override
     public List<HealthStandard> getByAgeGroup(String ageGroup) {
-        LambdaQueryWrapper<HealthStandard> wrapper = new LambdaQueryWrapper<>();
-        if (ageGroup != null && !ageGroup.isEmpty()) {
-            wrapper.eq(HealthStandard::getAgeGroup, ageGroup);
-        }
-        wrapper.eq(HealthStandard::getIsDeleted, 0);
-        return baseMapper.selectList(wrapper);
+        QueryWrapper<HealthStandard> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("age_group", ageGroup);
+        return list(queryWrapper);
     }
-    
+
     @Override
     public List<HealthStandard> getByGender(Integer gender) {
-        LambdaQueryWrapper<HealthStandard> wrapper = new LambdaQueryWrapper<>();
-        if (gender != null) {
-            wrapper.eq(HealthStandard::getGender, gender);
-        }
-        wrapper.eq(HealthStandard::getIsDeleted, 0);
-        return baseMapper.selectList(wrapper);
+        QueryWrapper<HealthStandard> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("gender", gender);
+        return list(queryWrapper);
     }
 }
+

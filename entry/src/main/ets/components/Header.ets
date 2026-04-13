@@ -1,47 +1,82 @@
 import { router } from '@kit.ArkUI';
-import { GlobalTheme } from '../global';
+import { AccessibilityConfig } from '../utils/AccessibilityConfig';
+
+interface HeaderAction {
+  icon: string;
+  label: string;
+  onClick?: () => void;
+}
 
 @Component
 export struct Header {
   @Prop title: string = '';
   @Prop showBack: boolean = false;
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @Prop rightAction?: HeaderAction;
 
   build() {
-    Row() {
+    Row({ space: 8 }) {
       if (this.showBack) {
-        Text('←')
-          .fontSize(this.isElderMode ? 28 : 24)
-          .fontColor(GlobalTheme.THEME_COLOR)
-          .width(40)
-          .height(40)
-          .textAlign(TextAlign.Center)
-          .backgroundColor(GlobalTheme.THEME_COLOR + '15')
-          .borderRadius(20)
+        Column()
+          .width(AccessibilityConfig.getIconButtonSize())
+          .height(AccessibilityConfig.getIconButtonSize())
+          .borderRadius(AccessibilityConfig.getIconButtonSize() / 2)
+          .backgroundColor(AccessibilityConfig.getThemeColor() + '15')
+          .justifyContent(FlexAlign.Center)
+          .accessibilityText('返回')
           .onClick(() => {
             router.back();
-          });
+          }) {
+            Text('←')
+              .fontSize(AccessibilityConfig.getFontSizeBody())
+              .fontColor(AccessibilityConfig.getThemeColor());
+          }
       } else {
-        Blank().width(40);
+        Blank().width(AccessibilityConfig.getIconButtonSize());
       }
 
       Text(this.title)
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-        .fontWeight('bold')
-        .fontColor('#333333')
+        .fontSize(AccessibilityConfig.getFontSizeSubtitle())
+        .fontWeight(FontWeight.Bold)
+        .fontColor(AccessibilityConfig.getTextPrimary())
         .layoutWeight(1)
-        .textAlign(TextAlign.Center);
+        .textAlign(TextAlign.Center)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .accessibilityText(`页面标题：${this.title}`);
 
-      Blank().width(40);
+      if (this.rightAction) {
+        Column()
+          .width(AccessibilityConfig.getIconButtonSize())
+          .height(AccessibilityConfig.getIconButtonSize())
+          .borderRadius(AccessibilityConfig.getIconButtonSize() / 2)
+          .justifyContent(FlexAlign.Center)
+          .accessibilityText(this.rightAction.label)
+          .onClick(() => {
+            if (this.rightAction?.onClick) {
+              this.rightAction.onClick();
+            }
+          }) {
+            Text(this.rightAction.icon)
+              .fontSize(AccessibilityConfig.getFontSizeBody())
+              .fontColor(AccessibilityConfig.getTextSecondary());
+          }
+      } else {
+        Blank().width(AccessibilityConfig.getIconButtonSize());
+      }
     }
     .width('100%')
-    .height(56)
+    .height(this.isElderMode ? 64 : 56)
     .backgroundColor('#FFFFFF')
-    .padding({ left: 16, right: 16 })
-    .justifyContent(FlexAlign.Center)
+    .padding({
+      left: AccessibilityConfig.getSpacingMD(),
+      right: AccessibilityConfig.getSpacingMD()
+    })
+    .justifyContent(FlexAlign.SpaceBetween)
+    .alignItems(VerticalAlign.Center)
     .shadow({
       radius: 2,
-      color: '#00000008',
+      color: AccessibilityConfig.getShadowColor(),
       offsetX: 0,
       offsetY: 1
     });

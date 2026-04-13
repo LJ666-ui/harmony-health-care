@@ -33,6 +33,7 @@ public class UserController {
         }
         user.setPassword(BCryptUtil.encrypt(user.getPassword()));
         user.setCreateTime(new Date());
+        user.setIsDeleted(0);
         if (userService.save(user)) {
             return Result.success("注册成功");
         } else {

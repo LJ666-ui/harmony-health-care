@@ -6,30 +6,41 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
-import java.util.List;
 
 @Data
-@TableName("hospital")
-public class Hospital {
+@TableName("hospital_department")
+public class HospitalDepartment implements Serializable {
+
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String name;
-    private String department;
-    private String address;
-    private BigDecimal longitude;
-    private BigDecimal latitude;
-    private String phone;
-    private String level;
-    private String description;
+
+    @TableField("hospital_id")
+    private Long hospitalId;
+
+    @TableField("dept_name")
+    private String deptName;
+
+    @TableField("dept_intro")
+    private String deptIntro;
+
+    @TableField("source")
+    private String source;
+
+    @TableField("crawl_time")
+    private Date crawlTime;
+
+    @TableField("location")
+    private String location;
+
     @TableField("create_time")
     private Date createTime;
+
     @TableField("update_time")
     private Date updateTime;
+
     @TableField("is_deleted")
     private Integer isDeleted;
-
-    @TableField(exist = false)
-    private List<HospitalDepartment> departments;
 }

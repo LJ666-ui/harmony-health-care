@@ -136,4 +136,29 @@ public class HospitalController {
             return Result.error("删除科室失败：" + e.getMessage());
         }
     }
+
+    @GetMapping("/department/all")
+    public Result<List<HospitalDepartment>> getAllDepartments() {
+        try {
+            List<HospitalDepartment> departments = hospitalDepartmentService.list();
+            return Result.success(departments);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取所有科室失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/department/info/{id}")
+    public Result<HospitalDepartment> getDepartmentInfo(@PathVariable Long id) {
+        try {
+            HospitalDepartment department = hospitalDepartmentService.getDepartmentDetail(id);
+            if (department == null) {
+                return Result.error("科室不存在");
+            }
+            return Result.success(department);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取科室详情失败：" + e.getMessage());
+        }
+    }
 }

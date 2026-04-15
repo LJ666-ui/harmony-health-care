@@ -38,6 +38,8 @@
             <version>3.0.0</version>
         </dependency>
 
+
+
         <!-- 3. 修复MySQL驱动：添加版本号 -->
         <dependency>
             <groupId>mysql</groupId>
@@ -108,7 +110,14 @@
             <artifactId>fastjson</artifactId>
             <version>1.2.83</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>1.7.0</version> <!-- 适配 SpringBoot 2.7.x 的版本 -->
+        </dependency>
     </dependencies>
+
 
     <!-- 6. 修复Maven插件版本（打包/运行必备） -->
     <build>

@@ -7,6 +7,10 @@ spring:
   # 关闭默认模板引擎（若不用）
   thymeleaf:
     enabled: false
+  # Swagger 3.0.0 与 Spring Boot 2.7.x 兼容性配置
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
 
 # MyBatis-Plus配置（若使用）
 mybatis-plus:

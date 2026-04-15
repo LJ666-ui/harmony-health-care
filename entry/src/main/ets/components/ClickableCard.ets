@@ -1,3 +1,6 @@
+import { TouchType } from '@kit.ArkUI';
+import curves from '@ohos.curves';
+
 @Component
 export struct ClickableCard {
   @Prop onClick: () => void = () => {};
@@ -13,7 +16,7 @@ export struct ClickableCard {
     .opacity(this.isPressed ? 0.9 : 1)
     .animation({
       duration: 150,
-      curve: Curve.EaseInOut
+      curve: 4
     })
     .onTouch((event) => {
       if (event.type === TouchType.Down) {

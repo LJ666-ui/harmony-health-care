@@ -97,6 +97,11 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
         <!-- 11. FastJSON依赖（AI模块使用） -->
         <dependency>
             <groupId>com.alibaba</groupId>

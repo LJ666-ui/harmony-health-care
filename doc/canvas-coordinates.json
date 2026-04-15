@@ -1,0 +1,110 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "x": 100,
+      "y": 100,
+      "radius": 30,
+      "color": "#4CAF50",
+      "label": "健康管理"
+    },
+    {
+      "id": "2",
+      "x": 300,
+      "y": 150,
+      "radius": 25,
+      "color": "#2196F3",
+      "label": "健康档案"
+    },
+    {
+      "id": "3",
+      "x": 300,
+      "y": 250,
+      "radius": 25,
+      "color": "#FF9800",
+      "label": "健康文章"
+    },
+    {
+      "id": "4",
+      "x": 500,
+      "y": 100,
+      "radius": 25,
+      "color": "#9C27B0",
+      "label": "AI助手"
+    },
+    {
+      "id": "5",
+      "x": 500,
+      "y": 200,
+      "radius": 25,
+      "color": "#F44336",
+      "label": "医院查询"
+    },
+    {
+      "id": "6",
+      "x": 500,
+      "y": 300,
+      "radius": 25,
+      "color": "#795548",
+      "label": "药品查询"
+    },
+    {
+      "id": "7",
+      "x": 700,
+      "y": 150,
+      "radius": 20,
+      "color": "#607D8B",
+      "label": "风险评估"
+    },
+    {
+      "id": "8",
+      "x": 700,
+      "y": 250,
+      "radius": 20,
+      "color": "#00BCD4",
+      "label": "康复计划"
+    }
+  ],
+  "edges": [
+    {
+      "source": "1",
+      "target": "2",
+      "color": "#9E9E9E"
+    },
+    {
+      "source": "1",
+      "target": "3",
+      "color": "#9E9E9E"
+    },
+    {
+      "source": "1",
+      "target": "4",
+      "color": "#9E9E9E"
+    },
+    {
+      "source": "1",
+      "target": "5",
+      "color": "#9E9E9E"
+    },
+    {
+      "source": "1",
+      "target": "6",
+      "color": "#9E9E9E"
+    },
+    {
+      "source": "4",
+      "target": "7",
+      "color": "#9E9E9E"
+    },
+    {
+      "source": "4",
+      "target": "8",
+      "color": "#9E9E9E"
+    },
+    {
+      "source": "3",
+      "target": "4",
+      "color": "#9E9E9E"
+    }
+  ]
+}

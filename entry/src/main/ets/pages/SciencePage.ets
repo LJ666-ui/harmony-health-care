@@ -307,6 +307,47 @@ struct SciencePage {
         });
       }
 
+      // 知识图谱入口卡片
+      Column() {
+        Row() {
+          Text('🕸️')
+            .fontSize(32)
+            .margin({ right: 16 });
+          Column({ space: 6 }) {
+            Text('知识图谱')
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#1677FF');
+            Text('探索疾病、症状、药材、方剂之间的关联关系')
+              .fontSize(this.isElderMode ? 14 : 12)
+              .fontColor('#666666')
+              .maxLines(2);
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start);
+
+          Text('>')
+            .fontSize(20)
+            .fontColor('#1677FF')
+            .fontWeight(FontWeight.Bold);
+        }
+        .width('90%')
+        .padding(20)
+        .backgroundColor('#E6F4FF')
+        .borderRadius(12)
+        .margin({ top: 8, bottom: 16, left: '5%', right: '5%' })
+        .border({ width: 2, color: '#1677FF33' })
+        .onClick(() => {
+          try {
+            router.pushUrl({
+              url: 'pages/KnowledgeGraphPage'
+            });
+          } catch (error) {
+            console.error('Failed to navigate to KnowledgeGraphPage:', error);
+          }
+        });
+      }
+
       // 分类导航
       Scroll() {
         Row({

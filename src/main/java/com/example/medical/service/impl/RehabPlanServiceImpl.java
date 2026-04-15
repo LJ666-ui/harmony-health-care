@@ -39,7 +39,7 @@ public class RehabPlanServiceImpl extends ServiceImpl<RehabPlanMapper, RehabPlan
             result.put("progress", 0);
             result.put("difficultyDistribution", new HashMap<>());
             return result;
-
+       
         }
 
         // 模拟已完成动作（实际应从用户执行记录中查询）

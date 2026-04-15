@@ -24,6 +24,7 @@ struct Profile {
     { icon: '🎤', title: '语音助手', color: '#1677FF', url: 'pages/VoiceAssistantPage' },
     { icon: '📊', title: '健康统计', color: '#52C41A', url: 'pages/StatisticsPage' },
     { icon: '🏆', title: '社区排行榜', color: '#FAAD14', url: 'pages/RankingPage' },
+    { icon: '📋', title: '我的病历', color: '#1677FF', url: 'pages/MedicalRecord' },
     { icon: '♿', title: '无障碍设置', color: '#722ED1', url: '' },
     { icon: '⚙️', title: '账号设置', color: '#333333', url: '' },
     { icon: '🔒', title: '隐私与安全', color: '#1677FF', url: 'pages/PrivacySettingPage' },

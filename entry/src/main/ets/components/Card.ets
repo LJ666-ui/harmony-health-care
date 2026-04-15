@@ -1,5 +1,6 @@
 import { GlobalTheme } from '../global';
 
+
 @Component
 export struct Card {
   @Prop title: string = '';
@@ -48,12 +49,12 @@ export struct Card {
     })
     .animation({
       duration: 150,
-      curve: Curve.EaseInOut
+      curve: 4
     })
     .onTouch((event) => {
-      if (event.type === TouchType.Down) {
+      if (event.type === 0) {
         this.isPressed = true;
-      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+      } else if (event.type === 1 || event.type === 2) {
         this.isPressed = false;
       }
     });

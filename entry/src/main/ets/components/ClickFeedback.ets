@@ -1,4 +1,5 @@
 // 全局点击反馈组件 - 统一所有可点击元素的交互动画
+
 @Component
 export struct ClickFeedback {
   @BuilderParam content: () => void = this.defaultContent;
@@ -22,18 +23,11 @@ export struct ClickFeedback {
     .opacity(this.isPressed && this.isEnabled ? this.opacityValue : 1)
     .animation({
       duration: this.duration,
-      curve: Curve.EaseInOut
+      curve: 4
     })
-    .onTouch((event: TouchEvent) => {
-      if (!this.isEnabled) return;
-
-      if (event.type === TouchType.Down) {
-        this.isPressed = true;
-      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
-        this.isPressed = false;
-        if (this.onItemClick) {
-          this.onItemClick();
-        }
+    .onClick(() => {
+      if (this.onItemClick) {
+        this.onItemClick();
       }
     });
   }
@@ -109,11 +103,10 @@ export struct ButtonWithFeedback {
   }
 
   build() {
-    Button(this.text, { type: ButtonType.Capsule, stateEffect: true })
+    Button(this.text)
       .width(this.getButtonWidth())
       .height(this.getButtonHeight())
       .fontSize(this.getFontSize())
-      .fontWeight(FontWeight.Medium)
       .fontColor(this.getFontColor())
       .backgroundColor(this.getBackgroundColor())
       .border({
@@ -124,19 +117,13 @@ export struct ButtonWithFeedback {
       .scale({ x: this.isPressed ? 0.95 : 1, y: this.isPressed ? 0.95 : 1 })
       .animation({
         duration: 150,
-        curve: Curve.EaseInOut
+        curve: 4
       })
       .enabled(!this.disabled && !this.loading)
-      .onTouch((event: TouchEvent) => {
+      .onClick(() => {
         if (this.disabled || this.loading) return;
-
-        if (event.type === TouchType.Down) {
-          this.isPressed = true;
-        } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
-          this.isPressed = false;
-          if (this.onItemClick) {
-            this.onItemClick();
-          }
+        if (this.onItemClick) {
+          this.onItemClick();
         }
       });
   }
@@ -174,7 +161,7 @@ export struct ListItemWithFeedback {
           .scale({ x: this.rippleScale, y: this.rippleScale })
           .animation({
             duration: 300,
-            curve: Curve.EaseOut
+            curve: 3
           })
       }
     }
@@ -183,20 +170,11 @@ export struct ListItemWithFeedback {
     .opacity(this.isPressed ? 0.9 : 1)
     .animation({
       duration: 150,
-      curve: Curve.EaseInOut
+      curve: 4
     })
-    .onTouch((event: TouchEvent) => {
-      if (event.type === TouchType.Down) {
-        this.isPressed = true;
-        this.rippleScale = 1;
-      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
-        this.isPressed = false;
-        setTimeout(() => {
-          this.rippleScale = 0;
-        }, 150);
-        if (this.onItemClick) {
-          this.onItemClick();
-        }
+    .onClick(() => {
+      if (this.onItemClick) {
+        this.onItemClick();
       }
     });
   }

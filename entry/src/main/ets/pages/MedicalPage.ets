@@ -20,7 +20,8 @@ struct MedicalPage {
     { id: 1, icon: '🏥', title: '医院列表', description: '查找附近医院和科室', url: 'pages/HospitalPage' },
     { id: 2, icon: '📅', title: '预约挂号', description: '在线预约医生门诊', url: 'pages/Appointments' },
     { id: 3, icon: '🗺️', title: '院内导航', description: 'AR智能导航到诊室', url: 'pages/ARNavigationPage' },
-    { id: 4, icon: '💊', title: '用药管理', description: '设置用药提醒', url: 'pages/Medications' }
+    { id: 4, icon: '💊', title: '用药管理', description: '设置用药提醒', url: 'pages/Medications' },
+    { id: 5, icon: '🔄', title: '转院申请', description: '在线申请转院', url: 'pages/TransferApplyPage' }
   ];
 
   aboutToAppear(): void {

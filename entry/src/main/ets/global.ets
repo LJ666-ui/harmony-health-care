@@ -14,6 +14,7 @@ export class GlobalTheme {
   static readonly SUCCESS_COLOR: string = '#52C41A';
   static readonly WARNING_COLOR: string = '#FAAD14';
   static readonly ERROR_COLOR: string = '#FF4D4F';
+  static readonly BUTTON_TEXT_COLOR: string = '#FFFFFF';
 
   static readonly BORDER_COLOR: string = '#F0F0F0';
   static readonly SHADOW_COLOR: string = '#00000008';

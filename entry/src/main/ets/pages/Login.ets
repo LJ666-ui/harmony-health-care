@@ -5,12 +5,21 @@ import { Input } from '../components/Input';
 import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
-
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 interface UserInfo {
   username: string;
   avatar: string;
   age: number;
   gender: string;
+}
+interface LoginResponseData {
+  token: string;
+  userInfo: UserInfo;
+}
+
+interface LoginRequestData {
+  username: string;
+  password: string;
 }
 
 @Entry
@@ -30,7 +39,11 @@ struct Login {
 
     const isLoggedIn = AppStorage.get<boolean>('isLoggedIn');
     if (isLoggedIn) {
-      router.replaceUrl({ url: 'pages/HomePage' });
+      try {
+        router.replaceUrl({ url: 'pages/HomePage' });
+      } catch (error) {
+        console.error('跳转首页失败:', error);
+      }
     }
   }
 
@@ -55,7 +68,7 @@ struct Login {
     return true;
   }
 
-  handleLogin(): void {
+  async handleLogin(): Promise<void> {
     if (!this.validateForm()) {
       ToastUtil.showError(this.errorMessage, 2000);
       return;
@@ -63,23 +76,57 @@ struct Login {
 
     this.isLoading = true;
 
-    setTimeout(() => {
-      const mockUserInfo: UserInfo = {
-        username: '张三',
-        avatar: '',
-        age: 65,
-        gender: '男'
+    try {
+      const loginRequest: LoginRequestData = {
+        username: this.username,
+        password: this.password
       };
+      const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>('/user/login', loginRequest);
 
-      AppStorage.setOrCreate<UserInfo>('userInfo', mockUserInfo);
-      AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+      if (response.success) {
+        // 保存Token到AppStorage
+        if (response.data?.token) {
+          try {
+            AppStorage.setOrCreate<string>('token', response.data.token);
+          } catch (error) {
+            console.error('保存Token失败:', error);
+          }
+        }
 
-      ToastUtil.loginSuccess();
+        // 保存用户信息
+        if (response.data?.userInfo) {
+          try {
+            AppStorage.setOrCreate<UserInfo>('userInfo', response.data.userInfo);
+          } catch (error) {
+            console.error('保存用户信息失败:', error);
+          }
+        }
 
-      setTimeout(() => {
-        router.replaceUrl({ url: 'pages/HomePage' });
-      }, 500);
-    }, 1500);
+        try {
+          AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+        } catch (error) {
+          console.error('保存登录状态失败:', error);
+        }
+
+        ToastUtil.loginSuccess();
+
+        setTimeout(() => {
+          try {
+            router.replaceUrl({ url: 'pages/HomePage' });
+          } catch (error) {
+            console.error('跳转首页失败:', error);
+          }
+        }, 500);
+      } else {
+        this.errorMessage = response.message || '登录失败';
+        ToastUtil.showError(this.errorMessage, 2000);
+      }
+    } catch (error) {
+      this.errorMessage = '网络请求失败，请稍后重试';
+      ToastUtil.showError(this.errorMessage, 2000);
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   build() {
@@ -105,27 +152,19 @@ struct Login {
           Input({
             placeholder: '请输入手机号/账号',
             inputType: 'text',
-            text: $username,
-            onChange: (value) => {
-              this.username = value;
-              this.errorMessage = '';
-            }
+            text: $username
           })
 
           Input({
             placeholder: '请输入密码',
             inputType: 'password',
-            text: $password,
-            onChange: (value) => {
-              this.password = value;
-              this.errorMessage = '';
-            }
+            text: $password
           })
 
           if (this.errorMessage) {
             Text(this.errorMessage)
               .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor('#FF4D4F')
+              .fontColor(GlobalTheme.ERROR_COLOR)
               .width('100%')
               .padding(8)
               .backgroundColor('#FFF2F0')
@@ -141,7 +180,7 @@ struct Login {
               .height(GlobalTheme.getButtonHeight(this.isElderMode))
               .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
               .fontWeight('bold')
-              .fontColor('#FFFFFF')
+              .fontColor(GlobalTheme.BUTTON_TEXT_COLOR)
               .backgroundColor(GlobalTheme.THEME_COLOR)
               .borderRadius(GlobalTheme.RADIUS_MD)
               .shadow({
@@ -150,7 +189,7 @@ struct Login {
                 offsetX: 0,
                 offsetY: 4
               })
-              .onClick(() => this.handleLogin());
+              .onClick(async () => await this.handleLogin());
           }
 
           Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
@@ -164,7 +203,13 @@ struct Login {
             Text('新用户注册')
               .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
               .fontColor(GlobalTheme.THEME_COLOR)
-              .onClick(() => console.log('注册'));
+              .onClick(() => {
+                try {
+                  router.pushUrl({ url: 'pages/Register' });
+                } catch (error) {
+                  console.error('跳转注册页失败:', error);
+                }
+              });
           }
           .width('100%');
 

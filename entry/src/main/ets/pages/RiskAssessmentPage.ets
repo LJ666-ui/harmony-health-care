@@ -1,246 +1,710 @@
 import { router } from '@kit.ArkUI';
-import { Header } from '../components/Header';
-import { RISK_INDICATORS, HEALTH_SCORE, SCORE_LEVEL, SCORE_LEVEL_COLOR } from '../mock/riskMock';
-import { GlobalTheme } from '../global';
 
-interface RiskItem {
-  id: string;
-  name: string;
-  value: number;
-  unit: string;
-  normalRange: string;
-  status: string;
-  icon: string;
-  color: string;
-  level: string;
-  levelColor: string;
-  progress: number;
-  description: string;
+interface AssessmentData {
+  age: string;
+  gender: string;
+  height: string;
+  weight: string;
+  bmi: number;
+  systolic: string;
+  diastolic: string;
+  fastingGlucose: string;
+  postprandialGlucose: string;
+  smoking: string;
+  drinking: string;
+  exercise: string;
+  medicalHistory: string[];
+}
+
+// 定义健康记录类型
+interface HealthRecord {
+  type: string;
+  value: string;
 }
 
 @Entry
 @Component
 struct RiskAssessmentPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @State currentStep: number = 1;
+  @State totalSteps: number = 5;
+  @State isSubmitting: boolean = false;
+  @State lastAssessment: string = '2026-04-10';
+  @State lastResult: string = '低风险';
+  @State assessmentData: AssessmentData = {
+    age: '',
+    gender: '男',
+    height: '',
+    weight: '',
+    bmi: 0,
+    systolic: '',
+    diastolic: '',
+    fastingGlucose: '',
+    postprandialGlucose: '',
+    smoking: '否',
+    drinking: '否',
+    exercise: '每周1-2次',
+    medicalHistory: []
+  };
 
-  @State riskItems: RiskItem[] = [
-    { id: '1', name: '血压', value: 145, unit: 'mmHg', normalRange: '90-140', status: 'warning', icon: '🩺', color: '#1677FF', level: '中', levelColor: '#FAAD14', progress: 72, description: '血压偏高，建议定期监测' },
-    { id: '2', name: '血糖', value: 7.8, unit: 'mmol/L', normalRange: '3.9-6.1', status: 'danger', icon: '💉', color: '#FF4D4F', level: '高', levelColor: '#FF4D4F', progress: 85, description: '血糖偏高，需注意饮食控制' },
-    { id: '3', name: '心率', value: 88, unit: '次/分', normalRange: '60-100', status: 'normal', icon: '❤️', color: '#52C41A', level: '低', levelColor: '#52C41A', progress: 35, description: '心率正常范围' },
-    { id: '4', name: 'BMI', value: 26.5, unit: 'kg/m²', normalRange: '18.5-24', status: 'warning', icon: '⚖️', color: '#FAAD14', level: '中', levelColor: '#FAAD14', progress: 65, description: 'BMI超标，建议控制体重' },
-    { id: '5', name: '骨密度', value: -1.8, unit: 'T值', normalRange: '-1~+1', status: 'warning', icon: '🦴', color: '#FA8C16', level: '中', levelColor: '#FA8C16', progress: 68, description: '骨密度偏低，注意补钙' },
-    { id: '6', name: '血氧饱和度', value: 96, unit: '%', normalRange: '95-100', status: 'normal', icon: '🫁', color: '#13C2C2', level: '低', levelColor: '#52C41A', progress: 28, description: '血氧正常' },
-    { id: '7', name: '总胆固醇', value: 5.8, unit: 'mmol/L', normalRange: '<5.18', status: 'warning', icon: '🧪', color: '#722ED1', level: '中', levelColor: '#FAAD14', progress: 62, description: '胆固醇略高，需低脂饮食' },
-    { id: '8', name: '睡眠质量评分', value: 62, unit: '分', normalRange: '>70', status: 'danger', icon: '😴', color: '#EB2F96', level: '高', levelColor: '#FF4D4F', progress: 78, description: '睡眠质量差，建议改善作息' }
-  ];
-  @State score: number = HEALTH_SCORE;
-  @State scoreLevel: string = SCORE_LEVEL;
-  @State scoreLevelColor: string = SCORE_LEVEL_COLOR;
-  @State showReportToast: boolean = false;
+  aboutToAppear() {
+    // 接收从健康记录页面传递过来的数据
+    const params = router.getParams();
+    if (params) {
+      // 简化处理，直接检查参数
+      const record = params as HealthRecord;
+      if (record.type && record.value) {
+        if (record.type === '血压') {
+          const parts = record.value.split('/');
+          if (parts.length === 2) {
+            this.assessmentData.systolic = parts[0];
+            this.assessmentData.diastolic = parts[1];
+          }
+        } else if (record.type === '血糖') {
+          this.assessmentData.fastingGlucose = record.value;
+        }
+      }
+    }
+  }
 
-  aboutToAppear(): void {
-    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
-      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+  calculateBMI() {
+    const height = parseFloat(this.assessmentData.height);
+    const weight = parseFloat(this.assessmentData.weight);
+    if (height > 0 && weight > 0) {
+      const heightInMeters = height / 100;
+      this.assessmentData.bmi = parseFloat((weight / (heightInMeters * heightInMeters)).toFixed(1));
+    }
+  }
+
+  nextStep() {
+    if (this.currentStep < this.totalSteps) {
+      if (this.currentStep === 1) {
+        this.calculateBMI();
+      }
+      this.currentStep++;
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.submitAssessment();
     }
   }
 
-  getLevelBgColor(levelColor: string): string {
-    if (levelColor === GlobalTheme.SUCCESS_COLOR) {
-      return '#F6FFED';
+  prevStep() {
+    if (this.currentStep > 1) {
+      this.currentStep--;
     }
-    if (levelColor === GlobalTheme.WARNING_COLOR) {
-      return '#FFFBE6';
-    }
-    return '#FFF1F0';
   }
 
-  handleGenerateReport(): void {
-    this.showReportToast = true;
+  submitAssessment() {
+    this.isSubmitting = true;
     setTimeout(() => {
-      this.showReportToast = false;
-    }, 2000);
+      this.isSubmitting = false;
+      router.push({
+        url: 'pages/RiskResultPage',
+        params: { assessmentData: this.assessmentData }
+      });
+    }, 3000);
+  }
+
+  toggleMedicalHistory(condition: string) {
+    const index = this.assessmentData.medicalHistory.indexOf(condition);
+    if (index > -1) {
+      this.assessmentData.medicalHistory.splice(index, 1);
+    } else {
+      this.assessmentData.medicalHistory.push(condition);
+    }
   }
 
   build() {
     Column() {
-      Header({ title: '健康风险评估', showBack: true });
-
-      Scroll() {
-        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
-          Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-            Text('综合健康评分')
-              .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-              .fontWeight('bold')
-              .fontColor(GlobalTheme.THEME_COLOR);
-
-            Stack({ alignContent: Alignment.Center }) {
-              Progress({
-                value: this.score,
-                total: 100,
-                type: ProgressType.Ring
-              })
-                .width(180)
-                .height(180)
-                .color(GlobalTheme.THEME_COLOR)
-                .backgroundColor(GlobalTheme.BORDER_COLOR)
-                .style({ strokeWidth: 12 });
-
-              Column({ space: GlobalTheme.getSpacingXS(this.isElderMode) }) {
-                Text(this.score.toString())
-                  .fontSize(this.isElderMode ? 56 : 48)
-                  .fontWeight('bold')
-                  .fontColor(GlobalTheme.THEME_COLOR);
-
-                Text(this.scoreLevel)
-                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                  .fontColor(this.scoreLevelColor)
-                  .fontWeight('bold');
-              }
-              .justifyContent(FlexAlign.Center)
-              .alignItems(HorizontalAlign.Center);
-            }
-            .width(200)
-            .height(200);
-
-            Text('基于您的健康记录数据综合评估')
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor(GlobalTheme.TEXT_HINT);
-          }
-          .width('100%')
-          .padding(GlobalTheme.getSpacingLG(this.isElderMode))
-          .backgroundColor(GlobalTheme.CARD_BG)
-          .borderRadius(GlobalTheme.RADIUS_LG)
-          .alignItems(HorizontalAlign.Center);
-
-          Column({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
-            Row() {
-              Text('风险指标详情')
-                .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-                .fontWeight('bold')
-                .fontColor(GlobalTheme.TEXT_PRIMARY);
-
-              Blank();
-
-              Text(this.riskItems.length + ' 项指标')
-                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                .fontColor(GlobalTheme.TEXT_HINT)
-                .backgroundColor('#F5F5F5')
-                .padding({ left: GlobalTheme.getSpacingSM(this.isElderMode), right: GlobalTheme.getSpacingSM(this.isElderMode), top: GlobalTheme.getSpacingXS(this.isElderMode), bottom: GlobalTheme.getSpacingXS(this.isElderMode) })
-                .borderRadius(GlobalTheme.RADIUS_MD);
-            }
-            .width('100%');
-
-            List({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-              ForEach(this.riskItems, (item: RiskItem) => {
-                ListItem() {
-                  Column({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
-                    Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-                      Text(item.icon)
-                        .fontSize(this.isElderMode ? 32 : 28);
-
-                      Column({ space: GlobalTheme.getSpacingXS(this.isElderMode) }) {
-                        Text(item.name)
-                          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                          .fontWeight('bold')
-                          .fontColor(GlobalTheme.TEXT_PRIMARY);
-
-                        Text(item.description)
-                          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                          .fontColor(GlobalTheme.TEXT_SECONDARY)
-                          .maxLines(2);
-                      }
-                      .layoutWeight(1)
-                      .alignItems(HorizontalAlign.Start);
-
-                      Column() {
-                        Text(item.level + '风险')
-                          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                          .fontWeight('bold')
-                          .fontColor(item.levelColor);
-                      }
-                      .padding({ left: GlobalTheme.getSpacingSM(this.isElderMode), right: GlobalTheme.getSpacingSM(this.isElderMode), top: GlobalTheme.getSpacingXS(this.isElderMode), bottom: GlobalTheme.getSpacingXS(this.isElderMode) })
-                      .backgroundColor(this.getLevelBgColor(item.levelColor))
-                      .borderRadius(GlobalTheme.RADIUS_SM);
-                    }
-                    .width('100%')
-                    .alignItems(VerticalAlign.Top);
-
-                    Column({ space: GlobalTheme.getSpacingXS(this.isElderMode) }) {
-                      Row() {
-                        Text('风险程度')
-                          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                          .fontColor(GlobalTheme.TEXT_SECONDARY);
-
-                        Blank();
-
-                        Text(item.progress + '%')
-                          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                          .fontColor(item.levelColor)
-                          .fontWeight('bold');
-                      }
-                      .width('100%');
-
-                      Progress({
-                        value: item.progress,
-                        total: 100,
-                        type: ProgressType.Linear
-                      })
-                        .width('100%')
-                        .height(8)
-                        .color(item.levelColor)
-                        .backgroundColor(GlobalTheme.BORDER_COLOR)
-                        .borderRadius(GlobalTheme.RADIUS_SM);
-                    }
-                    .width('100%');
-                  }
-                  .width('100%')
-                  .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-                  .backgroundColor(GlobalTheme.CARD_BG)
-                  .borderRadius(GlobalTheme.RADIUS_MD)
-                  .border({ width: 1, color: GlobalTheme.BORDER_COLOR });
-                }
-              }, (item: RiskItem) => item.id);
-            }
-            .width('100%')
-            .layoutWeight(1);
-          }
-          .width('100%')
-          .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-          .backgroundColor(GlobalTheme.CARD_BG)
-          .borderRadius(GlobalTheme.RADIUS_LG);
-
-          Button('📋 生成完整报告')
-            .width('100%')
-            .height(GlobalTheme.getButtonHeight(this.isElderMode))
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontColor('#FFFFFF')
-            .backgroundColor(GlobalTheme.THEME_COLOR)
-            .borderRadius(GlobalTheme.RADIUS_LG)
-            .onClick(() => this.handleGenerateReport());
-
-          if (this.showReportToast) {
-            Text('✅ 报告生成成功！')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor(GlobalTheme.SUCCESS_COLOR)
-              .backgroundColor('#F6FFED')
-              .padding({ left: GlobalTheme.getSpacingLG(this.isElderMode), right: GlobalTheme.getSpacingLG(this.isElderMode), top: GlobalTheme.getSpacingSM(this.isElderMode), bottom: GlobalTheme.getSpacingSM(this.isElderMode) })
-              .borderRadius(GlobalTheme.RADIUS_LG)
-              .border({ width: 1, color: '#B7EB8F' })
-              .margin({ top: GlobalTheme.getSpacingSM(this.isElderMode) });
-          }
-        }
-        .width('85%')
-        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) * 2 });
+      // 顶部导航栏
+      Row() {
+        Text('← 返回')
+          .fontSize(16)
+          .fontColor('#1677FF')
+          .padding(12)
+          .onClick(() => {
+            router.back();
+          });
+        Text('健康风险评估')
+          .fontSize(18)
+          .fontWeight('bold')
+          .flexGrow(1)
+          .textAlign(TextAlign.Center);
+        Text('历史')
+          .fontSize(16)
+          .fontColor('#1677FF')
+          .padding(12)
+          .onClick(() => {
+            router.push({ url: 'pages/RiskHistoryPage' });
+          });
       }
-      .height(0)
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
+      .width('100%')
+      .backgroundColor('#FFFFFF')
+      .shadow({
+        radius: 4,
+        color: '#00000010',
+        offsetX: 0,
+        offsetY: 2
+      });
+
+      // 顶部引导区
+      if (this.currentStep === 1) {
+        Column() {
+          Text('温馨提示')
+            .fontSize(18)
+            .fontWeight('bold')
+            .fontColor('#1677FF')
+            .margin({ top: 24, bottom: 12 });
+          Text('请如实填写以下信息，我们将为您提供个性化的健康风险评估报告')
+            .fontSize(14)
+            .fontColor('#666666')
+            .textAlign(TextAlign.Center)
+            .width('85%')
+            .margin({ bottom: 24 });
+          if (this.lastAssessment) {
+            Text(`上次评估：${this.lastAssessment} (${this.lastResult})`)
+              .fontSize(14)
+              .fontColor('#999999')
+              .margin({ bottom: 24 });
+          }
+          Button('开始评估')
+            .width('85%')
+            .height(48)
+            .fontSize(16)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#1677FF')
+            .borderRadius(24)
+            .onClick(() => {
+              this.currentStep++;
+            });
+        }
+        .width('100%')
+        .padding({ bottom: 48 });
+      }
+
+      if (this.currentStep > 1) {
+        // 进度条
+        Column() {
+          Row() {
+            ForEach(Array.from({ length: this.totalSteps }), (_: number, index: number) => {
+              Column() {
+                Stack() {
+                  Circle()
+                    .width(24)
+                    .height(24)
+                    .fill((index + 1) <= this.currentStep ? '#1677FF' : '#E5E5E5');
+                  Text((index + 1).toString())
+                    .fontSize(12)
+                    .fontColor((index + 1) <= this.currentStep ? '#FFFFFF' : '#999999');
+                }
+
+                Text((index + 1) <= this.currentStep ? '已完成' : '未开始')
+                  .fontSize(10)
+                  .fontColor((index + 1) <= this.currentStep ? '#1677FF' : '#999999')
+                  .margin({ top: 4 });
+              }
+              .flexGrow(1);
+
+              if ((index + 1) < this.totalSteps) {
+                Line()
+                  .width('100%')
+                  .height(2)
+                  .stroke((index + 1) < this.currentStep ? '#1677FF' : '#E5E5E5');
+              }
+            });
+          }
+          .width('85%')
+          .margin({ top: 24, bottom: 32 });
+
+          // 评估表单
+          Scroll() {
+            Column() {
+              // 第一步：基本信息
+              if (this.currentStep === 2) {
+                Text('基本信息')
+                  .fontSize(20)
+                  .fontWeight('bold')
+                  .fontColor('#333333')
+                  .margin({ bottom: 24 });
+
+                Column() {
+                  Text('年龄')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  TextInput({
+                    placeholder: '请输入年龄'
+                  })
+                    .width('100%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor('#F5F5F5')
+                    .borderRadius(8)
+                    .onChange((value) => {
+                      this.assessmentData.age = value;
+                    });
+                }
+                .margin({ bottom: 20 });
+
+                Column() {
+                  Text('性别')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  Row() {
+                    Column() {
+                      Text('男')
+                        .fontSize(14)
+                        .fontColor(this.assessmentData.gender === '男' ? '#1677FF' : '#666666');
+                    }
+                    .width('50%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.gender === '男' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .onClick(() => {
+                      this.assessmentData.gender = '男';
+                    });
+
+                    Column() {
+                      Text('女')
+                        .fontSize(14)
+                        .fontColor(this.assessmentData.gender === '女' ? '#1677FF' : '#666666');
+                    }
+                    .width('50%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.gender === '女' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .margin({ left: 12 })
+                    .onClick(() => {
+                      this.assessmentData.gender = '女';
+                    });
+                  }
+                }
+                .margin({ bottom: 20 });
+
+                Column() {
+                  Text('身高 (cm)')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  TextInput({
+                    placeholder: '请输入身高'
+                  })
+                    .width('100%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor('#F5F5F5')
+                    .borderRadius(8)
+                    .onChange((value) => {
+                      this.assessmentData.height = value;
+                      this.calculateBMI();
+                    });
+                }
+                .margin({ bottom: 20 });
+
+                Column() {
+                  Text('体重 (kg)')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  Row() {
+                    TextInput({
+                      placeholder: '请输入体重'
+                    })
+                      .width('80%')
+                      .height(48)
+                      .padding(12)
+                      .backgroundColor('#F5F5F5')
+                      .borderRadius(8)
+                      .onChange((value) => {
+                        this.assessmentData.weight = value;
+                        this.calculateBMI();
+                      });
+                    Text(`BMI: ${this.assessmentData.bmi || '--'}`)
+                      .height(48)
+                      .padding({ left: 12, right: 12 })
+                      .backgroundColor('#F5F5F5')
+                      .borderRadius(8)
+                      .fontSize(14)
+                      .fontColor('#666666');
+                  }
+                }
+                .margin({ bottom: 20 });
+              }
+
+              // 第二步：血压数据
+              if (this.currentStep === 3) {
+                Text('血压数据')
+                  .fontSize(20)
+                  .fontWeight('bold')
+                  .fontColor('#333333')
+                  .margin({ bottom: 24 });
+
+                Column() {
+                  Text('收缩压 (mmHg)')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  TextInput({
+                    placeholder: '请输入收缩压'
+                  })
+                    .width('100%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor('#F5F5F5')
+                    .borderRadius(8)
+                    .onChange((value) => {
+                      this.assessmentData.systolic = value;
+                    });
+                }
+                .margin({ bottom: 20 });
+
+                Column() {
+                  Text('舒张压 (mmHg)')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  TextInput({
+                    placeholder: '请输入舒张压'
+                  })
+                    .width('100%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor('#F5F5F5')
+                    .borderRadius(8)
+                    .onChange((value) => {
+                      this.assessmentData.diastolic = value;
+                    });
+                }
+                .margin({ bottom: 20 });
+              }
+
+              // 第三步：血糖数据
+              if (this.currentStep === 4) {
+                Text('血糖数据')
+                  .fontSize(20)
+                  .fontWeight('bold')
+                  .fontColor('#333333')
+                  .margin({ bottom: 24 });
+
+                Column() {
+                  Text('空腹血糖 (mmol/L)')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  TextInput({
+                    placeholder: '请输入空腹血糖'
+                  })
+                    .width('100%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor('#F5F5F5')
+                    .borderRadius(8)
+                    .onChange((value) => {
+                      this.assessmentData.fastingGlucose = value;
+                    });
+                }
+                .margin({ bottom: 20 });
+
+                Column() {
+                  Text('餐后血糖 (mmol/L)')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  TextInput({
+                    placeholder: '请输入餐后血糖'
+                  })
+                    .width('100%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor('#F5F5F5')
+                    .borderRadius(8)
+                    .onChange((value) => {
+                      this.assessmentData.postprandialGlucose = value;
+                    });
+                }
+                .margin({ bottom: 20 });
+              }
+
+              // 第四步：生活习惯
+              if (this.currentStep === 5) {
+                Text('生活习惯')
+                  .fontSize(20)
+                  .fontWeight('bold')
+                  .fontColor('#333333')
+                  .margin({ bottom: 24 });
+
+                Column() {
+                  Text('吸烟情况')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  Row() {
+                    Column() {
+                      Text('是')
+                        .fontSize(14)
+                        .fontColor(this.assessmentData.smoking === '是' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.smoking === '是' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .onClick(() => {
+                      this.assessmentData.smoking = '是';
+                    });
+
+                    Column() {
+                      Text('否')
+                        .fontSize(14)
+                        .fontColor(this.assessmentData.smoking === '否' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.smoking === '否' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .margin({ left: 12 })
+                    .onClick(() => {
+                      this.assessmentData.smoking = '否';
+                    });
+
+                    Column() {
+                      Text('已戒烟')
+                        .fontSize(14)
+                        .fontColor(this.assessmentData.smoking === '已戒烟' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.smoking === '已戒烟' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .margin({ left: 12 })
+                    .onClick(() => {
+                      this.assessmentData.smoking = '已戒烟';
+                    });
+                  }
+                }
+                .margin({ bottom: 20 });
+
+                Column() {
+                  Text('饮酒情况')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  Row() {
+                    Column() {
+                      Text('是')
+                        .fontSize(14)
+                        .fontColor(this.assessmentData.drinking === '是' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.drinking === '是' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .onClick(() => {
+                      this.assessmentData.drinking = '是';
+                    });
+
+                    Column() {
+                      Text('否')
+                        .fontSize(14)
+                        .fontColor(this.assessmentData.drinking === '否' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.drinking === '否' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .margin({ left: 12 })
+                    .onClick(() => {
+                      this.assessmentData.drinking = '否';
+                    });
+
+                    Column() {
+                      Text('偶尔')
+                        .fontSize(14)
+                        .fontColor(this.assessmentData.drinking === '偶尔' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.drinking === '偶尔' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .margin({ left: 12 })
+                    .onClick(() => {
+                      this.assessmentData.drinking = '偶尔';
+                    });
+                  }
+                }
+                .margin({ bottom: 20 });
+
+                Column() {
+                  Text('运动频率')
+                    .fontSize(14)
+                    .fontColor('#666666')
+                    .margin({ bottom: 8 });
+                  Row() {
+                    Column() {
+                      Text('每周1-2次')
+                        .fontSize(12)
+                        .fontColor(this.assessmentData.exercise === '每周1-2次' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.exercise === '每周1-2次' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .onClick(() => {
+                      this.assessmentData.exercise = '每周1-2次';
+                    });
+
+                    Column() {
+                      Text('每周3-4次')
+                        .fontSize(12)
+                        .fontColor(this.assessmentData.exercise === '每周3-4次' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.exercise === '每周3-4次' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .margin({ left: 12 })
+                    .onClick(() => {
+                      this.assessmentData.exercise = '每周3-4次';
+                    });
+
+                    Column() {
+                      Text('每周5次以上')
+                        .fontSize(12)
+                        .fontColor(this.assessmentData.exercise === '每周5次以上' ? '#1677FF' : '#666666');
+                    }
+                    .width('33%')
+                    .height(48)
+                    .padding(12)
+                    .backgroundColor(this.assessmentData.exercise === '每周5次以上' ? '#E8F0FF' : '#F5F5F5')
+                    .borderRadius(8)
+                    .margin({ left: 12 })
+                    .onClick(() => {
+                      this.assessmentData.exercise = '每周5次以上';
+                    });
+                  }
+                }
+                .margin({ bottom: 20 });
+              }
+
+              // 第五步：既往病史
+              if (this.currentStep === 6) {
+                Text('既往病史')
+                  .fontSize(20)
+                  .fontWeight('bold')
+                  .fontColor('#333333')
+                  .margin({ bottom: 24 });
+
+                Text('请选择您曾患有的疾病（可多选）')
+                  .fontSize(14)
+                  .fontColor('#666666')
+                  .margin({ bottom: 16 });
+
+                Grid() {
+                  ForEach(['高血压', '糖尿病', '冠心病', '脑卒中', '慢性肾病', '骨质疏松', '癌症', '其他'],
+                    (condition: string) => {
+                      GridItem() {
+                        Column() {
+                          Text(condition)
+                            .fontSize(14)
+                            .fontColor(this.assessmentData.medicalHistory.includes(condition) ? '#1677FF' : '#666666');
+                        }
+                        .width('100%')
+                        .height(48)
+                        .padding(12)
+                        .backgroundColor(this.assessmentData.medicalHistory.includes(condition) ? '#E8F0FF' : '#F5F5F5')
+                        .borderRadius(8)
+                        .onClick(() => {
+                          this.toggleMedicalHistory(condition);
+                        });
+                      }
+                    });
+                }
+                .columnsTemplate('1fr 1fr')
+                .columnsGap(12)
+                .rowsGap(12)
+                .margin({ bottom: 20 });
+              }
+            }
+            .width('85%')
+            .padding({ bottom: 100 });
+          }
+          .height(0)
+          .layoutWeight(1);
+
+          // 底部按钮
+          Row() {
+            if (this.currentStep > 2) {
+              Button('上一步')
+                .width('48%')
+                .height(48)
+                .fontSize(16)
+                .fontColor('#1677FF')
+                .backgroundColor('#FFFFFF')
+                .borderRadius(24)
+                .border({ width: 1, color: '#1677FF' })
+                .onClick(() => {
+                  this.prevStep();
+                });
+            } else {
+              Blank()
+                .width('48%');
+            }
+            Button(this.currentStep < this.totalSteps + 1 ? '下一步' : '提交评估')
+              .width('48%')
+              .height(48)
+              .fontSize(16)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#1677FF')
+              .borderRadius(24)
+              .onClick(() => {
+                this.nextStep();
+              });
+          }
+          .width('85%')
+          .padding({ bottom: 32 });
+        }
+      }
+
+      // 评估中状态
+      if (this.isSubmitting) {
+        Stack() {
+          Column() {
+            Text('正在分析您的健康数据...')
+              .fontSize(18)
+              .fontColor('#333333')
+              .margin({ bottom: 24 });
+            Progress({
+              value: 0,
+              total: 100
+            })
+              .width('80%')
+              .height(8)
+              .color('#1677FF')
+              .backgroundColor('#E5E5E5')
+              .borderRadius(4);
+          }
+          .width('80%')
+          .height(120)
+          .padding(24)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(16);
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0, 0, 0, 0.5)');
+      }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(GlobalTheme.BG_COLOR);
+    .backgroundColor('#F5F7FA');
   }
 }

@@ -42,12 +42,10 @@ public class FileUploadController {
 
         try {
             // 1. 校验Token
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            String token = request.getHeader("Token");
+            if (token == null || token.isEmpty()) {
                 return Result.error("未登录，请先登录");
             }
-
-            String token = authHeader.substring(7).trim();
             if (!JwtUtil.validateToken(token)) {
                 return Result.error("登录已过期，请重新登录");
             }
@@ -151,12 +149,10 @@ public class FileUploadController {
 
         try {
             // 1. 校验Token
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            String token = request.getHeader("Token");
+            if (token == null || token.isEmpty()) {
                 return Result.error("未登录，请先登录");
             }
-
-            String token = authHeader.substring(7).trim();
             if (!JwtUtil.validateToken(token)) {
                 return Result.error("登录已过期，请重新登录");
             }

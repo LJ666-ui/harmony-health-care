@@ -4,7 +4,9 @@ import com.example.medical.common.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import javax.servlet.http.HttpServletRequest;
@@ -14,7 +16,23 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-public class SecurityConfig implements WebMvcConfigurer {
+public class WebMvcConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOriginPatterns("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:" + System.getProperty("user.dir") + "/uploads/");
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -24,7 +42,15 @@ public class SecurityConfig implements WebMvcConfigurer {
                         "/user/login",
                         "/user/register",
                         "/ai/**",
-                        "/error"
+                        "/error",
+                        "/uploads/**",
+                        "/api/rehab/action/list",
+                        "/api/rehab/action/detail/**",
+                        "/api/rehab/plan/list",
+                        "/api/rehab/plan/detail/**",
+                        "/api/rehab/plan/actions/**",
+                        "/api/rehab/plan/progress/**",
+                        "/api/rehab/plan/recommend/**"
                 );
     }
 

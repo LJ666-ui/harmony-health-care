@@ -1,0 +1,277 @@
+{
+  "info": {
+    "_postman_id": "harmony-health-care-collection",
+    "name": "医疗健康管理系统API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "用户模块",
+      "item": [
+        {
+          "name": "用户注册",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"test3\", \"password\": \"123456\", \"userType\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/register",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"test1\", \"password\": \"123456\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/login",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Token",
+                "value": "{{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/user/info?id=1",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "更新用户信息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Token",
+                "value": "{{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"id\": 1, \"username\": \"test1_updated\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/update",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "健康文章模块",
+      "item": [
+        {
+          "name": "分页查询文章",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/healthArticle/page?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "获取文章详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/healthArticle/detail/1",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "文章收藏模块",
+      "item": [
+        {
+          "name": "收藏文章",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Token",
+                "value": "{{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/article/1/collect",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "取消收藏",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Token",
+                "value": "{{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/article/1/collect",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "查询我的收藏",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Token",
+                "value": "{{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/article/my-collects",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI助手模块",
+      "item": [
+        {
+          "name": "AI智能问答",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"question\": \"如何保持健康？\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/chat",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "健康咨询",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"question\": \"高血压患者饮食注意事项\", \"healthProfile\": {}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/health-consult",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "系统健康模块",
+      "item": [
+        {
+          "name": "系统状态检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/status",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "数据库连接检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/database",
+              "host": ["{{baseUrl}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

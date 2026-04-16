@@ -31,6 +31,15 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- 12. Swagger3依赖 -->
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-boot-starter</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+
+
+
         <!-- 3. 修复MySQL驱动：添加版本号 -->
         <dependency>
             <groupId>mysql</groupId>
@@ -90,13 +99,25 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
         <!-- 11. FastJSON依赖（AI模块使用） -->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
             <version>1.2.83</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>1.7.0</version> <!-- 适配 SpringBoot 2.7.x 的版本 -->
+        </dependency>
     </dependencies>
+
 
     <!-- 6. 修复Maven插件版本（打包/运行必备） -->
     <build>

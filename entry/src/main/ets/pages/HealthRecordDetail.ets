@@ -253,19 +253,36 @@ struct HealthRecordDetail {
 
           Row() {
             Button('编辑')
-              .width('50%')
+              .width('32%')
               .height(48)
               .fontSize(16)
               .fontColor('#FFFFFF')
               .backgroundColor('#1677FF')
               .borderRadius(24)
-              .margin({ right: 12 })
+              .margin({ right: 8 })
               .onClick(() => {
                 this.editRecord();
               });
 
+            Button('风险评估')
+              .width('32%')
+              .height(48)
+              .fontSize(16)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#1677FF')
+              .borderRadius(24)
+              .margin({ right: 8 })
+              .onClick(() => {
+                router.push({
+                  url: 'pages/RiskAssessmentPage',
+                  params: {
+                    record: this.record
+                  }
+                });
+              });
+
             Button('删除')
-              .width('50%')
+              .width('32%')
               .height(48)
               .fontSize(16)
               .fontColor('#FFFFFF')

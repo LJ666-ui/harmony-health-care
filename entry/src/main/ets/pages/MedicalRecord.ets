@@ -457,10 +457,10 @@ struct MedicalRecord {
               .borderRadius(8)
               .border({ width: 1, color: AccessibilityConfig.getBorderColor() });
 
-              // 分享导出按钮
+              // 操作按钮
               Row({ space: AccessibilityConfig.getSpacingMD() }) {
                 Button('分享')
-                  .width('100%')
+                  .width('33%')
                   .height(AccessibilityConfig.getButtonHeight())
                   .fontSize(AccessibilityConfig.getFontSizeButton())
                   .fontWeight('medium')
@@ -469,8 +469,25 @@ struct MedicalRecord {
                   .borderRadius(8)
                   .onClick(() => this.handleShare(this.selectedRecord!));
 
+                Button('风险评估')
+                  .width('33%')
+                  .height(AccessibilityConfig.getButtonHeight())
+                  .fontSize(AccessibilityConfig.getFontSizeButton())
+                  .fontWeight('medium')
+                  .fontColor('#FFFFFF')
+                  .backgroundColor(AccessibilityConfig.getThemeColor())
+                  .borderRadius(8)
+                  .onClick(() => {
+                    router.push({
+                      url: 'pages/RiskAssessmentPage',
+                      params: {
+                        record: this.selectedRecord
+                      }
+                    });
+                  });
+
                 Button('导出')
-                  .width('100%')
+                  .width('33%')
                   .height(AccessibilityConfig.getButtonHeight())
                   .fontSize(AccessibilityConfig.getFontSizeButton())
                   .fontWeight('medium')

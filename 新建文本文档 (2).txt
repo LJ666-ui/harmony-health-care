@@ -1,0 +1,418 @@
+ hvigor ERROR: Failed :entry:default@CompileArkTS... 
+> hvigor WARN: 
+1 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Index.ets:20:16
+ 'replaceUrl' has been deprecated.
+
+2 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/Header.ets:28:20
+ 'back' has been deprecated.
+
+3 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/Footer.ets:42:18
+ 'pushUrl' has been deprecated.
+
+4 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:15:5
+ Function may throw exceptions. Special handling is required.
+
+5 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:15:18
+ 'showToast' has been deprecated.
+
+6 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:23:5
+ Function may throw exceptions. Special handling is required.
+
+7 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:23:18
+ 'showToast' has been deprecated.
+
+8 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:31:5
+ Function may throw exceptions. Special handling is required.
+
+9 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:31:18
+ 'showToast' has been deprecated.
+
+10 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:39:5
+ Function may throw exceptions. Special handling is required.
+
+11 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:39:18
+ 'showToast' has been deprecated.
+
+12 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:135:5
+ Function may throw exceptions. Special handling is required.
+
+13 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:135:18
+ 'showToast' has been deprecated.
+
+14 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:87:22
+ 'showToast' has been deprecated.
+
+15 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:124:22
+ 'showToast' has been deprecated.
+
+16 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:207:24
+ 'showToast' has been deprecated.
+
+17 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:247:20
+ 'showToast' has been deprecated.
+
+18 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:266:23
+ 'dataStorage' has been deprecated.
+
+19 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:266:35
+ 'getStorageSync' has been deprecated.
+
+20 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:267:29
+ 'getSync' has been deprecated.
+
+21 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:280:23
+ 'dataStorage' has been deprecated.
+
+22 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:280:35
+ 'getStorageSync' has been deprecated.
+
+23 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:281:15
+ 'putSync' has been deprecated.
+
+24 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:282:15
+ 'flushSync' has been deprecated.
+
+25 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:293:23
+ 'dataStorage' has been deprecated.
+
+26 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:293:35
+ 'getStorageSync' has been deprecated.
+
+27 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:294:15
+ 'deleteSync' has been deprecated.
+
+28 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:295:15
+ 'flushSync' has been deprecated.
+
+29 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Login.ets:43:16
+ 'replaceUrl' has been deprecated.
+
+30 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Login.ets:115:20
+ 'replaceUrl' has been deprecated.
+
+31 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Login.ets:208:26
+ 'pushUrl' has been deprecated.
+
+32 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HomePage.ets:136:16
+ 'pushUrl' has been deprecated.
+
+33 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalPage.ets:99:22
+ 'pushUrl' has been deprecated.
+
+34 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RehabPage.ets:97:22
+ 'pushUrl' has been deprecated.
+
+35 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:342:20
+ 'pushUrl' has been deprecated.
+
+36 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:414:26
+ 'pushUrl' has been deprecated.
+
+37 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:524:28
+ 'pushUrl' has been deprecated.
+
+38 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HospitalPage.ets:128:5
+ Function may throw exceptions. Special handling is required.
+
+39 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HospitalPage.ets:128:12
+ 'pushUrl' has been deprecated.
+
+40 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HospitalPage.ets:163:28
+ 'pushUrl' has been deprecated.
+
+41 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DepartmentPage.ets:73:22
+ 'pushUrl' has been deprecated.
+
+42 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:237:18
+ 'back' has been deprecated.
+
+43 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:482:26
+ 'push' has been deprecated.
+
+44 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:530:18
+ 'push' has been deprecated.
+
+45 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:536:68
+ 'push' has been deprecated.
+
+46 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:538:68
+ 'push' has been deprecated.
+
+47 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:539:68
+ 'push' has been deprecated.
+
+48 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:540:68
+ 'push' has been deprecated.
+
+49 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AddHealthRecord.ets:78:14
+ 'back' has been deprecated.
+
+50 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AddHealthRecord.ets:90:18
+ 'back' has been deprecated.
+
+51 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:92:12
+ 'push' has been deprecated.
+
+52 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:101:12
+ 'back' has been deprecated.
+
+53 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:130:18
+ 'back' has been deprecated.
+
+54 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:276:24
+ 'push' has been deprecated.
+
+55 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Appointments.ets:238:33
+ 'pushUrl' has been deprecated.
+
+56 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Appointments.ets:361:24
+ 'pushUrl' has been deprecated.
+
+57 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Medications.ets:172:5
+ Function may throw exceptions. Special handling is required.
+
+58 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Medications.ets:172:12
+ 'pushUrl' has been deprecated.
+
+59 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Profile.ets:53:16
+ 'pushUrl' has been deprecated.
+
+60 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Profile.ets:183:24
+ 'pushUrl' has been deprecated.
+
+61 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AddAppointmentPage.ets:109:14
+ 'back' has been deprecated.
+
+62 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AddAppointmentPage.ets:273:39
+ 'back' has been deprecated.
+
+63 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RehabListPage.ets:193:26
+ 'pushUrl' has been deprecated.
+
+64 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:128:9
+ 'animateTo' has been deprecated.
+
+65 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:148:5
+ 'animateTo' has been deprecated.
+
+66 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:162:5
+ 'animateTo' has been deprecated.
+
+67 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceListPage.ets:204:20
+ 'back' has been deprecated.
+
+68 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceListPage.ets:281:26
+ 'pushUrl' has been deprecated.
+
+69 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceDetailPage.ets:151:27
+ 'getParams' has been deprecated.
+
+70 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceDetailPage.ets:200:20
+ 'back' has been deprecated.
+
+71 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceDetailPage.ets:341:24
+ 'pushUrl' has been deprecated.
+
+72 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DeviceManagePage.ets:387:20
+ 'back' has been deprecated.
+
+73 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:52:27
+ 'getParams' has been deprecated.
+
+74 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:100:14
+ 'push' has been deprecated.
+
+75 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:125:20
+ 'back' has been deprecated.
+
+76 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:137:20
+ 'push' has been deprecated.
+
+77 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:66:12
+ 'push' has been deprecated.
+
+78 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:82:20
+ 'back' has been deprecated.
+
+79 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:94:20
+ 'push' has been deprecated.
+
+80 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskHistoryPage.ets:71:20
+ 'back' has been deprecated.
+
+81 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskHistoryPage.ets:193:22
+ 'push' has been deprecated.
+
+82 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:82:5
+ Function may throw exceptions. Special handling is required.
+
+83 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:82:12
+ 'pushUrl' has been deprecated.
+
+84 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:86:5
+ Function may throw exceptions. Special handling is required.
+
+85 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:86:12
+ 'pushUrl' has been deprecated.
+
+86 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:90:5
+ Function may throw exceptions. Special handling is required.
+
+87 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:90:12
+ 'pushUrl' has been deprecated.
+
+88 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:94:5
+ Function may throw exceptions. Special handling is required.
+
+89 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:94:18
+ 'showDialog' has been deprecated.
+
+90 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:106:5
+ Function may throw exceptions. Special handling is required.
+
+91 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:106:18
+ 'showDialog' has been deprecated.
+
+92 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:113:16
+ 'replaceUrl' has been deprecated.
+
+93 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:119:5
+ Function may throw exceptions. Special handling is required.
+
+94 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:119:18
+ 'showDialog' has been deprecated.
+
+95 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:131:5
+ Function may throw exceptions. Special handling is required.
+
+96 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:131:18
+ 'showDialog' has been deprecated.
+
+97 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:144:5
+ Function may throw exceptions. Special handling is required.
+
+98 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:144:18
+ 'showDialog' has been deprecated.
+
+99 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacyPolicyPage.ets:20:12
+ 'back' has been deprecated.
+
+100 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacyPage.ets:90:5
+ Function may throw exceptions. Special handling is required.
+
+101 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacyPage.ets:90:12
+ 'pushUrl' has been deprecated.
+
+102 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ARNavigationPage.ets:33:12
+ 'back' has been deprecated.
+
+103 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/VoiceAssistantPage.ets:266:20
+ 'pushUrl' has been deprecated.
+
+104 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/VoiceAssistantPage.ets:469:20
+ 'back' has been deprecated.
+
+105 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AiChatPage.ets:734:20
+ 'back' has been deprecated.
+
+106 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AiChatPage.ets:749:25
+ 'show' has been deprecated.
+
+107 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalListPage.ets:101:5
+ Function may throw exceptions. Special handling is required.
+
+108 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalListPage.ets:101:12
+ 'pushUrl' has been deprecated.
+
+109 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalDetailPage.ets:26:63
+ 'getParams' has been deprecated.
+
+110 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalDetailPage.ets:83:26
+ 'back' has been deprecated.
+
+111 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DataAuthPage.ets:132:5
+ Function may throw exceptions. Special handling is required.
+
+112 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DataAuthPage.ets:132:18
+ 'showDialog' has been deprecated.
+
+113 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DataAuthPage.ets:146:5
+ Function may throw exceptions. Special handling is required.
+
+114 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DataAuthPage.ets:146:18
+ 'showDialog' has been deprecated.
+
+115 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:230:5
+ Function may throw exceptions. Special handling is required.
+
+116 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:230:18
+ 'showDialog' has been deprecated.
+
+117 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:244:5
+ Function may throw exceptions. Special handling is required.
+
+118 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:244:18
+ 'showDialog' has been deprecated.
+
+119 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:481:28
+ 'push' has been deprecated.
+
+120 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MyCollectPage.ets:79:20
+ 'back' has been deprecated.
+
+121 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MyCollectPage.ets:183:24
+ 'pushUrl' has been deprecated.
+
+122 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:188:5
+ Function may throw exceptions. Special handling is required.
+
+123 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:188:12
+ 'pushUrl' has been deprecated.
+
+124 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:207:20
+ 'back' has been deprecated.
+
+125 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodDetailPage.ets:139:27
+ 'getParams' has been deprecated.
+
+126 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodDetailPage.ets:160:20
+ 'back' has been deprecated.
+
+127 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationDetailPage.ets:138:27
+ 'getParams' has been deprecated.
+
+128 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationDetailPage.ets:159:20
+ 'back' has been deprecated.
+
+129 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/TransferApplyPage.ets:264:13
+ Property 'onChange' is private and can not be initialized through the component constructor.
+130 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:167:15
+ Property 'onChange' is private and can not be initialized through the component constructor.
+131 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:183:15
+ Property 'onChange' is private and can not be initialized through the component constructor.
+132 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/Header.ets:15:9
+ The @Prop property 'rightAction' cannot be an optional parameter.
+133 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/GuideComponents.ets:64:9
+ The @Prop property 'guideSteps' cannot be an optional parameter.
+134 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/GuideComponents.ets:218:9
+ The @Prop property 'targetPosition' cannot be an optional parameter.
+135 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/ClickFeedback.ets:10:9
+ The @Prop property 'onItemClick' cannot be an optional parameter.
+136 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/ClickFeedback.ets:44:9
+ The @Prop property 'onItemClick' cannot be an optional parameter.
+137 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/ClickFeedback.ets:140:9
+ The @Prop property 'onItemClick' cannot be an optional parameter.
+> hvigor ERROR: ArkTS Compiler Error
+1 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Expected 1 arguments, but got 0. At File: E:/harmony-health-care/entry/src/main/ets/entryability/EntryAbility.ets:36:23
+
+
+COMPILE RESULT:FAIL {ERROR:2 WARN:137}
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+
+> hvigor ERROR: BUILD FAILED in 5 s 508 ms 
+
+Process finished with exit code -1

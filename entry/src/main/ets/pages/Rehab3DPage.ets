@@ -2,6 +2,30 @@ import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import web_webview from '@ohos.web.webview';
+
+interface RouterParams {
+  courseId?: string | number;
+}
+
+interface RehabActionData {
+  id: number;
+  planId: number;
+  actionName: string;
+  actionDesc: string;
+  duration: number;
+  sets: number;
+  reps: number;
+  videoUrl: string;
+  model3dUrl: string;
+}
+
+interface ActionDetailResponse {
+  action: RehabActionData;
+  difficulty: string;
+}
 
 interface CourseConfig {
   id: string;
@@ -23,8 +47,15 @@ struct Rehab3DPage {
   @State scaleValue: number = 1.0;
   @State rotateAngle: number = 0;
   @State progressAnim: number = 0;
+  @State modelUrl: string = '';
+  @State isLoadingModel: boolean = true;
+  @State modelDifficulty: string = '';
+  @State actionName: string = '';
+  @State actionDesc: string = '';
+  @State loadError: string = '';
 
   private timer: number = -1;
+  private webController: web_webview.WebviewController = new web_webview.WebviewController();
 
   private courseConfigs: CourseConfig[] = [
     {
@@ -37,27 +68,59 @@ struct Rehab3DPage {
     },
     {
       id: '2',
-      name: '高血压康复',
-      icon: '🚶',
-      iconLabel: '慢走/太极',
-      steps: ['站立准备', '抬腿迈步', '手臂摆动', '深呼吸', '缓慢收势', '放松休息'],
+      name: '膝关节康复',
+      icon: '🦵',
+      iconLabel: '膝关节训练',
+      steps: ['站立准备', '屈膝下蹲', '直腿抬高', '侧向抬腿', '伸展放松', '放松休息'],
       color: '#52C41A'
     },
     {
       id: '3',
-      name: '肌力训练',
-      icon: '🏋️',
-      iconLabel: '哑铃训练',
-      steps: ['站姿准备', '弯举动作', '推举动作', '侧平举', '放下还原', '放松休息'],
+      name: '腰椎康复',
+      icon: '🔙',
+      iconLabel: '腰椎训练',
+      steps: ['仰卧准备', '骨盆倾斜', '膝胸拉伸', '桥式运动', '猫牛式', '放松休息'],
       color: '#FA8C16'
     },
     {
       id: '4',
-      name: '平衡训练',
-      icon: '🧍',
-      iconLabel: '单腿站立',
-      steps: ['双脚并拢', '单腿抬起', '保持平衡', '换腿重复', '双脚落地', '放松休息'],
+      name: '肩周炎康复',
+      icon: '💪',
+      iconLabel: '肩部训练',
+      steps: ['站立准备', '前屈上举', '侧平举', '内旋拉伸', '外旋拉伸', '放松休息'],
       color: '#722ED1'
+    },
+    {
+      id: '5',
+      name: '平衡训练',
+      icon: '⚖️',
+      iconLabel: '平衡训练',
+      steps: ['双脚并拢', '单腿抬起', '保持平衡', '换腿重复', '双脚落地', '放松休息'],
+      color: '#13C2C2'
+    },
+    {
+      id: '6',
+      name: '帕金森康复',
+      icon: '🎯',
+      iconLabel: '协调训练',
+      steps: ['坐姿准备', '手指对捏', '手臂摆动', '踏步训练', '转身练习', '放松休息'],
+      color: '#EB2F96'
+    },
+    {
+      id: '7',
+      name: '呼吸康复',
+      icon: '🫁',
+      iconLabel: '呼吸训练',
+      steps: ['坐姿准备', '腹式呼吸', '缩唇呼吸', '深呼吸', '咳嗽训练', '放松休息'],
+      color: '#1890FF'
+    },
+    {
+      id: '8',
+      name: '中风康复',
+      icon: '🤸',
+      iconLabel: '肢体训练',
+      steps: ['卧位准备', '被动运动', '主动辅助', '主动运动', '抗阻运动', '放松休息'],
+      color: '#FA541C'
     }
   ];
 
@@ -79,6 +142,13 @@ struct Rehab3DPage {
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
     }
+
+    const params = router.getParams() as RouterParams;
+    if (params && params.courseId !== undefined) {
+      this.selectedCourseId = String(params.courseId);
+    }
+
+    this.fetchActionDetail();
   }
 
   aboutToDisappear(): void {
@@ -86,6 +156,99 @@ struct Rehab3DPage {
       clearInterval(this.timer);
       this.timer = -1;
     }
+  }
+
+  fetchActionDetail(): void {
+    this.isLoadingModel = true;
+    this.loadError = '';
+    this.modelUrl = '';
+
+    HttpUtil.get<ActionDetailResponse>(ApiConstants.REHAB_ACTION_DETAIL + this.selectedCourseId)
+      .then((response: BaseResponse<ActionDetailResponse>) => {
+        if (response.success && response.data) {
+          const detail: ActionDetailResponse = response.data;
+          if (detail.action) {
+            this.actionName = detail.action.actionName || '';
+            this.actionDesc = detail.action.actionDesc || '';
+            this.modelDifficulty = detail.difficulty || '';
+            let rawUrl: string = detail.action.model3dUrl || '';
+            rawUrl = rawUrl.replace(/[`\,]/g, '').trim();
+            if (rawUrl) {
+              this.modelUrl = rawUrl.startsWith('http') ? rawUrl : ('http://10.0.2.2:8080' + rawUrl);
+            }
+          }
+        } else {
+          this.loadError = response.message || '加载失败';
+        }
+        this.isLoadingModel = false;
+      })
+      .catch((error: Error) => {
+        console.error('加载3D模型失败:', error.message);
+        this.loadError = error.message || '网络请求失败';
+        this.isLoadingModel = false;
+      });
+  }
+
+  get3DViewerUrl(): string {
+    const fullUrl: string = this.modelUrl;
+    const htmlContent: string = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"><\/script>
+<style>body{margin:0;overflow:hidden;background:#f5f5f5;}canvas{display:block;width:100%;height:100%;}#loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:16px;color:#999;}#error{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;color:#FF4F4F;text-align:center;}</style>
+</head>
+<body>
+<div id="container" style="width:100%;height:100vh;"></div>
+<div id="loading">加载3D模型中...</div>
+<div id="error" style="display:none;"></div>
+<script>
+var scene,camera,renderer,controls,model;
+scene=new THREE.Scene();
+scene.background=new THREE.Color(0xf5f5f5);
+camera=new THREE.PerspectiveCamera(45,1,0.1,1000);
+camera.position.set(0,1,3);
+renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+document.getElementById('container').appendChild(renderer.domElement);
+controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=0.05;
+var light=new THREE.DirectionalLight(0xffffff,1);
+light.position.set(5,10,7);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+var loader=new THREE.GLTFLoader();
+loader.load('${fullUrl}',function(gltf){
+model=gltf.scene;
+var box=new THREE.Box3().setFromObject(model);
+var center=box.getCenter(new THREE.Vector3());
+var size=box.getSize(new THREE.Vector3());
+var maxDim=Math.max(size.x,size.y,size.z);
+camera.position.set(center.x,center.y+maxDim*1.5,center.z+maxDim*2.5);
+camera.lookAt(center);
+controls.target.copy(center);
+scene.add(model);
+document.getElementById('loading').style.display='none';
+animate();
+},function(progress){
+},function(err){
+document.getElementById('loading').style.display='none';
+document.getElementById('error').style.display='block';
+document.getElementById('error').innerText='模型加载失败';
+console.error(err);
+});
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
+window.addEventListener('resize',function(){var w=document.getElementById('container').clientWidth;
+var h=document.getElementById('container').clientHeight;
+camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);});
+setTimeout(function(){var w=document.getElementById('container').clientWidth;
+var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},100);
+<\/script></body></html>`;
+    return 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
   }
 
   startAnimation(): void {
@@ -168,6 +331,7 @@ struct Rehab3DPage {
   handleCourseSelect(courseId: string): void {
     this.selectedCourseId = courseId;
     this.handleReset();
+    this.fetchActionDetail();
   }
 
   build() {
@@ -202,75 +366,119 @@ struct Rehab3DPage {
           .width('100%')
           .justifyContent(FlexAlign.Start);
 
-          Column() {
-            Stack({ alignContent: Alignment.Bottom }) {
-              Column() {
-                Text(this.getCurrentCourse().icon)
-                  .fontSize(this.isElderMode ? 100 : 90)
-                  .scale({ x: this.scaleValue, y: this.scaleValue })
-                  .rotate({ angle: this.isPlaying ? Math.sin(this.rotateAngle * Math.PI / 180) * 8 : 0 })
-                  .animation({
-                    duration: 150,
-                    curve: Curve.EaseInOut,
-                    iterations: -1,
-                    playMode: PlayMode.Alternate
-                  })
-                  .margin({ bottom: GlobalTheme.getSpacingSM(this.isElderMode) });
-
-                Text(this.getCurrentCourse().iconLabel)
-                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                  .fontWeight('bold')
-                  .fontColor(this.getCurrentCourse().color)
-                  .backgroundColor(`${this.getCurrentCourse().color}15`)
-                  .padding({ left: GlobalTheme.getSpacingMD(this.isElderMode), right: GlobalTheme.getSpacingMD(this.isElderMode), top: GlobalTheme.getSpacingXS(this.isElderMode), bottom: GlobalTheme.getSpacingXS(this.isElderMode) })
-                  .borderRadius(GlobalTheme.RADIUS_MD);
-
-                Text(this.getCurrentSteps()[this.currentStep])
-                  .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-                  .fontWeight('bold')
-                  .fontColor(GlobalTheme.TEXT_PRIMARY)
-                  .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-                Text(`步骤 ${this.currentStep + 1} / ${this.getCurrentSteps().length}`)
-                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                  .fontColor(GlobalTheme.TEXT_HINT)
-                  .margin({ top: GlobalTheme.getSpacingXS(this.isElderMode) });
-              }
-              .width('100%')
-              .height('100%')
-              .justifyContent(FlexAlign.Center)
-              .alignItems(HorizontalAlign.Center);
-
-              Row() {
-                Text(`进度 ${Math.round(this.getProgressPercent())}%`)
-                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                  .fontColor('#FFFFFF')
-              }
-              .width(`${this.getProgressPercent()}%`)
-              .height(28)
-              .linearGradient({
-                angle: 90,
-                colors: [[this.getCurrentCourse().color, 0], [`${this.getCurrentCourse().color}CC`, 1]]
-              })
-              .borderRadius({ topLeft: 14, bottomLeft: 14 })
-              .justifyContent(FlexAlign.Center)
-              .alignItems(VerticalAlign.Center)
-              .animation({ duration: 400, curve: Curve.EaseOut });
+          if (this.isLoadingModel) {
+            Column() {
+              LoadingProgress()
+                .width(48)
+                .height(48)
+                .color(this.getCurrentCourse().color)
+                .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
+              Text('正在加载3D模型...')
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                .fontColor(GlobalTheme.TEXT_SECONDARY);
             }
             .width('100%')
             .height(300)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+            .backgroundColor('#FAFBFF')
+            .borderRadius(GlobalTheme.RADIUS_LG)
+            .border({ width: 2, color: `${this.getCurrentCourse().color}40` });
+          } else if (this.modelUrl) {
+            Column() {
+              Stack({ alignContent: Alignment.Bottom }) {
+                Web({ src: this.get3DViewerUrl(), controller: this.webController })
+                  .width('100%')
+                  .height(270)
+                  .backgroundColor('#F5F5F5');
+
+                Row() {
+                  Text(`进度 ${Math.round(this.getProgressPercent())}%`)
+                    .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                    .fontColor('#FFFFFF')
+                }
+                .width(`${this.getProgressPercent()}%`)
+                .height(28)
+                .linearGradient({
+                  angle: 90,
+                  colors: [[this.getCurrentCourse().color, 0], [`${this.getCurrentCourse().color}CC`, 1]]
+                })
+                .borderRadius({ topLeft: 14, bottomLeft: 14 })
+                .justifyContent(FlexAlign.Center)
+                .alignItems(VerticalAlign.Center)
+                .animation({ duration: 400, curve: Curve.EaseOut });
+              }
+              .width('100%')
+              .height(300)
+
+              Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
+                if (this.modelDifficulty) {
+                  Text(`难度：${this.modelDifficulty}`)
+                    .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                    .fontColor('#FF9800')
+                    .backgroundColor('#FFF3E0')
+                    .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                    .borderRadius(12);
+                }
+                Text('可拖拽旋转 · 双指缩放')
+                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                  .fontColor(GlobalTheme.TEXT_HINT);
+              }
+              .margin({ top: GlobalTheme.getSpacingXS(this.isElderMode) });
+            }
+            .width('100%')
+            .backgroundColor('#FAFBFF')
+            .borderRadius(GlobalTheme.RADIUS_LG)
+            .border({ width: 2, color: `${this.getCurrentCourse().color}40` })
+            .shadow({
+              radius: 20,
+              color: `${this.getCurrentCourse().color}18`,
+              offsetX: 0,
+              offsetY: 6
+            })
+            .clip(true)
+            .padding(GlobalTheme.getSpacingSM(this.isElderMode));
+          } else {
+            Column() {
+              Text('📭')
+                .fontSize(48)
+                .margin({ bottom: 10 });
+              Text('该课程暂无3D演示模型')
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                .fontColor(GlobalTheme.TEXT_SECONDARY);
+              Text('请先通过后端上传3D文件并关联到该课程')
+                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                .fontColor(GlobalTheme.TEXT_HINT)
+                .margin({ top: 4 });
+            }
+            .width('100%')
+            .height(250)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+            .backgroundColor('#FAFBFF')
+            .borderRadius(GlobalTheme.RADIUS_LG)
+            .border({ width: 2, color: `${this.getCurrentCourse().color}40` });
           }
-          .width('100%')
-          .backgroundColor('#FAFBFF')
-          .borderRadius(GlobalTheme.RADIUS_LG)
-          .border({ width: 2, color: `${this.getCurrentCourse().color}40` })
-          .shadow({
-            radius: 20,
-            color: `${this.getCurrentCourse().color}18`,
-            offsetX: 0,
-            offsetY: 6
-          })
-          .clip(true);
+
+          if (this.actionName) {
+            Column({ space: GlobalTheme.getSpacingXS(this.isElderMode) }) {
+              Text(this.actionName)
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                .fontWeight('bold')
+                .fontColor(GlobalTheme.TEXT_PRIMARY);
+              if (this.actionDesc) {
+                Text(this.actionDesc)
+                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                  .fontColor(GlobalTheme.TEXT_SECONDARY)
+                  .maxLines(2);
+              }
+            }
+            .width('100%')
+            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+            .backgroundColor(GlobalTheme.CARD_BG)
+            .borderRadius(GlobalTheme.RADIUS_MD)
+            .border({ width: 1, color: GlobalTheme.BORDER_COLOR });
+          }
 
           Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
             Button(this.isPlaying ? '⏸ 暂停' : '▶ 播放')

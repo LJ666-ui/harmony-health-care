@@ -5,6 +5,7 @@ import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { GlobalTheme } from '../global';
 import { AccessibilityConfig, FontSizeLevel, ColorMode } from '../utils/AccessibilityConfig';
+import BrowseTracker from '../utils/BrowseTracker';
 
 interface UserInfo {
   username: string;
@@ -54,7 +55,14 @@ struct HomePage {
     { id: 8, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
   ];
 
+  private recordId: number | undefined;
+
   aboutToAppear(): void {
+    // 记录浏览开始
+    BrowseTracker.recordStart('HOME', 'PAGE', 1, '首页').then(id => {
+      this.recordId = id;
+    });
+
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
@@ -72,6 +80,13 @@ struct HomePage {
     this.currentColorMode = AppStorage.get<string>('colorMode') ?? 'normal';
 
     this.loadHomeData();
+  }
+
+  aboutToDisappear(): void {
+    // 记录浏览结束
+    if (this.recordId) {
+      BrowseTracker.recordEnd(this.recordId);
+    }
   }
 
   loadHomeData(): void {

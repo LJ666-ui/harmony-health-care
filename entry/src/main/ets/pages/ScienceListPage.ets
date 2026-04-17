@@ -2,6 +2,7 @@ import { router } from '@kit.ArkUI';
 import { Footer } from '../components/Footer';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { GlobalTheme } from '../global';
+import BrowseTracker from '../utils/BrowseTracker';
 
 export interface ScienceArticle {
   id: string;
@@ -168,9 +169,23 @@ struct ScienceListPage {
     }, 1500);
   }
 
+  private recordId: number | undefined;
+
   aboutToAppear(): void {
+    // 记录浏览开始
+    BrowseTracker.recordStart('SCIENCE_LIST', 'PAGE', 2, '健康科普列表').then(id => {
+      this.recordId = id;
+    });
+
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    }
+  }
+
+  aboutToDisappear(): void {
+    // 记录浏览结束
+    if (this.recordId) {
+      BrowseTracker.recordEnd(this.recordId);
     }
   }
 

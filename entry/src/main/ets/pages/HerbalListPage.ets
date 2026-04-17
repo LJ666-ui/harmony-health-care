@@ -6,6 +6,7 @@ import { HerbalCard } from '../components/HerbalCard';
 import { HerbalFilterBar } from '../components/HerbalFilterBar';
 import { GlobalTheme } from '../global';
 import { HerbalInfo, HERBAL_CATEGORIES, filterHerbals, SORT_OPTIONS } from '../mock/herbalMock';
+import BrowseTracker from '../utils/BrowseTracker';
 
 @Entry
 @Component
@@ -22,13 +23,27 @@ struct HerbalListPage {
   @State showBackToTop: boolean = false;
   private scroller: Scroller = new Scroller();
 
+  private recordId: number | undefined;
+
   aboutToAppear(): void {
+    // 记录浏览开始
+    BrowseTracker.recordStart('HERBAL_LIST', 'PAGE', 3, '药材百科列表').then(id => {
+      this.recordId = id;
+    });
+
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
     }
     this.loadData();
+  }
+
+  aboutToDisappear(): void {
+    // 记录浏览结束
+    if (this.recordId) {
+      BrowseTracker.recordEnd(this.recordId);
+    }
   }
 
   loadData(): void {

@@ -190,7 +190,7 @@ struct RehabListPage {
                 .borderRadius(GlobalTheme.RADIUS_LG)
                 .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
                 .onClick(() => {
-                  router.pushUrl({ url: 'pages/Rehab3DPage' });
+                  router.pushUrl({ url: `pages/Rehab3DPage?courseId=${course.id}` });
                 });
               }
               .padding({ bottom: GlobalTheme.getSpacingSM(this.isElderMode) });

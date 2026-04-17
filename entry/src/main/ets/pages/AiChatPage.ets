@@ -3,6 +3,7 @@ import http from '@ohos.net.http';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { Footer } from '../components/Footer';
+import BrowseTracker from '../utils/BrowseTracker';
 
 interface ChatMessage {
   id: string;
@@ -54,12 +55,26 @@ struct AiChatPage {
     { id: '6', question: '饮食上有什么注意事项？', icon: '🥗' }
   ];
 
+  private recordId: number | undefined;
+
   aboutToAppear(): void {
+    // 记录浏览开始
+    BrowseTracker.recordStart('AI_CHAT', 'PAGE', 4, 'AI健康顾问').then(id => {
+      this.recordId = id;
+    });
+
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
 
     this.addSystemMessage('您好！我是AI健康顾问，可以帮您解答健康相关问题。请问有什么可以帮您？');
+  }
+
+  aboutToDisappear(): void {
+    // 记录浏览结束
+    if (this.recordId) {
+      BrowseTracker.recordEnd(this.recordId);
+    }
   }
 
   addMessage(type: 'user' | 'assistant' | 'system', content: string, isLoading?: boolean, isError?: boolean, errorMessage?: string): void {

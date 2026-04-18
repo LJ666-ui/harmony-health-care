@@ -3,15 +3,42 @@ import { Footer } from '../components/Footer';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { GlobalTheme } from '../global';
 import BrowseTracker from '../utils/BrowseTracker';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import { CategoryTabs } from '../components/CategoryTabs';
+
+export interface ArticleCategory {
+  id: number;
+  categoryName: string;
+  categoryCode: string;
+}
+
+export interface ArticleItem {
+  id: number;
+  title: string;
+  content: string;
+  coverImage: string;
+  publishTime: string;
+  categoryId: number;
+  author: string;
+  viewCount: number;
+}
+
+interface PageResultData<T> {
+  records: T[];
+  total: number;
+}
 
 export interface ScienceArticle {
-  id: string;
+  id: number;
   title: string;
-  coverIcon: string;
+  coverImage: string;
   summary: string;
   publishTime: string;
   category: string;
-  readCount: string;
+  readCount: number;
+  author: string;
+  categoryId: number;
 }
 
 @Entry
@@ -19,160 +46,21 @@ export interface ScienceArticle {
 struct ScienceListPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State articles: ScienceArticle[] = [
-    {
-      id: '1',
-      title: '高血压患者的日常饮食指南',
-      coverIcon: '🩺',
-      summary: '科学合理的饮食是控制血压的重要手段，本文详细介绍高血压患者应遵循的DASH饮食原则...',
-      publishTime: '2026-04-08',
-      category: '心血管健康',
-      readCount: '3.2k'
-    },
-    {
-      id: '2',
-      title: '老年人如何预防跌倒？骨科专家支招',
-      coverIcon: '🦴',
-      summary: '跌倒是老年人致伤致残的主要原因之一，了解科学的预防措施可以有效降低风险...',
-      publishTime: '2026-04-07',
-      category: '骨科健康',
-      readCount: '2.8k'
-    },
-    {
-      id: '3',
-      title: '糖尿病患者的运动处方',
-      coverIcon: '💊',
-      summary: '适度运动对血糖控制有显著效果，但需掌握正确方法和注意事项，避免低血糖发生...',
-      publishTime: '2026-04-06',
-      category: '内分泌管理',
-      readCount: '4.1k'
-    },
-    {
-      id: '4',
-      title: '颈椎病的康复训练方法',
-      coverIcon: '🧘',
-      summary: '长期低头看手机导致颈椎问题日益年轻化，这套康复训练动作每天10分钟有效缓解...',
-      publishTime: '2026-04-05',
-      category: '骨科健康',
-      readCount: '5.3k'
-    },
-    {
-      id: '5',
-      title: '如何正确测量血压？家庭自测指南',
-      coverIcon: '📊',
-      summary: '血压测量的时间、姿势、频率都会影响结果准确性，学会正确的自测方法至关重要...',
-      publishTime: '2026-04-04',
-      category: '心血管健康',
-      readCount: '3.7k'
-    },
-    {
-      id: '6',
-      title: '骨质疏松的早期信号与防治',
-      coverIcon: '🦴',
-      summary: '骨质疏松被称为"沉默的杀手"，早期发现并干预可有效预防骨折风险...',
-      publishTime: '2026-04-03',
-      category: '骨科健康',
-      readCount: '2.9k'
-    },
-    {
-      id: '7',
-      title: '老年痴呆症的预防与早期识别',
-      coverIcon: '🧠',
-      summary: '阿尔茨海默病发病率逐年上升，保持社交活动、规律运动和脑力训练可延缓认知衰退...',
-      publishTime: '2026-04-02',
-      category: '神经科',
-      readCount: '4.5k'
-    },
-    {
-      id: '8',
-      title: '合理用药：避免药物相互作用的实用指南',
-      coverIcon: '💉',
-      summary: '老年人常服用多种药物，了解药物相互作用机制，避免不良反应的发生...',
-      publishTime: '2026-04-01',
-      category: '用药安全',
-      readCount: '3.0k'
-    },
-    {
-      id: '9',
-      title: '膝关节疼痛的自我康复方案',
-      coverIcon: '🦵',
-      summary: '膝关节炎是最常见的关节疾病之一，通过肌肉强化训练和生活方式调整可明显改善症状...',
-      publishTime: '2026-03-30',
-      category: '骨科健康',
-      readCount: '3.8k'
-    },
-    {
-      id: '10',
-      title: '失眠怎么办？中医调理睡眠质量的方法',
-      coverIcon: '😴',
-      summary: '长期失眠影响身心健康，中医通过穴位按摩、药膳调理等方法帮助改善睡眠...',
-      publishTime: '2026-03-28',
-      category: '中医养生',
-      readCount: '4.2k'
-    },
-    {
-      id: '11',
-      title: '心血管疾病的风险因素筛查清单',
-      coverIcon: '❤️',
-      summary: '高血压、高血脂、糖尿病、吸烟等都是心血管疾病的危险因素，定期筛查早预防...',
-      publishTime: '2026-03-25',
-      category: '心血管健康',
-      readCount: '2.7k'
-    },
-    {
-      id: '12',
-      title: '腰椎间盘突出的保守治疗方法',
-      coverIcon: '🔙',
-      summary: '80%的腰椎间盘突出可通过保守治疗缓解，包括卧床休息、物理治疗和康复训练...',
-      publishTime: '2026-03-22',
-      category: '骨科健康',
-      readCount: '5.1k'
-    },
-    {
-      id: '13',
-      title: '疫苗接种：老年人的免疫保护伞',
-      coverIcon: '💉',
-      summary: '流感疫苗、肺炎球菌疫苗、带状疱疹疫苗等对老年人尤为重要，建议按时接种...',
-      publishTime: '2026-03-20',
-      category: '疾病预防',
-      readCount: '3.4k'
-    },
-    {
-      id: '14',
-      title: '如何选择合适的助行器？康复师教你选',
-      coverIcon: '🚶',
-      summary: '拐杖、助行器、轮椅各有适用场景，根据身体状况和需求选择最合适的辅助器具...',
-      publishTime: '2026-03-18',
-      category: '康复护理',
-      readCount: '2.5k'
-    },
-    {
-      id: '15',
-      title: '春季过敏季：过敏性鼻炎的应对策略',
-      coverIcon: '🌸',
-      summary: '花粉、尘螨等过敏原在春季活跃，通过环境控制和药物治疗可有效缓解症状...',
-      publishTime: '2026-03-15',
-      category: '耳鼻喉科',
-      readCount: '3.6k'
-    }
-  ];
-
+  @State articles: ScienceArticle[] = [];
+  @State categories: ArticleCategory[] = [];
+  @State categoryNames: string[] = ['全部'];
+  @State currentCategoryIndex: number = 0;
   @State isRefreshing: boolean = false;
-
-  handleRefresh(): void {
-    this.isRefreshing = true;
-
-    setTimeout(() => {
-      this.isRefreshing = false;
-
-      ToastUtil.refreshSuccess();
-    }, 1500);
-  }
+  @State isLoading: boolean = false;
+  @State searchKeyword: string = '';
+  @State currentPage: number = 1;
+  @State pageSize: number = 20;
+  @State hasMore: boolean = true;
+  @State isSearching: boolean = false;
 
   private recordId: number | undefined = undefined;
 
   aboutToAppear(): void {
-    // 记录浏览开始
     BrowseTracker.recordStart('SCIENCE_LIST', 'PAGE', 2, '健康科普列表').then(id => {
       this.recordId = id;
     });
@@ -180,13 +68,168 @@ struct ScienceListPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+
+    this.loadCategories();
+    this.loadArticles();
   }
 
   aboutToDisappear(): void {
-    // 记录浏览结束
     if (this.recordId) {
       BrowseTracker.recordEnd(this.recordId);
     }
+  }
+
+  async loadCategories(): Promise<void> {
+    try {
+      const response: BaseResponse<ArticleCategory[]> = await HttpUtil.get<ArticleCategory[]>(ApiConstants.ARTICLE_CATEGORIES_PARENT);
+      if (response.success && response.data) {
+        const mappedCategories: ArticleCategory[] = [];
+        for (let i = 0; i < response.data.length; i++) {
+          const item = response.data[i];
+          const cat: ArticleCategory = {
+            id: item.id,
+            categoryName: item.categoryName ? item.categoryName : item.categoryCode,
+            categoryCode: item.categoryCode
+          };
+          mappedCategories.push(cat);
+        }
+        this.categories = mappedCategories;
+
+        const names: string[] = ['全部'];
+        for (let j = 0; j < this.categories.length; j++) {
+          names.push(this.categories[j].categoryName);
+        }
+        this.categoryNames = names;
+      }
+    } catch (e) {
+      console.error('加载分类失败:', e);
+    }
+  }
+
+  async loadArticles(isRefresh: boolean = false): Promise<void> {
+    if (this.isLoading) return;
+
+    this.isLoading = true;
+
+    if (isRefresh) {
+      this.currentPage = 1;
+      this.hasMore = true;
+    }
+
+    try {
+      let url: string = ApiConstants.ARTICLE_PAGE + '?page=' + this.currentPage + '&size=' + this.pageSize;
+
+      if (this.isSearching && this.searchKeyword.trim()) {
+        url = url + '&title=' + encodeURIComponent(this.searchKeyword.trim());
+      } else if (this.currentCategoryIndex > 0 && this.categories.length > 0) {
+        const selectedCategory: ArticleCategory = this.categories[this.currentCategoryIndex - 1];
+        url = url + '&parentCategoryName=' + encodeURIComponent(selectedCategory.categoryName);
+      }
+
+      const response: BaseResponse<PageResultData<ArticleItem>> = await HttpUtil.get<PageResultData<ArticleItem>>(url);
+
+      if (response.success && response.data) {
+        const data: PageResultData<ArticleItem> = response.data;
+        const list: ArticleItem[] = data.records || [];
+
+        const mappedArticles: ScienceArticle[] = [];
+        for (let k = 0; k < list.length; k++) {
+          const item: ArticleItem = list[k];
+          const article: ScienceArticle = {
+            id: item.id,
+            title: item.title ? item.title : '',
+            coverImage: item.coverImage ? item.coverImage : '',
+            summary: this.extractSummary(item.content),
+            publishTime: this.formatDate(item.publishTime),
+            category: this.getCategoryName(item.categoryId),
+            readCount: item.viewCount ? item.viewCount : 0,
+            author: item.author ? item.author : '健康专家',
+            categoryId: item.categoryId
+          };
+          mappedArticles.push(article);
+        }
+
+        if (isRefresh) {
+          this.articles = mappedArticles;
+        } else {
+          this.articles = this.articles.concat(mappedArticles);
+        }
+
+        const total: number = data.total ? data.total : 0;
+        this.hasMore = this.articles.length < total;
+      }
+    } catch (e) {
+      console.error('加载文章失败:', e);
+      ToastUtil.showSuccess('加载失败，请重试');
+    } finally {
+      this.isLoading = false;
+      this.isRefreshing = false;
+    }
+  }
+
+  extractSummary(content: string): string {
+    if (!content) return '暂无摘要...';
+    const plainText: string = content.replace(/[#*\[\]()]/g, '').replace(/\n/g, ' ').trim();
+    return plainText.length > 80 ? plainText.substring(0, 80) + '...' : plainText;
+  }
+
+  formatDate(dateStr: string | Date): string {
+    if (!dateStr) return '';
+    const date: Date = new Date(dateStr);
+    const year: number = date.getFullYear();
+    const month: string = String(date.getMonth() + 1).padStart(2, '0');
+    const day: string = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  getCategoryName(categoryId: number): string {
+    for (let i = 0; i < this.categories.length; i++) {
+      const cat: ArticleCategory = this.categories[i];
+      if (cat.id === categoryId) {
+        return cat.categoryName;
+      }
+    }
+    return '健康科普';
+  }
+
+  handleRefresh(): void {
+    this.isRefreshing = true;
+    this.loadArticles(true).then(() => {
+      ToastUtil.refreshSuccess();
+    });
+  }
+
+  handleSearch(): void {
+    if (!this.searchKeyword.trim()) {
+      this.isSearching = false;
+      this.loadArticles(true);
+      return;
+    }
+
+    this.isSearching = true;
+    this.currentPage = 1;
+    this.hasMore = true;
+    this.articles = [];
+    this.loadArticles();
+  }
+
+  handleClearSearch(): void {
+    this.searchKeyword = '';
+    this.isSearching = false;
+    this.loadArticles(true);
+  }
+
+  onCategoryChange(index: number, category: string): void {
+    this.currentCategoryIndex = index;
+    this.isSearching = false;
+    this.searchKeyword = '';
+    this.loadArticles(true);
+  }
+
+  loadMore(): void {
+    if (!this.hasMore || this.isLoading) return;
+    this.currentPage++;
+    this.loadArticles();
   }
 
   build() {
@@ -217,21 +260,117 @@ struct ScienceListPage {
       .padding({ left: 16, right: 16 })
       .justifyContent(FlexAlign.Center)
 
+      Column({ space: 10 }) {
+        Row({ space: 10 }) {
+          Column() {
+            Row({ space: 6 }) {
+              Text(this.isSearching ? '\u{1F50D}' : '\u{1F50E}')
+                .fontSize(16)
+              TextInput({ text: this.searchKeyword, placeholder: '搜索健康知识...' })
+                .layoutWeight(1)
+                .height(36)
+                .fontSize(this.isElderMode ? 16 : 14)
+                .backgroundColor('transparent')
+                .border({ width: 0 })
+                .onChange((value: string) => {
+                  this.searchKeyword = value;
+                })
+                .onSubmit(() => {
+                  this.handleSearch();
+                })
+              if (this.searchKeyword) {
+                Text('\u2715')
+                  .fontSize(14)
+                  .fontColor('#999999')
+                  .padding(6)
+                  .onClick(() => {
+                    this.handleClearSearch();
+                  })
+              }
+            }
+            .width('100%')
+            .padding({ left: 12, right: 8 })
+          }
+          .layoutWeight(1)
+          .height(40)
+          .backgroundColor('#F5F7FA')
+          .borderRadius(20)
+
+          Button('搜索')
+            .height(36)
+            .fontSize(14)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#1677FF')
+            .borderRadius(18)
+            .onClick(() => {
+              this.handleSearch();
+            });
+        }
+        .width('100%')
+        .padding({ left: 14, right: 14 })
+
+        CategoryTabs({
+          categories: this.categoryNames,
+          currentIndex: this.currentCategoryIndex,
+          onTabChange: (index: number, category: string) => {
+            this.onCategoryChange(index, category);
+          }
+        });
+      }
+      .width('100%')
+      .backgroundColor('#F5F7FA')
+
       Scroll() {
         Column() {
-          List() {
-              ForEach(this.articles, (article: ScienceArticle) => {
+          if (this.isLoading && this.articles.length === 0) {
+            Column() {
+              LoadingProgress()
+                .width(40)
+                .height(40)
+                .color('#1677FF');
+              Text('正在加载...')
+                .fontSize(14)
+                .fontColor('#666666')
+                .margin({ top: 12 });
+            }
+            .width('100%')
+            .height(300)
+            .justifyContent(FlexAlign.Center);
+          } else if (this.articles.length === 0) {
+            Column() {
+              Text('\u{1F4ED}')
+                .fontSize(48)
+                .margin({ bottom: 12 });
+              Text(this.isSearching ? '未找到相关文章' : '暂无文章内容')
+                .fontSize(15)
+                .fontColor('#999999');
+            }
+            .width('100%')
+            .height(300)
+            .justifyContent(FlexAlign.Center);
+          } else {
+            List() {
+              ForEach(this.articles, (article: ScienceArticle, index: number) => {
                 ListItem() {
                   Row() {
-                    Column() {
-                      Text(article.coverIcon).fontSize(36)
+                    if (article.coverImage.length > 0 && article.coverImage.indexOf('http') === 0) {
+                      Image(article.coverImage)
+                        .width(64)
+                        .height(64)
+                        .objectFit(ImageFit.Cover)
+                        .borderRadius(12)
+                        .alt('\u{1F4F0}')
+                    } else {
+                      Column() {
+                        Text('\u{1F4F0}').fontSize(28)
+                      }
+                      .width(64)
+                      .height(64)
+                      .backgroundColor('#F0F5FF')
+                      .borderRadius(12)
+                      .justifyContent(FlexAlign.Center)
+                      .alignItems(HorizontalAlign.Center)
                     }
-                    .width(64)
-                    .height(64)
-                    .backgroundColor('#F0F5FF')
-                    .borderRadius(12)
-                    .justifyContent(FlexAlign.Center)
-                    .alignItems(HorizontalAlign.Center)
 
                     Column() {
                       Text(article.title)
@@ -254,7 +393,7 @@ struct ScienceListPage {
                           .padding({ left: 8, right: 8, top: 3, bottom: 3 })
                           .borderRadius(4)
 
-                        Text(`👁 ${article.readCount}`)
+                        Text('\u{1F441} ' + (article.readCount >= 1000 ? (article.readCount / 1000).toFixed(1) + 'k' : article.readCount.toString()))
                           .fontSize(11)
                           .fontColor('#999999')
                           .margin({ left: 12 })
@@ -280,15 +419,46 @@ struct ScienceListPage {
                 .onClick(() => {
                   router.pushUrl({
                     url: 'pages/ScienceDetailPage',
-                    params: { articleId: article.id }
+                    params: { articleId: article.id.toString(), articleTitle: article.title }
                   });
                 });
-              }, (article: ScienceArticle) => article.id);
+              }, (article: ScienceArticle) => article.id.toString() + '_' + article.title);
+
+              if (this.hasMore && this.articles.length > 0) {
+                ListItem() {
+                  Row() {
+                    if (this.isLoading) {
+                      LoadingProgress()
+                        .width(20)
+                        .height(20)
+                        .color('#1677FF');
+                      Text('加载中...')
+                        .fontSize(13)
+                        .fontColor('#666666')
+                        .margin({ left: 8 });
+                    } else {
+                      Text('- 上拉加载更多 -')
+                        .fontSize(13)
+                        .fontColor('#999999')
+                        .onClick(() => {
+                          this.loadMore();
+                        });
+                    }
+                  }
+                  .width('100%')
+                  .height(50)
+                  .justifyContent(FlexAlign.Center);
+                }
+              }
             }
             .width('100%')
             .height(0)
-            .layoutWeight(1);
+            .layoutWeight(1)
+            .onReachEnd(() => {
+              this.loadMore();
+            });
           }
+        }
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
       }

@@ -5,6 +5,7 @@ import { EfficacyTag } from '../components/EfficacyTag';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HerbalInfo, getHerbalById } from '../mock/herbalMock';
+import BrowseTracker from '../utils/BrowseTracker';
 
 @Entry
 @Component
@@ -14,6 +15,7 @@ struct HerbalDetailPage {
   @State herbal: HerbalInfo | undefined = undefined;
   @State isCollected: boolean = false;
   @State showBackToTop: boolean = false;
+  @State recordId: number = 0;
   private scroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
@@ -29,7 +31,16 @@ struct HerbalDetailPage {
       this.herbal = getHerbalById(herbalId);
       if (this.herbal) {
         this.isCollected = this.herbal.isCollected;
+        BrowseTracker.recordStart('HERBAL_DETAIL', 'HERBAL', Number(herbalId), this.herbal.name).then((id: number) => {
+          this.recordId = id;
+        });
       }
+    }
+  }
+
+  aboutToDisappear(): void {
+    if (this.recordId > 0) {
+      BrowseTracker.recordEnd(this.recordId);
     }
   }
 

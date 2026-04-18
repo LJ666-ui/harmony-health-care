@@ -169,7 +169,7 @@ struct ScienceListPage {
     }, 1500);
   }
 
-  private recordId: number | undefined;
+  private recordId: number | undefined = undefined;
 
   aboutToAppear(): void {
     // 记录浏览开始

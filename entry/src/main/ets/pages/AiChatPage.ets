@@ -55,7 +55,7 @@ struct AiChatPage {
     { id: '6', question: '饮食上有什么注意事项？', icon: '🥗' }
   ];
 
-  private recordId: number | undefined;
+  private recordId: number | undefined = undefined;
 
   aboutToAppear(): void {
     // 记录浏览开始

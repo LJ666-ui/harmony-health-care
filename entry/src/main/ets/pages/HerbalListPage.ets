@@ -23,7 +23,7 @@ struct HerbalListPage {
   @State showBackToTop: boolean = false;
   private scroller: Scroller = new Scroller();
 
-  private recordId: number | undefined;
+  private recordId: number | undefined = undefined;
 
   aboutToAppear(): void {
     // 记录浏览开始

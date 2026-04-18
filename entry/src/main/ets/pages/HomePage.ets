@@ -55,7 +55,7 @@ struct HomePage {
     { id: 8, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
   ];
 
-  private recordId: number | undefined;
+  private recordId: number | undefined = undefined;
 
   aboutToAppear(): void {
     // 记录浏览开始

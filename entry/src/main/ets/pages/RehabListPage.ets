@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import BrowseTracker from '../utils/BrowseTracker';
 
 export interface RehabCourse {
   id: string;
@@ -20,6 +21,7 @@ export interface RehabCourse {
 @Component
 struct RehabListPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @State recordId: number = 0;
 
   @State courses: RehabCourse[] = [
     {
@@ -129,6 +131,15 @@ struct RehabListPage {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+    }
+    BrowseTracker.recordStart('REHAB_LIST', 'PAGE', 6, '康复课程列表').then(id => {
+      this.recordId = id;
+    });
+  }
+
+  aboutToDisappear(): void {
+    if (this.recordId > 0) {
+      BrowseTracker.recordEnd(this.recordId);
     }
   }
 

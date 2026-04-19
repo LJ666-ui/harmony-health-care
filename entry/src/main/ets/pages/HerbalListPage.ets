@@ -5,7 +5,6 @@ import { CategoryTabs } from '../components/CategoryTabs';
 import { HerbalCard } from '../components/HerbalCard';
 import { HerbalFilterBar } from '../components/HerbalFilterBar';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
-import { HERBAL_CATEGORIES, HerbalInfo as MockHerbalInfo } from '../mock/herbalMock';
 import BrowseTracker from '../utils/BrowseTracker';
 
 interface BackendHerbalItem {
@@ -29,7 +28,37 @@ interface BackendHerbalItem {
   imageUrl?: string;
 }
 
-type HerbalInfo = MockHerbalInfo;
+interface HerbalInfo {
+  id: string;
+  name: string;
+  alias: string[];
+  category: string;
+  nature: string;
+  taste: string;
+  meridian: string[];
+  efficacy: string[];
+  indications: string[];
+  usage: string;
+  dosage: string;
+  caution: string;
+  image: string;
+}
+
+const HERBAL_CATEGORIES: string[] = [
+  '全部',
+  '根茎类',
+  '全草类',
+  '果实/种子类',
+  '动物类',
+  '枝叶/树皮类',
+  '花类',
+  '藻菌地衣类',
+  '其他'
+];
+
+const NATURE_TYPES: string[] = ['寒', '热', '温', '凉', '平'];
+
+const TASTE_TYPES: string[] = ['甘', '苦', '辛', '酸', '咸', '淡', '涩'];
 
 @Entry
 @Component
@@ -52,7 +81,6 @@ struct HerbalListPage {
   private recordId: number | undefined = undefined;
 
   aboutToAppear(): void {
-    // 记录浏览开始
     BrowseTracker.recordStart('HERBAL_LIST', 'PAGE', 3, '药材百科列表').then(id => {
       this.recordId = id;
     });
@@ -66,91 +94,96 @@ struct HerbalListPage {
   }
 
   aboutToDisappear(): void {
-    // 记录浏览结束
     if (this.recordId) {
       BrowseTracker.recordEnd(this.recordId);
     }
   }
 
+  convertBackendItem(item: BackendHerbalItem): HerbalInfo {
+    return {
+      id: String(item.id),
+      name: item.name,
+      alias: item.alias ? item.alias.split(',') : [],
+      category: item.category || '',
+      nature: item.nature || '',
+      taste: item.taste || '',
+      meridian: item.meridian ? item.meridian.split(',').map((s: string) => s.trim()) : [],
+      efficacy: item.efficacySummary ? item.efficacySummary.split(/[,，;；]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0) : [],
+      indications: item.indication ? item.indication.split(/[,，;；]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0) : [],
+      usage: item.usageDosage || '',
+      dosage: item.usageDosage || '',
+      caution: item.contraindication || '',
+      image: item.imageUrl || ''
+    };
+  }
+
   async loadData(): Promise<void> {
     this.isLoading = true;
     try {
-      let url: string = '/herbal/page';
-      const params: Record<string, string | number | boolean> = {};
-      params['page'] = this.currentPage;
-      params['size'] = 20;
+      console.log('=== [药材百科] 开始加载数据 ===');
+      console.log('[药材百科] 搜索关键词:', this.searchKey);
+      console.log('[药材百科] 当前页码:', this.currentPage);
 
       if (this.searchKey && this.searchKey.trim() !== '') {
+        console.log('[药材百科] 使用搜索接口');
         const searchParams: Record<string, string | number | boolean> = {};
         searchParams['keyword'] = this.searchKey;
         const searchRes: BaseResponse<BackendHerbalItem[]> = await HttpUtil.get<BackendHerbalItem[]>('/herbal/search', searchParams);
-        if (searchRes.success && searchRes.data) {
-          const dataList: BackendHerbalItem[] = searchRes.data;
+        console.log('[药材百科] 搜索响应:', JSON.stringify(searchRes));
+        if (searchRes.success && searchRes.data && Array.isArray(searchRes.data)) {
+          console.log('[药材百科] 搜索结果数量:', searchRes.data.length);
           const tempList: HerbalInfo[] = [];
-          for (let i: number = 0; i < dataList.length; i++) {
-            const item: BackendHerbalItem = dataList[i];
-            const herbalItem: MockHerbalInfo = {
-              id: String(item.id),
-              name: item.name,
-              alias: item.alias ? item.alias.split(',') : [],
-              category: item.category || '',
-              nature: item.nature || '',
-              taste: item.taste || '',
-              meridian: item.meridian ? item.meridian.split(',') : [],
-              efficacy: item.efficacySummary ? item.efficacySummary.split(',') : [],
-              indications: item.indication ? item.indication.split(',') : [],
-              usage: item.usageDosage || '',
-              dosage: item.usageDosage || '',
-              caution: item.contraindication || '',
-              image: item.imageUrl || ''
-            } as MockHerbalInfo;
-            tempList.push(herbalItem);
+          for (let i: number = 0; i < searchRes.data.length; i++) {
+            tempList.push(this.convertBackendItem(searchRes.data[i]));
           }
           this.allHerbalList = tempList;
+        } else {
+          console.log('[药材百科] 搜索失败或无数据, success:', searchRes.success, 'message:', searchRes.message);
         }
       } else {
-        const response: BaseResponse<Object> = await HttpUtil.get<Object>(url, params);
+        console.log('[药材百科] 使用分页接口');
+        const params: Record<string, string | number | boolean> = {};
+        params['page'] = this.currentPage;
+        params['size'] = 20;
+
+        const response: BaseResponse<Object> = await HttpUtil.get<Object>('/herbal/page', params);
+        console.log('[药材百科] 分页响应:', JSON.stringify(response));
         if (response.success && response.data) {
           const pageData: Record<string, Object> = response.data as Record<string, Object>;
-          if (pageData['records']) {
+          console.log('[药材百科] 分页数据:', JSON.stringify(pageData));
+          if (pageData['records'] && Array.isArray(pageData['records'])) {
             const records: BackendHerbalItem[] = pageData['records'] as BackendHerbalItem[];
+            console.log('[药材百科] 记录数量:', records.length);
             const tempList: HerbalInfo[] = [];
             for (let i: number = 0; i < records.length; i++) {
-              const item: BackendHerbalItem = records[i];
-              const herbalItem: HerbalInfo = {
-                id: String(item.id),
-                name: item.name,
-                alias: item.alias ? item.alias.split(',') : [],
-                category: item.category || '',
-                nature: item.nature || '',
-                taste: item.taste || '',
-                meridian: item.meridian ? item.meridian.split(',') : [],
-                efficacy: item.efficacySummary ? item.efficacySummary.split(',') : [],
-                indications: item.indication ? item.indication.split(',') : [],
-                usage: item.usageDosage || '',
-                dosage: item.usageDosage || '',
-                caution: item.contraindication || '',
-                image: item.imageUrl || ''
-              } as HerbalInfo;
-              tempList.push(herbalItem);
+              tempList.push(this.convertBackendItem(records[i]));
             }
             this.allHerbalList = tempList;
             const pagesValue: Object | undefined = pageData['pages'];
             this.totalPages = typeof pagesValue === 'number' ? pagesValue : 1;
+            console.log('[药材百科] 总页数:', this.totalPages);
+          } else {
+            console.log('[药材百科] 分页数据中没有records字段');
           }
+        } else {
+          console.log('[药材百科] 分页请求失败或无数据, success:', response.success, 'message:', response.message);
         }
       }
 
+      console.log('[药材百科] 最终加载的药材数量:', this.allHerbalList.length);
       this.filterData();
       this.isLoading = false;
+      console.log('=== [药材百科] 数据加载完成 ===');
     } catch (error) {
-      console.error('加载药材数据失败:', error);
+      console.error('=== [药材百科] 加载药材数据失败 ===');
+      console.error('[药材百科] 错误详情:', error);
       this.isLoading = false;
     }
   }
 
   filterData(): void {
     let result: HerbalInfo[] = [];
+
     for (let i: number = 0; i < this.allHerbalList.length; i++) {
       result.push(this.allHerbalList[i]);
     }
@@ -202,7 +235,7 @@ struct HerbalListPage {
 
   handleSearch(value: string): void {
     this.searchKey = value;
-    this.filterData();
+    this.loadData();
   }
 
   handleNatureChange(nature: string): void {
@@ -248,7 +281,7 @@ struct HerbalListPage {
     this.selectedTaste = '';
     this.currentSortIndex = 0;
     this.searchKey = '';
-    this.filterData();
+    this.loadData();
   }
 
   build() {

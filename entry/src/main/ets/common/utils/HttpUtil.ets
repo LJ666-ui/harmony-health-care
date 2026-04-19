@@ -62,6 +62,8 @@ export class HttpUtil {
         fullUrl += '?' + queryParams;
       }
 
+      console.log('[HttpUtil] GET 请求URL:', fullUrl);
+
       const token = HttpUtil.getToken();
 
       const options: HttpRequestOptions = {
@@ -72,6 +74,7 @@ export class HttpUtil {
         }
       };
       const response = await HttpUtil.fetch(fullUrl, options);
+      console.log('[HttpUtil] 响应状态码:', response.responseCode);
 
       return await HttpUtil.handleResponse<T>(response);
     } catch (error) {

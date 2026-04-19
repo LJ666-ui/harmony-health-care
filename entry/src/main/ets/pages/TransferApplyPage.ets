@@ -100,7 +100,10 @@ struct TransferApplyPage {
           return distanceA - distanceB;
         });
 
-        this.filteredHospitals = [...this.hospitals];
+        this.filteredHospitals = [];
+        for (let i = 0; i < this.hospitals.length; i++) {
+          this.filteredHospitals.push(this.hospitals[i]);
+        }
         this.isLoading = false;
       } catch (error) {
         console.error('加载医院数据失败:', error);
@@ -162,9 +165,14 @@ struct TransferApplyPage {
   }
 
   handleSearch(): void {
-    this.filteredHospitals = this.hospitals.filter(hospital => {
-      return hospital.name.includes(this.searchKeyword) || hospital.address.includes(this.searchKeyword);
-    });
+    let filtered: Hospital[] = [];
+    for (let i = 0; i < this.hospitals.length; i++) {
+      const hospital = this.hospitals[i];
+      if (hospital.name.includes(this.searchKeyword) || hospital.address.includes(this.searchKeyword)) {
+        filtered.push(hospital);
+      }
+    }
+    this.filteredHospitals = filtered;
   }
 
   handleHospitalSelect(hospital: Hospital): void {
@@ -276,7 +284,10 @@ struct TransferApplyPage {
                 buttonText: '清除搜索',
                 onAdd: () => {
                   this.searchKeyword = '';
-                  this.filteredHospitals = [...this.hospitals];
+                  this.filteredHospitals = [];
+                  for (let i = 0; i < this.hospitals.length; i++) {
+                    this.filteredHospitals.push(this.hospitals[i]);
+                  }
                 }
               });
             } else {
@@ -439,7 +450,7 @@ struct TransferApplyPage {
                   .fontSize(AccessibilityConfig.getFontSizeSmall())
                   .fontColor(AccessibilityConfig.getTextSecondary())
                   .width(80);
-                Text(this.selectedHospital?.name || '')
+                Text(this.selectedHospital ? this.selectedHospital.name : '')
                   .fontSize(AccessibilityConfig.getFontSizeSmall())
                   .fontColor(AccessibilityConfig.getTextPrimary())
                   .flexGrow(1);
@@ -533,7 +544,7 @@ struct TransferApplyPage {
                           .fontSize(AccessibilityConfig.getFontSizeBody())
                           .fontWeight('bold')
                           .fontColor(AccessibilityConfig.getTextPrimary());
-                        Text(`提交日期: ${application.submitDate}`)
+                        Text('提交日期: ' + application.submitDate)
                           .fontSize(AccessibilityConfig.getFontSizeSmall())
                           .fontColor(AccessibilityConfig.getTextSecondary());
                       }
@@ -655,14 +666,14 @@ struct TransferApplyPage {
                   .fontColor(AccessibilityConfig.getTextPrimary())
                   .margin({ bottom: AccessibilityConfig.getSpacingSM() });
 
-                Text(`提交日期: ${this.selectedApplication.submitDate}`)
+                Text('提交日期: ' + this.selectedApplication.submitDate)
                   .fontSize(AccessibilityConfig.getFontSizeSmall())
                   .fontColor(AccessibilityConfig.getTextPrimary());
-                Text(`转院原因: ${this.selectedApplication.reason}`)
+                Text('转院原因: ' + this.selectedApplication.reason)
                   .fontSize(AccessibilityConfig.getFontSizeSmall())
                   .fontColor(AccessibilityConfig.getTextPrimary());
                 if (this.selectedApplication.customReason) {
-                  Text(`详细说明: ${this.selectedApplication.customReason}`)
+                  Text('详细说明: ' + this.selectedApplication.customReason)
                     .fontSize(AccessibilityConfig.getFontSizeSmall())
                     .fontColor(AccessibilityConfig.getTextPrimary());
                 }
@@ -687,7 +698,7 @@ struct TransferApplyPage {
                   .fontColor(this.getStatusColor(this.selectedApplication.status));
 
                 if (this.selectedApplication.reviewOpinion) {
-                  Text(`审核意见: ${this.selectedApplication.reviewOpinion}`)
+                  Text('审核意见: ' + this.selectedApplication.reviewOpinion)
                     .fontSize(AccessibilityConfig.getFontSizeSmall())
                     .fontColor(AccessibilityConfig.getTextPrimary())
                     .margin({ top: AccessibilityConfig.getSpacingSM() });

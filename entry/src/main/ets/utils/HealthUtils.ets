@@ -11,19 +11,19 @@ export function formatDate(date: Date, format: string = 'YYYY-MM-DD'): string {
 
   switch (format) {
     case 'YYYY-MM-DD':
-      return `${year}-${month}-${day}`;
+      return '' + year + '-' + month + '-' + day;
     case 'YYYY/MM/DD':
-      return `${year}/${month}/${day}`;
+      return '' + year + '/' + month + '/' + day;
     case 'MM-DD':
-      return `${month}-${day}`;
+      return '' + month + '-' + day;
     case 'HH:mm':
-      return `${hours}:${minutes}`;
+      return '' + hours + ':' + minutes;
     case 'YYYY-MM-DD HH:mm':
-      return `${year}-${month}-${day} ${hours}:${minutes}`;
+      return '' + year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
     case 'YYYY-MM-DD HH:mm:ss':
-      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      return '' + year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
     default:
-      return `${year}-${month}-${day}`;
+      return '' + year + '-' + month + '-' + day;
   }
 }
 
@@ -184,7 +184,7 @@ export function getBloodSugarCategory(value: number, type: 'fasting' | 'postpran
 
 // 格式化血压值
 export function formatBloodPressure(systolic: number, diastolic: number): string {
-  return `${systolic}/${diastolic}`;
+  return '' + systolic + '/' + diastolic;
 }
 
 // 解析血压值
@@ -237,7 +237,8 @@ export function calculateHealthScore(metrics: {
   
   // 血压评分
   if (metrics.bloodPressure) {
-    const { systolic, diastolic } = metrics.bloodPressure;
+    const systolic = metrics.bloodPressure.systolic;
+    const diastolic = metrics.bloodPressure.diastolic;
     if (systolic >= 140 || diastolic >= 90) {
       score -= 20;
     } else if (systolic >= 130 || diastolic >= 85) {
@@ -312,11 +313,11 @@ export function formatTimeAgo(timestamp: number): string {
   if (minutes < 1) {
     return '刚刚';
   } else if (minutes < 60) {
-    return `${minutes}分钟前`;
+    return minutes + '分钟前';
   } else if (hours < 24) {
-    return `${hours}小时前`;
+    return hours + '小时前';
   } else if (days < 7) {
-    return `${days}天前`;
+    return days + '天前';
   } else {
     return formatDate(new Date(timestamp), 'YYYY-MM-DD');
   }
@@ -365,14 +366,24 @@ export function getHealthMetricUnit(type: string): string {
 
 // 验证手机号
 export function validatePhone(phone: string): boolean {
-  const phoneRegex = /^1[3-9]\d{9}$/;
-  return phoneRegex.test(phone);
+  if (!phone || phone.length !== 11) return false;
+  if (phone.charAt(0) !== '1') return false;
+  const secondChar = phone.charAt(1);
+  if (secondChar < '3' || secondChar > '9') return false;
+  for (let i = 2; i < 11; i++) {
+    if (phone.charAt(i) < '0' || phone.charAt(i) > '9') return false;
+  }
+  return true;
 }
 
 // 验证邮箱
 export function validateEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  if (!email || email.length === 0) return false;
+  const atIndex = email.indexOf('@');
+  if (atIndex <= 0 || atIndex >= email.length - 1) return false;
+  const dotIndex = email.lastIndexOf('.');
+  if (dotIndex <= atIndex + 1 || dotIndex >= email.length - 1) return false;
+  return true;
 }
 
 // 深拷贝对象

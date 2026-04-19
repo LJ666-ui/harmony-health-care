@@ -96,126 +96,123 @@ const therapyNodes: KnowledgeNode[] = [
   { id: 't3', name: '太极拳', type: 'Therapy', description: '养生功法', detail: '中国传统拳术，具有健身养生功效', radius: 17 }
 ];
 
+let edgeIdCounter: number = 1;
+
+function addEdge(edges: KnowledgeEdge[], sourceId: string, targetId: string, relation: KnowledgeRelationType, label: string, weight?: number): void {
+  edges.push({
+    id: 'e' + edgeIdCounter++,
+    sourceId: sourceId,
+    targetId: targetId,
+    relation: relation,
+    label: label,
+    weight: weight || 1
+  });
+}
+
 function buildEdges(): KnowledgeEdge[] {
   const edges: KnowledgeEdge[] = [];
-  let edgeId = 1;
 
-  const addEdge = (sourceId: string, targetId: string, relation: KnowledgeRelationType, label: string, weight: number = 1) => {
-    edges.push({
-      id: 'e' + edgeId++,
-      sourceId,
-      targetId,
-      relation,
-      label,
-      weight
-    });
-  };
+  addEdge(edges, 'd1', 's1', 'HAS_SYMPTOM', '引起', 2);
+  addEdge(edges, 'd1', 's2', 'HAS_SYMPTOM', '引起', 2);
+  addEdge(edges, 'd1', 's7', 'HAS_SYMPTOM', '引起', 1);
+  addEdge(edges, 'd1', 'h1', 'RELIEVED_BY_HERBAL', '缓解', 2);
+  addEdge(edges, 'd1', 'h2', 'RELIEVED_BY_HERBAL', '缓解', 2);
+  addEdge(edges, 'd1', 'h6', 'RELIEVED_BY_HERBAL', '缓解', 2);
+  addEdge(edges, 'd1', 'p3', 'RECOMMENDS_THERAPY', '推荐', 2);
+  addEdge(edges, 'd1', 't1', 'RECOMMENDS_THERAPY', '辅助', 1);
 
-  addEdge('d1', 's1', 'HAS_SYMPTOM', '引起', 2);
-  addEdge('d1', 's2', 'HAS_SYMPTOM', '引起', 2);
-  addEdge('d1', 's7', 'HAS_SYMPTOM', '引起', 1);
-  addEdge('d1', 'h1', 'RELIEVED_BY_HERBAL', '缓解', 2);
-  addEdge('d1', 'h2', 'RELIEVED_BY_HERBAL', '缓解', 2);
-  addEdge('d1', 'h6', 'RELIEVED_BY_HERBAL', '缓解', 2);
-  addEdge('d1', 'p3', 'RECOMMENDS_THERAPY', '推荐', 2);
-  addEdge('d1', 't1', 'RECOMMENDS_THERAPY', '辅助', 1);
+  addEdge(edges, 'd2', 's5', 'HAS_SYMPTOM', '引起', 2);
+  addEdge(edges, 'd2', 's6', 'HAS_SYMPTOM', '引起', 2);
+  addEdge(edges, 'd2', 's4', 'HAS_SYMPTOM', '引起', 1);
+  addEdge(edges, 'd2', 'h1', 'RELIEVED_BY_HERBAL', '调节', 2);
+  addEdge(edges, 'd2', 'h11', 'RELIEVED_BY_HERBAL', '滋补', 1);
+  addEdge(edges, 'd2', 'p1', 'RECOMMENDS_THERAPY', '调理', 2);
 
-  addEdge('d2', 's5', 'HAS_SYMPTOM', '引起', 2);
-  addEdge('d2', 's6', 'HAS_SYMPTOM', '引起', 2);
-  addEdge('d2', 's4', 'HAS_SYMPTOM', '引起', 1);
-  addEdge('d2', 'h1', 'RELIEVED_BY_HERBAL', '调节', 2);
-  addEdge('d2', 'h11', 'RELIEVED_BY_HERBAL', '滋补', 1);
-  addEdge('d2', 'p1', 'RECOMMENDS_THERAPY', '调理', 2);
+  addEdge(edges, 'd3', 's3', 'HAS_SYMPTOM', '典型症状', 2);
+  addEdge(edges, 'd3', 's7', 'HAS_SYMPTOM', '典型症状', 2);
+  addEdge(edges, 'd3', 'h2', 'RELIEVED_BY_HERBAL', '改善', 2);
+  addEdge(edges, 'd3', 'h7', 'RELIEVED_BY_HERBAL', '活血', 2);
+  addEdge(edges, 'd3', 'h8', 'RELIEVED_BY_HERBAL', '行气', 1);
+  addEdge(edges, 'd3', 'p3', 'RECOMMENDS_THERAPY', '主方', 3);
+  addEdge(edges, 'd3', 't2', 'RECOMMENDS_THERAPY', '辅助', 1);
 
-  addEdge('d3', 's3', 'HAS_SYMPTOM', '典型症状', 2);
-  addEdge('d3', 's7', 'HAS_SYMPTOM', '典型症状', 2);
-  addEdge('d3', 'h2', 'RELIEVED_BY_HERBAL', '改善', 2);
-  addEdge('d3', 'h7', 'RELIEVED_BY_HERBAL', '活血', 2);
-  addEdge('d3', 'h8', 'RELIEVED_BY_HERBAL', '行气', 1);
-  addEdge('d3', 'p3', 'RECOMMENDS_THERAPY', '主方', 3);
-  addEdge('d3', 't2', 'RECOMMENDS_THERAPY', '辅助', 1);
+  addEdge(edges, 'd4', 's1', 'HAS_SYMPTOM', '伴发', 1);
+  addEdge(edges, 'd4', 's4', 'HAS_SYMPTOM', '主要表现', 2);
+  addEdge(edges, 'd4', 'h3', 'RELIEVED_BY_HERBAL', '安神', 2);
+  addEdge(edges, 'd4', 'h4', 'RELIEVED_BY_HERBAL', '助眠', 2);
+  addEdge(edges, 'd4', 'h9', 'RELIEVED_BY_HERBAL', '健脾', 1);
+  addEdge(edges, 'd4', 'p2', 'RECOMMENDS_THERAPY', '主方', 3);
+  addEdge(edges, 'd4', 't1', 'RECOMMENDS_THERAPY', '有效', 2);
 
-  addEdge('d4', 's1', 'HAS_SYMPTOM', '伴发', 1);
-  addEdge('d4', 's4', 'HAS_SYMPTOM', '主要表现', 2);
-  addEdge('d4', 'h3', 'RELIEVED_BY_HERBAL', '安神', 2);
-  addEdge('d4', 'h4', 'RELIEVED_BY_HERBAL', '助眠', 2);
-  addEdge('d4', 'h9', 'RELIEVED_BY_HERBAL', '健脾', 1);
-  addEdge('d4', 'p2', 'RECOMMENDS_THERAPY', '主方', 3);
-  addEdge('d4', 't1', 'RECOMMENDS_THERAPY', '有效', 2);
+  addEdge(edges, 'd5', 's8', 'HAS_SYMPTOM', '主要症状', 2);
+  addEdge(edges, 'd5', 'h5', 'RELIEVED_BY_HERBAL', '消食', 2);
+  addEdge(edges, 'd5', 'h9', 'RELIEVED_BY_HERBAL', '和胃', 1);
+  addEdge(edges, 'd5', 'p4', 'RECOMMENDS_THERAPY', '主方', 2);
 
-  addEdge('d5', 's8', 'HAS_SYMPTOM', '主要症状', 2);
-  addEdge('d5', 'h5', 'RELIEVED_BY_HERBAL', '消食', 2);
-  addEdge('d5', 'h9', 'RELIEVED_BY_HERBAL', '和胃', 1);
-  addEdge('d5', 'p4', 'RECOMMENDS_THERAPY', '主方', 2);
+  addEdge(edges, 'd6', 's9', 'HAS_SYMPTOM', '典型症状', 2);
+  addEdge(edges, 'd6', 's1', 'HAS_SYMPTOM', '伴发', 1);
+  addEdge(edges, 'd6', 'h2', 'RELIEVED_BY_HERBAL', '活血', 1);
+  addEdge(edges, 'd6', 'h16', 'RELIEVED_BY_HERBAL', '强筋', 2);
+  addEdge(edges, 'd6', 'h17', 'RELIEVED_BY_HERBAL', '通络', 1);
+  addEdge(edges, 'd6', 't2', 'RECOMMENDS_THERAPY', '推荐', 2);
+  addEdge(edges, 'd6', 't3', 'RECOMMENDS_THERAPY', '锻炼', 2);
 
-  addEdge('d6', 's9', 'HAS_SYMPTOM', '典型症状', 2);
-  addEdge('d6', 's1', 'HAS_SYMPTOM', '伴发', 1);
-  addEdge('d6', 'h2', 'RELIEVED_BY_HERBAL', '活血', 1);
-  addEdge('d6', 'h16', 'RELIEVED_BY_HERBAL', '强筋', 2);
-  addEdge('d6', 'h17', 'RELIEVED_BY_HERBAL', '通络', 1);
-  addEdge('d6', 't2', 'RECOMMENDS_THERAPY', '推荐', 2);
-  addEdge('d6', 't3', 'RECOMMENDS_THERAPY', '锻炼', 2);
+  addEdge(edges, 'd7', 's10', 'HAS_SYMPTOM', '主要症状', 2);
+  addEdge(edges, 'd7', 's4', 'HAS_SYMPTOM', '伴发', 1);
+  addEdge(edges, 'd7', 'h16', 'RELIEVED_BY_HERBAL', '强筋骨', 2);
+  addEdge(edges, 'd7', 'h17', 'RELIEVED_BY_HERBAL', '引血下行', 1);
+  addEdge(edges, 'd7', 'h18', 'RELIEVED_BY_HERBAL', '祛风湿', 2);
+  addEdge(edges, 'd7', 'h19', 'RELIEVED_BY_HERBAL', '止痛', 1);
+  addEdge(edges, 'd7', 'p5', 'RECOMMENDS_THERAPY', '主方', 2);
+  addEdge(edges, 'd7', 't2', 'RECOMMENDS_THERAPY', '辅助', 2);
 
-  addEdge('d7', 's10', 'HAS_SYMPTOM', '主要症状', 2);
-  addEdge('d7', 's4', 'HAS_SYMPTOM', '伴发', 1);
-  addEdge('d7', 'h16', 'RELIEVED_BY_HERBAL', '强筋骨', 2);
-  addEdge('d7', 'h17', 'RELIEVED_BY_HERBAL', '引血下行', 1);
-  addEdge('d7', 'h18', 'RELIEVED_BY_HERBAL', '祛风湿', 2);
-  addEdge('d7', 'h19', 'RELIEVED_BY_HERBAL', '止痛', 1);
-  addEdge('d7', 'p5', 'RECOMMENDS_THERAPY', '主方', 2);
-  addEdge('d7', 't2', 'RECOMMENDS_THERAPY', '辅助', 2);
+  addEdge(edges, 'd8', 's11', 'HAS_SYMPTOM', '主要症状', 2);
+  addEdge(edges, 'd8', 's12', 'HAS_SYMPTOM', '常见症状', 2);
+  addEdge(edges, 'd8', 's4', 'HAS_SYMPTOM', '伴发', 1);
+  addEdge(edges, 'd8', 'h13', 'RELIEVED_BY_HERBAL', '清热', 2);
+  addEdge(edges, 'd8', 'h14', 'RELIEVED_BY_HERBAL', '解表', 2);
+  addEdge(edges, 'd8', 'h19', 'RELIEVED_BY_HERBAL', '祛风', 1);
+  addEdge(edges, 'd8', 'h20', 'RELIEVED_BY_HERBAL', '发汗', 2);
+  addEdge(edges, 'd8', 'p6', 'RECOMMENDS_THERAPY', '主方', 3);
 
-  addEdge('d8', 's11', 'HAS_SYMPTOM', '主要症状', 2);
-  addEdge('d8', 's12', 'HAS_SYMPTOM', '常见症状', 2);
-  addEdge('d8', 's4', 'HAS_SYMPTOM', '伴发', 1);
-  addEdge('d8', 'h13', 'RELIEVED_BY_HERBAL', '清热', 2);
-  addEdge('d8', 'h14', 'RELIEVED_BY_HERBAL', '解表', 2);
-  addEdge('d8', 'h19', 'RELIEVED_BY_HERBAL', '祛风', 1);
-  addEdge('d8', 'h20', 'RELIEVED_BY_HERBAL', '发汗', 2);
-  addEdge('d8', 'p6', 'RECOMMENDS_THERAPY', '主方', 3);
+  addEdge(edges, 'p1', 'h1', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p1', 'h11', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p1', 'h9', 'PART_OF_PRESCRIPTION', '含', 1);
+  addEdge(edges, 'p2', 'h1', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p2', 'h4', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p2', 'h9', 'PART_OF_PRESCRIPTION', '含', 1);
+  addEdge(edges, 'p3', 'h2', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p3', 'h7', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p3', 'h8', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p4', 'h5', 'COMBINES_WITH', '配伍', 1);
+  addEdge(edges, 'p4', 'h9', 'COMBINES_WITH', '配伍', 1);
+  addEdge(edges, 'p5', 'h18', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p5', 'h19', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p6', 'h13', 'PART_OF_PRESCRIPTION', '含', 2);
+  addEdge(edges, 'p6', 'h12', 'PART_OF_PRESCRIPTION', '含', 2);
 
-  addEdge('p1', 'h1', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p1', 'h11', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p1', 'h9', 'PART_OF_PRESCRIPTION', '含', 1);
-  addEdge('p2', 'h1', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p2', 'h4', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p2', 'h9', 'PART_OF_PRESCRIPTION', '含', 1);
-  addEdge('p3', 'h2', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p3', 'h7', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p3', 'h8', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p4', 'h5', 'COMBINES_WITH', '配伍', 1);
-  addEdge('p4', 'h9', 'COMBINES_WITH', '配伍', 1);
-  addEdge('p5', 'h18', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p5', 'h19', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p6', 'h13', 'PART_OF_PRESCRIPTION', '含', 2);
-  addEdge('p6', 'h12', 'PART_OF_PRESCRIPTION', '含', 2);
-
-  addEdge('h1', 'h10', 'COMBINES_WITH', '常配', 2);
-  addEdge('h2', 'h8', 'COMBINES_WITH', '常配', 2);
-  addEdge('h7', 'h8', 'COMBINES_WITH', '常配', 2);
-  addEdge('h14', 'h15', 'COMBINES_WITH', '常配', 2);
+  addEdge(edges, 'h1', 'h10', 'COMBINES_WITH', '常配', 2);
+  addEdge(edges, 'h2', 'h8', 'COMBINES_WITH', '常配', 2);
+  addEdge(edges, 'h7', 'h8', 'COMBINES_WITH', '常配', 2);
+  addEdge(edges, 'h14', 'h15', 'COMBINES_WITH', '常配', 2);
 
   return edges;
 }
 
+function concatArrays<T>(arr1: T[], arr2: T[]): T[] {
+  const result: T[] = [];
+  for (let i = 0; i < arr1.length; i++) { result.push(arr1[i]); }
+  for (let j = 0; j < arr2.length; j++) { result.push(arr2[j]); }
+  return result;
+}
+
 export function buildKnowledgeGraphMock(): KnowledgeGraphData {
   const allNodes: KnowledgeNode[] = [];
-  
-  for (let i: number = 0; i < diseaseNodes.length; i++) {
-    allNodes.push(diseaseNodes[i]);
-  }
-  for (let i: number = 0; i < symptomNodes.length; i++) {
-    allNodes.push(symptomNodes[i]);
-  }
-  for (let i: number = 0; i < herbalNodes.length; i++) {
-    allNodes.push(herbalNodes[i]);
-  }
-  for (let i: number = 0; i < prescriptionNodes.length; i++) {
-    allNodes.push(prescriptionNodes[i]);
-  }
-  for (let i: number = 0; i < therapyNodes.length; i++) {
-    allNodes.push(therapyNodes[i]);
-  }
+  allNodes = concatArrays(allNodes, diseaseNodes);
+  allNodes = concatArrays(allNodes, symptomNodes);
+  allNodes = concatArrays(allNodes, herbalNodes);
+  allNodes = concatArrays(allNodes, prescriptionNodes);
+  allNodes = concatArrays(allNodes, therapyNodes);
 
   const edges: KnowledgeEdge[] = buildEdges();
 
@@ -223,7 +220,7 @@ export function buildKnowledgeGraphMock(): KnowledgeGraphData {
 
   return {
     nodes: allNodes,
-    edges,
+    edges: edges,
     centerId: 'd1',
     summary: summary,
     explanation: '该图谱展示了中医领域疾病-症状-药材-方剂-疗法之间的关联关系，可用于健康知识学习和智能问答。',
@@ -231,66 +228,89 @@ export function buildKnowledgeGraphMock(): KnowledgeGraphData {
   };
 }
 
-export function exploreKnowledgeGraph(question: string, maxNodes: number = 50): KnowledgeGraphData {
+function filterNodesByIds(allNodes: KnowledgeNode[], ids: string[]): KnowledgeNode[] {
+  const result: KnowledgeNode[] = [];
+  for (let i = 0; i < allNodes.length; i++) {
+    for (let j = 0; j < ids.length; j++) {
+      if (allNodes[i].id === ids[j]) {
+        result.push(allNodes[i]);
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+function filterEdgesByNodeIds(edges: KnowledgeEdge[], nodeIds: string[]): KnowledgeEdge[] {
+  const result: KnowledgeEdge[] = [];
+  for (let i = 0; i < edges.length; i++) {
+    let hasSource = false;
+    let hasTarget = false;
+    for (let j = 0; j < nodeIds.length; j++) {
+      if (edges[i].sourceId === nodeIds[j]) { hasSource = true; }
+      if (edges[i].targetId === nodeIds[j]) { hasTarget = true; }
+    }
+    if (hasSource && hasTarget) {
+      result.push(edges[i]);
+    }
+  }
+  return result;
+}
+
+function extractUniqueRelations(edges: KnowledgeEdge[]): string[] {
+  const seen: Record<string, boolean> = {};
+  const result: string[] = [];
+  for (let i = 0; i < edges.length; i++) {
+    const r = edges[i].relation;
+    if (!seen[r]) {
+      seen[r] = true;
+      result.push(r);
+    }
+  }
+  return result;
+}
+
+function findDiseaseNode(nodes: KnowledgeNode[]): KnowledgeNode | undefined {
+  for (let i = 0; i < nodes.length; i++) {
+    if (nodes[i].type === 'Disease') { return nodes[i]; }
+  }
+  return nodes.length > 0 ? nodes[0] : undefined;
+}
+
+export function exploreKnowledgeGraph(question: string, maxNodes?: number): KnowledgeGraphData {
+  const limit: number = maxNodes || 50;
   const fullGraph: KnowledgeGraphData = buildKnowledgeGraphMock();
-  
   const questionLower: string = question.toLowerCase();
   let filteredNodes: KnowledgeNode[] = [];
-  const nodeIds: Set<string> = new Set<string>();
+  const nodeIds: string[] = [];
 
-  if (questionLower.includes('高血压') || questionLower.includes('血压')) {
-    const temp1: KnowledgeNode[] = fullGraph.nodes.filter(n => 
-      n.id === 'd1' || ['s1','s2','s7','h1','h2','h6','p3','t1'].includes(n.id)
-    );
-    for (let i: number = 0; i < temp1.length; i++) {
-      filteredNodes.push(temp1[i]);
-    }
-  } else if (questionLower.includes('失眠') || questionLower.includes('睡眠')) {
-    const temp2: KnowledgeNode[] = fullGraph.nodes.filter(n => 
-      n.id === 'd4' || ['s1','s4','h3','h4','h9','p2','t1'].includes(n.id)
-    );
-    for (let i: number = 0; i < temp2.length; i++) {
-      filteredNodes.push(temp2[i]);
-    }
-  } else if (questionLower.includes('胃炎') || questionLower.includes('胃')) {
-    const temp3: KnowledgeNode[] = fullGraph.nodes.filter(n => 
-      n.id === 'd5' || ['s8','h5','h9','p4'].includes(n.id)
-    );
-    for (let i: number = 0; i < temp3.length; i++) {
-      filteredNodes.push(temp3[i]);
-    }
-  } else if (questionLower.includes('颈椎') || questionLower.includes('颈')) {
-    const temp4: KnowledgeNode[] = fullGraph.nodes.filter(n => 
-      n.id === 'd6' || ['s9','h2','h16','h17','t2','t3'].includes(n.id)
-    );
-    for (let i: number = 0; i < temp4.length; i++) {
-      filteredNodes.push(temp4[i]);
-    }
-  } else if (questionLower.includes('感冒') || questionLower.includes('咳嗽')) {
-    const temp5: KnowledgeNode[] = fullGraph.nodes.filter(n => 
-      n.id === 'd8' || ['s11','s12','h13','h14','h19','h20','p6'].includes(n.id)
-    );
-    for (let i: number = 0; i < temp5.length; i++) {
-      filteredNodes.push(temp5[i]);
-    }
+  if (questionLower.indexOf('高血压') >= 0 || questionLower.indexOf('血压') >= 0) {
+    const allowedIds = ['d1','s1','s2','s7','h1','h2','h6','p3','t1'];
+    filteredNodes = filterNodesByIds(fullGraph.nodes, allowedIds);
+  } else if (questionLower.indexOf('失眠') >= 0 || questionLower.indexOf('睡眠') >= 0) {
+    const allowedIds = ['d4','s1','s4','h3','h4','h9','p2','t1'];
+    filteredNodes = filterNodesByIds(fullGraph.nodes, allowedIds);
+  } else if (questionLower.indexOf('胃炎') >= 0 || questionLower.indexOf('胃') >= 0) {
+    const allowedIds = ['d5','s8','h5','h9','p4'];
+    filteredNodes = filterNodesByIds(fullGraph.nodes, allowedIds);
+  } else if (questionLower.indexOf('颈椎') >= 0 || questionLower.indexOf('颈') >= 0) {
+    const allowedIds = ['d6','s9','h2','h16','h17','t2','t3'];
+    filteredNodes = filterNodesByIds(fullGraph.nodes, allowedIds);
+  } else if (questionLower.indexOf('感冒') >= 0 || questionLower.indexOf('咳嗽') >= 0) {
+    const allowedIds = ['d8','s11','s12','h13','h14','h19','h20','p6'];
+    filteredNodes = filterNodesByIds(fullGraph.nodes, allowedIds);
   } else {
-    filteredNodes = fullGraph.nodes.slice(0, maxNodes);
+    filteredNodes = fullGraph.nodes.slice(0, limit);
   }
 
-  filteredNodes.forEach((n: KnowledgeNode) => nodeIds.add(n.id));
-  const filteredEdges: KnowledgeEdge[] = fullGraph.edges.filter(e => 
-    nodeIds.has(e.sourceId) && nodeIds.has(e.targetId)
-  );
-
-  const centerNode: KnowledgeNode | undefined = filteredNodes.find(n => n.type === 'Disease');
-  
-  const relationSet: Set<string> = new Set<string>();
-  for (let i: number = 0; i < filteredEdges.length; i++) {
-    relationSet.add(filteredEdges[i].relation);
+  for (let i = 0; i < filteredNodes.length; i++) {
+    nodeIds.push(filteredNodes[i].id);
   }
-  const relationTypes: string[] = [];
-  relationSet.forEach((r: string) => relationTypes.push(r));
-  
+
+  const filteredEdges: KnowledgeEdge[] = filterEdgesByNodeIds(fullGraph.edges, nodeIds);
+  const centerNode: KnowledgeNode | undefined = findDiseaseNode(filteredNodes);
+  const relationTypes: string[] = extractUniqueRelations(filteredEdges);
+
   const cid: string = centerNode ? centerNode.id : (filteredNodes.length > 0 ? filteredNodes[0].id : '');
   const summary2: string = '根据"' + question + '"找到' + filteredNodes.length + '个相关节点和' + filteredEdges.length + '条关系';
   const explanation2: string = '已为您展开与"' + question + '"相关的中医知识子图，包含疾病、症状、药材、方剂等多维度信息。可点击节点查看详情，双击展开更多关联内容。';
@@ -309,19 +329,19 @@ export function buildKnowledgeSummaryText(graph: KnowledgeGraphData): string {
   if (!graph || !graph.nodes || graph.nodes.length === 0) {
     return '暂无知识图谱数据';
   }
-  
+
   let diseaseCount: number = 0;
   let symptomCount: number = 0;
   let herbalCount: number = 0;
   let prescriptionCount: number = 0;
   let therapyCount: number = 0;
-  
+
   for (let i: number = 0; i < graph.nodes.length; i++) {
-    if (graph.nodes[i].type === 'Disease') diseaseCount++;
-    else if (graph.nodes[i].type === 'Symptom') symptomCount++;
-    else if (graph.nodes[i].type === 'Herbal') herbalCount++;
-    else if (graph.nodes[i].type === 'Prescription') prescriptionCount++;
-    else if (graph.nodes[i].type === 'Therapy') therapyCount++;
+    if (graph.nodes[i].type === 'Disease') { diseaseCount++; }
+    else if (graph.nodes[i].type === 'Symptom') { symptomCount++; }
+    else if (graph.nodes[i].type === 'Herbal') { herbalCount++; }
+    else if (graph.nodes[i].type === 'Prescription') { prescriptionCount++; }
+    else if (graph.nodes[i].type === 'Therapy') { therapyCount++; }
   }
 
   return '当前图谱包含：' + diseaseCount + '种疾病、' + symptomCount + '个症状、' + herbalCount + '味药材、' + prescriptionCount + '个方剂、' + therapyCount + '种疗法，共' + graph.edges.length + '条关联关系';

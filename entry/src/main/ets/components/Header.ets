@@ -43,7 +43,7 @@ export struct Header {
         .textAlign(TextAlign.Center)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .accessibilityText(`页面标题：${this.title}`);
+        .accessibilityText('页面标题：' + this.title);
 
       if (this.rightAction) {
         Column()
@@ -53,7 +53,7 @@ export struct Header {
           .justifyContent(FlexAlign.Center)
           .accessibilityText(this.rightAction.label)
           .onClick(() => {
-            if (this.rightAction?.onClick) {
+            if (this.rightAction && this.rightAction.onClick) {
               this.rightAction.onClick();
             }
           }) {

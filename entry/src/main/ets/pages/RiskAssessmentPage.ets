@@ -47,6 +47,14 @@ struct RiskAssessmentPage {
     medicalHistory: []
   };
 
+  private createStepArray(): number[] {
+    const arr: number[] = [];
+    for (let i = 0; i < this.totalSteps; i++) {
+      arr.push(i);
+    }
+    return arr;
+  }
+
   aboutToAppear() {
     // 接收从健康记录页面传递过来的数据
     const params = router.getParams();
@@ -161,7 +169,7 @@ struct RiskAssessmentPage {
             .width('85%')
             .margin({ bottom: 24 });
           if (this.lastAssessment) {
-            Text(`上次评估：${this.lastAssessment} (${this.lastResult})`)
+            Text('上次评估：' + this.lastAssessment + ' (' + this.lastResult + ')')
               .fontSize(14)
               .fontColor('#999999')
               .margin({ bottom: 24 });
@@ -185,7 +193,7 @@ struct RiskAssessmentPage {
         // 进度条
         Column() {
           Row() {
-            ForEach(Array.from({ length: this.totalSteps }), (_: number, index: number) => {
+            ForEach(this.createStepArray(), (_: number, index: number) => {
               Column() {
                 Stack() {
                   Circle()
@@ -321,7 +329,7 @@ struct RiskAssessmentPage {
                         this.assessmentData.weight = value;
                         this.calculateBMI();
                       });
-                    Text(`BMI: ${this.assessmentData.bmi || '--'}`)
+                    Text('BMI: ' + (this.assessmentData.bmi || '--'))
                       .height(48)
                       .padding({ left: 12, right: 12 })
                       .backgroundColor('#F5F5F5')

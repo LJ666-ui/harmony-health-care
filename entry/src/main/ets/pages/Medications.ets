@@ -134,7 +134,7 @@ struct Medications {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
     this.filteredMedications = this.medications;
   }
@@ -149,20 +149,33 @@ struct Medications {
   }
 
   filterMedications(): void {
-    let result = [...this.medications];
+    let result: MedicationInfo[] = [];
+    for (let i = 0; i < this.medications.length; i++) {
+      result.push(this.medications[i]);
+    }
     
     // 搜索筛选
     if (this.searchText.trim()) {
       const searchLower = this.searchText.toLowerCase();
-      result = result.filter(med => 
-        med.name.toLowerCase().includes(searchLower) || 
-        med.genericName.toLowerCase().includes(searchLower)
-      );
+      let searchResult: MedicationInfo[] = [];
+      for (let j = 0; j < result.length; j++) {
+        const med = result[j];
+        if (med.name.toLowerCase().includes(searchLower) || med.genericName.toLowerCase().includes(searchLower)) {
+          searchResult.push(med);
+        }
+      }
+      result = searchResult;
     }
     
     // 分类筛选
     if (this.selectedCategory !== '全部') {
-      result = result.filter(med => med.category === this.selectedCategory);
+      let categoryResult: MedicationInfo[] = [];
+      for (let k = 0; k < result.length; k++) {
+        if (result[k].category === this.selectedCategory) {
+          categoryResult.push(result[k]);
+        }
+      }
+      result = categoryResult;
     }
     
     this.filteredMedications = result;
@@ -279,20 +292,20 @@ struct Medications {
                     .margin({ right: 8 });
                 }
                 .margin({ bottom: 8 });
-                Text(`规格: ${med.dosage}`)
+                Text('规格: ' + med.dosage)
                   .fontSize(14)
                   .fontColor('#666666')
                   .margin({ bottom: 4 });
-                Text(`适应症: ${med.indications.substring(0, 50)}...`)
+                Text('适应症: ' + med.indications.substring(0, 50) + '...')
                   .fontSize(12)
                   .fontColor('#999999')
                   .margin({ bottom: 4 });
-                Text(`用法: ${med.usage}`)
+                Text('用法: ' + med.usage)
                   .fontSize(12)
                   .fontColor('#666666')
                   .margin({ bottom: 4 });
                 Row() {
-                  Text(`价格: ${med.price}`)
+                  Text('价格: ' + med.price)
                     .fontSize(12)
                     .fontColor('#FF4757')
                     .fontWeight(FontWeight.Bold);

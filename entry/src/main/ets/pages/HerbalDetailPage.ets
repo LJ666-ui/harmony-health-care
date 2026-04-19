@@ -68,7 +68,7 @@ struct HerbalDetailPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
 
     const params: Record<string, Object> | undefined = router.getParams() as Record<string, Object> | undefined;
@@ -76,7 +76,7 @@ struct HerbalDetailPage {
       this.herbalId = params['herbalId'] as string;
 
       try {
-        const response: BaseResponse<Object> = await HttpUtil.get<Object>(`/herbal/info/${this.herbalId}`);
+        const response: BaseResponse<Object> = await HttpUtil.get<Object>('/herbal/info/' + this.herbalId);
         if (response.success && response.data) {
           const data: Record<string, Object> = response.data as Record<string, Object>;
           this.herbal = {
@@ -119,7 +119,7 @@ struct HerbalDetailPage {
     if (this.herbal && this.herbalId) {
       try {
         if (!this.isCollected) {
-          const response: BaseResponse<Object> = await HttpUtil.post<Object>(`/herbal/${this.herbalId}/collect`);
+          const response: BaseResponse<Object> = await HttpUtil.post<Object>('/herbal/' + this.herbalId + '/collect');
           if (response.success) {
             this.isCollected = true;
             ToastUtil.operationSuccess();
@@ -127,7 +127,7 @@ struct HerbalDetailPage {
             ToastUtil.showError(response.message || '收藏失败', 2000);
           }
         } else {
-          const deleteRes: BaseResponse<Object> = await HttpUtil.delete<Object>(`/herbal/${this.herbalId}/collect`);
+          const deleteRes: BaseResponse<Object> = await HttpUtil.delete<Object>('/herbal/' + this.herbalId + '/collect');
           if (deleteRes.success) {
             this.isCollected = false;
             ToastUtil.showInfo('已取消收藏');
@@ -232,8 +232,8 @@ struct HerbalDetailPage {
 
               this.buildInfoSection(
                 '别名',
-                this.herbal!.alias.length > 0
-                  ? this.herbal!.alias.map((alias: string) => `「${alias}」`).join('')
+                this.herbal && this.herbal.alias.length > 0
+                  ? this.formatAlias(this.herbal.alias)
                   : '暂无别名记录',
                 '📝'
               );
@@ -242,7 +242,7 @@ struct HerbalDetailPage {
 
               this.buildInfoSection(
                 '归经',
-                this.herbal!.meridian.join(' → '),
+                this.herbal ? this.joinArray(this.herbal.meridian, ' → ') : '',
                 '🎯'
               );
 
@@ -599,5 +599,24 @@ struct HerbalDetailPage {
       '肉苁蓉': '🌵'
     };
     return iconMap[name] || '🌿';
+  }
+
+  private formatAlias(aliases: string[]): string {
+    let result = '';
+    for (let i = 0; i < aliases.length; i++) {
+      result = result + '「' + aliases[i] + '」';
+    }
+    return result;
+  }
+
+  private joinArray(arr: string[], separator: string): string {
+    let result = '';
+    for (let i = 0; i < arr.length; i++) {
+      if (i > 0) {
+        result = result + separator;
+      }
+      result = result + arr[i];
+    }
+    return result;
   }
 }

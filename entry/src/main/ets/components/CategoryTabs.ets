@@ -35,7 +35,7 @@ export struct CategoryTabs {
               this.onTabChange(index, category);
             }
           });
-        }, (category: string, index: number) => `${category}_${index}`);
+        }, (category: string, index: number) => '' + category + '_' + index);
       }
       .height('100%');
     }

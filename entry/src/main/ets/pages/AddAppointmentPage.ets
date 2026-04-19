@@ -26,14 +26,14 @@ struct AddAppointmentPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
 
     const today = new Date();
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
-      this.dates.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
+      this.dates.push('' + date.getFullYear() + '-' + this.padZero(date.getMonth() + 1) + '-' + this.padZero(date.getDate()));
     }
     if (this.dates.length > 0) {
       this.selectedDate = this.dates[0];
@@ -83,7 +83,12 @@ struct AddAppointmentPage {
     }
 
     const storedAppointments = AppStorage.get<Appointment[]>('appointments');
-    const appointments: Appointment[] = storedAppointments ? [...storedAppointments] : [];
+    const appointments: Appointment[] = [];
+    if (storedAppointments) {
+      for (let i = 0; i < storedAppointments.length; i++) {
+        appointments.push(storedAppointments[i]);
+      }
+    }
 
     const newAppointment: Appointment = {
       id: Date.now().toString(),
@@ -93,7 +98,7 @@ struct AddAppointmentPage {
       date: this.selectedDate,
       time: this.selectedTime,
       status: 'pending',
-      location: `${this.selectedDepartment}门诊`,
+      location: this.selectedDepartment + '门诊',
       notes: '',
       avatarColor: '#1677FF',
       createdAt: Date.now(),
@@ -288,5 +293,9 @@ struct AddAppointmentPage {
     .width('100%')
     .height('100%')
     .backgroundColor(GlobalTheme.BG_COLOR);
+  }
+
+  private padZero(num: number): string {
+    return num < 10 ? '0' + num : '' + num;
   }
 }

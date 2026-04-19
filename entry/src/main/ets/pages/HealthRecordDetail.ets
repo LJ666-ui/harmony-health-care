@@ -146,7 +146,7 @@ struct HealthRecordDetail {
               .fontSize(18)
               .fontColor('#333333')
               .margin({ bottom: 16 });
-            Text(`${this.record.value} ${this.record.unit}`)
+            Text('' + this.record.value + ' ' + this.record.unit)
               .fontSize(36)
               .fontWeight('bold')
               .fontColor(this.record.color)
@@ -177,7 +177,7 @@ struct HealthRecordDetail {
                 .fontSize(14)
                 .fontColor('#666666')
                 .width(80);
-              Text(`${this.record.date} ${this.record.time}`)
+              Text('' + this.record.date + ' ' + this.record.time)
                 .fontSize(14)
                 .fontColor('#333333')
                 .layoutWeight(1);
@@ -227,7 +227,7 @@ struct HealthRecordDetail {
                   .fontSize(14)
                   .fontColor('#666666')
                   .width(80);
-                Text(`${this.previousRecord.value} ${this.previousRecord.unit}`)
+                Text('' + this.previousRecord.value + ' ' + this.previousRecord.unit)
                   .fontSize(14)
                   .fontColor('#333333')
                   .layoutWeight(1);
@@ -239,7 +239,7 @@ struct HealthRecordDetail {
                   .fontSize(14)
                   .fontColor('#666666')
                   .width(80);
-                Text(`${this.previousRecord.date} ${this.previousRecord.time}`)
+                Text('' + this.previousRecord.date + ' ' + this.previousRecord.time)
                   .fontSize(14)
                   .fontColor('#333333')
                   .layoutWeight(1);

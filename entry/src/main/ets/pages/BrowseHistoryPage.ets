@@ -3,6 +3,7 @@ import RdbHelper from '../utils/RdbHelper';
 import { TABLE_BROWSE_HISTORY, COLUMN_CREATE_TIME } from '../utils/DatabaseConstants';
 import { BrowseHistoryItem } from '../models/LocalModels';
 import { StatPieChart } from '../components/StatPieChart';
+import { BrowseItem } from '../components/BrowseItem';
 
 interface ChartData {
   type: string;
@@ -31,7 +32,7 @@ struct BrowseHistoryPage {
 
   async loadHistoryData(): Promise<void> {
     try {
-      const resultSet = await RdbHelper.query(`SELECT * FROM ${TABLE_BROWSE_HISTORY} ORDER BY ${COLUMN_CREATE_TIME} DESC`);
+      const resultSet = await RdbHelper.query('SELECT * FROM ' + TABLE_BROWSE_HISTORY + ' ORDER BY ' + COLUMN_CREATE_TIME + ' DESC');
       
       const history: BrowseHistoryItem[] = [];
       while (resultSet.goToNextRow()) {
@@ -58,7 +59,8 @@ struct BrowseHistoryPage {
   groupHistoryByDate(): void {
     const groups: Record<string, BrowseHistoryItem[]> = {};
     
-    this.historyData.forEach(record => {
+    for (let i = 0; i < this.historyData.length; i++) {
+      const record = this.historyData[i];
       if (record.create_time) {
         const date = new Date(record.create_time).toLocaleDateString();
         if (!groups[date]) {
@@ -66,12 +68,16 @@ struct BrowseHistoryPage {
         }
         groups[date].push(record);
       }
-    });
+    }
     
-    this.groupedHistory = Object.entries(groups).map(([date, records]) => ({
-      date,
-      records
-    }));
+    const keys: string[] = Object.keys(groups);
+    this.groupedHistory = [];
+    for (let j = 0; j < keys.length; j++) {
+      this.groupedHistory.push({
+        date: keys[j],
+        records: groups[keys[j]]
+      });
+    }
   }
 
   calculateStatistics(): void {
@@ -84,25 +90,34 @@ struct BrowseHistoryPage {
     weekStart.setDate(weekStart.getDate() - 7);
     const weekStartTimestamp = weekStart.getTime();
     
-    this.todayCount = this.historyData.filter(item => 
-      item.create_time && item.create_time >= todayStartTimestamp
-    ).length;
+    let todayCountNum = 0;
+    for (let i = 0; i < this.historyData.length; i++) {
+      if (this.historyData[i].create_time && this.historyData[i].create_time >= todayStartTimestamp) {
+        todayCountNum++;
+      }
+    }
+    this.todayCount = todayCountNum;
     
-    this.weekDuration = this.historyData
-      .filter(item => item.create_time && item.create_time >= weekStartTimestamp)
-      .reduce((total, item) => total + (item.browse_duration || 0), 0);
+    let weekDurationTotal = 0;
+    for (let j = 0; j < this.historyData.length; j++) {
+      if (this.historyData[j].create_time && this.historyData[j].create_time >= weekStartTimestamp) {
+        weekDurationTotal = weekDurationTotal + (this.historyData[j].browse_duration || 0);
+      }
+    }
+    this.weekDuration = weekDurationTotal;
   }
 
   generateChartData(): void {
     const typeCounts: Record<string, number> = {};
     
-    this.historyData.forEach(item => {
+    for (let i = 0; i < this.historyData.length; i++) {
+      const item = this.historyData[i];
       if (item.browse_type) {
         typeCounts[item.browse_type] = (typeCounts[item.browse_type] || 0) + 1;
       }
-    });
+    }
     
-    const colors = {
+    const colors: Record<string, string> = {
       'ARTICLE': '#3498db',
       'HERBAL': '#27ae60',
       'HOSPITAL': '#e67e22',
@@ -113,16 +128,20 @@ struct BrowseHistoryPage {
       'HOME': '#34495e'
     };
     
-    this.chartData = Object.entries(typeCounts).map(([type, count]) => ({
-      type,
-      count,
-      color: colors[type as keyof typeof colors] || '#95a5a6'
-    }));
+    const typeKeys: string[] = Object.keys(typeCounts);
+    this.chartData = [];
+    for (let j = 0; j < typeKeys.length; j++) {
+      this.chartData.push({
+        type: typeKeys[j],
+        count: typeCounts[typeKeys[j]],
+        color: colors[typeKeys[j]] || '#95a5a6'
+      });
+    }
   }
 
   async clearHistory(): Promise<void> {
     try {
-      await RdbHelper.executeSql(`DELETE FROM ${TABLE_BROWSE_HISTORY}`);
+      await RdbHelper.executeSql('DELETE FROM ' + TABLE_BROWSE_HISTORY);
       this.historyData = [];
       this.groupedHistory = [];
       this.chartData = [];
@@ -154,13 +173,13 @@ struct BrowseHistoryPage {
 
   formatDuration(ms: number): string {
     const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) return `${seconds}秒`;
-    
+    if (seconds < 60) return seconds + '秒';
+
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}分${seconds % 60}秒`;
-    
+    if (minutes < 60) return minutes + '分' + (seconds % 60) + '秒';
+
     const hours = Math.floor(minutes / 60);
-    return `${hours}小时${minutes % 60}分`;
+    return hours + '小时' + (minutes % 60) + '分';
   }
 
   formatTime(timestamp: number): string {
@@ -243,46 +262,13 @@ struct BrowseHistoryPage {
                   .fontColor('#999999')
                   .margin({ left: 16, bottom: 12 });
                 
-                ForEach(group.records, (record) => {
-                  Column() {
-                    Row({
-                      space: 16
-                    }) {
-                      Column()
-                        .width(40)
-                        .height(40)
-                        .backgroundColor('#f0f0f0')
-                        .borderRadius(20)
-                        .justifyContent(FlexAlign.Center)
-                        .alignItems(HorizontalAlign.Center);
-
-                      Column({
-                        space: 4
-                      }) {
-                        Text(record.target_title || '未知')
-                          .fontSize(16)
-                          .fontColor('#333333');
-                        Row() {
-                          Text(this.formatTime(record.create_time!))
-                            .fontSize(14)
-                            .fontColor('#999999');
-                          Text('·')
-                            .fontSize(14)
-                            .fontColor('#999999');
-                          Text(this.formatDuration(record.browse_duration || 0))
-                            .fontSize(14)
-                            .fontColor('#999999');
-                        }
-                      }
-                      .flexGrow(1);
+                ForEach(group.records, (record: BrowseHistoryItem) => {
+                  BrowseItem({
+                    record: record,
+                    onItemClick: (clickedRecord: BrowseHistoryItem) => {
+                      this.navigateToDetail(clickedRecord);
                     }
-                    .padding(16);
-                  }
-                  .width('100%')
-                  .backgroundColor('#ffffff')
-                  .borderRadius(8)
-                  .shadow({ radius: 2, color: '#00000008' })
-                  .onClick(() => this.navigateToDetail(record));
+                  });
                 });
               }
               .width('100%');

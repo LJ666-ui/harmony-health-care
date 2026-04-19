@@ -54,8 +54,13 @@ struct MyCollectPage {
   }
 
   handleUncollect(articleId: string): void {
-    // 从收藏列表中移除
-    this.collectedArticles = this.collectedArticles.filter(article => article.id !== articleId);
+    let filtered: ScienceArticle[] = [];
+    for (let i = 0; i < this.collectedArticles.length; i++) {
+      if (this.collectedArticles[i].id !== articleId) {
+        filtered.push(this.collectedArticles[i]);
+      }
+    }
+    this.collectedArticles = filtered;
     // 调用后端接口
     // 模拟API调用
     setTimeout(() => {
@@ -147,7 +152,7 @@ struct MyCollectPage {
                       .padding({ left: 8, right: 8, top: 3, bottom: 3 })
                       .borderRadius(4)
 
-                    Text(`👁 ${article.readCount}`)
+                    Text('👁 ' + article.readCount)
                       .fontSize(11)
                       .fontColor('#999999')
                       .margin({ left: 12 })

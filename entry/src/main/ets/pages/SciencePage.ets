@@ -133,7 +133,13 @@ struct SciencePage {
     if (this.selectedCategory === '全部') {
       return this.articles;
     }
-    return this.articles.filter(article => article.category === this.selectedCategory);
+    let categoryFiltered: ScienceArticle[] = [];
+    for (let i = 0; i < this.articles.length; i++) {
+      if (this.articles[i].category === this.selectedCategory) {
+        categoryFiltered.push(this.articles[i]);
+      }
+    }
+    return categoryFiltered;
   }
 
   handleSearch(): void {
@@ -142,13 +148,17 @@ struct SciencePage {
       this.addToSearchHistory(this.searchText.trim());
       // 执行搜索（添加异常处理）
       try {
-        this.searchResults = this.articles.filter(article =>
-          article.title.includes(this.searchText.trim()) ||
-          article.summary.includes(this.searchText.trim())
-        );
+        let searchResults: ScienceArticle[] = [];
+        for (let j = 0; j < this.articles.length; j++) {
+          const article = this.articles[j];
+          if (article.title.includes(this.searchText.trim()) || article.summary.includes(this.searchText.trim())) {
+            searchResults.push(article);
+          }
+        }
+        this.searchResults = searchResults;
       } catch (e) {
         console.error('搜索操作失败', e);
-        this.searchResults = [];
+        this.searchResults = [] as ScienceArticle[];
       }
       this.showSearchHistory = false;
     }
@@ -157,13 +167,19 @@ struct SciencePage {
   addToSearchHistory(keyword: string): void {
     try {
       // 移除重复的历史记录
-      this.searchHistory = this.searchHistory.filter(item => item !== keyword);
-      // 添加到历史记录开头
-      this.searchHistory.unshift(keyword);
-      // 限制历史记录数量
-      if (this.searchHistory.length > 10) {
-        this.searchHistory = this.searchHistory.slice(0, 10);
+      let newHistory: string[] = [];
+      for (let i = 0; i < this.searchHistory.length; i++) {
+        if (this.searchHistory[i] !== keyword) {
+          newHistory.push(this.searchHistory[i]);
+        }
       }
+      // 添加到历史记录开头
+      newHistory.unshift(keyword);
+      // 限制历史记录数量
+      if (newHistory.length > 10) {
+        newHistory = newHistory.slice(0, 10);
+      }
+      this.searchHistory = newHistory;
     } catch (e) {
       console.error('添加搜索历史失败', e);
     }
@@ -207,7 +223,7 @@ struct SciencePage {
                 .fontWeight(fontWeight);
             }
           }
-        }, (part: string, index: number) => `${fullText}-${index}`);
+        }, (part: string, index: number) => '' + fullText + '-' + index);
       }
     } else {
       Text(fullText)
@@ -497,7 +513,7 @@ struct SciencePage {
                         .padding({ left: 8, right: 8, top: 3, bottom: 3 })
                         .borderRadius(4)
 
-                      Text(`👁 ${article.readCount}`)
+                      Text('👁 ' + article.readCount)
                         .fontSize(11)
                         .fontColor('#999999')
                         .margin({ left: 12 })

@@ -97,7 +97,10 @@ struct MedicalRecord {
           return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
 
-        this.filteredRecords = [...this.records];
+        this.filteredRecords = [];
+        for (let i = 0; i < this.records.length; i++) {
+          this.filteredRecords.push(this.records[i]);
+        }
         this.isLoading = false;
       } catch (error) {
         console.error('加载病历数据失败:', error);
@@ -108,11 +111,16 @@ struct MedicalRecord {
   }
 
   handleFilter(): void {
-    this.filteredRecords = this.records.filter(record => {
+    let result: MedicalRecordItem[] = [];
+    for (let i = 0; i < this.records.length; i++) {
+      const record = this.records[i];
       const matchHospital = !this.hospitalFilter || record.hospital.includes(this.hospitalFilter);
       const matchDiagnosis = !this.diagnosisFilter || record.diagnosis.includes(this.diagnosisFilter);
-      return matchHospital && matchDiagnosis;
-    });
+      if (matchHospital && matchDiagnosis) {
+        result.push(record);
+      }
+    }
+    this.filteredRecords = result;
   }
 
   handleRecordClick(record: MedicalRecordItem): void {
@@ -126,7 +134,7 @@ struct MedicalRecord {
   }
 
   handleExport(type: string): void {
-    console.log(`导出${type}`, this.selectedRecord);
+    console.log('导出' + type, this.selectedRecord);
     // 实际项目中应该实现导出功能
     this.showShareDialog = false;
   }
@@ -201,7 +209,10 @@ struct MedicalRecord {
             onAdd: () => {
               this.hospitalFilter = '';
               this.diagnosisFilter = '';
-              this.filteredRecords = [...this.records];
+              this.filteredRecords = [];
+              for (let i = 0; i < this.records.length; i++) {
+                this.filteredRecords.push(this.records[i]);
+              }
             }
           });
         } else {

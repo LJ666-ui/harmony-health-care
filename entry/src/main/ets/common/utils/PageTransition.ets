@@ -30,8 +30,10 @@ export class PageTransition {
   }
 
   static backWithParams(params?: Record<string, Object>): void {
+    const state = router.getState();
+    const path = state ? state.path : '';
     router.back({
-      url: router.getState()?.path,
+      url: path,
       params: params
     });
   }

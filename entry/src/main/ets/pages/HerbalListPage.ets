@@ -88,7 +88,7 @@ struct HerbalListPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
     this.loadData();
   }
@@ -100,6 +100,44 @@ struct HerbalListPage {
   }
 
   convertBackendItem(item: BackendHerbalItem): HerbalInfo {
+    const meridianArr: string[] = [];
+    if (item.meridian) {
+      const meridianSplit = item.meridian.split(',');
+      for (let i = 0; i < meridianSplit.length; i++) {
+        meridianArr.push(meridianSplit[i].trim());
+      }
+    }
+
+    const efficacyArr: string[] = [];
+    if (item.efficacySummary) {
+      let efficacyStr = item.efficacySummary;
+      efficacyStr = efficacyStr.replace(/，/g, ',');
+      efficacyStr = efficacyStr.replace(/;/g, ',');
+      efficacyStr = efficacyStr.replace(/；/g, ',');
+      const efficacySplit = efficacyStr.split(',');
+      for (let j = 0; j < efficacySplit.length; j++) {
+        const trimmed = efficacySplit[j].trim();
+        if (trimmed.length > 0) {
+          efficacyArr.push(trimmed);
+        }
+      }
+    }
+
+    const indicationsArr: string[] = [];
+    if (item.indication) {
+      let indicationStr = item.indication;
+      indicationStr = indicationStr.replace(/，/g, ',');
+      indicationStr = indicationStr.replace(/;/g, ',');
+      indicationStr = indicationStr.replace(/；/g, ',');
+      const indicationSplit = indicationStr.split(',');
+      for (let k = 0; k < indicationSplit.length; k++) {
+        const trimmed = indicationSplit[k].trim();
+        if (trimmed.length > 0) {
+          indicationsArr.push(trimmed);
+        }
+      }
+    }
+
     return {
       id: String(item.id),
       name: item.name,
@@ -107,9 +145,9 @@ struct HerbalListPage {
       category: item.category || '',
       nature: item.nature || '',
       taste: item.taste || '',
-      meridian: item.meridian ? item.meridian.split(',').map((s: string) => s.trim()) : [],
-      efficacy: item.efficacySummary ? item.efficacySummary.split(/[,，;；]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0) : [],
-      indications: item.indication ? item.indication.split(/[,，;；]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0) : [],
+      meridian: meridianArr,
+      efficacy: efficacyArr,
+      indications: indicationsArr,
       usage: item.usageDosage || '',
       dosage: item.usageDosage || '',
       caution: item.contraindication || '',
@@ -304,7 +342,7 @@ struct HerbalListPage {
         });
 
         Row() {
-          Text(`共找到 ${this.filteredList.length} 种药材`)
+          Text('共找到 ' + this.filteredList.length + ' 种药材')
             .fontSize(12)
             .fontColor('#999999')
             .layoutWeight(1);
@@ -345,7 +383,7 @@ struct HerbalListPage {
                 .fontColor('#333333')
                 .fontWeight(FontWeight.Bold);
 
-              Text(`没有找到与"${this.searchKey || this.currentCategory}"相关的药材`)
+              Text('没有找到与"' + (this.searchKey ? this.searchKey : this.currentCategory) + '"相关的药材')
                 .fontSize(14)
                 .fontColor('#666666')
                 .textAlign(TextAlign.Center)

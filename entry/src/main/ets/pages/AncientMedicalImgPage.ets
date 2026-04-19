@@ -244,6 +244,8 @@ struct AncientMedicalImgPage {
       } else if (result.index === 1) {
         ToastUtil.operationSuccess('\u56FE\u7247\u5DF2\u4FDD\u5B58\u5230\u76F8\u518C');
       }
+    }).catch((error: Error) => {
+      console.error('显示分享对话框失败:', error.message);
     });
   }
 

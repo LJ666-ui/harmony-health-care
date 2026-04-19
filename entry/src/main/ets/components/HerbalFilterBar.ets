@@ -1,4 +1,8 @@
-import { NATURE_TYPES, TASTE_TYPES, SORT_OPTIONS } from '../mock/herbalMock';
+const NATURE_TYPES: string[] = ['寒', '热', '温', '凉', '平'];
+
+const TASTE_TYPES: string[] = ['甘', '苦', '辛', '酸', '咸', '淡', '涩'];
+
+const SORT_OPTIONS: string[] = ['默认排序', '名称升序', '名称降序'];
 
 @Component
 export struct HerbalFilterBar {

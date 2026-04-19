@@ -1,4 +1,18 @@
-import { HerbalInfo } from '../mock/herbalMock';
+interface HerbalInfo {
+  id: string;
+  name: string;
+  alias: string[];
+  category: string;
+  nature: string;
+  taste: string;
+  meridian: string[];
+  efficacy: string[];
+  indications: string[];
+  usage: string;
+  dosage: string;
+  caution: string;
+  image: string;
+}
 
 @Component
 export struct HerbalCard {
@@ -20,14 +34,8 @@ export struct HerbalCard {
           .justifyContent(FlexAlign.Center)
           .clip(true);
 
-        Text(this.getHerbalIcon(this.herbal.name))
+        Text(this.getHerbalIcon())
           .fontSize(56);
-
-        if (this.herbal.isCollected) {
-          Text('❤️')
-            .fontSize(18)
-            .margin({ top: 8, right: 8 });
-        }
       }
 
       Column({ space: 6 }) {
@@ -39,19 +47,21 @@ export struct HerbalCard {
           .textOverflow({ overflow: TextOverflow.Ellipsis });
 
         Row({ space: 6 }) {
-          Text(this.herbal.category.replace('药', ''))
+          Text(this.herbal.category || '未分类')
             .fontSize(10)
             .fontColor('#FFFFFF')
             .backgroundColor(this.getCategoryColor(this.herbal.category))
             .padding({ left: 6, right: 6, top: 2, bottom: 2 })
             .borderRadius(4);
 
-          Text(`${this.herbal.nature}`)
-            .fontSize(10)
-            .fontColor('#666666')
-            .backgroundColor('#F5F5F5')
-            .padding({ left: 4, right: 4, top: 2, bottom: 2 })
-            .borderRadius(4);
+          if (this.herbal.nature) {
+            Text(`${this.herbal.nature}`)
+              .fontSize(10)
+              .fontColor('#666666')
+              .backgroundColor('#F5F5F5')
+              .padding({ left: 4, right: 4, top: 2, bottom: 2 })
+              .borderRadius(4);
+          }
         }
       }
       .alignItems(HorizontalAlign.Start)
@@ -95,73 +105,66 @@ export struct HerbalCard {
     });
   }
 
-  private getHerbalIcon(name: string): string {
-    const iconMap: Record<string, string> = {
-      '人参': '🌿',
-      '黄芪': '🌾',
-      '当归': '🌸',
-      '熟地黄': '🫒',
-      '阿胶': '🩸',
-      '麦冬': '🌱',
-      '枸杞子': '🔴',
-      '鹿茸': '🦌',
-      '杜仲': '🍂',
-      '金银花': '🌼',
-      '菊花': '🌻',
-      '甘草': '🍃',
-      '白术': '🌿',
-      '山药': '🥔',
-      '何首乌': '🖤',
-      '淫羊藿': '🌿',
-      '石斛': '🎋',
-      '茯苓': '🍄',
-      '连翘': '💮',
-      '肉苁蓉': '🌵'
-    };
-    return iconMap[name] || '🌿';
+  private getHerbalIcon(): string {
+    const firstChar: string = this.herbal.name.charAt(0);
+    const icons: string[] = ['🌿', '🌾', '🌸', '🫒', '🩸', '🌱', '🔴', '🦌', '🍂', '🌼', '🌻', '🍃', '🥔', '🖤', '🎋', '🍄', '💮', '🌵', '🫧', '☘️'];
+    const index: number = firstChar.charCodeAt(0) % icons.length;
+    return icons[index];
   }
 
   private getCategoryColor(category: string): string {
     const colorMap: Record<string, string> = {
-      '补气药': '#1677FF',
-      '补血药': '#EB2F96',
-      '补阴药': '#52C41A',
-      '补阳药': '#FA8C16',
-      '清热药': '#13C2C2'
+      '根茎类': '#1677FF',
+      '全草类': '#52C41A',
+      '果实/种子类': '#FA8C16',
+      '动物类': '#EB2F96',
+      '枝叶/树皮类': '#13C2C2',
+      '花类': '#722ED1',
+      '藻菌地衣类': '#8C8C8C',
+      '其他': '#999999'
     };
-    return colorMap[category] || '#999999';
+    return colorMap[category] || '#1677FF';
   }
 
   private getCategoryBgColor(category: string): string {
     const colorMap: Record<string, string> = {
-      '补气药': '#E6F7FF',
-      '补血药': '#FFF0F6',
-      '补阴药': '#F6FFED',
-      '补阳药': '#FFF7E6',
-      '清热药': '#E6FFFB'
+      '根茎类': '#E6F7FF',
+      '全草类': '#F6FFED',
+      '果实/种子类': '#FFF7E6',
+      '动物类': '#FFF0F6',
+      '枝叶/树皮类': '#E6FFFB',
+      '花类': '#F9F0FF',
+      '藻菌地衣类': '#FAFAFA',
+      '其他': '#F5F5F5'
     };
-    return colorMap[category] || '#F5F5F5';
+    return colorMap[category] || '#E6F7FF';
   }
 
   private getGradientAngle(category: string): number {
     const angleMap: Record<string, number> = {
-      '补气药': 135,
-      '补血药': 90,
-      '补阴药': 180,
-      '补阳药': 45,
-      '清热药': 225
+      '根茎类': 135,
+      '全草类': 90,
+      '果实/种子类': 180,
+      '动物类': 45,
+      '枝叶/树皮类': 225,
+      '花类': 270,
+      '藻菌地衣类': 315,
+      '其他': 0
     };
     return angleMap[category] || 135;
   }
 
   private getGradientColors(category: string): [string, number][] {
     const colorMap: Record<string, [string, number][]> = {
-      '补气药': [['#E6F7FF', 0], ['#BAE7FF', 1]],
-      '补血药': [['#FFF0F6', 0], ['#FFADD2', 1]],
-      '补阴药': [['#F6FFED', 0], ['#B7EB8F', 1]],
-      '补阳药': [['#FFF7E6', 0], ['#FFD591', 1]],
-      '清热药': [['#E6FFFB', 0], ['#87E8DE', 1]]
+      '根茎类': [['#E6F7FF', 0], ['#BAE7FF', 1]],
+      '全草类': [['#F6FFED', 0], ['#B7EB8F', 1]],
+      '果实/种子类': [['#FFF7E6', 0], ['#FFD591', 1]],
+      '动物类': [['#FFF0F6', 0], ['#FFADD2', 1]],
+      '枝叶/树皮类': [['#E6FFFB', 0], ['#87E8DE', 1]],
+      '花类': [['#F9F0FF', 0], ['#D3ADF7', 1]],
+      '藻菌地衣类': [['#FAFAFA', 0], ['#D9D9D9', 1]],
+      '其他': [['#F5F5F5', 0], ['#D9D9D9', 1]]
     };
-    return colorMap[category] || [['#F6FFED', 0], ['#D9D9D9', 1]];
+    return colorMap[category] || [['#E6F7FF', 0], ['#BAE7FF', 1]];
   }
 }

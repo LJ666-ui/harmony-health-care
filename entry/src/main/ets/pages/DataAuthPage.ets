@@ -139,6 +139,8 @@ struct DataAuthPage {
         record.remainingDays = 0;
         ToastUtil.operationSuccess('已撤销授权');
       }
+    }).catch((error: Error) => {
+      console.error('显示撤销授权对话框失败:', error.message);
     });
   }
 

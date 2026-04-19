@@ -237,6 +237,8 @@ struct AncientMedicalImgPage {
       } else if (result.index === 1) {
         ToastUtil.operationSuccess('图片已保存到相册');
       }
+    }).catch((error: Error) => {
+      console.error('显示分享对话框失败:', error.message);
     });
   }
 

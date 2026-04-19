@@ -33,8 +33,8 @@ struct MedicalRecord {
   @State hasError: boolean = false;
   @State records: MedicalRecordItem[] = [];
   @State filteredRecords: MedicalRecordItem[] = [];
-  @State hospitalFilter: string = '';
-  @State diagnosisFilter: string = '';
+  @State @Watch('handleFilter') hospitalFilter: string = '';
+  @State @Watch('handleFilter') diagnosisFilter: string = '';
   @State showDetail: boolean = false;
   @State selectedRecord: MedicalRecordItem | null = null;
   @State showShareDialog: boolean = false;
@@ -167,11 +167,7 @@ struct MedicalRecord {
               Input({
                 placeholder: '请输入医院名称',
                 inputType: 'text',
-                text: $hospitalFilter,
-                onChange: (value: string) => {
-                  this.hospitalFilter = value;
-                  this.handleFilter();
-                }
+                text: $hospitalFilter
               })
             }
             .layoutWeight(1);
@@ -183,11 +179,7 @@ struct MedicalRecord {
               Input({
                 placeholder: '请输入诊断名称',
                 inputType: 'text',
-                text: $diagnosisFilter,
-                onChange: (value: string) => {
-                  this.diagnosisFilter = value;
-                  this.handleFilter();
-                }
+                text: $diagnosisFilter
               })
             }
             .layoutWeight(1);

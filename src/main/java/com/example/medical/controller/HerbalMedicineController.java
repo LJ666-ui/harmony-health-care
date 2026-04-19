@@ -5,11 +5,15 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.medical.common.Result;
 import com.example.medical.entity.HerbalMedicine;
 import com.example.medical.entity.HerbalEfficacy;
+import com.example.medical.entity.HerbalCollect;
 import com.example.medical.service.HerbalMedicineService;
 import com.example.medical.mapper.HerbalEfficacyMapper;
+import com.example.medical.mapper.HerbalCollectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
+import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -22,6 +26,9 @@ public class HerbalMedicineController {
 
     @Autowired
     private HerbalEfficacyMapper herbalEfficacyMapper;
+
+    @Autowired
+    private HerbalCollectMapper herbalCollectMapper;
 
     /**
      * 1. 分页查询药材接口
@@ -197,6 +204,126 @@ public class HerbalMedicineController {
             return Result.success(medicines);
         } catch (Exception e) {
             return Result.error("查询全部列表失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 12. 热门药材接口（按收藏数或浏览量排序）
+     */
+    @GetMapping("/hot")
+    public Result<List<HerbalMedicine>> getHotHerbals(
+            @RequestParam(defaultValue = "10") Integer limit) {
+        try {
+            Page<HerbalMedicine> page = new Page<>(1, limit);
+            QueryWrapper<HerbalMedicine> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("is_deleted", 0);
+            queryWrapper.orderByDesc("collect_count");
+            Page<HerbalMedicine> result = herbalMedicineService.page(page, queryWrapper);
+            return Result.success(result.getRecords());
+        } catch (Exception e) {
+            return Result.error("获取热门药材失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 13. 药材搜索接口（支持名称和拼音搜索）
+     */
+    @GetMapping("/search")
+    public Result<List<HerbalMedicine>> searchHerbals(
+            @RequestParam String keyword) {
+        try {
+            QueryWrapper<HerbalMedicine> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("is_deleted", 0);
+            queryWrapper.and(wrapper -> wrapper
+                    .like("name", keyword)
+                    .or()
+                    .like("pinyin", keyword)
+                    .or()
+                    .like("alias", keyword)
+            );
+            queryWrapper.last("LIMIT 50");
+            List<HerbalMedicine> medicines = herbalMedicineService.list(queryWrapper);
+            return Result.success(medicines);
+        } catch (Exception e) {
+            return Result.error("搜索失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 14. 收藏药材接口
+     */
+    @PostMapping("/{id}/collect")
+    public Result<?> collectHerbal(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            Long userId = 1L; // TODO: 实际应从JWT Token中获取
+
+            HerbalCollect existing = herbalCollectMapper.findByUserIdAndHerbalId(userId, id);
+            if (existing != null) {
+                return Result.error("已收藏，请勿重复收藏");
+            }
+
+            HerbalCollect collect = new HerbalCollect();
+            collect.setUserId(userId);
+            collect.setHerbalId(id);
+            collect.setCollectTime(new Date());
+            collect.setIsDeleted(0);
+
+            int result = herbalCollectMapper.insert(collect);
+            if (result > 0) {
+                return Result.success("收藏成功");
+            } else {
+                return Result.error("收藏失败");
+            }
+        } catch (Exception e) {
+            return Result.error("收藏失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 15. 取消收藏药材接口
+     */
+    @DeleteMapping("/{id}/collect")
+    public Result<?> uncollectHerbal(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            Long userId = 1L; // TODO: 实际应从JWT Token中获取
+
+            QueryWrapper<HerbalCollect> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("user_id", userId);
+            queryWrapper.eq("herbal_id", id);
+            queryWrapper.eq("is_deleted", 0);
+
+            HerbalCollect existing = herbalCollectMapper.selectOne(queryWrapper);
+            if (existing == null) {
+                return Result.error("未找到收藏记录");
+            }
+
+            existing.setIsDeleted(1);
+            int result = herbalCollectMapper.updateById(existing);
+            if (result > 0) {
+                return Result.success("取消收藏成功");
+            } else {
+                return Result.error("取消收藏失败");
+            }
+        } catch (Exception e) {
+            return Result.error("取消收藏失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 16. 根据功效查询同类药材接口
+     */
+    @GetMapping("/by-efficacy")
+    public Result<List<HerbalMedicine>> getHerbalsByEfficacy(
+            @RequestParam String name) {
+        try {
+            QueryWrapper<HerbalMedicine> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("is_deleted", 0);
+            queryWrapper.like("efficacy_summary", name);
+            queryWrapper.last("LIMIT 10");
+            List<HerbalMedicine> medicines = herbalMedicineService.list(queryWrapper);
+            return Result.success(medicines);
+        } catch (Exception e) {
+            return Result.error("查询同类药材失败：" + e.getMessage());
         }
     }
 }

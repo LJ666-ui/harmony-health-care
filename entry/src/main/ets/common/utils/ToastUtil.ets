@@ -12,35 +12,51 @@ export class ToastUtil {
   }
 
   static showSuccess(message: string, duration?: number): void {
-    promptAction.showToast({
-      message: message,
-      duration: duration ?? ToastUtil.DURATION_DEFAULT,
-      bottom: '80vp'
-    });
+    try {
+      promptAction.showToast({
+        message: message,
+        duration: duration ?? ToastUtil.DURATION_DEFAULT,
+        bottom: '80vp'
+      });
+    } catch (error) {
+      console.error('ToastUtil.showSuccess error:', error);
+    }
   }
 
   static showError(message: string, duration?: number): void {
-    promptAction.showToast({
-      message: message,
-      duration: duration ?? ToastUtil.DURATION_DEFAULT,
-      bottom: '80vp'
-    });
+    try {
+      promptAction.showToast({
+        message: message,
+        duration: duration ?? ToastUtil.DURATION_DEFAULT,
+        bottom: '80vp'
+      });
+    } catch (error) {
+      console.error('ToastUtil.showError error:', error);
+    }
   }
 
   static showInfo(message: string, duration?: number): void {
-    promptAction.showToast({
-      message: message,
-      duration: duration ?? ToastUtil.DURATION_DEFAULT,
-      bottom: '80vp'
-    });
+    try {
+      promptAction.showToast({
+        message: message,
+        duration: duration ?? ToastUtil.DURATION_DEFAULT,
+        bottom: '80vp'
+      });
+    } catch (error) {
+      console.error('ToastUtil.showInfo error:', error);
+    }
   }
 
   static showWarning(message: string, duration?: number): void {
-    promptAction.showToast({
-      message: message,
-      duration: duration ?? ToastUtil.DURATION_DEFAULT,
-      bottom: '80vp'
-    });
+    try {
+      promptAction.showToast({
+        message: message,
+        duration: duration ?? ToastUtil.DURATION_DEFAULT,
+        bottom: '80vp'
+      });
+    } catch (error) {
+      console.error('ToastUtil.showWarning error:', error);
+    }
   }
 
   static refreshSuccess(): void {
@@ -132,10 +148,14 @@ export class ToastUtil {
   }
 
   static emergencyCall(): void {
-    promptAction.showToast({
-      message: '正在模拟拨打120...',
-      duration: 2000,
-      bottom: '80vp'
-    });
+    try {
+      promptAction.showToast({
+        message: '正在模拟拨打120...',
+        duration: 2000,
+        bottom: '80vp'
+      });
+    } catch (error) {
+      console.error('ToastUtil.emergencyCall error:', error);
+    }
   }
 }

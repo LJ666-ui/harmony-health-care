@@ -79,15 +79,21 @@ struct PrivacySettingPage {
   }
 
   viewPrivacyPolicy(): void {
-    router.pushUrl({ url: 'pages/PrivacyPolicyPage' });
+    router.pushUrl({ url: 'pages/PrivacyPolicyPage' }).catch((error: Error) => {
+      console.error('跳转隐私政策失败:', error.message);
+    });
   }
 
   goToDataAuth(): void {
-    router.pushUrl({ url: 'pages/DataAuthPage' });
+    router.pushUrl({ url: 'pages/DataAuthPage' }).catch((error: Error) => {
+      console.error('跳转数据授权失败:', error.message);
+    });
   }
 
   goToAncientMedicalImg(): void {
-    router.pushUrl({ url: 'pages/AncientMedicalImgPage' });
+    router.pushUrl({ url: 'pages/AncientMedicalImgPage' }).catch((error: Error) => {
+      console.error('跳转古籍图片失败:', error.message);
+    });
   }
 
   changePassword(): void {
@@ -99,6 +105,8 @@ struct PrivacySettingPage {
       if (result.index === 1) {
         ToastUtil.operationSuccess();
       }
+    }).catch((error: Error) => {
+      console.error('显示对话框失败:', error.message);
     });
   }
 
@@ -110,8 +118,12 @@ struct PrivacySettingPage {
     }).then((result: promptAction.ShowDialogSuccessResponse) => {
       if (result.index === 1) {
         ToastUtil.showInfo('已退出登录');
-        router.replaceUrl({ url: 'pages/Login' });
+        router.replaceUrl({ url: 'pages/Login' }).catch((error: Error) => {
+          console.error('退出登录失败:', error.message);
+        });
       }
+    }).catch((error: Error) => {
+      console.error('显示退出登录对话框失败:', error.message);
     });
   }
 

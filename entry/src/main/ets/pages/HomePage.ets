@@ -3,9 +3,9 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
-import { GlobalTheme } from '../global';
-import { AccessibilityConfig, FontSizeLevel, ColorMode } from '../utils/AccessibilityConfig';
+import { AccessibilityConfig } from '../utils/AccessibilityConfig';
 import BrowseTracker from '../utils/BrowseTracker';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 
 interface UserInfo {
   username: string;
@@ -30,6 +30,26 @@ interface HomeStats {
   bloodPressure: string;
 }
 
+interface HospitalInfo {
+  id: number;
+  name: string;
+  distance?: string;
+  level?: string;
+  address?: string;
+}
+
+interface ArticleInfo {
+  id: number;
+  title: string;
+  coverImage?: string;
+  categoryName?: string;
+}
+
+interface HerbalInfoSimple {
+  id: number;
+  name: string;
+}
+
 @Entry
 @Component
 struct HomePage {
@@ -42,6 +62,11 @@ struct HomePage {
   @State hasError: boolean = false;
   @State userInfo: UserInfo | null = null;
   @State homeStats: HomeStats | null = null;
+
+  @State nearbyHospitals: HospitalInfo[] = [];
+  @State articles: ArticleInfo[] = [];
+  @State hotHerbals: HerbalInfoSimple[] = [];
+  @State latestHealthRecord: Object | null = null;
 
   @State featureCards: FeatureCard[] = [
     { id: 0, icon: '📋', title: '健康记录', description: '查看和管理您的健康数据', url: 'pages/HealthRecords' },
@@ -89,39 +114,80 @@ struct HomePage {
     }
   }
 
-  loadHomeData(): void {
+  async loadHomeData(): Promise<void> {
     this.isLoading = true;
     this.hasError = false;
 
-    setTimeout(() => {
-      try {
-        const storedUserInfo = AppStorage.get<UserInfo>('userInfo');
-        if (storedUserInfo) {
-          this.userInfo = storedUserInfo;
-        } else {
-          this.userInfo = {
-            username: '张三',
-            avatar: '',
-            age: 65,
-            gender: '男'
-          };
-        }
-
-        this.homeStats = {
-          todaySteps: 6852,
-          weekAppointments: 3,
-          healthScore: 85,
-          heartRate: 72,
-          bloodPressure: '120/80'
-        };
-
-        this.isLoading = false;
-      } catch (error) {
-        console.error('加载首页数据失败:', error);
-        this.isLoading = false;
-        this.hasError = true;
+    try {
+      const storedUserInfo: UserInfo | undefined = AppStorage.get<UserInfo>('userInfo');
+      if (storedUserInfo) {
+        this.userInfo = storedUserInfo;
+      } else {
+        this.userInfo = {
+          username: '张三',
+          avatar: '',
+          age: 65,
+          gender: '男'
+        } as UserInfo;
       }
-    }, 1500);
+
+      this.homeStats = {
+        todaySteps: 6852,
+        weekAppointments: 3,
+        healthScore: 85,
+        heartRate: 72,
+        bloodPressure: '120/80'
+      } as HomeStats;
+
+      const userId: number = AppStorage.get<number>('userId') || 1;
+
+      const hospitalParams: Record<string, string | number | boolean> = {};
+      hospitalParams['longitude'] = 116.404;
+      hospitalParams['latitude'] = 39.915;
+
+      const articleParams: Record<string, string | number | boolean> = {};
+      articleParams['pageSize'] = 5;
+
+      const herbalParams: Record<string, string | number | boolean> = {};
+      herbalParams['limit'] = 10;
+
+      const healthRecordParams: Record<string, string | number | boolean> = {};
+      healthRecordParams['userId'] = userId;
+
+      const promiseResults = await Promise.all([
+        HttpUtil.get<HospitalInfo[]>('/hospital/nearby', hospitalParams),
+        HttpUtil.get<ArticleInfo[]>('/healthArticle/list', articleParams),
+        HttpUtil.get<HerbalInfoSimple[]>('/herbal/hot', herbalParams),
+        HttpUtil.get<Object>('/health-record/latest', healthRecordParams)
+      ]);
+
+      const hospitalsRes: BaseResponse<HospitalInfo[]> = promiseResults[0] as BaseResponse<HospitalInfo[]>;
+      const articlesRes: BaseResponse<ArticleInfo[]> = promiseResults[1] as BaseResponse<ArticleInfo[]>;
+      const herbalsRes: BaseResponse<HerbalInfoSimple[]> = promiseResults[2] as BaseResponse<HerbalInfoSimple[]>;
+      const healthRes: BaseResponse<Object> = promiseResults[3] as BaseResponse<Object>;
+
+      if (hospitalsRes.success && hospitalsRes.data) {
+        this.nearbyHospitals = hospitalsRes.data as HospitalInfo[];
+      }
+
+      if (articlesRes.success && articlesRes.data) {
+        this.articles = articlesRes.data as ArticleInfo[];
+      }
+
+      if (herbalsRes.success && herbalsRes.data) {
+        this.hotHerbals = herbalsRes.data as HerbalInfoSimple[];
+      }
+
+      if (healthRes.success && healthRes.data) {
+        this.latestHealthRecord = healthRes.data;
+      }
+
+      this.isLoading = false;
+    } catch (error) {
+      console.error('加载首页数据失败:', error);
+      this.isLoading = false;
+      this.hasError = true;
+    }
   }
 
   handleRetry(): void {

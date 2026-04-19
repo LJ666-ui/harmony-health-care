@@ -12,7 +12,7 @@ export struct Header {
   @Prop title: string = '';
   @Prop showBack: boolean = false;
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @Prop rightAction?: HeaderAction;
+  @Prop rightAction: HeaderAction | null = null;
 
   build() {
     Row({ space: 8 }) {

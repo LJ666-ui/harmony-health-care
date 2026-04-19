@@ -188,6 +188,8 @@ struct FoodEncyclopediaPage {
     router.pushUrl({
       url: 'pages/FoodDetailPage',
       params: { foodId: food.id }
+    }).catch((error: Error) => {
+      console.error('跳转食物详情失败:', error.message);
     });
   }
 

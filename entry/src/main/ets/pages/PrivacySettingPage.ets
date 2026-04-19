@@ -4,29 +4,34 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 
-interface AuthItem {
+export interface PrivacySetting {
+  locationEnabled: boolean;
+  healthDataEnabled: boolean;
+  browseHistoryEnabled: boolean;
+  diagnosticReportEnabled: boolean;
+}
+
+export interface AuthItem {
   id: string;
   name: string;
-  icon: string;
   type: string;
-  isAuthorized: boolean;
+  dataType: string;
+  status: 'active' | 'expired' | 'revoked';
+  startDate: string;
+  endDate: string;
 }
 
-interface PermissionItem {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  isEnabled: boolean;
-}
-
-interface AccessLogItem {
-  id: string;
-  time: string;
-  subject: string;
-  content: string;
+export interface AccessLogItem {
+  id: number;
+  accessUser: string;
+  accessType: string;
+  dataType: string;
   action: string;
+  accessTime: string;
+  detail: string;
 }
 
 @Entry
@@ -34,31 +39,18 @@ interface AccessLogItem {
 struct PrivacySettingPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State authItems: AuthItem[] = [
-    { id: '1', name: '智能手环 HUAWEI Band 8', icon: '⌚', type: '设备', isAuthorized: true } as AuthItem,
-    { id: '2', name: '血压监测仪', icon: '🩺', type: '设备', isAuthorized: true } as AuthItem,
-    { id: '3', name: '第三方健康平台', icon: '🏥', type: '应用', isAuthorized: false } as AuthItem
-  ];
+  @State privacySettings: PrivacySetting = {
+    locationEnabled: true,
+    healthDataEnabled: true,
+    browseHistoryEnabled: true,
+    diagnosticReportEnabled: false
+  };
 
-  @State permissionItems: PermissionItem[] = [
-    { id: '1', name: '相机权限', icon: '📷', description: '用于拍摄健康档案照片', isEnabled: false } as PermissionItem,
-    { id: '2', name: '位置权限', icon: '📍', description: '用于查找附近医疗机构', isEnabled: true } as PermissionItem,
-    { id: '3', name: '存储权限', icon: '💾', description: '用于保存健康报告文件', isEnabled: true } as PermissionItem,
-    { id: '4', name: '相册权限', icon: '🖼️', description: '用于上传古医图片', isEnabled: true } as PermissionItem
-  ];
-
-  @State accessLogs: AccessLogItem[] = [
-    { id: '1', time: '2026-04-10 09:30', subject: '智能手环', content: '同步心率数据', action: '读取' } as AccessLogItem,
-    { id: '2', time: '2026-04-09 14:20', subject: '血压监测仪', content: '上传血压记录', action: '写入' } as AccessLogItem,
-    { id: '3', time: '2026-04-08 08:15', subject: '本应用', content: '查看健康档案', action: '读取' } as AccessLogItem,
-    { id: '4', time: '2026-04-07 16:45', subject: '第三方平台', content: '请求数据共享', action: '拒绝' } as AccessLogItem,
-    { id: '5', time: '2026-04-06 11:00', subject: '本应用', content: '导出健康报告', action: '读取' } as AccessLogItem
-  ];
-
-  @State healthDataVisibility: number = 0;
-  @State pushNotificationEnabled: boolean = true;
-  @State reminderTypes: string[] = ['用药提醒', '复诊提醒', '健康评估'];
-  @State cacheSize: string = '23.5MB';
+  @State authItems: AuthItem[] = [];
+  @State accessLogs: AccessLogItem[] = [];
+  @State isLoadingSettings: boolean = true;
+  @State isLoadingAuths: boolean = true;
+  @State isLoadingLogs: boolean = true;
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -66,299 +58,218 @@ struct PrivacySettingPage {
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
     }
+
+    this.loadPrivacySettings();
+    this.loadAuthList();
+    this.loadAccessLogs();
   }
 
-  toggleAuth(item: AuthItem): void {
-    item.isAuthorized = !item.isAuthorized;
-    ToastUtil.showInfo(item.isAuthorized ? `已授权 ${item.name}` : `已撤销 ${item.name} 授权`);
+  async loadPrivacySettings(): Promise<void> {
+    this.isLoadingSettings = true;
+    try {
+      const response: BaseResponse<PrivacySetting> = await HttpUtil.get<PrivacySetting>(ApiConstants.PRIVACY_SETTINGS);
+      if (response.success && response.data) {
+        this.privacySettings = response.data;
+      }
+    } catch (e) {
+      console.error('\u52A0\u8F7D\u9690\u79C8\u8BBE\u7F6E\u5931\u8D25:', e);
+    } finally {
+      this.isLoadingSettings = false;
+    }
   }
 
-  togglePermission(item: PermissionItem): void {
-    item.isEnabled = !item.isEnabled;
-    ToastUtil.showInfo(item.isEnabled ? `${item.name} 已开启` : `${item.name} 已关闭`);
+  async savePrivacySettings(): Promise<void> {
+    try {
+      const response: BaseResponse<Object> = await HttpUtil.put<Object>(ApiConstants.PRIVACY_SETTINGS, this.privacySettings);
+      if (response.success) {
+        ToastUtil.showSuccess('\u4FDD\u5B58\u6210\u529F');
+      } else {
+        ToastUtil.showSuccess(response.message ? response.message : '\u4FDD\u5B58\u5931\u8D25');
+      }
+    } catch (e) {
+      console.error('\u4FDD\u5B58\u9690\u79C1\u8BBE\u7F6E\u5931\u8D25:', e);
+      ToastUtil.showSuccess('\u4FDD\u5B58\u5931\u8D25');
+    }
   }
 
-  viewPrivacyPolicy(): void {
-    router.pushUrl({ url: 'pages/PrivacyPolicyPage' }).catch((error: Error) => {
-      console.error('跳转隐私政策失败:', error.message);
-    });
+  async loadAuthList(): Promise<void> {
+    this.isLoadingAuths = true;
+    try {
+      const response: BaseResponse<AuthItem[]> = await HttpUtil.get<AuthItem[]>(ApiConstants.PRIVACY_AUTH_LIST);
+      if (response.success && response.data) {
+        const list: AuthItem[] = response.data || [];
+        this.authItems = [];
+        for (let i = 0; i < list.length; i++) {
+          this.authItems.push(list[i]);
+        }
+      }
+    } catch (e) {
+      console.error('\u52A0\u8F7D\u6388\u6743\u5217\u8868\u5931\u8D25:', e);
+    } finally {
+      this.isLoadingAuths = false;
+    }
   }
 
-  goToDataAuth(): void {
-    router.pushUrl({ url: 'pages/DataAuthPage' }).catch((error: Error) => {
-      console.error('跳转数据授权失败:', error.message);
-    });
+  async loadAccessLogs(): Promise<void> {
+    this.isLoadingLogs = true;
+    try {
+      const response: BaseResponse<AccessLogItem[]> = await HttpUtil.get<AccessLogItem[]>(ApiConstants.PRIVACY_ACCESS_LOGS);
+      if (response.success && response.data) {
+        const list: AccessLogItem[] = response.data || [];
+        this.accessLogs = [];
+        for (let i = 0; i < list.length; i++) {
+          this.accessLogs.push(list[i]);
+        }
+      }
+    } catch (e) {
+      console.error('\u52A0\u8F7D\u8BBF\u95EE\u65E5\u5FD7\u5931\u8D25:', e);
+    } finally {
+      this.isLoadingLogs = false;
+    }
   }
 
-  goToAncientMedicalImg(): void {
-    router.pushUrl({ url: 'pages/AncientMedicalImgPage' }).catch((error: Error) => {
-      console.error('跳转古籍图片失败:', error.message);
-    });
+  toggleSetting(key: keyof PrivacySetting): void {
+    if (key === 'locationEnabled') {
+      this.privacySettings.locationEnabled = !this.privacySettings.locationEnabled;
+    } else if (key === 'healthDataEnabled') {
+      this.privacySettings.healthDataEnabled = !this.privacySettings.healthDataEnabled;
+    } else if (key === 'browseHistoryEnabled') {
+      this.privacySettings.browseHistoryEnabled = !this.privacySettings.browseHistoryEnabled;
+    } else if (key === 'diagnosticReportEnabled') {
+      this.privacySettings.diagnosticReportEnabled = !this.privacySettings.diagnosticReportEnabled;
+    }
+    this.savePrivacySettings();
+  }
+
+  viewDataAuth(): void {
+    router.pushUrl({ url: 'pages/DataAuthPage' });
   }
 
   changePassword(): void {
     promptAction.showDialog({
-      title: '修改密码',
-      message: '此功能将跳转到修改密码页面',
-      buttons: [{ text: '取消', color: '#999999' }, { text: '确定', color: '#1677FF' }]
+      title: '\u4FEE\u6539\u5BC6\u7801',
+      message: '\u6B64\u529F\u80FD\u5C06\u8DF3\u8F6C\u5230\u4FEE\u6539\u5BC6\u7801\u9875\u9762',
+      buttons: [{ text: '\u53D6\u6D88', color: '#999999' }, { text: '\u786E\u5B9A', color: '#1677FF' }]
     }).then((result: promptAction.ShowDialogSuccessResponse) => {
       if (result.index === 1) {
         ToastUtil.operationSuccess();
       }
-    }).catch((error: Error) => {
-      console.error('显示对话框失败:', error.message);
     });
   }
 
   logout(): void {
     promptAction.showDialog({
-      title: '退出登录',
-      message: '确定要退出当前账号吗？',
-      buttons: [{ text: '取消', color: '#999999' }, { text: '确定退出', color: '#FF4D4F' }]
+      title: '\u9000\u51FA\u767B\u5F55',
+      message: '\u786E\u5B9A\u8981\u9000\u51FA\u5F53\u524D\u8D26\u53F7\u5417?',
+      buttons: [{ text: '\u53D6\u6D88', color: '#999999' }, { text: '\u786E\u5B9A\u9000\u51FA', color: '#FF4D4F' }]
     }).then((result: promptAction.ShowDialogSuccessResponse) => {
       if (result.index === 1) {
-        ToastUtil.showInfo('已退出登录');
-        router.replaceUrl({ url: 'pages/Login' }).catch((error: Error) => {
-          console.error('退出登录失败:', error.message);
-        });
-      }
-    }).catch((error: Error) => {
-      console.error('显示退出登录对话框失败:', error.message);
-    });
-  }
-
-  deleteAccount(): void {
-    promptAction.showDialog({
-      title: '注销账号',
-      message: '注销后您的所有数据将被永久删除且无法恢复，确定要继续吗？',
-      buttons: [{ text: '取消', color: '#999999' }, { text: '确定注销', color: '#FF4D4F' }]
-    }).then((result: promptAction.ShowDialogSuccessResponse) => {
-      if (result.index === 1) {
-        ToastUtil.showInfo('账号注销申请已提交');
+        ToastUtil.showInfo('\u5DF2\u9000\u51FA\u767B\u5F55');
+        router.replaceUrl({ url: 'pages/Login' });
       }
     });
-  }
-
-  exportData(): void {
-    promptAction.showDialog({
-      title: '导出我的数据',
-      message: '选择导出格式：',
-      buttons: [{ text: 'JSON格式', color: '#1677FF' }, { text: 'PDF格式', color: '#1677FF' }, { text: '取消', color: '#999999' }]
-    }).then((result: promptAction.ShowDialogSuccessResponse) => {
-      if (result.index === 0 || result.index === 1) {
-        const format: string = result.index === 0 ? 'JSON' : 'PDF';
-        ToastUtil.operationSuccess(`正在生成${format}文件...`);
-      }
-    });
-  }
-
-  clearCache(): void {
-    promptAction.showDialog({
-      title: '清除缓存',
-      message: `当前缓存大小：${this.cacheSize}，确定要清除吗？`,
-      buttons: [{ text: '取消', color: '#999999' }, { text: '清除', color: '#1677FF' }]
-    }).then((result: promptAction.ShowDialogSuccessResponse) => {
-      if (result.index === 1) {
-        this.cacheSize = '0B';
-        ToastUtil.operationSuccess('缓存已清除');
-      }
-    });
-  }
-
-  toggleReminderType(type: string): void {
-    const index: number = this.reminderTypes.indexOf(type);
-    if (index > -1) {
-      this.reminderTypes.splice(index, 1);
-    } else {
-      this.reminderTypes.push(type);
-    }
   }
 
   build() {
     Column() {
-      Header({
-        title: '隐私与安全',
-        showBack: true
-      });
+      Header({ title: '\u9690\u79C1\u4E0E\u5B89\u5168', showBack: true });
 
       Scroll() {
         Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
 
           Column() {
-            Text('🔐 账户安全')
+            Text('\uD83D\uDD12 \u6570\u636E\u6743\u9650')
               .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontWeight('bold')
+              .fontWeight(FontWeight.Bold)
               .fontColor('#333333')
               .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-            this.buildSettingItem('🔑', '修改密码', '定期更换保障账户安全', () => this.changePassword());
-            this.buildSettingItem('🚪', '退出登录', '切换到其他账号', () => this.logout(), true);
-            this.buildSettingItem('⛔', '注销账号', '永久删除所有数据', () => this.deleteAccount(), true);
-          }
-          .width('100%')
-          .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12)
-          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
-
-          Column() {
-            Text('🔒 隐私权限')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontWeight('bold')
-              .fontColor('#333333')
-              .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-            Column() {
-              Row() {
-                Text('健康数据可见性')
-                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                  .fontColor('#333333')
-                  .layoutWeight(1);
-
-                Text(['仅自己', '授权医生', '家庭成员'][this.healthDataVisibility])
-                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                  .fontColor('#1677FF');
-              }
-              .width('100%');
-
-              Row({ space: 8 }) {
-                ForEach(['仅自己', '授权医生', '家庭成员'], (option: string, index: number) => {
-                  Text(option)
-                    .fontSize(11)
-                    .fontColor(this.healthDataVisibility === index ? '#FFFFFF' : '#666666')
-                    .backgroundColor(this.healthDataVisibility === index ? '#1677FF' : '#F5F5F5')
-                    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                    .borderRadius(15)
-                    .onClick(() => {
-                      this.healthDataVisibility = index;
-                      ToastUtil.showInfo(`已设置为：${option}`);
-                    });
-                }, (option: string, index: number) => `${option}_${index}`);
-              }
-              .width('100%')
-              .margin({ top: 8 });
-            }
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#FAFAFA')
-            .borderRadius(8)
-            .margin({ bottom: 8 });
-
-            ForEach(this.permissionItems.slice(0, 3), (item: PermissionItem) => {
-              this.buildPermissionItem(item);
-            }, (item: PermissionItem) => item.id);
-          }
-          .width('100%')
-          .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12)
-          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
-
-          Column() {
-            Text('💾 数据管理')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontWeight('bold')
-              .fontColor('#333333')
-              .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-            this.buildSettingItem('📤', '导出我的数据', '支持 JSON/PDF 格式', () => this.exportData());
-            this.buildSettingItem('🗑️', '清除缓存', `当前 ${this.cacheSize}`, () => this.clearCache());
 
             Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-              Text('📋 数据授权管理')
+              Text('\uD83D\uDCCD \u4F4D\u7F6E\u4FE1\u606F')
                 .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
                 .fontColor('#333333')
                 .layoutWeight(1);
 
-              Text('›')
-                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                .fontColor('#1677FF');
-            }
-            .width('100%')
-            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-            .backgroundColor('#FAFAFA')
-            .borderRadius(8)
-            .onClick(() => this.goToDataAuth());
-
-            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-              Text('🖼️ 古医图管理')
-                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                .fontColor('#333333')
-                .layoutWeight(1);
-
-              Text('›')
-                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                .fontColor('#1677FF');
-            }
-            .width('100%')
-            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-            .backgroundColor('#FAFAFA')
-            .borderRadius(8)
-            .margin({ top: 8 })
-            .onClick(() => this.goToAncientMedicalImg());
-          }
-          .width('100%')
-          .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12)
-          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
-
-          Column() {
-            Text('🔔 通知设置')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontWeight('bold')
-              .fontColor('#333333')
-              .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-            Row() {
-              Text('推送通知')
-                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                .fontColor('#333333')
-                .layoutWeight(1);
-
-              Text(this.pushNotificationEnabled ? '开' : '关')
-                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                .fontColor(this.pushNotificationEnabled ? '#FFFFFF' : '#999999')
-                .backgroundColor(this.pushNotificationEnabled ? '#52C41A' : '#E8E8E8')
-                .width(this.isElderMode ? 56 : 44)
-                .height(this.isElderMode ? 32 : 26)
-                .borderRadius(13)
+              Text(this.privacySettings.locationEnabled ? '\u5F00' : '\u5173')
+                .fontSize(11)
+                .fontColor(this.privacySettings.locationEnabled ? '#FFFFFF' : '#999999')
+                .backgroundColor(this.privacySettings.locationEnabled ? '#52C41A' : '#E8E8E8')
+                .width(this.isElderMode ? 50 : 40)
+                .height(this.isElderMode ? 28 : 24)
+                .borderRadius(14)
                 .textAlign(TextAlign.Center)
-                .onClick(() => {
-                  this.pushNotificationEnabled = !this.pushNotificationEnabled;
-                  ToastUtil.showInfo(this.pushNotificationEnabled ? '推送通知已开启' : '推送通知已关闭');
-                });
+                .onClick(() => this.toggleSetting('locationEnabled'));
             }
             .width('100%')
-            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+            .padding(GlobalTheme.getSpacingSM(this.isElderMode))
+            .backgroundColor('#FAFAFA')
+            .borderRadius(8)
+            .margin({ bottom: 6 });
+
+            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+              Text('\uD83C\uDFE5 \u5065\u5EBB\u6570\u636E')
+                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                .fontColor('#333333')
+                .layoutWeight(1);
+
+              Text(this.privacySettings.healthDataEnabled ? '\u5F00' : '\u5173')
+                .fontSize(11)
+                .fontColor(this.privacySettings.healthDataEnabled ? '#FFFFFF' : '#999999')
+                .backgroundColor(this.privacySettings.healthDataEnabled ? '#52C41A' : '#E8E8E8')
+                .width(this.isElderMode ? 50 : 40)
+                .height(this.isElderMode ? 28 : 24)
+                .borderRadius(14)
+                .textAlign(TextAlign.Center)
+                .onClick(() => this.toggleSetting('healthDataEnabled'));
+            }
+            .width('100%')
+            .padding(GlobalTheme.getSpacingSM(this.isElderMode))
+            .backgroundColor('#FAFAFA')
+            .borderRadius(8)
+            .margin({ bottom: 6 });
+
+            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+              Text('\uD83D\uDCDA \u6D4F\u89C8\u8BB0\u5F55')
+                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                .fontColor('#333333')
+                .layoutWeight(1);
+
+              Text(this.privacySettings.browseHistoryEnabled ? '\u5F00' : '\u5173')
+                .fontSize(11)
+                .fontColor(this.privacySettings.browseHistoryEnabled ? '#FFFFFF' : '#999999')
+                .backgroundColor(this.privacySettings.browseHistoryEnabled ? '#52C41A' : '#E8E8E8')
+                .width(this.isElderMode ? 50 : 40)
+                .height(this.isElderMode ? 28 : 24)
+                .borderRadius(14)
+                .textAlign(TextAlign.Center)
+                .onClick(() => this.toggleSetting('browseHistoryEnabled'));
+            }
+            .width('100%')
+            .padding(GlobalTheme.getSpacingSM(this.isElderMode))
+            .backgroundColor('#FAFAFA')
+            .borderRadius(8)
+            .margin({ bottom: 6 });
+
+            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+              Text('\uD83D\uDCCB \u8BCA\u65AD\u62A5\u544A')
+                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                .fontColor('#333333')
+                .layoutWeight(1);
+
+              Text(this.privacySettings.diagnosticReportEnabled ? '\u5F00' : '\u5173')
+                .fontSize(11)
+                .fontColor(this.privacySettings.diagnosticReportEnabled ? '#FFFFFF' : '#999999')
+                .backgroundColor(this.privacySettings.diagnosticReportEnabled ? '#52C41A' : '#E8E8E8')
+                .width(this.isElderMode ? 50 : 40)
+                .height(this.isElderMode ? 28 : 24)
+                .borderRadius(14)
+                .textAlign(TextAlign.Center)
+                .onClick(() => this.toggleSetting('diagnosticReportEnabled'));
+            }
+            .width('100%')
+            .padding(GlobalTheme.getSpacingSM(this.isElderMode))
             .backgroundColor('#FAFAFA')
             .borderRadius(8);
-
-            Column({ space: 8 }) {
-              Text('提醒类型')
-                .fontSize(12)
-                .fontColor('#666666')
-                .width('100%');
-
-              Flex({ wrap: FlexWrap.Wrap }) {
-                ForEach(['用药提醒', '复诊提醒', '健康评估', '异常预警'], (type: string) => {
-                  Text(type)
-                    .fontSize(11)
-                    .fontColor(this.reminderTypes.includes(type) ? '#FFFFFF' : '#666666')
-                    .backgroundColor(this.reminderTypes.includes(type) ? '#1677FF' : '#F5F5F5')
-                    .padding({ left: 10, right: 10, top: 5, bottom: 5 })
-                    .borderRadius(12)
-                    .margin(3)
-                    .onClick(() => this.toggleReminderType(type));
-                }, (type: string) => type);
-              }
-              .width('100%');
-            }
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#FAFAFA')
-            .borderRadius(8)
-            .margin({ top: 8 });
           }
           .width('100%')
           .padding(GlobalTheme.getSpacingMD(this.isElderMode))
@@ -367,14 +278,192 @@ struct PrivacySettingPage {
           .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
 
           Column() {
-            Text('📜 隐私政策与帮助')
+            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+              Text('\uD83D\uDCDB \u6570\u636E\u6388\u6743\u5217\u8868')
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#333333')
+                .layoutWeight(1);
+
+              Text(this.authItems.filter((a: AuthItem) => a.status === 'active').length + ' \u4E2A\u6709\u6548')
+                .fontSize(11)
+                .fontColor('#52C41A')
+                .backgroundColor('#F6FFED')
+                .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                .borderRadius(12)
+                .border({ width: 1, color: '#B7EB8F' });
+            }
+            .width('100%');
+
+            if (this.isLoadingAuths) {
+              LoadingProgress().width(20).height(20).color('#1677FF').margin({ top: 12, bottom: 12 });
+            } else if (this.authItems.length === 0) {
+              Text('\u6682\u65E0\u6388\u6743\u8BB0\u5F55')
+                .fontSize(13)
+                .fontColor('#999999')
+                .padding(20)
+                .width('100%')
+                .textAlign(TextAlign.Center);
+            } else {
+              ForEach(this.authItems.slice(0, 5), (item: AuthItem) => {
+                Row({ space: 8 }) {
+                  Circle()
+                    .width(8)
+                    .height(8)
+                    .fill(item.status === 'active' ? '#52C41A' : item.status === 'expired' ? '#999999' : '#FF4D4F');
+
+                  Column({ space: 2 }) {
+                    Text(item.name)
+                      .fontSize(13)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor('#333333')
+                      .maxLines(1);
+
+                    Text(item.dataType + ' · ' + (item.status === 'active' ? '\u6709\u6548' : item.status === 'expired' ? '\u5DF2\u8FC7\u671F' : '\u5DF2\u64A4\u9500'))
+                      .fontSize(11)
+                      .fontColor('#999999');
+                  }
+                  .layoutWeight(1)
+                  .alignItems(HorizontalAlign.Start);
+                }
+                .width('100%')
+                .padding(10)
+                .backgroundColor('#FAFAFA')
+                .borderRadius(6)
+                .margin({ top: 4 });
+              }, (item: AuthItem) => item.id);
+            }
+
+            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+              Text('\u67E5\u770B\u5168\u90E8\u6388\u6743')
+                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                .fontColor('#1677FF')
+                .layoutWeight(1);
+              Text('\u203A').fontSize(16).fontColor('#1677FF');
+            }
+            .width('100%')
+            .padding(GlobalTheme.getSpacingSM(this.isElderMode))
+            .backgroundColor('#E6F4FF')
+            .borderRadius(8)
+            .margin({ top: 8 })
+            .onClick(() => this.viewDataAuth());
+          }
+          .width('100%')
+          .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+          .backgroundColor('#FFFFFF')
+          .borderRadius(12)
+          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+
+          Column() {
+            Text('\uD83D\uDCDE \u64CD\u4F5BA5BA\u8BA1\u65E5\u5FD7')
               .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontWeight('bold')
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333333')
+              .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) })
+              .width('100%');
+
+            if (this.isLoadingLogs) {
+              LoadingProgress().width(20).height(20).color('#1677FF').margin({ top: 12, bottom: 12 });
+            } else if (this.accessLogs.length === 0) {
+              Text('\u6682\u65E0\u8BBF\u95EE\u8BB0\u5F55')
+                .fontSize(13)
+                .fontColor('#999999')
+                .padding(20)
+                .width('100%')
+                .textAlign(TextAlign.Center);
+            } else {
+              ForEach(this.accessLogs.slice(0, 5), (log: AccessLogItem) => {
+                Row({ space: 8 }) {
+                  Circle()
+                    .width(8)
+                    .height(8)
+                    .fill(log.action === '\u8BFB\u53D6' ? '#1677FF' : log.action === '\u5199\u5165' ? '#52C41A' : '#FF4D4F');
+
+                  Column({ space: 2 }) {
+                    Text(log.accessUser + ' ' + log.action + '\u4E86' + log.dataType)
+                      .fontSize(13)
+                      .fontColor('#333333')
+                      .maxLines(1);
+
+                    Text(log.accessTime + ' · ' + (log.detail ? log.detail : ''))
+                      .fontSize(11)
+                      .fontColor('#BBBBBB')
+                      .maxLines(1);
+                  }
+                  .layoutWeight(1)
+                  .alignItems(HorizontalAlign.Start);
+                }
+                .width('100%')
+                .padding(10)
+                .backgroundColor('#FAFAFA')
+                .borderRadius(6)
+                .margin({ top: 4 });
+              }, (log: AccessLogItem) => String(log.id));
+            }
+          }
+          .width('100%')
+          .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+          .backgroundColor('#FFFFFF')
+          .borderRadius(12)
+          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+
+          Column() {
+            Text('\uD83D\uDD11 \u8D26\u6237\u5B89\u5168')
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontWeight(FontWeight.Bold)
               .fontColor('#333333')
               .margin({ bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
 
-            this.buildSettingItem('📄', '查看隐私政策', '了解我们如何保护您的隐私', () => this.viewPrivacyPolicy());
-            this.buildSettingItem('❓', '帮助与反馈', '遇到问题？联系我们', () => {});
+            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+              Text('\uD83D\uDD11')
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
+              Column({ space: 4 }) {
+                Text('\u4FEE\u6539\u5BC6\u7801')
+                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                  .fontColor('#333333')
+                  .fontWeight(FontWeight.Medium);
+                Text('\u5B9A\u671F\u66F4\u6362\u4FDD\u969C\u8D26\u6237\u5B89\u5168')
+                  .fontSize(11)
+                  .fontColor('#999999');
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+              .margin({ left: GlobalTheme.getSpacingMD(this.isElderMode) });
+              Text('\u203A')
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                .fontColor('#CCCCCC');
+            }
+            .width('100%')
+            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+            .backgroundColor('#FAFAFA')
+            .borderRadius(8)
+            .margin({ bottom: 8 })
+            .onClick(() => this.changePassword());
+
+            Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+              Text('\uD83D\uDEAA')
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
+              Column({ space: 4 }) {
+                Text('\u9000\u51FA\u767B\u5F55')
+                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                  .fontColor('#FF4D4F')
+                  .fontWeight(FontWeight.Medium);
+                Text('\u5207\u6362\u5230\u5176\u4ED6\u8D26\u53F7')
+                  .fontSize(11)
+                  .fontColor('#999999');
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+              .margin({ left: GlobalTheme.getSpacingMD(this.isElderMode) });
+              Text('\u203A')
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                .fontColor('#FF4D4F');
+            }
+            .width('100%')
+            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+            .backgroundColor('#FFF7F7')
+            .borderRadius(8)
+            .onClick(() => this.logout());
           }
           .width('100%')
           .padding(GlobalTheme.getSpacingMD(this.isElderMode))
@@ -395,76 +484,5 @@ struct PrivacySettingPage {
     .width('100%')
     .height('100%')
     .backgroundColor('#F5F7FA');
-  }
-
-  @Builder
-  buildSettingItem(icon: string, title: string, desc: string, onClick: () => void, isDanger?: boolean) {
-    Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-      Text(icon)
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
-
-      Column({ space: 4 }) {
-        Text(title)
-          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-          .fontColor(isDanger ? '#FF4D4F' : '#333333')
-          .fontWeight(FontWeight.Medium);
-
-        Text(desc)
-          .fontSize(11)
-          .fontColor('#999999');
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-      .margin({ left: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-      Text('›')
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-        .fontColor(isDanger ? '#FF4D4F' : '#CCCCCC');
-    }
-    .width('100%')
-    .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-    .backgroundColor(isDanger ? '#FFF7F7' : '#FAFAFA')
-    .borderRadius(8)
-    .margin({ bottom: 8 })
-    .onClick(onClick);
-  }
-
-  @Builder
-  buildPermissionItem(item: PermissionItem) {
-    Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-      Text(item.icon)
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode));
-
-      Column({ space: 4 }) {
-        Text(item.name)
-          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-          .fontColor('#333333')
-          .fontWeight(FontWeight.Medium);
-
-        Text(item.description)
-          .fontSize(11)
-          .fontColor('#999999')
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis });
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-      .margin({ left: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-      Text(item.isEnabled ? '开' : '关')
-        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-        .fontColor(item.isEnabled ? '#FFFFFF' : '#999999')
-        .backgroundColor(item.isEnabled ? '#52C41A' : '#E8E8E8')
-        .width(this.isElderMode ? 56 : 44)
-        .height(this.isElderMode ? 32 : 26)
-        .borderRadius(13)
-        .textAlign(TextAlign.Center)
-        .onClick(() => this.togglePermission(item));
-    }
-    .width('100%')
-    .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-    .backgroundColor('#FAFAFA')
-    .borderRadius(8)
-    .margin({ bottom: 8 });
   }
 }

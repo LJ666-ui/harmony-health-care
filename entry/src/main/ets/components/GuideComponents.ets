@@ -68,7 +68,7 @@ export struct FirstTimeGuide {
   aboutToAppear(): void {
     this.steps = this.guideSteps || DEFAULT_GUIDE_STEPS;
 
-    if (!AccessibilityConfig.isFirstTimeGuideShown()) {
+    if (!AccessibilityConfig.getFirstTimeGuideShown()) {
       setTimeout(() => {
         this.isVisible = true;
       }, 500);
@@ -123,7 +123,7 @@ export struct FirstTimeGuide {
           Text(this.getCurrentStep().icon)
             .fontSize(56);
 
-          Text(`${this.currentStepIndex + 1} / ${this.steps.length}`)
+          Text('' + (this.currentStepIndex + 1) + ' / ' + this.steps.length)
             .fontSize(13)
             .fontColor(AccessibilityConfig.getTextHint());
 
@@ -178,7 +178,7 @@ export struct FirstTimeGuide {
                   .height(8)
                   .borderRadius(4)
                   .backgroundColor(index === this.currentStepIndex ? AccessibilityConfig.getThemeColor() : '#E0E0E0');
-              }, (_step: GuideStep, index: number) => `dot_${index}`);
+              }, (_step: GuideStep, index: number) => 'dot_' + index);
             }
           }
 
@@ -206,7 +206,7 @@ export struct FirstTimeGuide {
       .width('100%')
       .height('100%')
       .position({ x: 0, y: 0 })
-      .accessibilityText(`新手引导第${this.currentStepIndex + 1}步：${this.getCurrentStep().title}`);
+      .accessibilityText('新手引导第' + (this.currentStepIndex + 1) + '步：' + this.getCurrentStep().title);
     }
   }
 }

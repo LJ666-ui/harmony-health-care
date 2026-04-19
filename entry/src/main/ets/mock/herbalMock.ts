@@ -358,7 +358,12 @@ export function getHerbalList(): HerbalInfo[] {
 }
 
 export function getHerbalById(id: string): HerbalInfo | undefined {
-  return herbalMockData.find((herb: HerbalInfo) => herb.id === id);
+  for (let i = 0; i < herbalMockData.length; i++) {
+    if (herbalMockData[i].id === id) {
+      return herbalMockData[i];
+    }
+  }
+  return undefined;
 }
 
 export function filterHerbals(
@@ -367,28 +372,80 @@ export function filterHerbals(
   taste?: string,
   searchKey?: string
 ): HerbalInfo[] {
-  let filtered: HerbalInfo[] = herbalMockData;
+  let filtered: HerbalInfo[] = [];
 
-  if (category && category !== '全部') {
-    filtered = filtered.filter((herb: HerbalInfo) => herb.category === category);
-  }
+  for (let i = 0; i < herbalMockData.length; i++) {
+    const herb = herbalMockData[i];
+    let match = true;
 
-  if (nature) {
-    filtered = filtered.filter((herb: HerbalInfo) => herb.nature.includes(nature));
-  }
+    if (category && category !== '全部') {
+      if (herb.category !== category) {
+        match = false;
+      }
+    }
 
-  if (taste) {
-    filtered = filtered.filter((herb: HerbalInfo) => herb.taste.includes(taste));
-  }
+    if (match && nature) {
+      let hasNature = false;
+      for (let n = 0; n < herb.nature.length; n++) {
+        if (herb.nature[n] === nature) {
+          hasNature = true;
+          break;
+        }
+      }
+      if (!hasNature) {
+        match = false;
+      }
+    }
 
-  if (searchKey && searchKey.trim() !== '') {
-    const key: string = searchKey.trim().toLowerCase();
-    filtered = filtered.filter((herb: HerbalInfo) =>
-      herb.name.toLowerCase().includes(key) ||
-      herb.alias.some((a: string) => a.toLowerCase().includes(key)) ||
-      herb.category.includes(key) ||
-      herb.efficacy.some((e: string) => e.includes(key))
-    );
+    if (match && taste) {
+      let hasTaste = false;
+      for (let t = 0; t < herb.taste.length; t++) {
+        if (herb.taste[t] === taste) {
+          hasTaste = true;
+          break;
+        }
+      }
+      if (!hasTaste) {
+        match = false;
+      }
+    }
+
+    if (match && searchKey && searchKey.trim() !== '') {
+      const key: string = searchKey.trim().toLowerCase();
+      let found = false;
+
+      if (herb.name.toLowerCase().indexOf(key) >= 0) {
+        found = true;
+      } else {
+        for (let a = 0; a < herb.alias.length; a++) {
+          if (herb.alias[a].toLowerCase().indexOf(key) >= 0) {
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (!found && herb.category.indexOf(key) >= 0) {
+        found = true;
+      }
+
+      if (!found) {
+        for (let e = 0; e < herb.efficacy.length; e++) {
+          if (herb.efficacy[e].indexOf(key) >= 0) {
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (!found) {
+        match = false;
+      }
+    }
+
+    if (match) {
+      filtered.push(herb);
+    }
   }
 
   return filtered;

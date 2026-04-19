@@ -138,7 +138,14 @@ struct MedicationDetailPage {
     const params = router.getParams() as Record<string, string>;
     if (params && params.medicationId) {
       const medicationId = params.medicationId;
-      this.medication = medications.find(med => med.id === medicationId) || null;
+      let foundMed: MedicationInfo | null = null;
+      for (let i = 0; i < medications.length; i++) {
+        if (medications[i].id === medicationId) {
+          foundMed = medications[i];
+          break;
+        }
+      }
+      this.medication = foundMed;
     }
     this.loading = false;
   }
@@ -278,7 +285,7 @@ struct MedicationDetailPage {
                 .fontColor('#666666')
                 .width('100%')
                 .textAlign(TextAlign.Start);
-              Text(`服药时间: ${this.medication.times.join(', ')}`)
+              Text('服药时间: ' + this.joinTimes(this.medication.times))
                 .fontSize(14)
                 .fontColor('#666666')
                 .width('100%')
@@ -451,5 +458,16 @@ struct MedicationDetailPage {
     .width('100%')
     .height('100%')
     .backgroundColor(GlobalTheme.BG_COLOR);
+  }
+
+  private joinTimes(times: string[]): string {
+    let result = '';
+    for (let i = 0; i < times.length; i++) {
+      if (i > 0) {
+        result = result + ', ';
+      }
+      result = result + times[i];
+    }
+    return result;
   }
 }

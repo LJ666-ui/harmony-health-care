@@ -125,7 +125,12 @@ struct Rehab3DPage {
   ];
 
   getCurrentCourse(): CourseConfig {
-    return this.courseConfigs.find(c => c.id === this.selectedCourseId) ?? this.courseConfigs[0];
+    for (let i = 0; i < this.courseConfigs.length; i++) {
+      if (this.courseConfigs[i].id === this.selectedCourseId) {
+        return this.courseConfigs[i];
+      }
+    }
+    return this.courseConfigs[0];
   }
 
   getCurrentSteps(): string[] {
@@ -140,7 +145,8 @@ struct Rehab3DPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      const elderMode = AppStorage.get<boolean>('isOldModeEnabled');
+      this.isElderMode = elderMode ? elderMode : false;
     }
 
     const params = router.getParams() as RouterParams;
@@ -172,7 +178,7 @@ struct Rehab3DPage {
             this.actionDesc = detail.action.actionDesc || '';
             this.modelDifficulty = detail.difficulty || '';
             let rawUrl: string = detail.action.model3dUrl || '';
-            rawUrl = rawUrl.replace(/[`\,]/g, '').trim();
+            rawUrl = rawUrl.replace('`', '').replace(',', '').trim();
             if (rawUrl) {
               this.modelUrl = rawUrl.startsWith('http') ? rawUrl : ('http://10.0.2.2:8080' + rawUrl);
             }
@@ -383,7 +389,7 @@ var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},
             .alignItems(HorizontalAlign.Center)
             .backgroundColor('#FAFBFF')
             .borderRadius(GlobalTheme.RADIUS_LG)
-            .border({ width: 2, color: `${this.getCurrentCourse().color}40` });
+            .border({ width: 2, color: this.getCurrentCourse().color + '40' });
           } else if (this.modelUrl) {
             Column() {
               Stack({ alignContent: Alignment.Bottom }) {
@@ -393,15 +399,15 @@ var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},
                   .backgroundColor('#F5F5F5');
 
                 Row() {
-                  Text(`进度 ${Math.round(this.getProgressPercent())}%`)
+                  Text('进度 ' + Math.round(this.getProgressPercent()) + '%')
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                     .fontColor('#FFFFFF')
                 }
-                .width(`${this.getProgressPercent()}%`)
+                .width(this.getProgressPercent() + '%')
                 .height(28)
                 .linearGradient({
                   angle: 90,
-                  colors: [[this.getCurrentCourse().color, 0], [`${this.getCurrentCourse().color}CC`, 1]]
+                  colors: [[this.getCurrentCourse().color, 0], [this.getCurrentCourse().color + 'CC', 1]]
                 })
                 .borderRadius({ topLeft: 14, bottomLeft: 14 })
                 .justifyContent(FlexAlign.Center)
@@ -413,7 +419,7 @@ var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},
 
               Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
                 if (this.modelDifficulty) {
-                  Text(`难度：${this.modelDifficulty}`)
+                  Text('难度：' + this.modelDifficulty)
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                     .fontColor('#FF9800')
                     .backgroundColor('#FFF3E0')
@@ -429,10 +435,10 @@ var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},
             .width('100%')
             .backgroundColor('#FAFBFF')
             .borderRadius(GlobalTheme.RADIUS_LG)
-            .border({ width: 2, color: `${this.getCurrentCourse().color}40` })
+            .border({ width: 2, color: this.getCurrentCourse().color + '40' })
             .shadow({
               radius: 20,
-              color: `${this.getCurrentCourse().color}18`,
+              color: this.getCurrentCourse().color + '18',
               offsetX: 0,
               offsetY: 6
             })
@@ -457,7 +463,7 @@ var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},
             .alignItems(HorizontalAlign.Center)
             .backgroundColor('#FAFBFF')
             .borderRadius(GlobalTheme.RADIUS_LG)
-            .border({ width: 2, color: `${this.getCurrentCourse().color}40` });
+            .border({ width: 2, color: this.getCurrentCourse().color + '40' });
           }
 
           if (this.actionName) {
@@ -490,7 +496,7 @@ var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},
               .borderRadius(GlobalTheme.RADIUS_LG)
               .shadow(this.isPlaying ? undefined : {
                 radius: 8,
-                color: `${this.getCurrentCourse().color}50`,
+                color: this.getCurrentCourse().color + '50',
                 offsetX: 0,
                 offsetY: 3
               })
@@ -519,14 +525,14 @@ var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},
               ListItem() {
                 Row() {
                   Column() {
-                    Text(`${index + 1}`)
+                    Text('' + (index + 1))
                       .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
                       .fontWeight('bold')
                       .fontColor(this.currentStep === index ? '#FFFFFF' : this.getCurrentCourse().color);
                   }
                   .width(30)
                   .height(30)
-                  .backgroundColor(this.currentStep === index ? this.getCurrentCourse().color : `${this.getCurrentCourse().color}15`)
+                  .backgroundColor(this.currentStep === index ? this.getCurrentCourse().color : this.getCurrentCourse().color + '15')
                   .borderRadius(GlobalTheme.RADIUS_LG)
                   .justifyContent(FlexAlign.Center)
                   .alignItems(HorizontalAlign.Center);
@@ -557,21 +563,21 @@ var h=document.getElementById('container').clientHeight;renderer.setSize(w,h);},
                 }
                 .width('100%')
                 .padding({ left: GlobalTheme.getSpacingMD(this.isElderMode), right: GlobalTheme.getSpacingMD(this.isElderMode), top: GlobalTheme.getSpacingSM(this.isElderMode), bottom: GlobalTheme.getSpacingSM(this.isElderMode) })
-                .backgroundColor(this.currentStep === index ? `${this.getCurrentCourse().color}08` : GlobalTheme.CARD_BG)
+                .backgroundColor(this.currentStep === index ? this.getCurrentCourse().color + '08' : GlobalTheme.CARD_BG)
                 .borderRadius(GlobalTheme.RADIUS_MD)
                 .border({
                   width: this.currentStep === index ? 1.5 : 1,
-                  color: this.currentStep === index ? `${this.getCurrentCourse().color}60` : GlobalTheme.BORDER_COLOR
+                  color: this.currentStep === index ? this.getCurrentCourse().color + '60' : GlobalTheme.BORDER_COLOR
                 })
                 .shadow(this.currentStep === index ? {
                   radius: 6,
-                  color: `${this.getCurrentCourse().color}15`,
+                  color: this.getCurrentCourse().color + '15',
                   offsetX: 0,
                   offsetY: 2
                 } : undefined)
                 .onClick(() => this.handleStepClick(index));
               }
-            }, (step: string, index: number) => `${this.selectedCourseId}-${step}-${index}`);
+            }, (step: string, index: number) => '' + this.selectedCourseId + '-' + step + '-' + index);
           }
           .width('100%')
           .layoutWeight(1)

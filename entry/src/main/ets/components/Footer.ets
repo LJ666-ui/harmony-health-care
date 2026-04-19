@@ -37,11 +37,11 @@ export struct Footer {
         .height('100%')
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
-        .accessibilityText(`${item.label}${this.activeIndex === index ? '，当前页面' : ''}`)
+        .accessibilityText('' + item.label + (this.activeIndex === index ? '，当前页面' : ''))
         .onClick(() => {
           router.pushUrl({ url: item.pageUrl });
         });
-      }, (item: TabItem, index: number) => `tab_${index}`);
+      }, (item: TabItem, index: number) => 'tab_' + index);
     }
     .width('100%')
     .height(this.isElderMode ? 75 : 60)

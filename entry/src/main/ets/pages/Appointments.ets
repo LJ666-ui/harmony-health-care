@@ -68,7 +68,7 @@ struct Appointments {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
 
     this.loadAppointments();
@@ -79,7 +79,10 @@ struct Appointments {
     if (storedAppointments && storedAppointments.length > 0) {
       this.appointments = storedAppointments;
     } else {
-      this.appointments = [...this.defaultAppointments];
+      this.appointments = [];
+      for (let i = 0; i < this.defaultAppointments.length; i++) {
+        this.appointments.push(this.defaultAppointments[i]);
+      }
     }
 
     this.applyStatusFilter();
@@ -87,7 +90,10 @@ struct Appointments {
 
   applyStatusFilter(): void {
     if (this.selectedStatus === '全部') {
-      this.filteredAppointments = [...this.appointments];
+      this.filteredAppointments = [];
+      for (let j = 0; j < this.appointments.length; j++) {
+        this.filteredAppointments.push(this.appointments[j]);
+      }
     } else {
       const statusMap: Record<string, string> = {
         '待确认': 'pending',
@@ -95,7 +101,14 @@ struct Appointments {
         '已完成': 'completed',
         '已取消': 'cancelled'
       };
-      this.filteredAppointments = this.appointments.filter(item => item.status === statusMap[this.selectedStatus]);
+      let filteredApp: Appointment[] = [];
+      const targetStatus = statusMap[this.selectedStatus];
+      for (let i = 0; i < this.appointments.length; i++) {
+        if (this.appointments[i].status === targetStatus) {
+          filteredApp.push(this.appointments[i]);
+        }
+      }
+      this.filteredAppointments = filteredApp;
     }
   }
 
@@ -172,7 +185,7 @@ struct Appointments {
           .fontWeight('bold')
           .fontColor('#333333');
 
-        Text(`确定要取消 ${this.selectedAppointment?.hospital} 的${this.selectedAppointment?.specialty}预约吗？`)
+        Text('确定要取消 ' + (this.selectedAppointment ? this.selectedAppointment.hospital : '') + ' 的' + (this.selectedAppointment ? this.selectedAppointment.specialty : '') + '预约吗？')
           .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
           .fontColor('#666666')
           .textAlign(TextAlign.Center);
@@ -281,7 +294,7 @@ struct Appointments {
               });
 
               Row() {
-                Text(`📍 ${item.location}`)
+                Text('📍 ' + item.location)
                   .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                   .fontColor('#999999');
 
@@ -302,7 +315,7 @@ struct Appointments {
               .padding({ top: 8 });
 
               if (item.notes) {
-                Text(`备注：${item.notes}`)
+                Text('备注：' + item.notes)
                   .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                   .fontColor('#666666')
                   .width('100%')

@@ -129,7 +129,7 @@ export struct HerbalFilterBar {
         .fontColor(value && value !== '全部' ? '#1677FF' : '#333333');
 
       if (value && value !== '全部') {
-        Text(`(${value})`)
+        Text('(' + value + ')')
           .fontSize(11)
           .fontColor('#1677FF');
       }

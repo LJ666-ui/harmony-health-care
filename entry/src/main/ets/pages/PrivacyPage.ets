@@ -74,7 +74,7 @@ struct PrivacyPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
   }
 
@@ -195,7 +195,7 @@ struct PrivacyPage {
                     .fontWeight('bold')
                     .fontColor('#333333');
                   Blank();
-                  Text(`${this.authDevices.filter(d => d.isAuthorized).length}/${this.authDevices.length} 已授权`)
+                  Text('' + this.countAuthorizedDevices(this.authDevices) + '/' + this.authDevices.length + ' 已授权')
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                     .fontColor('#999999');
                 }
@@ -298,7 +298,7 @@ struct PrivacyPage {
                     .fontWeight('bold')
                     .fontColor('#333333');
                   Blank();
-                  Text(`共 ${this.accessLogs.length} 条记录`)
+                  Text('共 ' + this.accessLogs.length + ' 条记录')
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                     .fontColor('#999999');
                 }
@@ -308,7 +308,7 @@ struct PrivacyPage {
                 ForEach(this.accessLogs, (log: AccessLog) => {
                   Column({ space: 8 }) {
                     Row({ space: 8 }) {
-                      Text(`👤 ${log.visitor}`)
+                      Text('👤 ' + log.visitor)
                         .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
                         .fontColor('#1677FF')
                         .fontWeight(FontWeight.Medium);
@@ -328,7 +328,7 @@ struct PrivacyPage {
                       .width('100%');
 
                     Row() {
-                      Text(`🕐 ${log.time}`)
+                      Text('🕐 ' + log.time)
                         .fontSize(11)
                         .fontColor('#999999');
                     }
@@ -361,5 +361,15 @@ struct PrivacyPage {
     .width('100%')
     .height('100%')
     .backgroundColor('#F5F7FA');
+  }
+
+  private countAuthorizedDevices(devices: AuthDevice[]): number {
+    let count = 0;
+    for (let i = 0; i < devices.length; i++) {
+      if (devices[i].isAuthorized) {
+        count++;
+      }
+    }
+    return count;
   }
 }

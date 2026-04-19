@@ -163,11 +163,13 @@ export class AccessibilityConfig {
   }
 
   static isOldModeEnabled(): boolean {
-    return AppStorage.get<boolean>(AccessibilityConfig.IS_OLD_MODE_KEY) ?? false;
+    const val = AppStorage.get<boolean>(AccessibilityConfig.IS_OLD_MODE_KEY);
+    return val ? val : false;
   }
 
   static isTTSEnabled(): boolean {
-    return AppStorage.get<boolean>(AccessibilityConfig.TTS_ENABLED_KEY) ?? false;
+    const val = AppStorage.get<boolean>(AccessibilityConfig.TTS_ENABLED_KEY);
+    return val ? val : false;
   }
 
   static setTTSEnabled(enabled: boolean): void {
@@ -175,7 +177,8 @@ export class AccessibilityConfig {
   }
 
   static isFirstTimeGuideShown(): boolean {
-    return AppStorage.get<boolean>(AccessibilityConfig.FIRST_TIME_GUIDE_SHOWN) ?? false;
+    const val = AppStorage.get<boolean>(AccessibilityConfig.FIRST_TIME_GUIDE_SHOWN);
+    return val ? val : false;
   }
 
   static markFirstTimeGuideShown(): void {

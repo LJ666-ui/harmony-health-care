@@ -1,12 +1,10 @@
-
-
 @Component
 struct RecommendCard {
-  @Prop imageUrl: string;
-  @Prop title: string;
-  @Prop reason: string;
-  @Prop source: string;
-  @Prop onClickCallback: () => void;
+  @Prop imageUrl: string = '';
+  @Prop title: string = '';
+  @Prop reason: string = '';
+  @Prop source: string = '';
+  onClickCallback?: () => void;
 
   build() {
     Column() {
@@ -14,20 +12,20 @@ struct RecommendCard {
         .width('100%')
         .height(160)
         .objectFit(ImageFit.Cover);
-      
+
       Column({
         space: 8
       }) {
         Text(this.title)
           .fontSize(16)
-          .fontWeight('bold')
+          .fontWeight(FontWeight.Bold)
           .fontColor('#333333')
           .maxLines(2);
-        
+
         Text(this.reason)
           .fontSize(14)
           .fontColor('#666666');
-        
+
         Row() {
           Text(this.source)
             .fontSize(12)
@@ -43,7 +41,11 @@ struct RecommendCard {
     .backgroundColor('#ffffff')
     .borderRadius(8)
     .shadow({ radius: 4, color: '#00000010' })
-    .onClick(this.onClickCallback);
+    .onClick(() => {
+      if (this.onClickCallback) {
+        this.onClickCallback();
+      }
+    });
   }
 }
 

@@ -12,7 +12,7 @@ struct PrivacyPolicyPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
   }
 
@@ -52,7 +52,7 @@ struct PrivacyPolicyPage {
               .fontWeight('bold')
               .fontColor('#333333');
 
-            Text(`欢迎使用星云医疗助手（以下简称"本应用"）。我们深知个人信息对您的重要性，并会尽全力保护您的个人信息安全可靠。我们致力于维持您对我们的信任，恪守以下原则，保护您的个人信息：权责一致原则、目的明确原则、选择同意原则、最少够用原则、确保安全原则、主体参与原则、公开透明原则等。`)
+            Text('欢迎使用星云医疗助手（以下简称"本应用"）。我们深知个人信息对您的重要性，并会尽全力保护您的个人信息安全可靠。我们致力于维持您对我们的信任，恪守以下原则，保护您的个人信息：权责一致原则、目的明确原则、选择同意原则、最少够用原则、确保安全原则、主体参与原则、公开透明原则等。')
               .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
               .fontColor('#666666')
               .lineHeight(22);
@@ -178,7 +178,7 @@ struct PrivacyPolicyPage {
               .fontWeight('bold')
               .fontColor('#333333');
 
-            Text(`我们非常重视对未成年人个人信息的保护。若您是18周岁以下的未成年人，在使用我们的产品/服务前，应事先取得您家长或法定监护人的同意。如果您是未成年人的监护人，当您对您所监护的未成年人处理个人信息的相关事宜有相关疑问时，请通过本政策公布的联系方式与我们联系。`)
+            Text('我们非常重视对未成年人个人信息的保护。若您是18周岁以下的未成年人，在使用我们的产品/服务前，应事先取得您家长或法定监护人的同意。如果您是未成年人的监护人，当您对您所监护的未成年人处理个人信息的相关事宜有相关疑问时，请通过本政策公布的联系方式与我们联系。')
               .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
               .fontColor('#666666')
               .lineHeight(22);

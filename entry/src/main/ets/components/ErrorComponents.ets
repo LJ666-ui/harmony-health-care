@@ -258,7 +258,7 @@ export struct EmptyStateView {
     .height(280)
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
-    .accessibilityText(`空状态：${this.getStateInfo().title}`);
+    .accessibilityText('空状态：' + this.getStateInfo().title);
   }
 }
 

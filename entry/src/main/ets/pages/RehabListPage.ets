@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import BrowseTracker from '../utils/BrowseTracker';
 
 export interface RehabCourse {
   id: string;
@@ -20,6 +21,7 @@ export interface RehabCourse {
 @Component
 struct RehabListPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @State recordId: number = 0;
 
   @State courses: RehabCourse[] = [
     {
@@ -128,7 +130,16 @@ struct RehabListPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
+    }
+    BrowseTracker.recordStart('REHAB_LIST', 'PAGE', 6, '康复课程列表').then(id => {
+      this.recordId = id;
+    });
+  }
+
+  aboutToDisappear(): void {
+    if (this.recordId > 0) {
+      BrowseTracker.recordEnd(this.recordId);
     }
   }
 
@@ -173,10 +184,10 @@ struct RehabListPage {
                         .maxLines(2);
 
                       Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-                        Text(`⏱ ${course.duration}`)
+                        Text('⏱ ' + course.duration)
                           .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                           .fontColor(GlobalTheme.TEXT_HINT);
-                        Text(`📊 ${course.difficulty}`)
+                        Text('📊 ' + course.difficulty)
                           .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                           .fontColor(GlobalTheme.THEME_COLOR);
                       }
@@ -190,7 +201,7 @@ struct RehabListPage {
                 .borderRadius(GlobalTheme.RADIUS_LG)
                 .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
                 .onClick(() => {
-                  router.pushUrl({ url: `pages/Rehab3DPage?courseId=${course.id}` });
+                  router.pushUrl({ url: 'pages/Rehab3DPage?courseId=' + course.id });
                 });
               }
               .padding({ bottom: GlobalTheme.getSpacingSM(this.isElderMode) });

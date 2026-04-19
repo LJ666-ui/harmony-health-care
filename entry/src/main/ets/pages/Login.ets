@@ -85,7 +85,7 @@ struct Login {
 
       if (response.success) {
         // 保存Token到AppStorage
-        if (response.data?.token) {
+        if (response.data && response.data.token) {
           try {
             AppStorage.setOrCreate<string>('token', response.data.token);
           } catch (error) {
@@ -94,7 +94,7 @@ struct Login {
         }
 
         // 保存用户信息
-        if (response.data?.userInfo) {
+        if (response.data && response.data.userInfo) {
           try {
             AppStorage.setOrCreate<UserInfo>('userInfo', response.data.userInfo);
           } catch (error) {

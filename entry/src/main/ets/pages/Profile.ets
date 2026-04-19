@@ -131,7 +131,7 @@ struct Profile {
               .backgroundColor(AccessibilityConfig.getCardBgColor())
               .borderRadius({ topLeft: 12, topRight: 12 })
               .border({ width: 1, color: AccessibilityConfig.getBorderColor() })
-              .accessibilityText(`老年模式，当前${this.isElderMode ? '已开启' : '已关闭'}`)
+              .accessibilityText('老年模式，当前' + (this.isElderMode ? '已开启' : '已关闭'))
               .onClick(() => this.toggleElderMode());
 
               ForEach(this.menuItems, (item: MenuItem) => {
@@ -153,7 +153,7 @@ struct Profile {
                 .width('100%')
                 .padding(AccessibilityConfig.getSpacingMD())
                 .backgroundColor(AccessibilityConfig.getCardBgColor())
-                .accessibilityText(`${item.title}`)
+                .accessibilityText('' + item.title)
                 .onClick(() => this.handleMenuClick(item));
               }, (item: MenuItem) => item.title);
             }

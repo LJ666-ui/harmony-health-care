@@ -13,9 +13,10 @@ export class ToastUtil {
 
   static showSuccess(message: string, duration?: number): void {
     try {
+      const dur = duration ? duration : ToastUtil.DURATION_DEFAULT;
       promptAction.showToast({
         message: message,
-        duration: duration ?? ToastUtil.DURATION_DEFAULT,
+        duration: dur,
         bottom: '80vp'
       });
     } catch (error) {
@@ -25,9 +26,10 @@ export class ToastUtil {
 
   static showError(message: string, duration?: number): void {
     try {
+      const dur = duration ? duration : ToastUtil.DURATION_DEFAULT;
       promptAction.showToast({
         message: message,
-        duration: duration ?? ToastUtil.DURATION_DEFAULT,
+        duration: dur,
         bottom: '80vp'
       });
     } catch (error) {
@@ -37,9 +39,10 @@ export class ToastUtil {
 
   static showInfo(message: string, duration?: number): void {
     try {
+      const dur = duration ? duration : ToastUtil.DURATION_DEFAULT;
       promptAction.showToast({
         message: message,
-        duration: duration ?? ToastUtil.DURATION_DEFAULT,
+        duration: dur,
         bottom: '80vp'
       });
     } catch (error) {
@@ -49,9 +52,10 @@ export class ToastUtil {
 
   static showWarning(message: string, duration?: number): void {
     try {
+      const dur = duration ? duration : ToastUtil.DURATION_DEFAULT;
       promptAction.showToast({
         message: message,
-        duration: duration ?? ToastUtil.DURATION_DEFAULT,
+        duration: dur,
         bottom: '80vp'
       });
     } catch (error) {
@@ -96,7 +100,8 @@ export class ToastUtil {
   }
 
   static loginFailed(message?: string): void {
-    ToastUtil.showError(message ?? '登录失败，请检查账号密码');
+    const msg = message ? message : '登录失败，请检查账号密码';
+    ToastUtil.showError(msg);
   }
 
   static cancelSuccess(): void {
@@ -108,27 +113,51 @@ export class ToastUtil {
   }
 
   static addSuccess(type?: string): void {
-    ToastUtil.showSuccess(type ? `${type}添加成功` : '添加成功');
+    if (type) {
+      ToastUtil.showSuccess(type + '添加成功');
+    } else {
+      ToastUtil.showSuccess('添加成功');
+    }
   }
 
   static addFailed(type?: string): void {
-    ToastUtil.showError(type ? `${type}添加失败` : '添加失败，请重试');
+    if (type) {
+      ToastUtil.showError(type + '添加失败');
+    } else {
+      ToastUtil.showError('添加失败，请重试');
+    }
   }
 
   static updateSuccess(type?: string): void {
-    ToastUtil.showSuccess(type ? `${type}更新成功` : '更新成功');
+    if (type) {
+      ToastUtil.showSuccess(type + '更新成功');
+    } else {
+      ToastUtil.showSuccess('更新成功');
+    }
   }
 
   static updateFailed(type?: string): void {
-    ToastUtil.showError(type ? `${type}更新失败` : '更新失败，请重试');
+    if (type) {
+      ToastUtil.showError(type + '更新失败');
+    } else {
+      ToastUtil.showError('更新失败，请重试');
+    }
   }
 
   static operationSuccess(operation?: string): void {
-    ToastUtil.showSuccess(operation ? `${operation}成功` : '操作成功');
+    if (operation) {
+      ToastUtil.showSuccess(operation + '成功');
+    } else {
+      ToastUtil.showSuccess('操作成功');
+    }
   }
 
   static operationFailed(operation?: string): void {
-    ToastUtil.showError(operation ? `${operation}失败` : '操作失败，请重试');
+    if (operation) {
+      ToastUtil.showError(operation + '失败');
+    } else {
+      ToastUtil.showError('操作失败，请重试');
+    }
   }
 
   static networkError(): void {
@@ -144,7 +173,11 @@ export class ToastUtil {
   }
 
   static formValidationFailed(field?: string): void {
-    ToastUtil.showError(field ? `请填写${field}` : '请完善表单信息');
+    if (field) {
+      ToastUtil.showError('请填写' + field);
+    } else {
+      ToastUtil.showError('请完善表单信息');
+    }
   }
 
   static emergencyCall(): void {

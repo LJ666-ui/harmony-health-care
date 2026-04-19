@@ -107,10 +107,19 @@ struct HealthRecords {
   }
 
   filterAndSortRecords() {
-    let filtered = [...this.records];
+    let filtered: HealthRecord[] = [];
+    for (let i = 0; i < this.records.length; i++) {
+      filtered.push(this.records[i]);
+    }
 
     if (this.selectedTab !== '全部') {
-      filtered = filtered.filter(record => record.type === this.selectedTab);
+      let tempFiltered: HealthRecord[] = [];
+      for (let j = 0; j < filtered.length; j++) {
+        if (filtered[j].type === this.selectedTab) {
+          tempFiltered.push(filtered[j]);
+        }
+      }
+      filtered = tempFiltered;
     }
 
     const now = Date.now();
@@ -126,18 +135,27 @@ struct HealthRecords {
         timeLimit = now - 90 * 24 * 60 * 60 * 1000;
         break;
     }
-    filtered = filtered.filter(record => record.createdAt >= timeLimit);
+    let timeFiltered: HealthRecord[] = [];
+    for (let k = 0; k < filtered.length; k++) {
+      if (filtered[k].createdAt >= timeLimit) {
+        timeFiltered.push(filtered[k]);
+      }
+    }
+    filtered = timeFiltered;
 
     if (this.sortOrder === '正序') {
-      filtered.sort((a, b) => a.createdAt - b.createdAt);
+      filtered.sort((a: HealthRecord, b: HealthRecord) => a.createdAt - b.createdAt);
     } else {
-      filtered.sort((a, b) => b.createdAt - a.createdAt);
+      filtered.sort((a: HealthRecord, b: HealthRecord) => b.createdAt - a.createdAt);
     }
 
     if (this.currentPage === 1) {
       this.filteredRecords = filtered.slice(0, this.pageSize);
     } else {
-      this.filteredRecords = [...this.filteredRecords, ...filtered.slice(this.currentPage * this.pageSize, (this.currentPage + 1) * this.pageSize)];
+      const newItems = filtered.slice(this.currentPage * this.pageSize, (this.currentPage + 1) * this.pageSize);
+      for (let m = 0; m < newItems.length; m++) {
+        this.filteredRecords.push(newItems[m]);
+      }
     }
     this.hasMore = this.filteredRecords.length < filtered.length;
   }
@@ -200,27 +218,60 @@ struct HealthRecords {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     
-    const monthlyRecords = this.records.filter(record => {
+    let monthlyRecords: HealthRecord[] = [];
+    for (let i = 0; i < this.records.length; i++) {
+      const record = this.records[i];
       const recordDate = new Date(record.date);
-      return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
-    });
+      if (recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear) {
+        monthlyRecords.push(record);
+      }
+    }
 
-    const recordDays = new Set(monthlyRecords.map(record => record.date)).size;
-    const recentRecord = this.records.sort((a, b) => b.createdAt - a.createdAt)[0];
-    const abnormalCount = monthlyRecords.filter(record => {
-      const statusIcon = this.getStatusIcon(record.value, record.type);
-      return statusIcon === '⚠️';
-    }).length;
+    const dateSet: string[] = [];
+    for (let j = 0; j < monthlyRecords.length; j++) {
+      let found = false;
+      for (let k = 0; k < dateSet.length; k++) {
+        if (dateSet[k] === monthlyRecords[j].date) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        dateSet.push(monthlyRecords[j].date);
+      }
+    }
+    const recordDays = dateSet.length;
+
+    const sortedRecords: HealthRecord[] = [];
+    for (let m = 0; m < this.records.length; m++) {
+      sortedRecords.push(this.records[m]);
+    }
+    sortedRecords.sort((a: HealthRecord, b: HealthRecord) => b.createdAt - a.createdAt);
+    const recentRecord = sortedRecords.length > 0 ? sortedRecords[0] : null;
+
+    let abnormalCount = 0;
+    for (let n = 0; n < monthlyRecords.length; n++) {
+      const statusIcon = this.getStatusIcon(monthlyRecords[n].value, monthlyRecords[n].type);
+      if (statusIcon === '⚠️') {
+        abnormalCount++;
+      }
+    }
 
     return {
       recordDays,
-      recentRecord: recentRecord ? `${recentRecord.date} ${recentRecord.time}` : '暂无记录',
+      recentRecord: recentRecord ? '' + recentRecord.date + ' ' + recentRecord.time : '暂无记录',
       abnormalCount
     };
   }
 
   deleteRecord(id: string) {
-    this.records = this.records.filter(record => record.id !== id);
+    let newRecords: HealthRecord[] = [];
+    for (let i = 0; i < this.records.length; i++) {
+      if (this.records[i].id !== id) {
+        newRecords.push(this.records[i]);
+      }
+    }
+    this.records = newRecords;
     this.filterAndSortRecords();
   }
 
@@ -455,13 +506,13 @@ struct HealthRecords {
                           .fontWeight('bold')
                           .fontColor('#333333');
                         Blank();
-                        Text(`${record.value} ${record.unit}`)
+                        Text('' + record.value + ' ' + record.unit)
                           .fontSize(14)
                           .fontWeight('bold')
                           .fontColor(record.color);
                       }
                       Row() {
-                        Text(`${record.date} ${record.time}`)
+                        Text('' + record.date + ' ' + record.time)
                           .fontSize(12)
                           .fontColor('#999999');
                         Blank();

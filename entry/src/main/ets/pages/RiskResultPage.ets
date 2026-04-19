@@ -178,7 +178,7 @@ struct RiskResultPage {
 
             ForEach(this.aiSuggestions, (suggestion: string, index: number) => {
               Row() {
-                Text(`${index + 1}.`)
+                Text((index + 1) + '.')
                   .fontSize(14)
                   .fontColor('#1677FF')
                   .fontWeight('bold')

@@ -16,6 +16,21 @@ class BrowseTracker {
 
   private constructor() {}
 
+  private getMapEntries(): [string, BrowseRecord][] {
+    const entries: [string, BrowseRecord][] = [];
+    const keys: string[] = [];
+    this.currentRecords.forEach((value: BrowseRecord, key: string) => {
+      keys.push(key);
+    });
+    for (let i = 0; i < keys.length; i++) {
+      const value = this.currentRecords.get(keys[i]);
+      if (value) {
+        entries.push([keys[i], value]);
+      }
+    }
+    return entries;
+  }
+
   public static getInstance(): BrowseTracker {
     if (!BrowseTracker.instance) {
       BrowseTracker.instance = new BrowseTracker();
@@ -36,7 +51,7 @@ class BrowseTracker {
       const recordId = await RdbHelper.insert(TABLE_BROWSE_HISTORY, values);
 
       const record: BrowseRecord = { recordId: recordId, startTime: createTime };
-      this.currentRecords.set(`${pageName}_${targetId}`, record);
+      this.currentRecords.set('' + pageName + '_' + targetId, record);
       return recordId;
     } catch (error) {
       hilog.error(0x0000, TAG, 'Failed to record browse start');
@@ -47,7 +62,7 @@ class BrowseTracker {
   public async recordEnd(recordId: number): Promise<void> {
     try {
       let startTime = Date.now();
-      const entries = Array.from(this.currentRecords.entries());
+      const entries: [string, BrowseRecord][] = this.getMapEntries();
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
         if (entry[1].recordId === recordId) {
@@ -55,9 +70,9 @@ class BrowseTracker {
           break;
         }
       }
-      
+
       const browseDuration = Date.now() - startTime;
-      
+
       if (browseDuration < 2000) {
         const predicates = new relationalStore.RdbPredicates(TABLE_BROWSE_HISTORY);
         predicates.equalTo(COLUMN_ID, recordId);
@@ -71,7 +86,7 @@ class BrowseTracker {
       }
 
       const keysToDelete: string[] = [];
-      const allEntries = Array.from(this.currentRecords.entries());
+      const allEntries: [string, BrowseRecord][] = this.getMapEntries();
       for (let i = 0; i < allEntries.length; i++) {
         const entry = allEntries[i];
         if (entry[1].recordId === recordId) {
@@ -109,7 +124,7 @@ class BrowseTracker {
   }
 
   public getCurrentRecordId(pageName: string, targetId: number): number | undefined {
-    const record = this.currentRecords.get(`${pageName}_${targetId}`);
+    const record = this.currentRecords.get('' + pageName + '_' + targetId);
     if (record) {
       return record.recordId;
     }

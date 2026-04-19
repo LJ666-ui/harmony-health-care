@@ -59,7 +59,7 @@ struct StatisticsPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
   }
 
@@ -108,7 +108,7 @@ struct StatisticsPage {
                 .padding({ left: 14, right: 14, top: 8, bottom: 8 })
                 .borderRadius(16)
                 .onClick(() => this.changeTimeRange(index));
-            }, (range: string, index: number) => `range_${index}`);
+            }, (range: string, index: number) => 'range_' + index);
           }
           .width('100%')
           .justifyContent(FlexAlign.Center);
@@ -133,7 +133,7 @@ struct StatisticsPage {
               .clip(true);
 
               Column({ space: 4 }) {
-                Text(`${this.healthScore}`)
+                Text('' + this.healthScore)
                   .fontSize(42)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.getScoreColor(this.healthScore));
@@ -188,10 +188,10 @@ struct StatisticsPage {
             .width('100%');
 
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-            this.buildSummaryCard('📝', '记录次数', `${this.healthSummary.totalRecords}次`, '#1677FF', '#E6F7FF');
-            this.buildSummaryCard('⚠️', '异常占比', `${this.healthSummary.abnormalRatio}%`, this.healthSummary.abnormalRatio > 20 ? '#FF4D4F' : '#FAAD14', this.healthSummary.abnormalRatio > 20 ? '#FFF1F0' : '#FFFBE6');
-            this.buildSummaryCard('✅', '康复完成率', `${this.healthSummary.rehabCompletion}%`, '#52C41A', '#F6FFED');
-            this.buildSummaryCard('📚', '科普阅读', `${this.healthSummary.articlesRead}篇`, '#722ED1', '#F9F0FF');
+            this.buildSummaryCard('📝', '记录次数', '' + this.healthSummary.totalRecords + '次', '#1677FF', '#E6F7FF');
+            this.buildSummaryCard('⚠️', '异常占比', '' + this.healthSummary.abnormalRatio + '%', this.healthSummary.abnormalRatio > 20 ? '#FF4D4F' : '#FAAD14', this.healthSummary.abnormalRatio > 20 ? '#FFF1F0' : '#FFFBE6');
+            this.buildSummaryCard('✅', '康复完成率', '' + this.healthSummary.rehabCompletion + '%', '#52C41A', '#F6FFED');
+            this.buildSummaryCard('📚', '科普阅读', '' + this.healthSummary.articlesRead + '篇', '#722ED1', '#F9F0FF');
           }
           .width('100%');
         }
@@ -233,13 +233,13 @@ struct StatisticsPage {
   buildChartCard(title: string, icon: string, color: string, data: DataPoint[], minVal: number, maxVal: number) {
     Column({ space: 12 }) {
       Row() {
-        Text(`${icon} ${title}`)
+        Text(icon + ' ' + title)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor('#333333')
           .layoutWeight(1);
 
-        Text(`最新: ${data[data.length - 1].value}${title.includes('压') ? '' : title.includes('糖') ? 'mmol/L' : '分'}`)
+        Text('最新: ' + data[data.length - 1].value + this.getUnitByTitle(title))
           .fontSize(12)
           .fontColor(color)
           .fontWeight(FontWeight.Medium);
@@ -262,7 +262,7 @@ struct StatisticsPage {
             }
             .layoutWeight(1)
             .alignItems(HorizontalAlign.Center);
-          }, (point: DataPoint, index: number) => `p_${index}`);
+          }, (point: DataPoint, index: number) => 'p_' + index);
         }
         .width('100%')
         .height(110)
@@ -284,13 +284,13 @@ struct StatisticsPage {
   buildBarChartCard(title: string, icon: string, color: string, data: DataPoint[]) {
     Column({ space: 12 }) {
       Row() {
-        Text(`${icon} ${title}`)
+        Text('' + icon + ' ' + title)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor('#333333')
           .layoutWeight(1);
 
-        Text(`${data.filter((d: DataPoint) => d.value > 0).length}/7天`)
+        Text('' + this.countPositiveDays(data) + '/7天')
           .fontSize(12)
           .fontColor(color)
           .fontWeight(FontWeight.Medium);
@@ -323,7 +323,7 @@ struct StatisticsPage {
           }
           .layoutWeight(1)
           .alignItems(HorizontalAlign.Center);
-        }, (point: DataPoint, index: number) => `bar_${index}`);
+        }, (point: DataPoint, index: number) => 'bar_' + index);
       }
       .width('100%')
       .height(100)
@@ -357,5 +357,25 @@ struct StatisticsPage {
     .borderRadius(12)
     .margin({ bottom: 8 })
     .alignItems(HorizontalAlign.Center);
+  }
+
+  private getUnitByTitle(title: string): string {
+    if (title.indexOf('压') >= 0) {
+      return '';
+    } else if (title.indexOf('糖') >= 0) {
+      return 'mmol/L';
+    } else {
+      return '分';
+    }
+  }
+
+  private countPositiveDays(data: DataPoint[]): number {
+    let count = 0;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].value > 0) {
+        count++;
+      }
+    }
+    return count;
   }
 }

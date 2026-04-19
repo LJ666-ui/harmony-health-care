@@ -127,7 +127,17 @@ export class AppStore {
   
   // 获取当前状态
   public getState(): AppState {
-    return { ...this.state };
+    const state: AppState = {
+      user: this.state.user,
+      healthRecords: this.state.healthRecords,
+      medications: this.state.medications,
+      appointments: this.state.appointments,
+      reminders: this.state.reminders,
+      healthMetrics: this.state.healthMetrics,
+      settings: this.state.settings,
+      healthStats: this.state.healthStats
+    };
+    return state;
   }
   
   // 订阅状态变化
@@ -145,14 +155,40 @@ export class AppStore {
   
   // 通知所有监听器
   private notifyListeners(): void {
-    this.listeners.forEach(listener => {
-      listener(this.getState());
-    });
+    for (let i = 0; i < this.listeners.length; i++) {
+      this.listeners[i](this.getState());
+    }
   }
   
   // 更新状态
   private setState(newState: Partial<AppState>): void {
-    this.state = { ...this.state, ...newState };
+    if (newState.user) {
+      this.state.user = newState.user;
+    }
+    if (newState.healthRecords) {
+      this.state.healthRecords = newState.healthRecords;
+    }
+    if (newState.medications) {
+      this.state.medications = newState.medications;
+    }
+    if (newState.appointments) {
+      this.state.appointments = newState.appointments;
+    }
+    if (newState.reminders) {
+      this.state.reminders = newState.reminders;
+    }
+    if (newState.healthMetrics) {
+      this.state.healthMetrics = newState.healthMetrics;
+    }
+    if (newState.settings) {
+      this.state.settings = newState.settings;
+    }
+    if (newState.healthStats) {
+      this.state.healthStats = newState.healthStats;
+    }
+    if (newState.isLoading !== undefined) {
+      this.state.isLoading = newState.isLoading;
+    }
     this.notifyListeners();
   }
   
@@ -169,8 +205,17 @@ export class AppStore {
   // Action: 更新用户信息
   public updateUserInfo(userInfo: Partial<UserInfo>): void {
     if (this.state.user) {
+      const updatedUser: UserInfo = {
+        username: userInfo.username !== undefined ? userInfo.username : this.state.user.username,
+        age: userInfo.age !== undefined ? userInfo.age : this.state.user.age,
+        gender: userInfo.gender !== undefined ? userInfo.gender : this.state.user.gender,
+        phone: userInfo.phone !== undefined ? userInfo.phone : this.state.user.phone,
+        address: userInfo.address !== undefined ? userInfo.address : this.state.user.address,
+        avatar: userInfo.avatar !== undefined ? userInfo.avatar : this.state.user.avatar,
+        allergies: userInfo.allergies !== undefined ? userInfo.allergies : this.state.user.allergies
+      };
       this.setState({
-        user: { ...this.state.user, ...userInfo }
+        user: updatedUser
       });
     }
   }
@@ -178,65 +223,108 @@ export class AppStore {
   // Action: 添加健康记录
   public addHealthRecord(record: Omit<HealthRecord, 'id' | 'createdAt' | 'updatedAt'>): void {
     const newRecord: HealthRecord = {
-      ...record,
-      id: `record_${Date.now()}`,
+      type: record.type,
+      value: record.value,
+      unit: record.unit,
+      date: record.date,
+      time: record.time,
+      color: record.color,
+      notes: record.notes,
+      id: 'record_' + Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
     
+    const newRecords: HealthRecord[] = [newRecord];
+    for (let i = 0; i < this.state.healthRecords.length; i++) {
+      newRecords.push(this.state.healthRecords[i]);
+    }
+    
     this.setState({
-      healthRecords: [newRecord, ...this.state.healthRecords]
+      healthRecords: newRecords
     });
   }
   
   // Action: 更新健康记录
   public updateHealthRecord(id: string, updates: Partial<HealthRecord>): void {
-    const updatedRecords = this.state.healthRecords.map(record => {
+    const updatedRecords: HealthRecord[] = [];
+    for (let i = 0; i < this.state.healthRecords.length; i++) {
+      const record = this.state.healthRecords[i];
       if (record.id === id) {
-        return {
-          ...record,
-          ...updates,
+        const updatedRecord: HealthRecord = {
+          type: updates.type !== undefined ? updates.type : record.type,
+          value: updates.value !== undefined ? updates.value : record.value,
+          unit: updates.unit !== undefined ? updates.unit : record.unit,
+          date: updates.date !== undefined ? updates.date : record.date,
+          time: updates.time !== undefined ? updates.time : record.time,
+          color: updates.color !== undefined ? updates.color : record.color,
+          notes: updates.notes !== undefined ? updates.notes : record.notes,
+          id: record.id,
+          createdAt: record.createdAt,
           updatedAt: Date.now()
         };
+        updatedRecords.push(updatedRecord);
+      } else {
+        updatedRecords.push(record);
       }
-      return record;
-    });
+    }
     
     this.setState({ healthRecords: updatedRecords });
   }
   
   // Action: 删除健康记录
   public deleteHealthRecord(id: string): void {
-    const filteredRecords = this.state.healthRecords.filter(record => record.id !== id);
+    const filteredRecords: HealthRecord[] = [];
+    for (let i = 0; i < this.state.healthRecords.length; i++) {
+      if (this.state.healthRecords[i].id !== id) {
+        filteredRecords.push(this.state.healthRecords[i]);
+      }
+    }
     this.setState({ healthRecords: filteredRecords });
   }
   
   // Action: 添加药物
   public addMedication(medication: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>): void {
     const newMedication: Medication = {
-      ...medication,
-      id: `med_${Date.now()}`,
+      name: medication.name,
+      dosage: medication.dosage,
+      times: medication.times,
+      status: medication.status,
+      id: 'med_' + Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
     
+    const newMedications: Medication[] = [newMedication];
+    for (let i = 0; i < this.state.medications.length; i++) {
+      newMedications.push(this.state.medications[i]);
+    }
+    
     this.setState({
-      medications: [newMedication, ...this.state.medications]
+      medications: newMedications
     });
   }
   
   // Action: 更新药物状态
   public updateMedicationStatus(id: string, status: 'taken' | 'pending' | 'missed'): void {
-    const updatedMedications = this.state.medications.map(med => {
+    const updatedMedications: Medication[] = [];
+    for (let i = 0; i < this.state.medications.length; i++) {
+      const med = this.state.medications[i];
       if (med.id === id) {
-        return {
-          ...med,
-          status,
+        const updatedMed: Medication = {
+          name: med.name,
+          dosage: med.dosage,
+          times: med.times,
+          status: status,
+          id: med.id,
+          createdAt: med.createdAt,
           updatedAt: Date.now()
         };
+        updatedMedications.push(updatedMed);
+      } else {
+        updatedMedications.push(med);
       }
-      return med;
-    });
+    }
     
     this.setState({ medications: updatedMedications });
   }
@@ -244,29 +332,49 @@ export class AppStore {
   // Action: 添加预约
   public addAppointment(appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): void {
     const newAppointment: Appointment = {
-      ...appointment,
-      id: `app_${Date.now()}`,
+      title: appointment.title,
+      date: appointment.date,
+      time: appointment.time,
+      doctor: appointment.doctor,
+      hospital: appointment.hospital,
+      status: appointment.status,
+      id: 'app_' + Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
     
+    const newAppointments: Appointment[] = [newAppointment];
+    for (let i = 0; i < this.state.appointments.length; i++) {
+      newAppointments.push(this.state.appointments[i]);
+    }
+    
     this.setState({
-      appointments: [newAppointment, ...this.state.appointments]
+      appointments: newAppointments
     });
   }
   
   // Action: 更新预约状态
   public updateAppointmentStatus(id: string, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): void {
-    const updatedAppointments = this.state.appointments.map(app => {
+    const updatedAppointments: Appointment[] = [];
+    for (let i = 0; i < this.state.appointments.length; i++) {
+      const app = this.state.appointments[i];
       if (app.id === id) {
-        return {
-          ...app,
-          status,
+        const updatedApp: Appointment = {
+          title: app.title,
+          date: app.date,
+          time: app.time,
+          doctor: app.doctor,
+          hospital: app.hospital,
+          status: status,
+          id: app.id,
+          createdAt: app.createdAt,
           updatedAt: Date.now()
         };
+        updatedAppointments.push(updatedApp);
+      } else {
+        updatedAppointments.push(app);
       }
-      return app;
-    });
+    }
     
     this.setState({ appointments: updatedAppointments });
   }
@@ -274,64 +382,108 @@ export class AppStore {
   // Action: 添加提醒
   public addReminder(reminder: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>): void {
     const newReminder: Reminder = {
-      ...reminder,
-      id: `reminder_${Date.now()}`,
+      title: reminder.title,
+      time: reminder.time,
+      type: reminder.type,
+      enabled: reminder.enabled,
+      id: 'reminder_' + Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
     
+    const newReminders: Reminder[] = [newReminder];
+    for (let i = 0; i < this.state.reminders.length; i++) {
+      newReminders.push(this.state.reminders[i]);
+    }
+    
     this.setState({
-      reminders: [newReminder, ...this.state.reminders]
+      reminders: newReminders
     });
   }
   
   // Action: 切换提醒状态
   public toggleReminder(id: string): void {
-    const updatedReminders = this.state.reminders.map(reminder => {
+    const updatedReminders: Reminder[] = [];
+    for (let i = 0; i < this.state.reminders.length; i++) {
+      const reminder = this.state.reminders[i];
       if (reminder.id === id) {
-        return {
-          ...reminder,
+        const updatedReminder: Reminder = {
+          title: reminder.title,
+          time: reminder.time,
+          type: reminder.type,
           enabled: !reminder.enabled,
+          id: reminder.id,
+          createdAt: reminder.createdAt,
           updatedAt: Date.now()
         };
+        updatedReminders.push(updatedReminder);
+      } else {
+        updatedReminders.push(reminder);
       }
-      return reminder;
-    });
+    }
     
     this.setState({ reminders: updatedReminders });
   }
   
   // Action: 更新设置
   public updateSettings(settings: Partial<AppState['settings']>): void {
+    const updatedSettings = {
+      darkMode: settings.darkMode !== undefined ? settings.darkMode : this.state.settings.darkMode,
+      fontSize: settings.fontSize !== undefined ? settings.fontSize : this.state.settings.fontSize,
+      language: settings.language !== undefined ? settings.language : this.state.settings.language
+    };
     this.setState({
-      settings: { ...this.state.settings, ...settings }
+      settings: updatedSettings
     });
   }
   
   // Action: 添加健康指标
   public addHealthMetric(metric: Omit<HealthMetric, 'id'>): void {
     const newMetric: HealthMetric = {
-      ...metric,
-      id: `metric_${Date.now()}`
+      type: metric.type,
+      value: metric.value,
+      unit: metric.unit,
+      date: metric.date,
+      id: 'metric_' + Date.now()
     };
     
+    const newMetrics: HealthMetric[] = [newMetric];
+    for (let i = 0; i < this.state.healthMetrics.length; i++) {
+      newMetrics.push(this.state.healthMetrics[i]);
+    }
+    
     this.setState({
-      healthMetrics: [newMetric, ...this.state.healthMetrics]
+      healthMetrics: newMetrics
     });
   }
   
   // Action: 更新健康统计
   public updateHealthStats(stats: Partial<HealthStats>): void {
     if (this.state.healthStats) {
+      const updatedStats: HealthStats = {
+        totalRecords: stats.totalRecords !== undefined ? stats.totalRecords : this.state.healthStats.totalRecords,
+        avgBloodPressure: stats.avgBloodPressure !== undefined ? stats.avgBloodPressure : this.state.healthStats.avgBloodPressure,
+        avgHeartRate: stats.avgHeartRate !== undefined ? stats.avgHeartRate : this.state.healthStats.avgHeartRate
+      };
       this.setState({
-        healthStats: { ...this.state.healthStats, ...stats }
+        healthStats: updatedStats
       });
     }
   }
   
   // Action: 重置状态（用于测试）
   public resetState(): void {
-    this.state = { ...initialState };
+    this.state = {
+      user: initialState.user,
+      healthRecords: [],
+      medications: [],
+      appointments: [],
+      reminders: [],
+      healthMetrics: [],
+      settings: initialState.settings,
+      healthStats: initialState.healthStats,
+      isLoading: false
+    };
     this.notifyListeners();
   }
 }

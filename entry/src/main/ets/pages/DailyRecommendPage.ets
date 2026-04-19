@@ -26,7 +26,7 @@ struct DailyRecommendPage {
   async loadRecommendations(): Promise<void> {
     this.isLoading = true;
     try {
-      const resultSet = await RdbHelper.query(`SELECT ${COLUMN_BROWSE_TYPE}, ${COLUMN_TARGET_ID}, ${COLUMN_TARGET_TITLE}, COUNT(*) as count FROM ${TABLE_BROWSE_HISTORY} GROUP BY ${COLUMN_BROWSE_TYPE}, ${COLUMN_TARGET_ID} ORDER BY count DESC LIMIT 10`);
+      const resultSet = await RdbHelper.query('SELECT ' + COLUMN_BROWSE_TYPE + ', ' + COLUMN_TARGET_ID + ', ' + COLUMN_TARGET_TITLE + ', COUNT(*) as count FROM ' + TABLE_BROWSE_HISTORY + ' GROUP BY ' + COLUMN_BROWSE_TYPE + ', ' + COLUMN_TARGET_ID + ' ORDER BY count DESC LIMIT 10');
       
       const history: BrowseHistoryItem[] = [];
       while (resultSet.goToNextRow()) {

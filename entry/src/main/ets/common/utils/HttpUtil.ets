@@ -1,6 +1,8 @@
 import promptAction from '@ohos.promptAction';
 import dataStorage from '@ohos.data.storage';
 import http from '@ohos.net.http';
+import connection from '@ohos.net.connection';
+import { getBaseUrl } from '../constants/ApiConstants';
 
 export interface BaseResponse<T> {
   success: boolean;
@@ -12,7 +14,7 @@ export interface BaseResponse<T> {
 interface BackendResult {
   code: number;
   msg: string;
-  data?: object;
+  data?: Object;
 }
 
 export interface LoginRequest {
@@ -42,196 +44,348 @@ export interface HttpResponse {
   header?: Record<string, string>;
 }
 
-export interface HttpRequestConfig {
-  method: string;
-  header: Record<string, string>;
-  extraData?: string;
-  connectTimeout: number;
-  readTimeout: number;
+export enum HttpMethod {
+  GET = 'GET',
+  POST = 'POST',
+  PUT = 'PUT',
+  DELETE = 'DELETE'
 }
 
+export interface RequestOptions {
+  showLoading?: boolean;
+  loadingText?: string;
+  retryCount?: number;
+  skipAuth?: boolean;
+  timeout?: number;
+}
+
+interface FormDataItem {
+  name: string;
+  value: string | number;
+  contentType: string;
+}
+
+const DEFAULT_OPTIONS: RequestOptions = {
+  showLoading: false,
+  loadingText: '加载中...',
+  retryCount: 1,
+  skipAuth: false,
+  timeout: 15000
+};
+
+let loadingCount: number = 0;
+
 export class HttpUtil {
-  private static readonly BASE_URL: string = 'http://10.0.2.2:8080';
-  private static readonly TIMEOUT: number = 10000;
+  private static readonly TIMEOUT: number = 15000;
 
-  static async get<T>(url: string, params?: Record<string, string | number | boolean>): Promise<BaseResponse<T>> {
-    try {
-      let fullUrl = HttpUtil.BASE_URL + url;
-      if (params) {
-        const queryParams = HttpUtil.buildQueryParams(params);
-        fullUrl += '?' + queryParams;
+  static async request<T>(
+    method: HttpMethod,
+    url: string,
+    data?: object,
+    params?: Object,
+    options?: RequestOptions
+  ): Promise<BaseResponse<T>> {
+    const opts: RequestOptions = {
+      showLoading: DEFAULT_OPTIONS.showLoading,
+      loadingText: DEFAULT_OPTIONS.loadingText,
+      retryCount: DEFAULT_OPTIONS.retryCount,
+      skipAuth: DEFAULT_OPTIONS.skipAuth,
+      timeout: DEFAULT_OPTIONS.timeout
+    };
+    if (options) {
+      if (options.showLoading !== undefined) {
+        opts.showLoading = options.showLoading;
       }
+      if (options.loadingText !== undefined) {
+        opts.loadingText = options.loadingText;
+      }
+      if (options.retryCount !== undefined) {
+        opts.retryCount = options.retryCount;
+      }
+      if (options.skipAuth !== undefined) {
+        opts.skipAuth = options.skipAuth;
+      }
+      if (options.timeout !== undefined) {
+        opts.timeout = options.timeout;
+      }
+    }
 
-      console.log('[HttpUtil] GET 请求URL:', fullUrl);
+    if (opts.showLoading) {
+      HttpUtil.showLoading(opts.loadingText);
+    }
 
-      const token = HttpUtil.getToken();
+    const isOnline: boolean = await HttpUtil.checkNetwork();
+    if (!isOnline) {
+      HttpUtil.hideLoading();
+      return { success: false, message: '网络不可用，请检查网络连接', code: -1 };
+    }
 
-      const options: HttpRequestOptions = {
-        method: http.RequestMethod.GET,
-        headers: {
-          'Content-Type': 'application/json',
-          'Token': token ? token : ''
+    const retryMax: number = opts.retryCount || 1;
+    for (let attempt: number = 0; attempt <= retryMax; attempt++) {
+      try {
+        const result: BaseResponse<T> = await HttpUtil.executeRequest<T>(method, url, data, params, opts);
+        HttpUtil.hideLoading();
+        return result;
+      } catch (error) {
+        console.error('[HttpUtil] 请求失败(第' + (attempt + 1) + '次):', error);
+        if (attempt >= retryMax) {
+          HttpUtil.hideLoading();
+          return HttpUtil.handleError<T>(error);
         }
-      };
-      const response = await HttpUtil.fetch(fullUrl, options);
-      console.log('[HttpUtil] 响应状态码:', response.responseCode);
-
-      return await HttpUtil.handleResponse<T>(response);
-    } catch (error) {
-      return HttpUtil.handleError<T>(error);
+      }
     }
+
+    HttpUtil.hideLoading();
+    return { success: false, message: '请求失败' };
   }
 
-  static async post<T>(url: string, data?: object): Promise<BaseResponse<T>> {
-    try {
-      const fullUrl = HttpUtil.BASE_URL + url;
-
-      const token = HttpUtil.getToken();
-
-      const options: HttpRequestOptions = {
-        method: http.RequestMethod.POST,
-        headers: {
-          'Content-Type': 'application/json',
-          'Token': token ? token : ''
-        },
-        body: JSON.stringify(data)
-      };
-      const response = await HttpUtil.fetch(fullUrl, options);
-
-      return await HttpUtil.handleResponse<T>(response);
-    } catch (error) {
-      return HttpUtil.handleError<T>(error);
+  private static async executeRequest<T>(
+    method: HttpMethod,
+    url: string,
+    data?: object,
+    params?: Object,
+    options?: RequestOptions
+  ): Promise<BaseResponse<T>> {
+    let fullUrl: string = getBaseUrl() + url;
+    if (params) {
+      const qs: string = HttpUtil.buildQueryParams(params);
+      if (qs.length > 0) {
+        fullUrl = fullUrl + '?' + qs;
+      }
     }
+
+    console.log('[HttpUtil] ' + method + ' ' + fullUrl, data ? JSON.stringify(data) : '');
+
+    const token: string | null = HttpUtil.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (token && !(options && options.skipAuth)) {
+      headers['Token'] = token;
+    }
+
+    const requestOptions: HttpRequestOptions = {
+      method: HttpUtil.mapMethod(method),
+      headers: headers,
+      body: data ? JSON.stringify(data) : undefined
+    };
+
+    const response: HttpResponse = await HttpUtil.fetch(fullUrl, requestOptions, (options && options.timeout) || HttpUtil.TIMEOUT);
+    return HttpUtil.handleResponse<T>(response);
   }
 
-  static async delete<T>(url: string): Promise<BaseResponse<T>> {
+  static async get<T>(
+    url: string,
+    params?: Object,
+    options?: RequestOptions
+  ): Promise<BaseResponse<T>> {
+    return HttpUtil.request<T>(HttpMethod.GET, url, undefined, params, options);
+  }
+
+  static async post<T>(
+    url: string,
+    data?: object,
+    options?: RequestOptions
+  ): Promise<BaseResponse<T>> {
+    return HttpUtil.request<T>(HttpMethod.POST, url, data, undefined, options);
+  }
+
+  static async put<T>(
+    url: string,
+    data?: object,
+    options?: RequestOptions
+  ): Promise<BaseResponse<T>> {
+    return HttpUtil.request<T>(HttpMethod.PUT, url, data, undefined, options);
+  }
+
+  static async delete<T>(
+    url: string,
+    data?: object,
+    options?: RequestOptions
+  ): Promise<BaseResponse<T>> {
+    return HttpUtil.request<T>(HttpMethod.DELETE, url, data, undefined, options);
+  }
+
+  static async upload<T>(
+    url: string,
+    formData: FormDataItem[],
+    options?: RequestOptions
+  ): Promise<BaseResponse<T>> {
+    if (options && options.showLoading) {
+      HttpUtil.showLoading(options.loadingText || '上传中...');
+    }
+
+    const fullUrl: string = getBaseUrl() + url;
+    const token: string | null = HttpUtil.getToken();
+
     try {
-      const fullUrl = HttpUtil.BASE_URL + url;
-
-      const token = HttpUtil.getToken();
-
-      const options: HttpRequestOptions = {
-        method: http.RequestMethod.DELETE,
-        headers: {
-          'Content-Type': 'application/json',
-          'Token': token ? token : ''
+      const httpRequest = http.createHttp();
+      const response: http.HttpResponse = await new Promise((resolve, reject) => {
+        const reqHeaders: Record<string, string> = {
+          'Content-Type': 'multipart/form-data'
+        };
+        if (token) {
+          reqHeaders['Token'] = token;
         }
-      };
-      const response = await HttpUtil.fetch(fullUrl, options);
+        httpRequest.request(fullUrl, {
+          method: http.RequestMethod.POST,
+          header: reqHeaders,
+          multiFormDataList: formData,
+          connectTimeout: HttpUtil.TIMEOUT * 2,
+          readTimeout: HttpUtil.TIMEOUT * 2
+        }, (err, data) => {
+          httpRequest.destroy();
+          if (err) {
+            reject(err);
+          } else {
+            resolve(data);
+          }
+        });
+      });
 
-      return await HttpUtil.handleResponse<T>(response);
+      const result: HttpResponse = {
+        responseCode: response.responseCode,
+        result: response.result as ApiResponseData,
+        header: response.header as Record<string, string>
+      };
+
+      HttpUtil.hideLoading();
+      return HttpUtil.handleResponse<T>(result);
     } catch (error) {
+      HttpUtil.hideLoading();
       return HttpUtil.handleError<T>(error);
     }
   }
 
-  private static buildQueryParams(params: Record<string, string | number | boolean>): string {
+  private static mapMethod(method: HttpMethod): http.RequestMethod {
+    switch (method) {
+      case HttpMethod.POST:
+        return http.RequestMethod.POST;
+      case HttpMethod.PUT:
+        return http.RequestMethod.PUT;
+      case HttpMethod.DELETE:
+        return http.RequestMethod.DELETE;
+      default:
+        return http.RequestMethod.GET;
+    }
+  }
+
+  private static buildQueryParams(params: Object): string {
     const parts: string[] = [];
-    Object.entries(params).forEach((entry) => {
-      const key = entry[0];
-      const value = entry[1];
-      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
-    });
+    const keys: string[] = Object.keys(params);
+    for (let i: number = 0; i < keys.length; i++) {
+      const key: string = keys[i];
+      const value = (params as Record<string, Object>)[key];
+      parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+    }
     return parts.join('&');
   }
 
-  private static async fetch(url: string, options: HttpRequestOptions): Promise<HttpResponse> {
+  private static async fetch(
+    url: string,
+    options: HttpRequestOptions,
+    timeout?: number
+  ): Promise<HttpResponse> {
     return new Promise((resolve, reject) => {
       const request = http.createHttp();
+      const actualTimeout: number = timeout || HttpUtil.TIMEOUT;
       const timeoutId = setTimeout(() => {
-        reject(new Error('请求超时'));
+        reject(new Error('请求超时，请稍后重试'));
         request.destroy();
-      }, HttpUtil.TIMEOUT);
+      }, actualTimeout);
+
       request.request(url, {
-        method: options.method as http.RequestMethod,
+        method: options.method,
         header: options.headers,
         extraData: options.body,
-        connectTimeout: HttpUtil.TIMEOUT,
-        readTimeout: HttpUtil.TIMEOUT
+        connectTimeout: actualTimeout,
+        readTimeout: actualTimeout
       }, (err, data) => {
         clearTimeout(timeoutId);
         request.destroy();
         if (err) {
           reject(err);
         } else {
-          const response: HttpResponse = {
+          resolve({
             responseCode: data.responseCode,
             result: data.result as ApiResponseData,
             header: data.header as Record<string, string>
-          };
-          resolve(response);
+          });
         }
       });
     });
   }
 
-  private static async handleResponse<T>(response: HttpResponse): Promise<BaseResponse<T>> {
+  private static handleResponse<T>(response: HttpResponse): BaseResponse<T> {
     let raw: Object = response.result;
 
     if (typeof raw === 'string') {
       try {
         raw = JSON.parse(raw as string);
       } catch (error) {
-        console.error('解析响应JSON失败:', error);
+        console.error('[HttpUtil] 解析响应JSON失败:', error);
         return {
           success: false,
           message: '服务器响应格式错误',
-          code: response.responseCode as number
+          code: response.responseCode
         };
       }
     }
 
-    if (response.responseCode !== 200) {
-      if (response.responseCode === 401) {
-        HttpUtil.clearToken();
-        try {
-          promptAction.showToast({
-            message: '登录已过期，请重新登录',
-            duration: 2000
-          });
-        } catch (error) {
-          console.error('显示提示失败:', error);
-        }
-        return {
-          success: false,
-          message: '登录已过期，请重新登录',
-          code: 401
-        };
-      }
-
+    if (response.responseCode === 401) {
+      HttpUtil.clearToken();
+      HttpUtil.showToast('登录已过期，请重新登录');
       return {
         success: false,
-        message: (raw as BackendResult)?.msg || '请求失败',
-        code: response.responseCode as number
+        message: '登录已过期，请重新登录',
+        code: 401
+      };
+    }
+
+    if (response.responseCode >= 500) {
+      HttpUtil.showToast('服务器繁忙，请稍后重试');
+      return {
+        success: false,
+        message: '服务器错误(' + response.responseCode + ')',
+        code: response.responseCode
+      };
+    }
+
+    if (response.responseCode !== 200 && response.responseCode !== 201 && response.responseCode !== 204) {
+      const br = raw as BackendResult;
+      return {
+        success: false,
+        message: (br && br.msg) ? br.msg : '请求失败',
+        code: response.responseCode
       };
     }
 
     const backendResult = raw as BackendResult;
     const isSuccess = backendResult && backendResult.code === 200;
 
+    let msg: string = '请求失败';
+    if (backendResult && backendResult.msg) {
+      msg = backendResult.msg;
+    } else if (isSuccess) {
+      msg = '请求成功';
+    }
+
     return {
       success: isSuccess,
-      message: backendResult?.msg || (isSuccess ? '请求成功' : '请求失败'),
-      data: backendResult?.data as T,
-      code: backendResult?.code || (response.responseCode as number)
+      message: msg,
+      data: backendResult ? backendResult.data as T : undefined,
+      code: (backendResult && backendResult.code) ? backendResult.code : response.responseCode
     };
   }
 
   private static handleError<T>(error: Object): BaseResponse<T> {
-    let message = '网络请求失败';
+    let message: string = '网络请求失败';
     const err = error as Error;
     if (err && err.message) {
       message = err.message;
     }
 
-    try {
-      promptAction.showToast({
-        message: message,
-        duration: 2000
-      });
-    } catch (error) {
-      console.error('显示提示失败:', error);
-    }
+    HttpUtil.showToast(message);
 
     return {
       success: false,
@@ -239,13 +393,46 @@ export class HttpUtil {
     };
   }
 
-  private static getToken(): string | null {
+  private static showToast(message: string): void {
+    promptAction.showToast({
+      message: message,
+      duration: 2000
+    });
+  }
+
+  static showLoading(message: string = '加载中...'): void {
+    loadingCount++;
+    if (loadingCount === 1) {
+      promptAction.showToast({
+        message: message,
+        duration: 10000
+      });
+    }
+  }
+
+  static hideLoading(): void {
+    if (loadingCount > 0) {
+      loadingCount--;
+    }
+  }
+
+  static isLoading(): boolean {
+    return loadingCount > 0;
+  }
+
+  private static checkNetwork(): Promise<boolean> {
+    return new Promise((resolve) => {
+      resolve(true);
+    });
+  }
+
+  static getToken(): string | null {
     try {
       const storage = dataStorage.getStorageSync('token_storage');
       const token = storage.getSync('token', '');
       return token as string;
     } catch (error) {
-      console.error('获取Token失败:', error);
+      console.error('[HttpUtil] 获取Token失败:', error);
       return null;
     }
   }
@@ -256,7 +443,7 @@ export class HttpUtil {
       storage.putSync('token', token);
       storage.flushSync();
     } catch (error) {
-      console.error('保存Token失败:', error);
+      console.error('[HttpUtil] 保存Token失败:', error);
     }
   }
 
@@ -266,7 +453,12 @@ export class HttpUtil {
       storage.deleteSync('token');
       storage.flushSync();
     } catch (error) {
-      console.error('清除Token失败:', error);
+      console.error('[HttpUtil] 清除Token失败:', error);
     }
+  }
+
+  static hasToken(): boolean {
+    const token = HttpUtil.getToken();
+    return !!token && token.length > 0;
   }
 }

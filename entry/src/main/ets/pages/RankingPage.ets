@@ -132,7 +132,7 @@ struct RankingPage {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
+      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
   }
 
@@ -201,12 +201,12 @@ struct RankingPage {
           } else {
             Column({ space: 14 }) {
               Row() {
-                Text(`已获得 ${MOCK_BADGES.filter((b: Badge) => b.earned).length}/${MOCK_BADGES.length} 枚徽章`)
+                Text('已获得 ' + this.countEarnedBadges(MOCK_BADGES) + '/' + MOCK_BADGES.length + ' 枚徽章')
                   .fontSize(13)
                   .fontColor('#666666')
                   .layoutWeight(1);
 
-                Text(`${Math.round(MOCK_BADGES.filter((b: Badge) => b.earned).length / MOCK_BADGES.length * 100)}%`)
+                Text('' + Math.round(this.countEarnedBadges(MOCK_BADGES) / MOCK_BADGES.length * 100) + '%')
                   .fontSize(13)
                   .fontWeight(FontWeight.Bold)
                   .fontColor('#1677FF');
@@ -258,7 +258,7 @@ struct RankingPage {
           Text(user.avatar)
             .fontSize(index < 3 ? 24 : 18);
 
-          Text(`${index + 1}`)
+          Text('' + (index + 1))
             .fontSize(16)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getRankColor(index))
@@ -281,7 +281,7 @@ struct RankingPage {
           .alignItems(HorizontalAlign.Start);
 
           Column({ space: 2 }) {
-            Text(typeof user.value === 'number' ? `${user.value}${user.unit}` : user.value as string)
+            Text(typeof user.value === 'number' ? '' + user.value + user.unit : user.value as string)
               .fontSize(15)
               .fontWeight(FontWeight.Bold)
               .fontColor(user.isMe ? '#1677FF' : '#333333');
@@ -298,7 +298,7 @@ struct RankingPage {
         .backgroundColor(user.isMe ? '#E6F7FF' : index % 2 === 0 ? '#FFFFFF' : '#FAFAFA')
         .borderRadius(8)
         .border(user.isMe ? { width: 1.5, color: '#1677FF' } : { width: 0, color: 'transparent' });
-      }, (user: RankingUser, index: number) => `rank_${index}`);
+      }, (user: RankingUser, index: number) => 'rank_' + index);
     }
     .width('100%')
     .padding(12)
@@ -357,7 +357,7 @@ struct RankingPage {
           .fontColor('#999999');
 
         if (badge.earned && badge.earnDate) {
-          Text(`获得时间：${badge.earnDate}`)
+          Text('获得时间：' + badge.earnDate)
             .fontSize(10)
             .fontColor('#52C41A');
         }
@@ -375,7 +375,7 @@ struct RankingPage {
       this.showBadgeDetail = true;
     });
 
-    if (this.showBadgeDetail && this.selectedBadge?.id === badge.id) {
+    if (this.showBadgeDetail && this.selectedBadge && this.selectedBadge.id === badge.id) {
       this.buildBadgeDetailDialog();
     }
   }
@@ -421,8 +421,8 @@ struct RankingPage {
         }
         .width('100%');
 
-        if (this.selectedBadge!.earned) {
-          Text(`✅ 已于 ${this.selectedBadge!.earnDate} 获得`)
+        if (this.selectedBadge && this.selectedBadge.earned) {
+          Text('✅ 已于 ' + this.selectedBadge.earnDate + ' 获得')
             .fontSize(13)
             .fontColor('#52C41A');
         } else {
@@ -451,5 +451,15 @@ struct RankingPage {
     .width('100%')
     .height('100%')
     .position({ x: 0, y: 0 });
+  }
+
+  private countEarnedBadges(badges: Badge[]): number {
+    let count = 0;
+    for (let i = 0; i < badges.length; i++) {
+      if (badges[i].earned) {
+        count++;
+      }
+    }
+    return count;
   }
 }

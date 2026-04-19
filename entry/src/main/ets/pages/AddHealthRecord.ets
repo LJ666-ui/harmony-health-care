@@ -1,5 +1,6 @@
 import { router } from '@kit.ArkUI';
-import { HealthRecord } from '../models/HealthData';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 
 interface RecordType {
   label: string;
@@ -7,6 +8,16 @@ interface RecordType {
   icon: string;
   color: string;
   range: string;
+}
+
+interface HealthRecordInputData {
+  userId: number;
+  bloodPressure: string | null;
+  bloodSugar: string | null;
+  heartRate: number | null;
+  weight: string | null;
+  stepCount: number | null;
+  sleepDuration: string | null;
 }
 
 @Entry
@@ -20,6 +31,7 @@ struct AddHealthRecord {
   @State selectedDate: string = new Date().toISOString().split('T')[0];
   @State selectedTime: string = new Date().toTimeString().substring(0, 5);
   @State errorMessage: string = '';
+  @State isSaving: boolean = false;
 
   private recordTypes: RecordType[] = [
     { label: '血压', unit: 'mmHg', icon: '📊', color: '#1677FF', range: '收缩压 90-140，舒张压 60-90' },
@@ -29,8 +41,13 @@ struct AddHealthRecord {
     { label: '其他', unit: '', icon: '📝', color: '#666666', range: '请输入合适的值' }
   ];
 
-  private getCurrentTypeInfo() {
-    return this.recordTypes.find(type => type.label === this.selectedType) || this.recordTypes[0];
+  private getCurrentTypeInfo(): RecordType {
+    for (let i = 0; i < this.recordTypes.length; i++) {
+      if (this.recordTypes[i].label === this.selectedType) {
+        return this.recordTypes[i];
+      }
+    }
+    return this.recordTypes[0];
   }
 
   validateForm(): boolean {
@@ -38,45 +55,74 @@ struct AddHealthRecord {
 
     if (!this.value.trim()) {
       this.errorMessage = '请输入数值';
-    } else if (this.selectedType === '血压') {
+      return false;
+    }
+
+    if (this.selectedType === '血压') {
       const parts = this.value.split('/');
       const systolic = parts[0];
       const diastolic = parts[1];
       if (!systolic || !diastolic) {
         this.errorMessage = '请输入正确的血压格式，如 120/80';
-      } else if (isNaN(Number(systolic)) || isNaN(Number(diastolic))) {
+        return false;
+      }
+      if (isNaN(Number(systolic)) || isNaN(Number(diastolic))) {
         this.errorMessage = '请输入有效的数字';
+        return false;
       }
     } else if (isNaN(Number(this.value))) {
       this.errorMessage = '请输入有效的数字';
+      return false;
     }
 
-    return this.errorMessage === '';
+    return true;
   }
 
-  saveRecord() {
-    if (this.validateForm()) {
-      const typeInfo = this.getCurrentTypeInfo();
-      const newRecord: HealthRecord = {
-        id: Date.now().toString(),
-        type: this.selectedType,
-        value: this.value,
-        unit: typeInfo.unit,
-        date: this.selectedDate,
-        time: this.selectedTime,
-        notes: this.notes,
-        icon: typeInfo.icon,
-        color: typeInfo.color,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      };
-
-      // 这里应该调用后端接口保存数据
-      console.log('保存健康记录:', newRecord);
-
-      // 保存成功后返回列表页
-      router.back();
+  saveRecord(): void {
+    if (!this.validateForm()) {
+      return;
     }
+
+    this.isSaving = true;
+
+    let bpValue: string | null = null;
+    let sugarValue: string | null = null;
+    let hrValue: number | null = null;
+    let wtValue: string | null = null;
+
+    if (this.selectedType === '血压') {
+      bpValue = this.value.trim();
+    } else if (this.selectedType === '血糖') {
+      sugarValue = this.value.trim();
+    } else if (this.selectedType === '心率') {
+      hrValue = Number(this.value);
+    } else if (this.selectedType === '体重') {
+      wtValue = this.value.trim();
+    }
+
+    const recordData: HealthRecordInputData = {
+      "userId": 1,
+      "bloodPressure": bpValue,
+      "bloodSugar": sugarValue,
+      "heartRate": hrValue,
+      "weight": wtValue,
+      "stepCount": null,
+      "sleepDuration": null
+    };
+
+    HttpUtil.post<string>(ApiConstants.HEALTH_RECORD_ADD, recordData)
+      .then((response: BaseResponse<string>) => {
+        this.isSaving = false;
+        if (response.success) {
+          router.back();
+        } else {
+          this.errorMessage = response.message || '保存失败';
+        }
+      })
+      .catch(() => {
+        this.isSaving = false;
+        this.errorMessage = '网络请求失败，请重试';
+      });
   }
 
   build() {
@@ -138,12 +184,12 @@ struct AddHealthRecord {
               TextInput({
                 placeholder: this.selectedType === '血压' ? '如 120/80' : '请输入数值'
               })
-                .width('70%')
+                .layoutWeight(1)
                 .height(48)
                 .padding(12)
                 .backgroundColor('#F5F5F5')
                 .borderRadius(8)
-                .onChange((value) => {
+                .onChange((value: string) => {
                   this.value = value;
                   if (this.errorMessage) {
                     this.errorMessage = '';
@@ -160,7 +206,7 @@ struct AddHealthRecord {
                 .fontColor('#FF4444')
                 .margin({ top: 4 });
             }
-            Text(`正常范围：${this.getCurrentTypeInfo().range}`)
+            Text('正常范围：' + this.getCurrentTypeInfo().range)
               .fontSize(12)
               .fontColor('#999999')
               .margin({ top: 4 });
@@ -180,7 +226,7 @@ struct AddHealthRecord {
                 .padding(12)
                 .backgroundColor('#F5F5F5')
                 .borderRadius(8)
-                .onChange((value) => {
+                .onChange((value: string) => {
                   this.selectedDate = value;
                 });
               TextInput({
@@ -192,7 +238,7 @@ struct AddHealthRecord {
                 .backgroundColor('#F5F5F5')
                 .borderRadius(8)
                 .margin({ left: 12 })
-                .onChange((value) => {
+                .onChange((value: string) => {
                   this.selectedTime = value;
                 });
             }
@@ -211,18 +257,19 @@ struct AddHealthRecord {
               .padding(12)
               .backgroundColor('#F5F5F5')
               .borderRadius(8)
-              .onChange((value) => {
+              .onChange((value: string) => {
                 this.notes = value;
               });
           }
 
-          Button('保存')
+          Button(this.isSaving ? '保存中...' : '保存')
             .width('100%')
             .height(48)
             .fontSize(16)
             .fontColor('#FFFFFF')
-            .backgroundColor('#1677FF')
+            .backgroundColor(this.isSaving ? '#CCCCCC' : '#1677FF')
             .borderRadius(24)
+            .enabled(!this.isSaving)
             .onClick(() => {
               this.saveRecord();
             });

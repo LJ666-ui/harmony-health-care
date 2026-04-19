@@ -37,7 +37,7 @@ class SyncManager {
         return;
       }
 
-      const resultSet = await RdbHelper.query(`SELECT * FROM ${TABLE_OFFLINE_HEALTH_RECORD} WHERE ${COLUMN_SYNCED} = 0`);
+      const resultSet = await RdbHelper.query('SELECT * FROM ' + TABLE_OFFLINE_HEALTH_RECORD + ' WHERE ' + COLUMN_SYNCED + ' = 0');
       
       const records: OfflineHealthRecord[] = [];
       while (resultSet.goToNextRow()) {
@@ -96,7 +96,7 @@ class SyncManager {
         return;
       }
 
-      const resultSet = await RdbHelper.query(`SELECT * FROM ${TABLE_SYNC_QUEUE} WHERE ${COLUMN_STATUS} = 'pending'`);
+      const resultSet = await RdbHelper.query('SELECT * FROM ' + TABLE_SYNC_QUEUE + ' WHERE ' + COLUMN_STATUS + " = 'pending'");
       
       const tasks: SyncQueueItem[] = [];
       while (resultSet.goToNextRow()) {

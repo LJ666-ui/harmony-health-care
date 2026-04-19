@@ -1,10 +1,12 @@
 import { router } from '@kit.ArkUI';
-import http from '@ohos.net.http';
-import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { Footer } from '../components/Footer';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import BrowseTracker from '../utils/BrowseTracker';
 
-interface VoiceCommand {
+export interface VoiceCommand {
   id: string;
   icon: string;
   title: string;
@@ -16,7 +18,7 @@ interface VoiceCommand {
   mode: 'health' | 'command';
 }
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   type: 'user' | 'assistant' | 'system';
   content: string;
@@ -25,16 +27,16 @@ interface ChatMessage {
   isVoice?: boolean;
 }
 
-interface ConversationItem {
+export interface ConversationItem {
   role: string;
   content: string;
 }
 
-interface RecognitionListenerInfo {
-  onStart: () => void;
-  onResult: (result: string) => void;
-  onComplete: (result: string) => void;
-  onError: (error: string) => void;
+export interface ChatMode {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
 }
 
 @Entry
@@ -42,9 +44,9 @@ interface RecognitionListenerInfo {
 struct VoiceAssistantPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State currentMode: 'health' | 'command' = 'command';
+  @State currentModeIndex: number = 0;
   @State isRecording: boolean = false;
-  @State recordStatus: string = '点击或按住麦克风开始说话';
+  @State recordStatus: string = '\u70B9\u51FB\u6216\u6309\u4F4F\u9EA6\u514B\u98CE\u5F00\u59CB\u8BF4\u8BDD';
   @State recognizedText: string = '';
   @State scaleValue: number = 1.0;
   @State rippleOpacity1: number = 0;
@@ -54,24 +56,34 @@ struct VoiceAssistantPage {
   @State showEmergencyDialog: boolean = false;
   @State isTtsEnabled: boolean = true;
   @State isLoading: boolean = false;
+  @State inputText: string = '';
+  @State recordId: number = 0;
 
   private scroller: Scroller = new Scroller();
   private conversationHistory: ConversationItem[] = [];
   private retryCount: number = 0;
   private maxRetryCount: number = 3;
 
+  @State chatModes: ChatMode[] = [
+    { id: 'general', name: '\u901A\u7528\u95EE\u7B54', icon: '\uD83E\uDDE0', description: '\u5E38\u89C1\u5065\u5EBB\u95EE\u9898' },
+    { id: 'consult', name: '\u5065\u5EBB\u54A8\u8BE2', icon: '\uD83D\uDC69\u200D\u2695\uFE0F', description: '\u75C7\u72B6\u63CF\u8FF0\u5206\u6790' },
+    { id: 'risk', name: '\u98CE\u9669\u8BC4\u4F30', icon: '\uD83D\uDCCA', description: '\u62A5\u544A\u89E3\u8BFB' },
+    { id: 'rehab', name: '\u5EB7\u590D\u6307\u5BFC', icon: '\uD83C\uDFCB', description: '\u5EB7\u590D\u8BAD\u7EC3\u5EFA\u8BAE' },
+    { id: 'other', name: '\u5176\u4ED6', icon: '\uD83D\uDCAC', description: '\u81EA\u7531\u5BF9\u8BDD' }
+  ];
+
   @State voiceCommands: VoiceCommand[] = [
-    { id: '1', icon: '📋', title: '挂号/预约', keywords: ['挂号', '预约', '门诊'], description: '快速预约医生门诊', targetPage: 'pages/Appointments', reply: '已为您打开预约页面，您可以选择医生和时间进行预约。', mode: 'command' },
-    { id: '2', icon: '🗺️', title: '打开AR导航', keywords: ['导航', '找科室', 'AR'], description: '智能导航到科室位置', targetPage: 'pages/ARNavigationPage', reply: '正在启动AR导航，请将手机对准前方，我会为您指引路线。', mode: 'command' },
-    { id: '3', icon: '📊', title: '查询健康记录', keywords: ['健康记录', '查记录', '历史数据'], description: '查看历史健康数据', targetPage: 'pages/HealthRecords', reply: '已为您打开健康记录页面，您可以查看血压、血糖等历史数据趋势图。', mode: 'command' },
-    { id: '4', icon: '💊', title: '设置用药提醒', keywords: ['用药', '吃药', '药物'], description: '管理药物服用时间', targetPage: 'pages/Medications', reply: '用药提醒页面已打开，您可以查看今日待服用的药物并设置提醒时间。', mode: 'command' },
-    { id: '5', icon: '⚠️', title: '健康风险评估', keywords: ['风险评估', '风险', '评估'], description: '获取个性化风险报告', targetPage: 'pages/RiskAssessmentPage', reply: '正在为您生成健康风险评估报告，包含多维度风险分析。', mode: 'command' },
-    { id: '6', icon: '🏥', title: '查找附近医院', keywords: ['医院', '诊所', '附近'], description: '搜索周边医疗机构', targetPage: 'pages/HospitalPage', reply: '已为您搜索附近医院，按距离排序，您可以根据需要选择就诊医院。', mode: 'command' },
-    { id: '7', icon: '🧘', title: '康复训练', keywords: ['康复', '训练', '运动'], description: '进入康复课程列表', targetPage: 'pages/RehabListPage', reply: '康复课程列表已打开，推荐您从颈椎康复训练开始，适合日常练习。', mode: 'command' },
-    { id: '8', icon: '📖', title: '阅读科普文章', keywords: ['科普', '文章', '知识'], description: '浏览医学知识库', targetPage: 'pages/ScienceListPage', reply: '科普文章库已为您打开，涵盖心血管、骨科、营养学等多个领域。', mode: 'command' },
-    { id: '9', icon: '⌚', title: '连接设备', keywords: ['设备', '连接', '配对'], description: '配对健康监测设备', targetPage: 'pages/DeviceDiscoveryPage', reply: '设备发现页面已打开，请在附近搜索可连接的健康监测设备。', mode: 'command' },
-    { id: '10', icon: '🔒', title: '隐私设置', keywords: ['隐私', '权限', '设置'], description: '管理数据访问权限', targetPage: 'pages/PrivacyPage', reply: '隐私设置页面已打开，您可以查看和管理您的数据使用权限。', mode: 'command' },
-    { id: '11', icon: '🆘', title: '紧急求助', keywords: ['紧急', '求助', '120', '救命'], description: '一键拨打120急救电话', isEmergency: true, reply: '检测到紧急求助指令！正在为您准备拨打120急救电话...', mode: 'command' }
+    { id: '1', icon: '\uD83D\uDCCB', title: '\u6302\u53F7/\u9884\u7EA6', keywords: ['\u6302\u53F7', '\u9884\u7EA6', '\u95E8\u8BCA'], description: '\u5FEB\u901F\u9884\u7EA6\u533B\u751F\u95E8\u8BCA', targetPage: 'pages/Appointments', reply: '\u5DF2\u4E3A\u60A8\u6253\u5F00\u9884\u7EA6\u9875\u9762, \u60A8\u53EF\u4EE5\u9009\u62E9\u533B\u751F\u548C\u65F6\u95F4\u8FDB\u884C\u9884\u7EA6.', mode: 'command' },
+    { id: '2', icon: '\uD83D\uDDFA', title: '\u6253\u5F00AR\u5BFC\u22EA', keywords: ['\u5BFC\u22EA', '\u627E\u79D1\u5BA4', 'AR'], description: '\u667A\u80FD\u5BFC\u22EA\u5230\u79D1\u5BA4\u4F4D\u7F6E', targetPage: 'pages/ARNavigationPage', reply: '\u6B63\u5728\u542F\u52A8AR\u5BFC\u22EA, \u8BF7\u5C06\u624B\u673A\u5BF9\u51C6\u524D\u65B9, \u6211\u4F1A\u4E3A\u60A8\u6307\u5F15\u8DEF\u7EBF.', mode: 'command' },
+    { id: '3', icon: '\uD83D\uDCCA', title: '\u67E5\u8BE2\u5065\u5EBB\u8BB0\u5F55', keywords: ['\u5065\u5EBB\u8BB0\u5F55', '\u67E5\u8BB0\u5F55', '\u5386\u53F2\u6570\u636E'], description: '\u67E5\u770B\u5386\u53F2\u5065\u5EBB\u6570\u636E', targetPage: 'pages/HealthRecords', reply: '\u5DF2\u4E3A\u60A8\u6253\u5F00\u5065\u5EBB\u8BB0\u5F55\u9875\u9762, \u60A8\u53EF\u4EE5\u67E5\u770B\u8840\u538B\u3001\u8840\u7CD6\u7B49\u5386\u53F2\u6570\u636E\u8D8B\u52BF\u56FE.', mode: 'command' },
+    { id: '4', icon: '\uD83D\uDC8A', title: '\u8BBE\u7F6E\u7528\u836F\u63D0\u9192', keywords: ['\u7528\u836F', '\u5403\u836F', '\u836F\u7269'], description: '\u7BA1\u7406\u836F\u7269\u670D\u7528\u65F6\u95F4', targetPage: 'pages/Medications', reply: '\u7528\u836F\u63D0\u9192\u9875\u9762\u5DF2\u6253\u5F00, \u60A8\u53EF\u4EE5\u67E5\u770B\u4ECA\u65E5\u5F85\u670D\u7528\u7684\u836F\u7269\u5E76\u8BBE\u7F6E\u63D0\u9192\u65F6\u95F4.', mode: 'command' },
+    { id: '5', icon: '\u26A0\uFE0F', title: '\u5065\u5EBB\u98CE\u9669\u8BC4\u4F30', keywords: ['\u98CE\u9669\u8BC4\u4F30', '\u98CE\u9669', '\u8BC4\u4F30'], description: '\u83B7\u53D6\u4E2A\u6027\u5316\u98CE\u9669\u62A5\u544A', targetPage: 'pages/RiskAssessmentPage', reply: '\u6B63\u5728\u4E3A\u60A8\u751F\u6210\u5065\u5EBB\u98CE\u9669\u8BC4\u4F30\u62A5\u544A, \u5305\u542B\u591A\u7EF4\u5EA6\u98CE\u9669\u5206\u6790.', mode: 'command' },
+    { id: '6', icon: '\uD83C\uDFE5', title: '\u67E5\u627E\u9644\u8FD1\u533B\u9662', keywords: ['\u533B\u9662', '\u8BCA\u6240', '\u9644\u8FD1'], description: '\u641C\u7D22\u5468\u8FB9\u533B\u7597\u673A\u6784', targetPage: 'pages/HospitalPage', reply: '\u5DF2\u4E3A\u60A8\u641C\u7D22\u9644\u8FD1\u533B\u9662, \u6309\u8DDD\u79BB\u6392\u5E8F, \u60A8\u53EF\u4EE5\u6839\u636E\u9700\u8981\u9009\u62E9\u5C31\u8BCA\u533B\u9662.', mode: 'command' },
+    { id: '7', icon: '\uD83E\uDDD8', title: '\u5EB7\u590D\u8BAD\u7EC3', keywords: ['\u5EB7\u590D', '\u8BAD\u7EC3', '\u8FD0\u52A8'], description: '\u8FDB\u5165\u5EB7\u590D\u8BFE\u7A0B\u5217\u8868', targetPage: 'pages/RehabListPage', reply: '\u5EB7\u590D\u8BFE\u7A0B\u5217\u8868\u5DF2\u6253\u5F00, \u63A8\u8350\u60A8\u4ECE\u9888\u697C\u5EB7\u590D\u8BAD\u7EC3\u5F00\u59CB, \u9002\u5408\u65E5\u5E38\u7EC3\u4E60.', mode: 'command' },
+    { id: '8', icon: '\uD83D\uDCD6', title: '\u9605\u8BFB\uD55C\u666E\u6587\u7AE0', keywords: ['\uD55C\u666E', '\u6587\u7AE0', '\u77E5\u8BC6'], description: '\u6D4F\u89C8\u533B\u5B66\u77E5\u8BC6\u5E93', targetPage: 'pages/ScienceListPage', reply: '\uD55C\u666E\u6587\u7AE0\u5E93\u5DF2\u4E3A\u60A8\u6253\u5F00, \u6DB5\u76D6\u5FC3\u8840\u7BA1\u3001\u9AA8\u79D1\u3001\u8425\u517B\u5B66\u7B49\u591A\u4E2A\u9886\u57DF.', mode: 'command' },
+    { id: '9', icon: '\u231A', title: '\u8FDE\u63A5\u8BBE\u5907', keywords: ['\u8BBE\u5907', '\u8FDE\u63A5', '\u914D\u5BF9'], description: '\u914D\u5BF9\u5065\u5EBB\u76D1\u6D4B\u8BBE\u5907', targetPage: 'pages/DeviceDiscoveryPage', reply: '\u8BBE\u5907\u53D1\u73B0\u9875\u9762\u5DF2\u6253\u5F00, \u8BF7\u5728\u9644\u8FD1\u641C\u7D22\u53EF\u8FDE\u63A5\u7684\u5065\u5EBB\u76D1\u6D4B\u8BBE\u5907.', mode: 'command' },
+    { id: '10', icon: '\uD83D\uDD12', title: '\u9690\u79C1\u8BBE\u7F6E', keywords: ['\u9690\u79C1', '\u6743\u9650', '\u8BBE\u7F6E'], description: '\u7BA1\u7406\u6570\u636E\u8BBF\u95EE\u6743\u9650', targetPage: 'pages/PrivacyPage', reply: '\u9690\u79C1\u8BBE\u7F6E\u9875\u9762\u5DF2\u6253\u5F00, \u60A8\u53EF\u4EE5\u67E5\u770B\u548C\u7BA1\u7406\u60A8\u7684\u6570\u636E\u4F7F\u7528\u6743\u9650.', mode: 'command' },
+    { id: '11', icon: '\uD83C\uDF98', title: '\u7D27\u6025\u6C42\u52A9', keywords: ['\u7D27\u6025', '\u6C42\u52A9', '120', '\u6551\u547D'], description: '\u4E00\u952E\u62E8\u6253120\u6025\u6551\u7535\u8BDD', isEmergency: true, reply: '\u68C0\u6D4B\u5230\u7D27\u6025\u6C42\u52A9\u6307\u4EE4! \u6B63\u5728\u4E3A\u60A8\u51C6\u5907\u62E8\u6253120\u6025\u6551\u7535\u8BDD...', mode: 'command' }
   ];
 
   aboutToAppear(): void {
@@ -83,8 +95,21 @@ struct VoiceAssistantPage {
     if (storedMessages && storedMessages.length > 0) {
       this.chatMessages = storedMessages;
     } else {
-      this.addMessage('system', '欢迎使用小艺语音助手！\n\n💡 使用提示：\n• 点击麦克风按钮开始录音\n• 说"血压高怎么办"进行健康咨询\n• 说"打开健康记录"执行操作指令\n\n请问有什么可以帮您？');
+      this.addMessage('system', '\u6B22\u8FCE\u4F7F\u7528\u5C0F\u827A\u8BED\u97F3\u52A9\u624B!\n\n\uD83D\uDCAA \u4F7F\u7528\u63D0\u793A:\n\u2022 \u70B9\u51FB\u9EA6\u514B\u98CE\u6309\u94AE\u5F00\u59CB\u5F55\u97F3\n\u2022 \u8BF4\"\u8840\u538B\u9AD8\u600E\u4E48\u529E\"\u8FDB\u884C\u5065\u5EBB\u54A8\u8BE2\n\u2022 \u8BF4\"\u6253\u5F00\u5065\u5EBB\u8BB0\u5F55\"\u6267\u884C\u64CD\u4F5C\u6307\u4EE4\n\n\u8BF7\u95EE\u6709\u4EC0\u4E48\u53EF\u4EE5\u5E2E\u52A9\u60A8\u7684?');
     }
+    BrowseTracker.recordStart('VOICE_ASSISTANT', 'PAGE', 8, '语音助手').then((id: number) => {
+      this.recordId = id;
+    });
+  }
+
+  aboutToDisappear(): void {
+    if (this.recordId > 0) {
+      BrowseTracker.recordEnd(this.recordId);
+    }
+  }
+
+  get currentMode(): ChatMode {
+    return this.chatModes[this.currentModeIndex];
   }
 
   addMessage(type: 'user' | 'assistant' | 'system', content: string, isEmergency?: boolean, isVoice?: boolean): void {
@@ -97,7 +122,11 @@ struct VoiceAssistantPage {
       isVoice
     };
 
-    const newMessages: ChatMessage[] = [...this.chatMessages, message];
+    const newMessages: ChatMessage[] = [];
+    for (let i = 0; i < this.chatMessages.length; i++) {
+      newMessages.push(this.chatMessages[i]);
+    }
+    newMessages.push(message);
     this.chatMessages = newMessages;
     AppStorage.setOrCreate<ChatMessage[]>('voiceChatMessages', newMessages);
 
@@ -114,7 +143,7 @@ struct VoiceAssistantPage {
     if (this.isRecording || this.isLoading) return;
 
     this.isRecording = true;
-    this.recordStatus = '正在聆听...';
+    this.recordStatus = '\u6B63\u5728\u8046\u542C...';
     this.recognizedText = '';
     this.scaleValue = 1.15;
     this.rippleOpacity1 = 0.6;
@@ -135,7 +164,7 @@ struct VoiceAssistantPage {
     if (!this.isRecording) return;
 
     this.isRecording = false;
-    this.recordStatus = '处理中...';
+    this.recordStatus = '\u5904\u7406\u4E2D...';
     this.scaleValue = 0.95;
     this.rippleOpacity1 = 0;
     this.rippleOpacity2 = 0;
@@ -144,17 +173,17 @@ struct VoiceAssistantPage {
     if (this.recognizedText.trim()) {
       this.processRecognizedText(this.recognizedText.trim());
     } else {
-      this.handleRecognitionFailure('未检测到语音输入，请重试');
+      this.handleRecognitionFailure('\u672A\u68C0\u6D4B\u5230\u8BED\u97F3\u8F93\u5165, \u8BF7\u91CD\u8BD5');
     }
   }
 
   async startDemoRecognition(): Promise<void> {
     const demoPhrases: string[] = [
-      '血压高怎么办',
-      '打开健康记录',
-      '查找附近医院',
-      '预约挂号',
-      '血糖正常值是多少'
+      '\u8840\u538B\u9AD8\u600E\u4E48\u529E',
+      '\u6253\u5F00\u5065\u5EBB\u8BB0\u5F55',
+      '\u67E5\u627E\u9644\u8FD1\u533B\u9662',
+      '\u9884\u7EA6\u6302\u53F7',
+      '\u8840\u7CD6\u6B63\u5E38\u503C\u662F\u591A\u5C11'
     ];
 
     const randomIndex: number = Math.floor(Math.random() * demoPhrases.length);
@@ -166,13 +195,13 @@ struct VoiceAssistantPage {
         setTimeout(() => {
           displayText += randomPhrase[i];
           this.recognizedText = displayText;
-          this.recordStatus = `识别中: ${displayText}...`;
+          this.recordStatus = '识别中: ' + displayText + '...';
           resolve();
         }, 150 + Math.random() * 100);
       });
     }
 
-    this.recordStatus = `识别完成: ${randomPhrase}`;
+    this.recordStatus = '识别完成: ' + randomPhrase;
 
     setTimeout(() => {
       this.stopRecording();
@@ -183,16 +212,16 @@ struct VoiceAssistantPage {
     this.retryCount++;
 
     if (this.retryCount <= this.maxRetryCount) {
-      this.addMessage('system', `❌ 识别失败（${this.retryCount}/${this.maxRetryCount}）: ${errorMsg}\n请点击麦克风重新尝试`);
+      this.addMessage('system', '\u274C \u8BC6\u522B\u5931\u8D25(' + this.retryCount + '/' + this.maxRetryCount + '): ' + errorMsg + '\n\u8BF7\u70B9\u51FB\u9EA6\u514B\u98CE\u91CD\u65B0\u5C1D\u8BD5');
     } else {
-      this.addMessage('system', `❌ 连续${this.maxRetryCount}次识别失败\n\n可能原因：\n• 麦克风权限未开启\n• 网络连接异常\n• 说话声音太小\n\n建议：\n• 检查麦克风权限设置\n• 在安静环境重试\n• 或使用文字输入代替`);
+      this.addMessage('system', '\u274C \u8FDE\u7EED' + this.maxRetryCount + '\u6B21\u8BC6\u522B\u5931\u8D25\n\n\u53EF\u80FD\u539F\u56E0:\n\u2022 \u9EA6\u514B\u98CE\u6743\u9650\u672A\u5F00\u542F\n\u2022 \u7F51\u7EDC\u8FDE\u63A5\u5F02\u5E38\n\u2022 \u8BF4\u8BDD\u58F0\u97F3\u592A\u5C0F\n\n\u5EFA\u8BAE:\n\u2022 \u68C0\u67E5\u9EA6\u514B\u98CE\u6743\u9650\u8BBE\u7F6E\n\u2022 \u5728\u5B89\u9759\u73AF\u5883\u91CD\u8BD5\n\u2022 \u6216\u4F7F\u7528\u6587\u5B57\u8F93\u5165\u4EE3\u66FF');
       this.resetRecordingUI();
     }
   }
 
   resetRecordingUI(): void {
     this.isRecording = false;
-    this.recordStatus = '点击或按住麦克风开始说话';
+    this.recordStatus = '\u70B9\u51FB\u6216\u6309\u4F4F\u9EA6\u514B\u98CE\u5F00\u59CB\u8BF4\u8BDD';
     this.scaleValue = 1.0;
     this.rippleOpacity1 = 0;
     this.rippleOpacity2 = 0;
@@ -210,42 +239,25 @@ struct VoiceAssistantPage {
 
     if (matchedCommand !== undefined) {
       this.executeCommand(matchedCommand);
-    } else if (this.currentMode === 'health' || this.isHealthQuestion(text)) {
-      this.callAiForHealthAdvice(text);
     } else {
-      this.showUnsupportedCommandHelp(text);
+      this.callAiForResponse(text);
     }
   }
 
   matchCommand(input: string): VoiceCommand | undefined {
     const lowerInput: string = input.toLowerCase();
 
-    for (const cmd of this.voiceCommands) {
-      for (const keyword of cmd.keywords) {
-        if (lowerInput.includes(keyword.toLowerCase())) {
+    for (let i = 0; i < this.voiceCommands.length; i++) {
+      const cmd: VoiceCommand = this.voiceCommands[i];
+      const keywords: string[] = cmd.keywords;
+      for (let j = 0; j < keywords.length; j++) {
+        if (lowerInput.indexOf(keywords[j].toLowerCase()) >= 0) {
           return cmd;
         }
       }
     }
 
     return undefined;
-  }
-
-  isHealthQuestion(text: string): boolean {
-    const healthKeywords: string[] = [
-      '血压', '血糖', '心脏', '头痛', '发烧', '感冒', '失眠',
-      '怎么', '为什么', '什么', '如何', '是否', '能否', '可以吗',
-      '症状', '治疗', '预防', '注意', '饮食', '运动', '药物',
-      '正常值', '多少', '怎么办', '好不好', '行不行'
-    ];
-
-    for (const keyword of healthKeywords) {
-      if (text.includes(keyword)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   executeCommand(command: VoiceCommand): void {
@@ -265,17 +277,17 @@ struct VoiceAssistantPage {
           try {
             router.pushUrl({ url: command.targetPage! });
           } catch (e) {
-            console.error('路由跳转失败:', e);
-            this.addMessage('system', '⚠️ 页面跳转失败，请手动从首页进入');
+            console.error('\u8DEF\u7531\u8DF3\u8F6C\u5931\u8D25:', e);
+            this.addMessage('system', '\u26A0\uFE0F \u9875\u9762\u8DF3\u8F6C\u5931\u8D25, \u8BF7\u624B\u52A8\u4ECE\u9996\u9875\u8FDB\u5165');
           }
         }, 800);
       }
     }, 500);
   }
 
-  async callAiForHealthAdvice(question: string): Promise<void> {
+  async callAiForResponse(question: string): Promise<void> {
     this.isLoading = true;
-    this.addMessage('assistant', '🤔 正在思考中...');
+    this.addMessage('assistant', '\uD83E\uDD14 \u6B63\u5728\u601D\u8003\u4E2D...');
 
     try {
       const answer: string = await this.fetchAiResponse(question);
@@ -285,8 +297,8 @@ struct VoiceAssistantPage {
       this.conversationHistory.push(convItem);
 
     } catch (error) {
-      const errorMsg: string = error instanceof Error ? error.message : 'AI服务暂时不可用';
-      this.updateLastAssistantMessage(`抱歉，获取健康建议失败：${errorMsg}\n\n您可以稍后重试，或直接联系专业医生咨询。`);
+      const errorMsg: string = error instanceof Error ? error.message : 'AI\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528';
+      this.updateLastAssistantMessage('\u62B1\u6B49, \u83B7\u53D6\u5065\u5EBB\u5EFA\u8BAE\u5931\u8D25: ' + errorMsg + '\n\n\u60A8\u53EF\u4EE5\u7A0D\u540E\u91CD\u8BD5, \u6216\u76F4\u63A5\u8054\u7CFB\u4E13\u4E1A\u533B\u751F\u54A8\u8BE2.');
     } finally {
       this.isLoading = false;
     }
@@ -314,74 +326,65 @@ struct VoiceAssistantPage {
   }
 
   async fetchAiResponse(question: string): Promise<string> {
-    return new Promise<string>((resolve: (value: string) => void, reject: (reason: Error) => void) => {
-      try {
-        let baseUrl: string = AppStorage.get<string>('apiBaseUrl') || '';
-        if (!baseUrl) {
-          baseUrl = 'http://localhost:8080';
-        }
+    try {
+      const healthContext: string = this.buildHealthContext();
 
-        const url: string = `${baseUrl}/ai/chat`;
-        const healthContext: string = this.buildHealthContext();
+      let apiUrl: string = ApiConstants.AI_CHAT;
+      const requestData: Record<string, Object> = {};
+      requestData['question'] = question;
+      requestData['context'] = healthContext;
+      requestData['history'] = this.getHistoryArray();
+      requestData['mode'] = this.currentMode.id;
 
-        const httpRequest: http.HttpRequest = http.createHttp();
-
-        const headerObj: Record<string, string> = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AppStorage.get<string>('token') || ''}`
-        };
-
-        const requestOption: http.HttpRequestOptions = {
-          method: http.RequestMethod.POST,
-          header: headerObj,
-          extraData: JSON.stringify({
-            question: question,
-            context: healthContext,
-            history: this.getHistoryArray()
-          }),
-          connectTimeout: 10000,
-          readTimeout: 30000
-        };
-
-        httpRequest.request(url, requestOption)
-          .then((data: http.HttpResponse) => {
-            if (data.responseCode === 200) {
-              try {
-                const response = JSON.parse(data.result as string) as Record<string, Object>;
-                const content: string = response['content'] as string || response['answer'] as string || '';
-                const disclaimer: string = '\n\n---\n⚕️ **温馨提示**: 以上建议仅供参考，如有不适请及时就医。';
-                resolve(content + disclaimer);
-              } catch (parseError) {
-                reject(new Error('解析响应数据失败'));
-              }
-            } else {
-              reject(new Error(`服务器返回错误: ${data.responseCode}`));
-            }
-          })
-          .catch((err: Error) => {
-            reject(err);
-          });
-
-      } catch (error) {
-        const mockAnswers: Record<string, string> = {
-          '血压': '关于血压问题：\n\n✅ **成人正常血压范围：**\n• 收缩压（高压）：90-139 mmHg\n• 舒张压（低压）：60-89 mmHg\n\n💡 **高血压建议：**\n1. 低盐饮食（每日<5g盐）\n2. 规律运动（每周150分钟中等强度）\n3. 控制体重（BMI保持在18.5-24）\n4. 戒烟限酒\n5. 定期监测血压\n\n⚠️ **何时就医：**\n• 血压持续≥140/90 mmHg\n• 出现头痛、头晕等症状\n• 有家族高血压史',
-          '血糖': '关于血糖问题：\n\n✅ **正常血糖参考值：**\n• 空腹血糖：3.9-6.1 mmol/L\n• 餐后2小时：<7.8 mmol/L\n\n💡 **糖尿病预防：**\n1. 控制碳水化合物摄入\n2. 增加膳食纤维\n3. 规律运动\n4. 保持健康体重\n5. 定期体检筛查',
-          'default': '感谢您的健康提问！\n\n基于您的描述，我建议：\n\n1. 📋 **观察症状变化** - 记录出现的时间和频率\n2. 💊 **保持良好作息** - 充足睡眠，规律饮食\n3. 🏃 **适度运动** - 每天保持30分钟活动\n4. ⚠️ **及时就医** - 如症状持续或加重\n\n如需更详细的个性化建议，建议您提供更多具体信息，或前往医院就诊。'
-        };
-
-        let mockAnswer: string = mockAnswers['default'];
-        const keys: string[] = Object.keys(mockAnswers);
-        for (let i = 0; i < keys.length; i++) {
-          if (question.includes(keys[i])) {
-            mockAnswer = mockAnswers[keys[i]];
-            break;
-          }
-        }
-
-        const disclaimer: string = '\n\n---\n⚕️ **温馨提示**: 以上建议仅供参考，如有不适请及时就医。';
-        resolve(mockAnswer + disclaimer);
+      if (this.currentMode.id === 'consult') {
+        apiUrl = ApiConstants.AI_CONSULT;
+        requestData['symptoms'] = question;
+        requestData['userContext'] = healthContext;
       }
-    });
+
+      const response: BaseResponse<Record<string, Object>> = await HttpUtil.post<Record<string, Object>>(apiUrl, requestData);
+
+      if (response.success && response.data) {
+        const dataObj: Record<string, Object> = response.data;
+        let content: string = dataObj['answer'] as string || dataObj['content'] as string || dataObj['reply'] as string || dataObj['advice'] as string || dataObj['result'] as string || '';
+
+        if (!content && dataObj['message']) {
+          content = dataObj['message'] as string;
+        }
+
+        if (this.currentMode.id === 'consult' || this.currentMode.id === 'risk') {
+          const disclaimer: string = '\n\n---\n\u26A0\uFE0F **\u6E29\u99A8\u63D0\u793A**: \u4EE5\u4E0A\u5EFA\u8BAE\u53EA\u4F9B\u53C2\u8003, \u5982\u6709\u4E0D\u9002\u8BF7\u53CA\u65F6\u5C31\u533B.';
+          content = content + disclaimer;
+        }
+
+        return content;
+      } else {
+        throw new Error(response.message ? response.message : '\u670D\u52A1\u5668\u8FD4\u56DE\u9519\u8BEF');
+      }
+    } catch (e) {
+      console.error('Fetch AI Response Error:', e);
+      return this.getMockAnswer(question);
+    }
+  }
+
+  getMockAnswer(question: string): string {
+    const mockAnswers: Record<string, string> = {
+      '\u8840\u538B': '\u5173\u4E8E\u8840\u538B\u95EE\u9898:\n\n\u2705 **\u6210\u4EBA\u6B63\u5E38\u8840\u538B\u8303\u56F4:**\n\u2022 \u6536\u7F29\u538B(\u9AD8\u538B): 90-139 mmHg\n\u2022 \u8212\u5F20\u538B(\u4F4E\u538B): 60-89 mmHg\n\n\uD83D\uDCAA **\u9AD8\u8840\u538B\u5EFA\u8BAE:**\n1. \u4F4E\u76D0\u996E\u98DF(\u65E5\u5E38<5g\u76D0)\n2. \u89C4\u5F8B\u8FD0\u52A8(\u6BCF\u5468150\u5206\u949F)\n3. \u63A7\u5236\u4F53\u91CD(BMI 18.5-24)\n4. \u6212\u70DF\u9650\u9152\n5. \u5B9A\u671F\u76D1\u6D4B\u8840\u538B',
+      '\u8840\u7CD6': '\u5173\u4E8E\u8840\u7CD6\u95EE\u9898:\n\n\u2705 **\u6B63\u5E38\u8840\u7CD6\u53C2\u8003\u503C:**\n\u2022 \u7A7A\u8179\u8840\u7CD6: 3.9-6.1 mmol/L\n\u2022 \u996D\u540E2\u5C0F\u65F6: <7.8 mmol/L\n\n\uD83D\uDCAA **\u7CD6\u5C3F\u75C5\u9884\u9632:**\n1. \u63A7\u5236\u78B3\u6C34\u6444\u5165\n2. \u589E\u52A0\u86CB\u767D\u7EA4\u7EF4\n3. \u89C4\u5F8B\u8FD0\u52A8\n4. \u4FDD\u6301\u5065\u5EBB\u4F53\u91CD',
+      'default': '\u611F\u8C22\u60A8\u7684\u5065\u5EBB\u63D0\u95EE!\n\n\u57FA\u4E8E\u60A8\u7684\u63CF\u8FF0, \u6211\u5EFA\u8BAE:\n\n1. \uD83D\uDCCB **\u89C2\u5BDF\u75C7\u72B6\u53D8\u5316** - \u8BB0\u5F55\u51FA\u73B0\u7684\u65F6\u95F4\u548C\u9891\u7387\n2. \uD83D\uDC8A **\u4FDD\u6301\u826F\u597D\u4F5C\u606F** - \u5145\u8DB3\u7761\u7720, \u89C4\u5F8B\u996E\u98DF\n3. \uD83C\uDFCB **\u9002\u5EA6\u6D3B\u52A8** - \u6BCF\u592930\u5206\u949F\n4. \u26A0\uFE0F **\u53CA\u65F6\u5C31\u533B** - \u5982\u75C7\u72B6\u6301\u7EED\u6216\u52A0\u91CD'
+    };
+
+    let mockAnswer: string = mockAnswers['default'];
+    const keys: string[] = Object.keys(mockAnswers);
+    for (let i = 0; i < keys.length; i++) {
+      if (question.indexOf(keys[i]) >= 0) {
+        mockAnswer = mockAnswers[keys[i]];
+        break;
+      }
+    }
+
+    const disclaimer: string = '\n\n---\n\u26A0\uFE0F **\u6E29\u99A8\u63D0\u793A**: \u4EE5\u4E0A\u5EFA\u8BAE\u53EA\u4F9B\u53C2\u8003, \u5982\u6709\u4E0D\u9002\u8BF7\u53CA\u65F6\u5C31\u533B.';
+    return mockAnswer + disclaimer;
   }
 
   getHistoryArray(): ConversationItem[] {
@@ -394,45 +397,33 @@ struct VoiceAssistantPage {
   }
 
   buildHealthContext(): string {
-    let context: string = '用户基本信息：';
+    let context: string = '\u7528\u623B\u57FA\u672C\u4FE1\u606F: ';
 
     try {
-      const appStore: Record<string, Object> | undefined = AppStorage.get<Record<string, Object>>('appStore');
-      const userInfo: Record<string, Object> = (appStore !== undefined) ? (appStore['userInfo'] as Record<string, Object>) : {};
-
-      if (userInfo['age']) {
-        context += `\n年龄: ${userInfo['age']}`;
-      }
-      if (userInfo['gender']) {
-        context += `\n性别: ${userInfo['gender']}`;
-      }
-      if (userInfo['allergies']) {
-        context += `\n过敏史: ${JSON.stringify(userInfo['allergies'])}`;
+      const userInfo: object | undefined = AppStorage.get<object>('userInfo');
+      if (userInfo) {
+        const user: Record<string, Object> = userInfo as Record<string, Object>;
+        if (user['age']) {
+          context += '\n年龄: ' + user['age'];
+        }
+        if (user['gender']) {
+          context += '\n性别: ' + user['gender'];
+        }
+        if (user['allergies']) {
+          context += '\n过敏史: ' + JSON.stringify(user['allergies']);
+        }
       }
     } catch (error) {
-      console.error('构建健康上下文失败:', error);
+      console.error('\u6784\u5EFA\u5065\u5EBB\u4E0A\u4E0B\u6587\u5931\u8D25:', error);
     }
 
     return context;
   }
 
-  showUnsupportedCommandHelp(input: string): void {
-    const suggestions: string[] = [];
-
-    if (input.includes('血压') || input.includes('血糖')) {
-      suggestions.push('💡 您可以问："血压多少算正常"、"血糖高怎么办"');
-    }
-
-    if (input.includes('怎么') || input.includes('如何')) {
-      suggestions.push('💡 您可以说："怎么预防感冒"、"如何改善睡眠"');
-    }
-
-    suggestions.push('\n\n📋 **常用操作指令示例：**\n• "打开健康记录"\n• "查找附近医院"\n• "预约挂号"\n• "开始康复训练"');
-
-    let helpMessage: string = `抱歉，我没有完全理解"${input}"。\n\n`;
-    helpMessage += suggestions.join('\n');
-
-    this.addMessage('assistant', helpMessage);
+  switchMode(index: number): void {
+    if (index < 0 || index >= this.chatModes.length) return;
+    this.currentModeIndex = index;
+    ToastUtil.showInfo('已切换至' + this.currentMode.name);
   }
 
   handleEmergencyCall(): void {
@@ -440,7 +431,7 @@ struct VoiceAssistantPage {
     this.showEmergencyDialog = false;
 
     setTimeout(() => {
-      this.addMessage('assistant', '已为您模拟拨打120急救电话。请注意：这是模拟功能，真实紧急情况请直接拨打120。');
+      this.addMessage('assistant', '\u5DF2\u4E3A\u60A8\u6A21\u62DF\u62E8\u6253120\u6025\u6551\u7535\u8BDD. \u8BF7\u6CE8\u610F: \u8FD9\u662F\u6A21\u62DF\u529F\u80FD, \u771F\u5B9E\u7D27\u6025\u60C5\u51B5\u8BF7\u76F4\u63A5\u62E8\u6255120.');
     }, 2000);
   }
 
@@ -449,19 +440,13 @@ struct VoiceAssistantPage {
     this.conversationHistory = [];
     AppStorage.setOrCreate<ChatMessage[]>('voiceChatMessages', []);
     this.resetRecordingUI();
-    this.addMessage('system', '对话历史已清空。有什么我可以帮助您的吗？');
-  }
-
-  switchMode(mode: 'health' | 'command'): void {
-    this.currentMode = mode;
-    const modeName: string = mode === 'health' ? '健康咨询模式' : '操作指令模式';
-    ToastUtil.showInfo(`已切换至${modeName}`);
+    this.addMessage('system', '\u5BF9\u8BDD\u5386\u53F2\u5DF2\u6E05\u7A7A. \u6709\u4EC0\u4E48\u6211\u53EF\u4EE5\u5E2E\u52A9\u60A8\u7684?');
   }
 
   build() {
     Column() {
       Row() {
-        Text('←')
+        Text('\u2190')
           .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
           .fontColor('#1677FF')
           .margin({ left: 16 })
@@ -469,19 +454,33 @@ struct VoiceAssistantPage {
             router.back();
           });
 
-        Text('小艺语音助手')
+        Text('\u5C0F\u827A\u8BED\u97F3\u52A9\u624B')
           .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
           .fontWeight('bold')
           .fontColor('#333333')
           .layoutWeight(1)
           .textAlign(TextAlign.Center);
 
-        Text('🗑️')
+        Text('\uD83D\uDDD1')
           .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
           .fontColor('#999999')
           .margin({ right: 16 })
           .onClick(() => {
-            this.clearChatHistory();
+            AlertDialog.show({
+              title: '\u6E05\u7A7A\u5BF9\u8BDD',
+              message: '\u786E\u5B9A\u8981\u6E05\u7A7A\u6240\u6709\u5BF9\u8BDD\u8BB0\u5F55\u5417?',
+              primaryButton: {
+                value: '\u53D6\u6D88',
+                action: () => {}
+              },
+              secondaryButton: {
+                value: '\u786E\u5B9A',
+                fontColor: '#FF4D4F',
+                action: () => {
+                  this.clearChatHistory();
+                }
+              }
+            });
           });
       }
       .width('100%')
@@ -490,7 +489,7 @@ struct VoiceAssistantPage {
       .justifyContent(FlexAlign.Center);
 
       Scroll(this.scroller) {
-        Column({ space: 12 }) {
+        Column({ space: 8 }) {
           ForEach(this.chatMessages, (message: ChatMessage) => {
             if (message.type === 'system') {
               Column() {
@@ -509,22 +508,26 @@ struct VoiceAssistantPage {
             } else if (message.type === 'user') {
               Row() {
                 Blank();
-
                 Column({ space: 4 }) {
                   Row({ space: 4 }) {
+                    if (message.isVoice) {
+                      Text('\uD83C\uDFA4')
+                        .fontSize(12)
+                        .fontColor('#1677FF');
+                    }
                     Text(message.content)
                       .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                      .fontColor('#FFFFFF')
-                      .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-                      .backgroundColor('#1677FF')
-                      .borderRadius({ topLeft: 16, topRight: 16, bottomLeft: 16, bottomRight: 4 })
-                      .constraintSize({ maxWidth: '75%' });
-
-                    if (message.isVoice) {
-                      Text('🎤')
-                        .fontSize(16);
-                    }
+                      .fontColor('#FFFFFF');
                   }
+                  .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+                  .backgroundColor('#1677FF')
+                  .borderRadius({ topLeft: 16, topRight: 16, bottomLeft: 16, bottomRight: 4 })
+                  .constraintSize({ maxWidth: '75%' });
+
+                  Text(this.formatTime(message.timestamp))
+                    .fontSize(10)
+                    .fontColor('#CCCCCC')
+                    .margin({ right: 4 });
                 }
                 .alignItems(HorizontalAlign.End);
               }
@@ -532,53 +535,28 @@ struct VoiceAssistantPage {
               .padding({ right: 12 });
             } else {
               Row() {
-                Column({ space: 8 }) {
-                  if (message.isEmergency) {
-                    Column({ space: 8 }) {
-                      Text('🚨 紧急求助')
-                        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                        .fontWeight('bold')
-                        .fontColor('#FFFFFF')
-                        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                        .backgroundColor('#FF4D4F')
-                        .borderRadius(8);
+                Column({ space: 6 }) {
+                  Row({ space: 4 }) {
+                    Text('\uD83E\uDD16')
+                      .fontSize(16);
 
-                      Text(message.content)
-                        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                        .fontColor('#333333')
-                        .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-                        .backgroundColor('#FFF1F0')
-                        .border({ width: 1, color: '#FFCCC7' })
-                        .borderRadius({ topLeft: 16, topRight: 16, bottomLeft: 4, bottomRight: 16 });
-
-                      Button('拨打120')
-                        .height(GlobalTheme.getButtonHeight(this.isElderMode) - 8)
-                        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                        .fontWeight('bold')
-                        .fontColor('#FFFFFF')
-                        .backgroundColor('#FF4D4F')
-                        .borderRadius(20)
-                        .onClick(() => {
-                          this.handleEmergencyCall();
-                        });
-                    }
-                    .padding(12)
-                    .backgroundColor('#FFFFFF')
-                    .borderRadius(12)
-                    .shadow({ radius: 8, color: '#FF4D4F30', offsetX: 0, offsetY: 2 });
-                  } else {
                     Text(message.content)
                       .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
                       .fontColor('#333333')
-                      .lineHeight(this.isElderMode ? 26 : 22)
-                      .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-                      .backgroundColor('#F5F5F5')
-                      .borderRadius({ topLeft: 16, topRight: 16, bottomLeft: 4, bottomRight: 16 })
-                      .constraintSize({ maxWidth: '85%' });
+                      .lineHeight(20)
+                      .layoutWeight(1);
                   }
+                  .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+                  .backgroundColor('#F5F5F5')
+                  .borderRadius({ topLeft: 16, topRight: 16, bottomLeft: 4, bottomRight: 16 })
+                  .constraintSize({ maxWidth: '82%' });
+
+                  Text(this.formatTime(message.timestamp))
+                    .fontSize(10)
+                    .fontColor('#CCCCCC')
+                    .margin({ left: 4 });
                 }
                 .alignItems(HorizontalAlign.Start);
-
                 Blank();
               }
               .width('100%')
@@ -587,260 +565,185 @@ struct VoiceAssistantPage {
           }, (message: ChatMessage) => message.id);
         }
         .width('100%')
-        .padding({ top: 12, bottom: 120 });
+        .padding({ top: 8, bottom: 8 });
       }
       .width('100%')
       .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .backgroundColor('#FAFBFC');
+      .edgeEffect(EdgeEffect.Spring);
 
-      Column({ space: 12 }) {
-        Row({ space: 8 }) {
-          Button('💬 操作指令')
-            .height(36)
-            .fontSize(this.isElderMode ? 14 : 12)
-            .fontColor(this.currentMode === 'command' ? '#FFFFFF' : '#1677FF')
-            .backgroundColor(this.currentMode === 'command' ? '#1677FF' : '#FFFFFF')
-            .border({ width: 1, color: '#1677FF' })
-            .borderRadius(18)
-            .layoutWeight(1)
-            .onClick(() => {
-              this.switchMode('command');
-            });
+      this.ModeSelector();
 
-          Button('🏥 健康咨询')
-            .height(36)
-            .fontSize(this.isElderMode ? 14 : 12)
-            .fontColor(this.currentMode === 'health' ? '#FFFFFF' : '#1677FF')
-            .backgroundColor(this.currentMode === 'health' ? '#1677FF' : '#FFFFFF')
-            .border({ width: 1, color: '#1677FF' })
-            .borderRadius(18)
-            .layoutWeight(1)
-            .onClick(() => {
-              this.switchMode('health');
-            });
-        }
-        .width('100%');
-
-        Stack({ alignContent: Alignment.Center }) {
-          if (this.rippleOpacity3 > 0) {
-            Circle()
-              .width(this.isElderMode ? 220 : 190)
-              .height(this.isElderMode ? 220 : 190)
-              .fill('#1677FF08')
-              .opacity(this.rippleOpacity3)
-              .animation({
-                duration: 1500,
-                curve: Curve.EaseInOut,
-                iterations: -1,
-                playMode: PlayMode.Alternate
-              });
-          }
-
-          if (this.rippleOpacity2 > 0) {
-            Circle()
-              .width(this.isElderMode ? 180 : 155)
-              .height(this.isElderMode ? 180 : 155)
-              .fill('#1677FF12')
-              .opacity(this.rippleOpacity2)
-              .animation({
-                duration: 1200,
-                curve: Curve.EaseInOut,
-                iterations: -1,
-                playMode: PlayMode.Alternate
-              });
-          }
-
-          if (this.rippleOpacity1 > 0) {
-            Circle()
-              .width(this.isElderMode ? 140 : 120)
-              .height(this.isElderMode ? 140 : 120)
-              .fill('#1677FF18')
-              .opacity(this.rippleOpacity1)
-              .animation({
-                duration: 900,
-                curve: Curve.EaseInOut,
-                iterations: -1,
-                playMode: PlayMode.Alternate
-              });
-          }
-
-          Circle()
-            .width(this.isElderMode ? 110 : 95)
-            .height(this.isElderMode ? 110 : 95)
-            .fill(this.isRecording ? '#FF4D4F' : '#1677FF')
-            .scale({ x: this.scaleValue, y: this.scaleValue })
-            .animation({
-              duration: 300,
-              curve: Curve.EaseInOut
-            })
-            .gesture(
-              LongPressGesture({ repeat: false, duration: 300 })
-                .onAction(() => {
-                  this.startRecording();
-                })
-                .onActionEnd(() => {
-                  this.stopRecording();
-                })
-            )
-            .onClick(() => {
-              if (!this.isRecording) {
-                this.startRecording();
-                setTimeout(() => {
-                  if (this.isRecording) {
-                    this.stopRecording();
-                  }
-                }, 5000);
-              }
-            });
-
-          Column({ space: 4 }) {
-            Text(this.isRecording ? '⬛' : '🎤')
-              .fontSize(this.isElderMode ? 40 : 32);
-
-            Text(this.isRecording ? '' : '')
-              .fontSize(11)
-              .fontColor('#FFFFFF');
-          }
-        }
-        .width(this.isElderMode ? 240 : 210)
-        .height(this.isElderMode ? 240 : 210)
-        .margin({ top: 8, bottom: 8 });
-
-        Text(this.recordStatus)
-          .fontSize(this.isElderMode ? 16 : 14)
-          .fontColor(this.isRecording ? '#FF4D4F' : '#666666')
-          .fontWeight(this.isRecording ? FontWeight.Bold : FontWeight.Normal)
-          .textAlign(TextAlign.Center)
-          .maxLines(2)
-          .margin({ bottom: 8 });
-
-        if (this.recognizedText && !this.isRecording) {
-          Text(`"${this.recognizedText}"`)
-            .fontSize(this.isElderMode ? 15 : 13)
-            .fontColor('#1677FF')
-            .fontWeight(FontWeight.Medium)
-            .margin({ bottom: 8 });
-        }
-
-        Row({ space: 12 }) {
-          Button(this.isTtsEnabled ? '🔊 TTS开' : '🔇 TTS关')
-            .height(36)
-            .fontSize(this.isElderMode ? 14 : 12)
-            .fontColor(this.isTtsEnabled ? '#1677FF' : '#999999')
-            .backgroundColor('#FFFFFF')
-            .border({ width: 1, color: this.isTtsEnabled ? '#1677FF' : '#CCCCCC' })
-            .borderRadius(18)
-            .onClick(() => {
-              this.isTtsEnabled = !this.isTtsEnabled;
-              ToastUtil.showInfo(this.isTtsEnabled ? 'TTS语音播报已开启' : 'TTS语音播报已关闭');
-            });
-        }
-      }
-      .width('100%')
-      .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-      .backgroundColor('#FFFFFF')
-      .shadow({ radius: 8, color: '#00000006', offsetX: 0, offsetY: -2 });
-
-      Scroll() {
-        Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-          Text('📋 支持的语音指令')
-            .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor('#333333')
-            .margin({ bottom: this.isElderMode ? 12 : 8 });
-
-          Grid() {
-            ForEach(this.voiceCommands.filter((cmd: VoiceCommand) => cmd.mode === this.currentMode), (command: VoiceCommand) => {
-              GridItem() {
-                Column({ space: 8 }) {
-                  Text(command.icon)
-                    .fontSize(this.isElderMode ? 32 : 24);
-
-                  Text(command.title)
-                    .fontSize(this.isElderMode ? 14 : 12)
-                    .fontWeight('bold')
-                    .fontColor('#333333')
-                    .textAlign(TextAlign.Center)
-                    .maxLines(1);
-
-                  Text(command.description)
-                    .fontSize(this.isElderMode ? 11 : 10)
-                    .fontColor('#999999')
-                    .textAlign(TextAlign.Center)
-                    .maxLines(2);
-                }
-                .width('100%')
-                .padding({ top: 12, bottom: 12 })
-                .backgroundColor('#FAFBFC')
-                .borderRadius(12)
-                .border({ width: 1, color: '#F0F0F0' })
-                .onClick(() => {
-                  this.executeCommand(command);
-                });
-              }
-            }, (command: VoiceCommand) => command.id);
-          }
-          .columnsTemplate(this.isElderMode ? '1fr 1fr' : '1fr 1fr 1fr')
-          .rowsGap(12)
-          .columnsGap(12)
-          .width('100%');
-
-          if (this.currentMode === 'health') {
-            Column({ space: 12 }) {
-              Text('💡 健康咨询示例')
-                .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-                .fontWeight('bold')
-                .fontColor('#1677FF')
-                .margin({ bottom: 8 });
-
-              ForEach([
-                { q: '血压多少算正常？', icon: '❤️' },
-                { q: '老年人如何预防糖尿病？', icon: '💊' },
-                { q: '每天应该运动多久？', icon: '🏃' },
-                { q: '失眠怎么办？', icon: '😴' },
-                { q: '如何保持心脏健康？', icon: '💪' },
-                { q: '饮食上有什么注意事项？', icon: '🥗' }
-              ], (item: Record<string, string>) => {
-                Row({ space: 8 }) {
-                  Text(item.icon)
-                    .fontSize(20);
-
-                  Text(item.q)
-                    .fontSize(this.isElderMode ? 14 : 13)
-                    .fontColor('#333333')
-                    .layoutWeight(1);
-                }
-                .width('100%')
-                .padding(12)
-                .backgroundColor('#F0F5FF')
-                .borderRadius(8)
-                .onClick(() => {
-                  this.processRecognizedText(item.q);
-                });
-              }, (item: Record<string, string>) => item.q);
-            }
-            .width('100%')
-            .padding(16)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12)
-            .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 2 });
-          }
-        }
-        .width('100%')
-        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode), left: 16, right: 16 });
-      }
-      .height(0)
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top)
-      .backgroundColor('#F5F7FA');
-
-      Footer({ activeIndex: 4 });
+      this.VoiceInputArea();
     }
     .width('100%')
     .height('100%')
     .backgroundColor('#F5F7FA');
+  }
+
+  @Builder
+  ModeSelector() {
+    Column({ space: 8 }) {
+      Text('\u5BF9\u8BDD\u6A21\u5F0F')
+        .fontSize(12)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#666666')
+        .margin({ left: 16, top: 8 });
+
+      Scroll() {
+        Row({ space: 8 }) {
+          ForEach(this.chatModes, (mode: ChatMode, index: number) => {
+            Column({ space: 4 }) {
+              Text(mode.icon)
+                .fontSize(18);
+
+              Text(mode.name)
+                .fontSize(10)
+                .fontColor(this.currentModeIndex === index ? '#1677FF' : '#666666')
+                .fontWeight(this.currentModeIndex === index ? FontWeight.Bold : FontWeight.Normal);
+            }
+            .width(64)
+            .height(56)
+            .justifyContent(FlexAlign.Center)
+            .backgroundColor(this.currentModeIndex === index ? '#E6F4FF' : '#FFFFFF')
+            .borderRadius(10)
+            .border(this.currentModeIndex === index ? { width: 1.5, color: '#1677FF' } : { width: 0, color: 'transparent' })
+            .shadow({ radius: 2, color: '#00000008', offsetX: 0, offsetY: 1 })
+            .onClick(() => {
+              this.switchMode(index);
+            });
+          }, (mode: ChatMode, index: number) => mode.id + String(index));
+        }
+        .padding({ left: 12, right: 12, bottom: 6 });
+      }
+      .scrollable(ScrollDirection.Horizontal)
+      .scrollBar(BarState.Off)
+      .width('100%');
+    }
+    .width('100%')
+    .backgroundColor('#FFFFFF');
+  }
+
+  @Builder
+  VoiceInputArea() {
+    Column({ space: 10 }) {
+      Text(this.recordStatus)
+        .fontSize(13)
+        .fontColor(this.isRecording ? '#1677FF' : '#999999')
+        .textAlign(TextAlign.Center)
+        .width('100%');
+
+      Stack({ alignContent: Alignment.Center }) {
+        Circle()
+          .width(130)
+          .height(130)
+          .fill(this.isRecording ? '#E6F4FF' : '#F0F0F0');
+
+        if (this.isRecording) {
+          Circle()
+            .width(110)
+            .height(110)
+            .fill('#BBE4FF')
+            .opacity(this.rippleOpacity1);
+
+          Circle()
+            .width(90)
+            .height(90)
+            .fill('#8ECFFF')
+            .opacity(this.rippleOpacity2);
+
+          Circle()
+            .width(70)
+            .height(70)
+            .fill('#52C41A')
+            .scale({ x: this.scaleValue, y: this.scaleValue });
+        } else {
+          Circle()
+            .width(70)
+            .height(70)
+            .fill('#1677FF');
+        }
+
+        Text(this.isRecording ? '\u26A1' : '\uD83C\uDFA4')
+          .fontSize(28)
+          .fontColor('#FFFFFF')
+      }
+      .width(130)
+      .height(130)
+      .onClick(() => {
+        if (!this.isRecording) {
+          this.startRecording();
+        } else {
+          this.stopRecording();
+        }
+      })
+      .gesture(
+        LongPressGesture()
+          .onAction(() => {
+            if (!this.isRecording) {
+              this.startRecording();
+            }
+          })
+      );
+
+      Row({ space: 12 }) {
+        TextInput({
+          text: this.inputText ? this.inputText : '',
+          placeholder: '\u6216\u8F93\u5165\u6587\u5B57...'
+        })
+          .layoutWeight(1)
+          .height(40)
+          .fontSize(14)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(20)
+          .padding({ left: 16, right: 16 })
+          .onChange((value: string) => {
+            this.inputText = value;
+            this.recognizedText = value;
+          })
+          .onSubmit(() => {
+            if (this.inputText.trim()) {
+              this.stopRecording();
+              this.processRecognizedText(this.inputText.trim());
+              this.inputText = '';
+              this.recognizedText = '';
+            }
+          });
+
+        Text('\u53D1\u9001')
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FFFFFF')
+          .width(60)
+          .height(40)
+          .textAlign(TextAlign.Center)
+          .backgroundColor('#1677FF')
+          .borderRadius(20)
+          .onClick(() => {
+            if (this.recognizedText.trim()) {
+              this.processRecognizedText(this.recognizedText.trim());
+              this.recognizedText = '';
+            }
+          });
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16 });
+
+      Text('\u6309\u4F4F\u9EA6\u514B\u98CE\u8BF4\u8BDD, \u677E\u5F00\u7ED3\u675F\u5F55\u97F3')
+        .fontSize(11)
+        .fontColor('#BBBBBB')
+        .textAlign(TextAlign.Center)
+        .margin({ bottom: 8 });
+    }
+    .width('100%')
+    .padding({ top: 10, bottom: 6 })
+    .backgroundColor('#FFFFFF');
+  }
+
+  formatTime(timestamp: number): string {
+    const date: Date = new Date(timestamp);
+    const hours: string = date.getHours().toString().padStart(2, '0');
+    const minutes: string = date.getMinutes().toString().padStart(2, '0');
+    return '' + hours + ':' + minutes;
   }
 }

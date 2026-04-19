@@ -172,6 +172,8 @@ struct Medications {
     router.pushUrl({
       url: 'pages/MedicationDetailPage',
       params: { medicationId: med.id }
+    }).catch((error: Error) => {
+      console.error('跳转药品详情失败:', error.message);
     });
   }
 

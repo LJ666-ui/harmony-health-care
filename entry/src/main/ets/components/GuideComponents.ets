@@ -61,7 +61,7 @@ const DEFAULT_GUIDE_STEPS: GuideStep[] = [
 export struct FirstTimeGuide {
   @State isVisible: boolean = false;
   @State currentStepIndex: number = 0;
-  @Prop guideSteps?: GuideStep[];
+  @Prop guideSteps: GuideStep[] | null = null;
 
   private steps: GuideStep[] = [];
 

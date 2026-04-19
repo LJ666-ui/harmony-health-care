@@ -4,9 +4,32 @@ import { Footer } from '../components/Footer';
 import { CategoryTabs } from '../components/CategoryTabs';
 import { HerbalCard } from '../components/HerbalCard';
 import { HerbalFilterBar } from '../components/HerbalFilterBar';
-import { GlobalTheme } from '../global';
-import { HerbalInfo, HERBAL_CATEGORIES, filterHerbals, SORT_OPTIONS } from '../mock/herbalMock';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { HERBAL_CATEGORIES, HerbalInfo as MockHerbalInfo } from '../mock/herbalMock';
 import BrowseTracker from '../utils/BrowseTracker';
+
+interface BackendHerbalItem {
+  id: number;
+  name: string;
+  pinyin?: string;
+  alias?: string;
+  category?: string;
+  nature?: string;
+  taste?: string;
+  meridian?: string;
+  efficacySummary?: string;
+  efficacyDetail?: string;
+  indication?: string;
+  usageDosage?: string;
+  contraindication?: string;
+  toxicity?: string;
+  processingMethod?: string;
+  sourceOrigin?: string;
+  appearance?: string;
+  imageUrl?: string;
+}
+
+type HerbalInfo = MockHerbalInfo;
 
 @Entry
 @Component
@@ -15,12 +38,15 @@ struct HerbalListPage {
 
   @State currentCategory: string = '全部';
   @State filteredList: HerbalInfo[] = [];
+  @State allHerbalList: HerbalInfo[] = [];
   @State searchKey: string = '';
   @State selectedNature: string = '';
   @State selectedTaste: string = '';
   @State currentSortIndex: number = 0;
   @State isLoading: boolean = false;
   @State showBackToTop: boolean = false;
+  @State currentPage: number = 1;
+  @State totalPages: number = 1;
   private scroller: Scroller = new Scroller();
 
   private recordId: number | undefined = undefined;
@@ -46,32 +72,129 @@ struct HerbalListPage {
     }
   }
 
-  loadData(): void {
+  async loadData(): Promise<void> {
     this.isLoading = true;
-    setTimeout(() => {
+    try {
+      let url: string = '/herbal/page';
+      const params: Record<string, string | number | boolean> = {};
+      params['page'] = this.currentPage;
+      params['size'] = 20;
+
+      if (this.searchKey && this.searchKey.trim() !== '') {
+        const searchParams: Record<string, string | number | boolean> = {};
+        searchParams['keyword'] = this.searchKey;
+        const searchRes: BaseResponse<BackendHerbalItem[]> = await HttpUtil.get<BackendHerbalItem[]>('/herbal/search', searchParams);
+        if (searchRes.success && searchRes.data) {
+          const dataList: BackendHerbalItem[] = searchRes.data;
+          const tempList: HerbalInfo[] = [];
+          for (let i: number = 0; i < dataList.length; i++) {
+            const item: BackendHerbalItem = dataList[i];
+            const herbalItem: MockHerbalInfo = {
+              id: String(item.id),
+              name: item.name,
+              alias: item.alias ? item.alias.split(',') : [],
+              category: item.category || '',
+              nature: item.nature || '',
+              taste: item.taste || '',
+              meridian: item.meridian ? item.meridian.split(',') : [],
+              efficacy: item.efficacySummary ? item.efficacySummary.split(',') : [],
+              indications: item.indication ? item.indication.split(',') : [],
+              usage: item.usageDosage || '',
+              dosage: item.usageDosage || '',
+              caution: item.contraindication || '',
+              image: item.imageUrl || ''
+            } as MockHerbalInfo;
+            tempList.push(herbalItem);
+          }
+          this.allHerbalList = tempList;
+        }
+      } else {
+        const response: BaseResponse<Object> = await HttpUtil.get<Object>(url, params);
+        if (response.success && response.data) {
+          const pageData: Record<string, Object> = response.data as Record<string, Object>;
+          if (pageData['records']) {
+            const records: BackendHerbalItem[] = pageData['records'] as BackendHerbalItem[];
+            const tempList: HerbalInfo[] = [];
+            for (let i: number = 0; i < records.length; i++) {
+              const item: BackendHerbalItem = records[i];
+              const herbalItem: HerbalInfo = {
+                id: String(item.id),
+                name: item.name,
+                alias: item.alias ? item.alias.split(',') : [],
+                category: item.category || '',
+                nature: item.nature || '',
+                taste: item.taste || '',
+                meridian: item.meridian ? item.meridian.split(',') : [],
+                efficacy: item.efficacySummary ? item.efficacySummary.split(',') : [],
+                indications: item.indication ? item.indication.split(',') : [],
+                usage: item.usageDosage || '',
+                dosage: item.usageDosage || '',
+                caution: item.contraindication || '',
+                image: item.imageUrl || ''
+              } as HerbalInfo;
+              tempList.push(herbalItem);
+            }
+            this.allHerbalList = tempList;
+            const pagesValue: Object | undefined = pageData['pages'];
+            this.totalPages = typeof pagesValue === 'number' ? pagesValue : 1;
+          }
+        }
+      }
+
       this.filterData();
       this.isLoading = false;
-    }, 300);
+    } catch (error) {
+      console.error('加载药材数据失败:', error);
+      this.isLoading = false;
+    }
   }
 
   filterData(): void {
-    let result: HerbalInfo[] = filterHerbals(
-      this.currentCategory,
-      this.selectedNature || undefined,
-      this.selectedTaste || undefined,
-      this.searchKey || undefined
-    );
+    let result: HerbalInfo[] = [];
+    for (let i: number = 0; i < this.allHerbalList.length; i++) {
+      result.push(this.allHerbalList[i]);
+    }
+
+    if (this.currentCategory && this.currentCategory !== '全部') {
+      const filtered: HerbalInfo[] = [];
+      for (let i: number = 0; i < result.length; i++) {
+        if (result[i].category === this.currentCategory) {
+          filtered.push(result[i]);
+        }
+      }
+      result = filtered;
+    }
+
+    if (this.selectedNature) {
+      const filtered: HerbalInfo[] = [];
+      for (let i: number = 0; i < result.length; i++) {
+        if (result[i].nature.includes(this.selectedNature)) {
+          filtered.push(result[i]);
+        }
+      }
+      result = filtered;
+    }
+
+    if (this.selectedTaste) {
+      const filtered: HerbalInfo[] = [];
+      for (let i: number = 0; i < result.length; i++) {
+        if (result[i].taste.includes(this.selectedTaste)) {
+          filtered.push(result[i]);
+        }
+      }
+      result = filtered;
+    }
 
     if (this.currentSortIndex === 1) {
-      result = result.sort((a: HerbalInfo, b: HerbalInfo) => a.name.localeCompare(b.name));
+      result.sort((a: HerbalInfo, b: HerbalInfo): number => a.name.localeCompare(b.name));
     } else if (this.currentSortIndex === 2) {
-      result = result.sort((a: HerbalInfo, b: HerbalInfo) => b.name.localeCompare(a.name));
+      result.sort((a: HerbalInfo, b: HerbalInfo): number => b.name.localeCompare(a.name));
     }
 
     this.filteredList = result;
   }
 
-  handleCategoryChange(index: number, category: string): void {
+  handleCategoryChange(_index: number, category: string): void {
     this.currentCategory = category;
     this.scroller.scrollTo({ xOffset: 0, yOffset: 0, animation: { duration: 200 } });
     this.filterData();
@@ -101,6 +224,8 @@ struct HerbalListPage {
     router.pushUrl({
       url: 'pages/HerbalDetailPage',
       params: { herbalId: herbal.id }
+    }).catch((err: Error) => {
+      console.error('跳转药材详情失败:', err.message);
     });
   }
 

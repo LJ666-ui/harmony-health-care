@@ -4,96 +4,40 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 
-interface ExpiryOption {
-  label: string;
-  days: number;
-}
-
-interface DoctorInfo {
-  id: string;
-  name: string;
-  hospital: string;
-  department: string;
-  avatar: string;
-}
-
-interface AuthRecord {
-  id: string;
-  doctorId: string;
-  doctorName: string;
-  hospital: string;
-  dataTypes: string[];
-  startDate: string;
-  endDate: string;
+export interface DataShareAuth {
+  id: number;
+  authUserId: number;
+  authUserName: string;
+  authUserHospital: string;
+  dataType: string;
   status: 'active' | 'expired' | 'revoked';
-  remainingDays: number;
+  authStartTime: string;
+  authEndTime: string;
 }
 
-const MOCK_DOCTORS: DoctorInfo[] = [
-  { id: '1', name: '张医生', hospital: '北京协和医院', department: '心内科', avatar: '👨‍⚕️' } as DoctorInfo,
-  { id: '2', name: '李医生', hospital: '上海瑞金医院', department: '内分泌科', avatar: '👩‍⚕️' } as DoctorInfo,
-  { id: '3', name: '王医生', hospital: '广州中山医院', department: '中医科', avatar: '👨‍⚕️' } as DoctorInfo,
-  { id: '4', name: '赵医生', hospital: '成都华西医院', department: '神经内科', avatar: '👩‍⚕️' } as DoctorInfo
-];
-
-const DATA_TYPE_OPTIONS: string[] = ['病历记录', '健康档案', '检查报告', '用药记录', '评估报告', '康复进度'];
-
-const EXPIRY_OPTIONS: ExpiryOption[] = [
-  { label: '1天', days: 1 } as ExpiryOption,
-  { label: '7天', days: 7 } as ExpiryOption,
-  { label: '30天', days: 30 } as ExpiryOption,
-  { label: '90天', days: 90 } as ExpiryOption,
-  { label: '永久', days: -1 } as ExpiryOption
-];
+export interface DataAccessLog {
+  id: number;
+  accessUserId: number;
+  accessUserName: string;
+  dataType: string;
+  action: string;
+  accessTime: string;
+  detail: string;
+}
 
 @Entry
 @Component
 struct DataAuthPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State authRecords: AuthRecord[] = [
-    {
-      id: '1',
-      doctorId: '1',
-      doctorName: '张医生',
-      hospital: '北京协和医院',
-      dataTypes: ['病历记录', '检查报告'],
-      startDate: '2026-04-01',
-      endDate: '2026-05-01',
-      status: 'active',
-      remainingDays: 17
-    } as AuthRecord,
-    {
-      id: '2',
-      doctorId: '2',
-      doctorName: '李医生',
-      hospital: '上海瑞金医院',
-      dataTypes: ['健康档案', '用药记录'],
-      startDate: '2026-03-15',
-      endDate: '2026-04-15',
-      status: 'active',
-      remainingDays: 1
-    } as AuthRecord,
-    {
-      id: '3',
-      doctorId: '3',
-      doctorName: '王医生',
-      hospital: '广州中山医院',
-      dataTypes: ['评估报告'],
-      startDate: '2026-02-01',
-      endDate: '2026-03-01',
-      status: 'expired',
-      remainingDays: 0
-    } as AuthRecord
-  ];
-
+  @State authRecords: DataShareAuth[] = [];
+  @State accessLogs: DataAccessLog[] = [];
+  @State isLoadingAuths: boolean = true;
+  @State isLoadingLogs: boolean = true;
   @State showNewAuthDialog: boolean = false;
-  @State selectedDoctor: DoctorInfo | null = null;
-  @State selectedDataTypes: string[] = [];
-  @State selectedExpiryIndex: number = 2;
-  @State searchKey: string = '';
-  @State showDoctorPicker: boolean = false;
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -101,107 +45,72 @@ struct DataAuthPage {
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
     }
+
+    this.loadAuthList();
+    this.loadAccessLogs();
   }
 
-  getFilteredDoctors(): DoctorInfo[] {
-    if (!this.searchKey.trim()) {
-      return MOCK_DOCTORS;
+  async loadAuthList(): Promise<void> {
+    this.isLoadingAuths = true;
+    try {
+      const response: BaseResponse<DataShareAuth[]> = await HttpUtil.get<DataShareAuth[]>(ApiConstants.PRIVACY_AUTH_LIST);
+      if (response.success && response.data) {
+        const list: DataShareAuth[] = response.data || [];
+        this.authRecords = [];
+        for (let i = 0; i < list.length; i++) {
+          this.authRecords.push(list[i]);
+        }
+      }
+    } catch (e) {
+      console.error('\u52A0\u8F7D\u6388\u6743\u5217\u8868\u5931\u8D25:', e);
+    } finally {
+      this.isLoadingAuths = false;
     }
-    const key: string = this.searchKey.toLowerCase();
-    return MOCK_DOCTORS.filter((doc: DoctorInfo) =>
-      doc.name.includes(key) || doc.hospital.includes(key) || doc.department.includes(key)
-    );
   }
 
-  toggleDataType(type: string): void {
-    const index: number = this.selectedDataTypes.indexOf(type);
-    if (index > -1) {
-      this.selectedDataTypes.splice(index, 1);
-    } else {
-      this.selectedDataTypes.push(type);
+  async loadAccessLogs(): Promise<void> {
+    this.isLoadingLogs = true;
+    try {
+      const response: BaseResponse<DataAccessLog[]> = await HttpUtil.get<DataAccessLog[]>(ApiConstants.PRIVACY_ACCESS_LOGS);
+      if (response.success && response.data) {
+        const list: DataAccessLog[] = response.data || [];
+        this.accessLogs = [];
+        for (let i = 0; i < list.length; i++) {
+          this.accessLogs.push(list[i]);
+        }
+      }
+    } catch (e) {
+      console.error('\u52A0\u8F7D\u8BBF\u95EE\u65E5\u5FD7\u5931\u8D25:', e);
+    } finally {
+      this.isLoadingLogs = false;
     }
   }
 
-  selectDoctor(doctor: DoctorInfo): void {
-    this.selectedDoctor = doctor;
-    this.showDoctorPicker = false;
-    this.searchKey = '';
-  }
-
-  revokeAuth(record: AuthRecord): void {
+  async revokeAuth(record: DataShareAuth): Promise<void> {
     promptAction.showDialog({
-      title: '撤销授权',
-      message: `确定要撤销对 ${record.doctorName} 的数据授权吗？`,
-      buttons: [{ text: '取消', color: '#999999' }, { text: '确定撤销', color: '#FF4D4F' }]
-    }).then((result: promptAction.ShowDialogSuccessResponse) => {
+      title: '\u64A4\u9500\u6388\u6743',
+      message: '\u786E\u5B9A\u8981\u64A4\u9500\u5BF9 ' + record.authUserName + ' \u7684\u6570\u636E\u6388\u6743\u5417?',
+      buttons: [{ text: '\u53D6\u6D88', color: '#999999' }, { text: '\u786E\u5B9A\u64A4\u9500', color: '#FF4D4F' }]
+    }).then(async (result: promptAction.ShowDialogSuccessResponse) => {
       if (result.index === 1) {
-        record.status = 'revoked';
-        record.remainingDays = 0;
-        ToastUtil.operationSuccess('已撤销授权');
+        try {
+          const url: string = ApiConstants.PRIVACY_REVOKE_AUTH + '?authId=' + record.id;
+          const response: BaseResponse<Record<string, Object>> = await HttpUtil.post<Record<string, Object>>(url, {} as Record<string, Object>);
+          if (response.success) {
+            record.status = 'revoked';
+            ToastUtil.operationSuccess('\u5DF2\u64A4\u9500\u6388\u6743');
+            this.loadAccessLogs();
+          } else {
+            ToastUtil.showSuccess(response.message ? response.message : '\u64A4\u9500\u5931\u8D25');
+          }
+        } catch (e) {
+          console.error('\u64A4\u9500\u6388\u6743\u5931\u8D25:', e);
+          ToastUtil.showSuccess('\u64A4\u9502\u6388\u6743\u5931\u8D25');
+        }
       }
     }).catch((error: Error) => {
       console.error('显示撤销授权对话框失败:', error.message);
     });
-  }
-
-  extendAuth(record: AuthRecord): void {
-    promptAction.showDialog({
-      title: '延长授权',
-      message: '选择延长时间：',
-      buttons: [{ text: '+7天', color: '#1677FF' }, { text: '+30天', color: '#1677FF' }, { text: '取消', color: '#999999' }]
-    }).then((result: promptAction.ShowDialogSuccessResponse) => {
-      if (result.index === 0 || result.index === 1) {
-        const addDays: number = result.index === 0 ? 7 : 30;
-        record.remainingDays += addDays;
-        ToastUtil.operationSuccess(`已延长${addDays}天`);
-      }
-    });
-  }
-
-  confirmNewAuth(): void {
-    if (!this.selectedDoctor) {
-      ToastUtil.showInfo('请先选择医生');
-      return;
-    }
-    if (this.selectedDataTypes.length === 0) {
-      ToastUtil.showInfo('请至少选择一种数据类型');
-      return;
-    }
-
-    const today: Date = new Date();
-    const expiryDays: number = EXPIRY_OPTIONS[this.selectedExpiryIndex].days;
-    const endDate: Date = expiryDays === -1 ? new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000) : new Date(today.getTime() + expiryDays * 24 * 60 * 60 * 1000);
-
-    const newRecord: AuthRecord = {
-      id: `${Date.now()}`,
-      doctorId: this.selectedDoctor.id,
-      doctorName: this.selectedDoctor.name,
-      hospital: this.selectedDoctor.hospital,
-      dataTypes: [...this.selectedDataTypes],
-      startDate: this.formatDate(today),
-      endDate: this.formatDate(endDate),
-      status: 'active',
-      remainingDays: expiryDays === -1 ? 365 : expiryDays
-    };
-
-    this.authRecords.unshift(newRecord);
-    this.showNewAuthDialog = false;
-    this.resetNewAuthForm();
-    ToastUtil.operationSuccess(`已向 ${this.selectedDoctor.name} 授权`);
-  }
-
-  formatDate(date: Date): string {
-    const year: number = date.getFullYear();
-    const month: string = String(date.getMonth() + 1).padStart(2, '0');
-    const day: string = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  resetNewAuthForm(): void {
-    this.selectedDoctor = null;
-    this.selectedDataTypes = [];
-    this.selectedExpiryIndex = 2;
-    this.searchKey = '';
   }
 
   getStatusColor(status: string): string {
@@ -215,30 +124,63 @@ struct DataAuthPage {
 
   getStatusText(status: string): string {
     switch (status) {
-      case 'active': return '有效';
-      case 'expired': return '已过期';
-      case 'revoked': return '已撤销';
-      default: return '未知';
+      case 'active': return '\u6709\u6548';
+      case 'expired': return '\u5DF2\u8FC7\u671F';
+      case 'revoked': return '\u5DF2\u64A4\u9500';
+      default: return '\u672A\u77E5';
+    }
+  }
+
+  getRemainingDays(endDateStr: string): number {
+    if (!endDateStr) return 0;
+    try {
+      const endDate: Date = new Date(endDateStr.replace(/-/g, '/'));
+      const now: Date = new Date();
+      const diffMs: number = endDate.getTime() - now.getTime();
+      return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  formatDate(dateStr: string): string {
+    if (!dateStr) return '';
+    return dateStr.substring(0, 10).replace(/-/g, '-');
+  }
+
+  getDoctorAvatar(name: string): string {
+    const hash: number = name.charCodeAt(0) % 4;
+    const avatars: string[] = ['\uD83E\uDDD1\u200D\u2642\uFE0F', '\uD83E\uDDD1\u200D\u2640\uFE0F', '\uD83E\uDDD1\u200D\u2642\uFE0F', '\uD83E\uDDD1\u200D\u2640\uFE0F'];
+    return avatars[hash];
+  }
+
+  getActionColor(action: string): string {
+    switch (action) {
+      case '\u8BFB\u53D6': return '#1677FF';
+      case '\u5199\u5165': return '#52C41A';
+      case '\u5220\u9664': return '#FF4D4F';
+      case '\u5224\u65AD': return '#FAAD14';
+      default: return '#666666';
     }
   }
 
   build() {
     Stack() {
       Column() {
-        Header({ title: '数据授权管理', showBack: true });
+        Header({ title: '\u6570\u636E\u6388\u6743\u7BA1\u7406', showBack: true });
 
         Scroll() {
           Column({ space: 16 }) {
 
             Column({ space: 12 }) {
               Row() {
-                Text('📋 我的授权列表')
+                Text('\uD83D\uDCDB \u6211\u7684\u6388\u6743\u5217\u8868')
                   .fontSize(18)
                   .fontWeight(FontWeight.Bold)
                   .fontColor('#333333')
                   .layoutWeight(1);
 
-                Text(`${this.authRecords.filter((r: AuthRecord) => r.status === 'active').length} 个有效`)
+                Text(this.authRecords.filter((r: DataShareAuth) => r.status === 'active').length + ' \u4E2A\u6709\u6548')
                   .fontSize(12)
                   .fontColor('#52C41A')
                   .backgroundColor('#F6FFED')
@@ -247,26 +189,26 @@ struct DataAuthPage {
               }
               .width('100%');
 
-              if (this.authRecords.length === 0) {
-                Column({ space: 16 }) {
-                  Text('🔒')
-                    .fontSize(64);
-
-                  Text('暂无授权记录')
-                    .fontSize(16)
-                    .fontColor('#666666');
-
-                  Text('您可以在此管理对医生的数据授权')
-                    .fontSize(13)
+              if (this.isLoadingAuths) {
+                Column() {
+                  LoadingProgress().width(32).height(32).color('#1677FF');
+                  Text('\u52A0\u8F7D\u4E2D...').fontSize(14).fontColor('#666666').margin({ top: 10 });
+                }.width('100%').height(150).justifyContent(FlexAlign.Center);
+              } else if (this.authRecords.length === 0) {
+                Column({ space: 12 }) {
+                  Text('\uD83D\uDD12')
+                    .fontSize(48);
+                  Text('\u6682\u65E0\u6388\u6743\u8BB0\u5F55')
+                    .fontSize(15)
                     .fontColor('#999999');
-                }
-                .width('100%')
-                .height(300)
-                .justifyContent(FlexAlign.Center);
+                  Text('\u60A8\u53EF\u4EE5\u5728\u6B64\u7BA1\u7406\u5BF9\u533B\u751F\u7684\u6570\u636E\u6388\u6743')
+                    .fontSize(13)
+                    .fontColor('#BBBBBB');
+                }.width('100%').height(220).justifyContent(FlexAlign.Center);
               } else {
-                ForEach(this.authRecords, (record: AuthRecord) => {
+                ForEach(this.authRecords, (record: DataShareAuth) => {
                   this.buildAuthCard(record);
-                }, (record: AuthRecord) => record.id);
+                }, (record: DataShareAuth) => String(record.id));
               }
             }
             .width('100%')
@@ -275,37 +217,119 @@ struct DataAuthPage {
             .borderRadius(12)
             .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
 
-            Button('+ 新建授权')
-              .width('100%')
-              .height(50)
-              .fontSize(16)
-              .fontColor('#FFFFFF')
-              .backgroundColor('#1677FF')
-              .borderRadius(25)
-              .onClick(() => {
-                this.showNewAuthDialog = true;
-                this.resetNewAuthForm();
-              });
-
             Column({ space: 12 }) {
-              Text('📖 授权说明')
+              Row() {
+                Text('\uD83D\uDCDE \u64CD\u4F5BA5BA\u8BA1\u65E5\u5FD7')
+                  .fontSize(18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#333333')
+                  .layoutWeight(1);
+
+                Text('\u5171 ' + this.accessLogs.length + ' \u6761')
+                  .fontSize(12)
+                  .fontColor('#999999')
+                  .backgroundColor('#F5F5F5')
+                  .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                  .borderRadius(12);
+              }
+              .width('100%');
+
+              if (this.isLoadingLogs) {
+                Column() {
+                  LoadingProgress().width(32).height(32).color('#1677FF');
+                  Text('\u52A0\u8F7D\u4E2D...').fontSize(14).fontColor('#666666').margin({ top: 10 });
+                }.width('100%').height(120).justifyContent(FlexAlign.Center);
+              } else if (this.accessLogs.length === 0) {
+                Text('\u6682\u65E0\u8BBF\u95EE\u8BB0\u5F55')
+                  .fontSize(14)
+                  .fontColor('#BBBBBB')
+                  .padding(30)
+                  .width('100%')
+                  .textAlign(TextAlign.Center);
+              } else {
+                ForEach(this.accessLogs.slice(0, 15), (log: DataAccessLog) => {
+                  Row({ space: 10 }) {
+                    Column() {
+                      Text(log.action.charAt(0))
+                        .fontSize(14)
+                        .fontColor('#FFFFFF')
+                        .width(26)
+                        .height(26)
+                        .borderRadius(13)
+                        .backgroundColor(this.getActionColor(log.action))
+                        .textAlign(TextAlign.Center);
+                    };
+
+                    Column({ space: 3 }) {
+                      Row({ space: 6 }) {
+                        Text(log.accessUserName)
+                          .fontSize(13)
+                          .fontWeight(FontWeight.Medium)
+                          .fontColor('#333333');
+
+                        Text(log.action)
+                          .fontSize(11)
+                          .fontColor(this.getActionColor(log.action));
+
+                        Text(log.dataType)
+                          .fontSize(11)
+                          .fontColor('#1677FF')
+                          .backgroundColor('#E6F7FF')
+                          .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                          .borderRadius(6);
+                      }
+                      .width('100%');
+
+                      Row({ space: 8 }) {
+                        Text(log.accessTime)
+                          .fontSize(11)
+                          .fontColor('#BBBBBB');
+
+                        if (log.detail) {
+                          Text('· ' + log.detail)
+                            .fontSize(11)
+                            .fontColor('#999999')
+                            .maxLines(1)
+                            .textOverflow({ overflow: TextOverflow.Ellipsis });
+                        }
+                      }
+                      .width('100%');
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start);
+                  }
+                  .width('100%')
+                  .padding(10)
+                  .backgroundColor('#FAFAFA')
+                  .borderRadius(8)
+                  .margin({ top: 4 });
+                }, (log: DataAccessLog) => String(log.id));
+              }
+            }
+            .width('100%')
+            .padding(16)
+            .backgroundColor('#FFFFFF')
+            .borderRadius(12)
+            .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+
+            Column({ space: 10 }) {
+              Text('\uD83D\uDCCA \u6388\u6743\u8BF4\u660E')
                 .fontSize(16)
                 .fontWeight(FontWeight.Bold)
                 .fontColor('#333333')
                 .width('100%');
 
               ForEach([
-                '授权后，选定的医生可查看您指定的健康数据类型',
-                '您可以随时撤销已授予的授权',
-                '授权到期后，医生将无法继续访问您的数据',
-                '所有授权操作都会被记录在访问日志中'
+                '\u6388\u6743\u540E\uFF0C\u9009\u5B9A\u7684\u533B\u751F\u53EF\u67E5\u770B\u60A8\u6307\u5B9A\u7684\u5065\u5EBB\u6570\u636E\u7C7B\u578B',
+                '\u60A8\u53EF\u4EE5\u968F\u65F6\u64A4\u9500\u5DF2\u6388\u4E88\u7684\u6388\u6743',
+                '\u6388\u6743\u5230\u671F\u540E\uFF0C\u533B\u751F\u5C06\u65E0\u6CD5\u7EE7\u7EED\u8BBF\u95EE\u60A8\u7684\u6570\u636E',
+                '\u6240\u6709\u6388\u6743\u64CD\u4F5C\u90FD\u4F1A\u88AB\u8BB0\u5F55\u5728\u8BBF\u95EE\u65E5\u5FD7\u4E2D'
               ], (tip: string, index: number) => {
                 Row({ space: 8 }) {
-                  Text(`${index + 1}.`)
+                  Text(String(index + 1) + '.')
                     .fontSize(13)
                     .fontColor('#1677FF')
                     .fontWeight(FontWeight.Medium);
-
                   Text(tip)
                     .fontSize(13)
                     .fontColor('#666666')
@@ -333,95 +357,88 @@ struct DataAuthPage {
       .width('100%')
       .height('100%')
       .backgroundColor('#F5F7FA');
-
-      if (this.showNewAuthDialog) {
-        this.buildNewAuthDialog();
-      }
     }
     .width('100%')
     .height('100%');
   }
 
   @Builder
-  buildAuthCard(record: AuthRecord) {
-    Column({ space: 12 }) {
+  buildAuthCard(record: DataShareAuth) {
+    Column({ space: 10 }) {
       Row({ space: 12 }) {
-        Text(record.doctorName === '张医生' ? '👨‍⚕️' : record.doctorName === '李医生' ? '👩‍⚕️' : '👨‍⚕️')
-          .fontSize(36);
+        Text(this.getDoctorAvatar(record.authUserName))
+          .fontSize(34);
 
-        Column({ space: 4 }) {
-          Text(record.doctorName)
+        Column({ space: 3 }) {
+          Text(record.authUserName)
             .fontSize(16)
             .fontWeight(FontWeight.Bold)
             .fontColor('#333333');
 
-          Text(record.hospital)
-            .fontSize(12)
-            .fontColor('#666666');
+          if (record.authUserHospital) {
+            Text(record.authUserHospital)
+              .fontSize(12)
+              .fontColor('#666666');
+          }
         }
         .layoutWeight(1)
         .alignItems(HorizontalAlign.Start);
 
-        Column({ space: 4 }) {
+        Column({ space: 3 }) {
           Text(this.getStatusText(record.status))
             .fontSize(11)
             .fontColor(this.getStatusColor(record.status))
             .fontWeight(FontWeight.Medium);
 
           if (record.status === 'active') {
-            Text(`剩余 ${record.remainingDays} 天`)
+            Text('\u5269\u4F59 ' + this.getRemainingDays(record.authEndTime) + ' \u5929')
               .fontSize(10)
-              .fontColor(record.remainingDays <= 3 ? '#FAAD14' : '#52C41A');
+              .fontColor(this.getRemainingDays(record.authEndTime) <= 3 ? '#FAAD14' : '#52C41A');
           }
         }
         .alignItems(HorizontalAlign.End);
       }
       .width('100%');
 
-      Row({ space: 8 }) {
-        Text('📁 授权数据：')
+      Row({ space: 6 }) {
+        Text('\uD83D\uDCC1 \u6388\u6743\u6570\u636E\uFF1A')
           .fontSize(12)
           .fontColor('#999999');
 
         Flex({ wrap: FlexWrap.Wrap }) {
-          ForEach(record.dataTypes, (type: string) => {
-            Text(type)
-              .fontSize(10)
-              .fontColor('#1677FF')
-              .backgroundColor('#E6F7FF')
-              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-              .borderRadius(8)
-              .margin(2);
-          }, (type: string) => type);
+          if (record.dataType) {
+            ForEach(record.dataType.split(','), (type: string) => {
+              Text(type.trim())
+                .fontSize(10)
+                .fontColor('#1677FF')
+                .backgroundColor('#E6F7FF')
+                .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                .borderRadius(8)
+                .margin(2);
+            }, (type: string) => type.trim());
+          }
         }
         .layoutWeight(1);
       }
       .width('100%');
 
-      Row({ space: 16 }) {
-        Text(`📅 ${record.startDate} ~ ${record.endDate}`)
+      Row({ space: 12 }) {
+        Text('\uD83D\uDCC5 ' + this.formatDate(record.authStartTime) + ' ~ ' + this.formatDate(record.authEndTime))
           .fontSize(11)
           .fontColor('#999999')
           .layoutWeight(1);
 
         if (record.status === 'active') {
-          Row({ space: 8 }) {
-            Button('延长')
-              .height(28)
-              .fontSize(11)
-              .fontColor('#1677FF')
-              .backgroundColor('#E6F7FF')
-              .borderRadius(14)
-              .onClick(() => this.extendAuth(record));
-
-            Button('撤销')
-              .height(28)
-              .fontSize(11)
-              .fontColor('#FF4D4F')
-              .backgroundColor('#FFF1F0')
-              .borderRadius(14)
-              .onClick(() => this.revokeAuth(record));
-          }
+          Button('\u64A4\u9500')
+            .height(28)
+            .fontSize(11)
+            .fontColor('#FF4D4F')
+            .backgroundColor('#FFF1F0')
+            .borderRadius(14)
+            .border({ width: 1, color: '#FFCCC7' })
+            .onClick(() => {
+              this.revokeAuth(record);
+            });
         }
       }
       .width('100%');
@@ -431,204 +448,5 @@ struct DataAuthPage {
     .backgroundColor(record.status === 'revoked' ? '#FFF7F7' : record.status === 'expired' ? '#FAFAFA' : '#FFFFFF')
     .borderRadius(10)
     .border({ width: 1, color: record.status === 'active' ? '#D6E4FF' : '#F0F0F0' });
-  }
-
-  @Builder
-  buildNewAuthDialog() {
-    Column() {
-      Blank();
-
-      Column({ space: 20 }) {
-        Row() {
-          Text('新建数据授权')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
-            .layoutWeight(1);
-
-          Text('✕')
-            .fontSize(22)
-            .fontColor('#999999')
-            .onClick(() => {
-              this.showNewAuthDialog = false;
-            });
-        }
-        .width('100%');
-
-        Column({ space: 8 }) {
-          Text('选择医生 *')
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#333333')
-            .width('100%');
-
-          if (this.selectedDoctor) {
-            Row({ space: 10 }) {
-              Text(this.selectedDoctor.avatar)
-                .fontSize(28);
-
-              Column({ space: 2 }) {
-                Text(this.selectedDoctor.name)
-                  .fontSize(14)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor('#333333');
-
-                Text(`${this.selectedDoctor.hospital} · ${this.selectedDoctor.department}`)
-                  .fontSize(11)
-                  .fontColor('#666666');
-              }
-              .layoutWeight(1);
-
-              Text('重新选择')
-                .fontSize(12)
-                .fontColor('#1677FF')
-                .onClick(() => {
-                  this.selectedDoctor = null;
-                });
-            }
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#F0F5FF')
-            .borderRadius(8)
-            .border({ width: 1, color: '#D6E4FF' });
-          } else {
-            TextInput({ placeholder: '搜索医生姓名或医院...', text: this.searchKey })
-              .width('100%')
-              .height(40)
-              .fontSize(13)
-              .backgroundColor('#F5F5F5')
-              .borderRadius(8)
-              .onChange((value: string) => {
-                this.searchKey = value;
-              });
-
-            if (this.searchKey || this.showDoctorPicker) {
-              Scroll() {
-                Column({ space: 4 }) {
-                  ForEach(this.getFilteredDoctors(), (doctor: DoctorInfo) => {
-                    Row({ space: 10 }) {
-                      Text(doctor.avatar)
-                        .fontSize(24);
-
-                      Column({ space: 2 }) {
-                        Text(doctor.name)
-                          .fontSize(13)
-                          .fontWeight(FontWeight.Medium)
-                          .fontColor('#333333');
-
-                        Text(`${doctor.hospital} · ${doctor.department}`)
-                          .fontSize(11)
-                          .fontColor('#999999');
-                      }
-                      .layoutWeight(1);
-                    }
-                    .width('100%')
-                    .padding(10)
-                    .backgroundColor('#FAFAFA')
-                    .borderRadius(6)
-                    .onClick(() => this.selectDoctor(doctor));
-                  }, (doctor: DoctorInfo) => doctor.id);
-                }
-                .width('100%')
-                .padding({ bottom: 4 });
-              }
-              .width('100%')
-              .height(150)
-              .scrollBar(BarState.On)
-              .margin({ top: 4 });
-            }
-          }
-        }
-        .width('100%');
-
-        Column({ space: 8 }) {
-          Row() {
-            Text('选择数据类型 *')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#333333')
-              .layoutWeight(1);
-
-            Text(`已选 ${this.selectedDataTypes.length} 项`)
-              .fontSize(11)
-              .fontColor('#1677FF');
-          }
-          .width('100%');
-
-          Flex({ wrap: FlexWrap.Wrap }) {
-            ForEach(DATA_TYPE_OPTIONS, (type: string) => {
-              Text(type)
-                .fontSize(12)
-                .fontColor(this.selectedDataTypes.includes(type) ? '#FFFFFF' : '#666666')
-                .backgroundColor(this.selectedDataTypes.includes(type) ? '#1677FF' : '#F5F5F5')
-                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                .borderRadius(15)
-                .margin(4)
-                .onClick(() => this.toggleDataType(type));
-            }, (type: string) => type);
-          }
-          .width('100%');
-        }
-        .width('100%');
-
-        Column({ space: 8 }) {
-          Text('有效期 *')
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#333333')
-            .width('100%');
-
-          Row({ space: 8 }) {
-            ForEach(EXPIRY_OPTIONS, (option: ExpiryOption, index: number) => {
-              Text(option.label)
-                .fontSize(12)
-                .fontColor(this.selectedExpiryIndex === index ? '#FFFFFF' : '#666666')
-                .backgroundColor(this.selectedExpiryIndex === index ? '#1677FF' : '#F5F5F5')
-                .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-                .borderRadius(18)
-                .onClick(() => {
-                  this.selectedExpiryIndex = index;
-                });
-            }, (option: ExpiryOption, index: number) => `expiry_${index}`);
-          }
-          .width('100%');
-        }
-        .width('100%');
-
-        Row({ space: 12 }) {
-          Button('取消')
-            .layoutWeight(1)
-            .height(44)
-            .fontSize(15)
-            .fontColor('#666666')
-            .backgroundColor('#F5F5F5')
-            .borderRadius(22)
-            .onClick(() => {
-              this.showNewAuthDialog = false;
-            });
-
-          Button('确认授权')
-            .layoutWeight(1)
-            .height(44)
-            .fontSize(15)
-            .fontColor('#FFFFFF')
-            .backgroundColor('#1677FF')
-            .borderRadius(22)
-            .onClick(() => this.confirmNewAuth());
-        }
-        .width('100%');
-      }
-      .width('90%')
-      .padding(20)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(16)
-      .shadow({ radius: 20, color: '#00000030', offsetX: 0, offsetY: 10 });
-
-      Blank();
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#00000060')
-    .justifyContent(FlexAlign.Center);
   }
 }

@@ -125,6 +125,50 @@ export class HttpUtil {
     }
   }
 
+  static async delete<T>(url: string, data?: object): Promise<BaseResponse<T>> {
+    try {
+      const fullUrl = HttpUtil.BASE_URL + url;
+
+      const token = HttpUtil.getToken();
+
+      const options: HttpRequestOptions = {
+        method: http.RequestMethod.DELETE,
+        headers: {
+          'Content-Type': 'application/json',
+          'Token': token ? token : ''
+        },
+        body: data ? JSON.stringify(data) : undefined
+      };
+      const response = await HttpUtil.fetch(fullUrl, options);
+
+      return await HttpUtil.handleResponse<T>(response);
+    } catch (error) {
+      return HttpUtil.handleError<T>(error as Error);
+    }
+  }
+
+  static async put<T>(url: string, data?: object): Promise<BaseResponse<T>> {
+    try {
+      const fullUrl = HttpUtil.BASE_URL + url;
+
+      const token = HttpUtil.getToken();
+
+      const options: HttpRequestOptions = {
+        method: http.RequestMethod.PUT,
+        headers: {
+          'Content-Type': 'application/json',
+          'Token': token ? token : ''
+        },
+        body: data ? JSON.stringify(data) : undefined
+      };
+      const response = await HttpUtil.fetch(fullUrl, options);
+
+      return await HttpUtil.handleResponse<T>(response);
+    } catch (error) {
+      return HttpUtil.handleError<T>(error as Error);
+    }
+  }
+
   private static buildQueryParams(params: Record<string, string | number | boolean>): string {
     const parts: string[] = [];
     Object.entries(params).forEach((entry) => {

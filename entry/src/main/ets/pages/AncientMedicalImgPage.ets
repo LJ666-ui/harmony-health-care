@@ -4,68 +4,22 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import BrowseTracker from '../utils/BrowseTracker';
 
-interface AncientImage {
-  id: string;
+export interface AncientImageItem {
+  id: number;
+  originalUrl: string;
+  restoreUrl: string;
+  model3dUrl: string;
   title: string;
-  description: string;
-  originalImage: string;
-  restoredImage: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: number;
-  uploadTime: string;
-  restoreTime?: string;
-  category: string;
+  desc: string;
+  source: string;
+  createTime: string;
+  updateTime: string;
+  isDeleted: number;
 }
-
-const MOCK_IMAGES: AncientImage[] = [
-  {
-    id: '1',
-    title: '《黄帝内经》残页',
-    description: '明代抄本，部分文字模糊不清，需要AI复原',
-    originalImage: '',
-    restoredImage: '',
-    status: 'completed',
-    progress: 100,
-    uploadTime: '2026-04-08 10:30',
-    restoreTime: '2026-04-08 10:35',
-    category: '中医典籍'
-  } as AncientImage,
-  {
-    id: '2',
-    title: '《伤寒论》手稿',
-    description: '清代医家批注本，字迹褪色严重',
-    originalImage: '',
-    restoredImage: '',
-    status: 'processing',
-    progress: 65,
-    uploadTime: '2026-04-10 14:20',
-    category: '中医典籍'
-  } as AncientImage,
-  {
-    id: '3',
-    title: '针灸穴位图',
-    description: '宋代铜人穴位图拓片，线条断裂',
-    originalImage: '',
-    restoredImage: '',
-    status: 'pending',
-    progress: 0,
-    uploadTime: '2026-04-12 09:15',
-    category: '针灸图谱'
-  } as AncientImage,
-  {
-    id: '4',
-    title: '本草纲目插图',
-    description: '植物手绘图，色彩需要还原',
-    originalImage: '',
-    restoredImage: '',
-    status: 'completed',
-    progress: 100,
-    uploadTime: '2026-04-05 16:45',
-    restoreTime: '2026-04-05 16:50',
-    category: '本草图谱'
-  } as AncientImage
-];
 
 const CATEGORY_OPTIONS: string[] = ['全部', '中医典籍', '针灸图谱', '本草图谱', '方剂配图'];
 
@@ -74,15 +28,23 @@ const CATEGORY_OPTIONS: string[] = ['全部', '中医典籍', '针灸图谱', '�
 struct AncientMedicalImgPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State images: AncientImage[] = [...MOCK_IMAGES];
+  @State images: AncientImageItem[] = [];
   @State currentCategory: string = '全部';
   @State showUploadDialog: boolean = false;
   @State showCompareDialog: boolean = false;
-  @State selectedImage: AncientImage | null = null;
+  @State selectedImage: AncientImageItem | null = null;
   @State newTitle: string = '';
   @State newDescription: string = '';
   @State newCategory: string = '中医典籍';
   @State compareSliderPosition: number = 0.5;
+  @State isLoading: boolean = false;
+  @State isUploading: boolean = false;
+  @State uploadProgress: number = 0;
+  @State currentPage: number = 1;
+  @State totalImages: number = 0;
+  @State recordId: number = 0;
+
+  private scroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -90,135 +52,176 @@ struct AncientMedicalImgPage {
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') ?? false;
     }
+    this.loadImageList();
+    BrowseTracker.recordStart('ANCIENT_IMAGE', 'PAGE', 7, '古医图管理').then((id: number) => {
+      this.recordId = id;
+    });
   }
 
-  getFilteredImages(): AncientImage[] {
+  aboutToDisappear(): void {
+    if (this.recordId > 0) {
+      BrowseTracker.recordEnd(this.recordId);
+    }
+  }
+
+  async loadImageList(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const url: string = ApiConstants.ANCIENT_IMAGE_LIST + '?page=' + this.currentPage + '&size=20';
+      const response: BaseResponse<Record<string, Object>> = await HttpUtil.get<Record<string, Object>>(url);
+
+      if (response.success && response.data) {
+        const dataObj: Record<string, Object> = response.data;
+        const records: Object[] = dataObj['records'] as Object[] || [];
+        const total: number = dataObj['total'] as number || 0;
+
+        this.totalImages = total;
+        this.images = [];
+
+        for (let i = 0; i < records.length; i++) {
+          const record: Record<string, Object> = records[i] as Record<string, Object>;
+          const item: AncientImageItem = {
+            id: record['id'] as number || 0,
+            originalUrl: record['originalUrl'] as string || '',
+            restoreUrl: record['restoreUrl'] as string || '',
+            model3dUrl: record['model3dUrl'] as string || '',
+            title: record['title'] as string || '未命名图片',
+            desc: record['desc'] as string || '',
+            source: record['source'] as string || '',
+            createTime: record['createTime'] as string || '',
+            updateTime: record['updateTime'] as string || '',
+            isDeleted: record['isDeleted'] as number || 0
+          };
+          this.images.push(item);
+        }
+      }
+    } catch (e) {
+      console.error('加载古医图列表失败:', e);
+      ToastUtil.showInfo('加载失败，请检查网络');
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  getFilteredImages(): AncientImageItem[] {
     if (this.currentCategory === '全部') {
       return this.images;
     }
-    return this.images.filter((img: AncientImage) => img.category === this.currentCategory);
+    return this.images.filter((img: AncientImageItem) => {
+      if (!img.desc) {
+        return false;
+      }
+      return img.desc.indexOf(this.currentCategory) >= 0 || img.title.indexOf(this.currentCategory) >= 0;
+    });
   }
 
-  getStatusIcon(status: string): string {
-    switch (status) {
-      case 'pending': return '⏳';
-      case 'processing': return '🔄';
-      case 'completed': return '✅';
-      case 'failed': return '❌';
-      default: return '❓';
+  getStatusText(image: AncientImageItem): string {
+    if (image.restoreUrl && image.restoreUrl.length > 0) {
+      return '已完成';
     }
-  }
-
-  getStatusText(status: string): string {
-    switch (status) {
-      case 'pending': return '等待处理';
-      case 'processing': return '复原中...';
-      case 'completed': return '已完成';
-      case 'failed': return '复原失败';
-      default: return '未知';
-    }
+    return '等待复原';
   }
 
   getStatusColor(status: string): string {
     switch (status) {
-      case 'pending': return '#FAAD14';
-      case 'processing': return '#1677FF';
-      case 'completed': return '#52C41A';
-      case 'failed': return '#FF4D4F';
-      default: return '#999999';
+      case '已完成': return '#52C41A';
+      case '复原中': return '#1677FF';
+      default: return '#FAAD14';
     }
   }
 
-  getCategoryColor(category: string): string {
-    const colorMap: Record<string, string> = {
-      '中医典籍': '#722ED1',
-      '针灸图谱': '#13C2C2',
-      '本草图谱': '#52C41A',
-      '方剂配图': '#FA8C16'
-    };
-    return colorMap[category] || '#999999';
+  getStatusIcon(status: string): string {
+    switch (status) {
+      case '已完成': return '\u2705';
+      case '复原中': return '\uD83D\uDD04';
+      default: return '\u23F3';
+    }
   }
 
   openUploadDialog(): void {
     this.newTitle = '';
     this.newDescription = '';
     this.newCategory = '中医典籍';
+    this.uploadProgress = 0;
     this.showUploadDialog = true;
   }
 
-  simulateUpload(): void {
+  async simulateUpload(): Promise<void> {
     if (!this.newTitle.trim()) {
-      ToastUtil.showInfo('请输入图片标题');
+      ToastUtil.showInfo('\u8BF7\u8F93\u5165\u56FE\u7247\u6807\u9898');
       return;
     }
 
-    const newImage: AncientImage = {
-      id: `${Date.now()}`,
-      title: this.newTitle,
-      description: this.newDescription || '暂无描述',
-      originalImage: '',
-      restoredImage: '',
-      status: 'pending',
-      progress: 0,
-      uploadTime: new Date().toLocaleString(),
-      category: this.newCategory
-    };
+    this.isUploading = true;
+    this.uploadProgress = 10;
 
-    this.images.unshift(newImage);
-    this.showUploadDialog = false;
-    ToastUtil.operationSuccess('图片已上传，等待AI复原');
+    try {
+      ToastUtil.showInfo('\u6B63\u5728\u4E0A\u4F20...');
 
-    setTimeout(() => {
-      newImage.status = 'processing';
-      newImage.progress = 30;
-    }, 1000);
+      this.uploadProgress = 30;
 
-    setTimeout(() => {
-      newImage.progress = 60;
-    }, 2000);
+      const formData: Record<string, Object> = {};
+      formData['title'] = this.newTitle.trim();
+      formData['desc'] = this.newDescription.trim() + '[' + this.newCategory + ']';
 
-    setTimeout(() => {
-      newImage.progress = 90;
-    }, 3000);
+      this.uploadProgress = 60;
 
-    setTimeout(() => {
-      newImage.status = 'completed';
-      newImage.progress = 100;
-      newImage.restoreTime = new Date().toLocaleString();
-      ToastUtil.operationSuccess(`${newImage.title} 复原完成！`);
-    }, 4000);
-  }
+      const response: BaseResponse<AncientImageItem> = await HttpUtil.post<AncientImageItem>(ApiConstants.ANCIENT_IMAGE_UPLOAD, formData);
 
-  triggerRestore(image: AncientImage): void {
-    if (image.status === 'processing') {
-      ToastUtil.showInfo('正在复原中，请稍候...');
-      return;
-    }
-    if (image.status === 'completed') {
-      ToastUtil.showInfo('该图片已完成复原');
-      return;
-    }
+      this.uploadProgress = 90;
 
-    image.status = 'processing';
-    image.progress = 20;
-    ToastUtil.operationSuccess('开始AI复原...');
+      if (response.success && response.data) {
+        const newItem: AncientImageItem = response.data;
+        this.images.unshift(newItem);
+        this.totalImages += 1;
+        this.showUploadDialog = false;
+        this.uploadProgress = 100;
+        ToastUtil.operationSuccess('\u56FE\u7247\u4E0A\u4F20\u6210\u529F\uFF01');
 
-    const interval: number = setInterval(() => {
-      if (image.progress < 90) {
-        image.progress += 10;
+        setTimeout(() => {
+          this.isUploading = false;
+          this.uploadProgress = 0;
+        }, 500);
       } else {
-        clearInterval(interval);
-        image.status = 'completed';
-        image.progress = 100;
-        image.restoreTime = new Date().toLocaleString();
-        ToastUtil.operationSuccess(`${image.title} 复原完成！`);
+        throw new Error(response.message ? response.message : '\u4E0A\u4F20\u5931\u8D25');
       }
-    }, 500);
+    } catch (e) {
+      console.error('\u4E0A\u4F20\u53D1\u751F\u9519\u8BEF:', e);
+      this.isUploading = false;
+      this.uploadProgress = 0;
+      ToastUtil.showInfo('\u4E0A\u4F20\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5');
+    }
   }
 
-  openCompare(image: AncientImage): void {
-    if (image.status !== 'completed') {
-      ToastUtil.showInfo('请等待复原完成后查看对比');
+  async triggerRestore(image: AncientImageItem): Promise<void> {
+    if (image.restoreUrl && image.restoreUrl.length > 0) {
+      ToastUtil.showInfo('\u8BE5\u56FE\u7247\u5DF2\u5B8C\u6210\u590D\u539F');
+      return;
+    }
+
+    try {
+      ToastUtil.operationSuccess('\u6B63\u5728\u542F\u52A8AI\u590D\u539F...');
+
+      const url: string = ApiConstants.ANCIENT_IMAGE_RESTORE + image.id + '/restore';
+      const response: BaseResponse<string> = await HttpUtil.post<string>(url, {} as Record<string, Object>);
+
+      if (response.success) {
+        ToastUtil.operationSuccess('\u590D\u539F\u4EFB\u52A1\u5DF2\u542F\u52A8\uFF0C\u8BF7\u7A0D\u5019...');
+        setTimeout(() => {
+          this.loadImageList();
+        }, 5000);
+      } else {
+        throw new Error(response.message ? response.message : '\u542F\u52A8\u5931\u8D25');
+      }
+    } catch (e) {
+      console.error('\u590D\u539F\u64CD\u4F5C\u9519\u8BEF:', e);
+      ToastUtil.showInfo('\u542F\u52A8\u590D\u539F\u5931\u8D25');
+    }
+  }
+
+  openCompare(image: AncientImageItem): void {
+    if (!image.restoreUrl || image.restoreUrl.length === 0) {
+      ToastUtil.showInfo('\u8BF7\u7B49\u5F85\u590D\u539F\u5B8C\u6210\u540E\u67E5\u770B\u5BF9\u6BD4');
       return;
     }
     this.selectedImage = image;
@@ -226,33 +229,50 @@ struct AncientMedicalImgPage {
     this.showCompareDialog = true;
   }
 
-  shareResult(image: AncientImage): void {
+  shareResult(image: AncientImageItem): void {
     promptAction.showDialog({
-      title: '分享复原成果',
-      message: `分享「${image.title}」的复原结果`,
-      buttons: [{ text: '复制链接', color: '#1677FF' }, { text: '保存图片', color: '#1677FF' }, { text: '取消', color: '#999999' }]
+      title: '\u5206\u4EAB\u590D\u539F\u6210\u679C',
+      message: '\u5206\u4EAB\u300C' + image.title + '\u300D\u7684\u590D\u539F\u7ED3\u679C',
+      buttons: [
+        { text: '\u590D\u5236\u94FE\u63A5', color: '#1677FF' },
+        { text: '\u4FDD\u5B58\u56FE\u7247', color: '#1677FF' },
+        { text: '\u53D6\u6D88', color: '#999999' }
+      ]
     }).then((result: promptAction.ShowDialogSuccessResponse) => {
       if (result.index === 0) {
-        ToastUtil.operationSuccess('链接已复制到剪贴板');
+        ToastUtil.operationSuccess('\u94FE\u63A5\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F');
       } else if (result.index === 1) {
-        ToastUtil.operationSuccess('图片已保存到相册');
+        ToastUtil.operationSuccess('\u56FE\u7247\u5DF2\u4FDD\u5B58\u5230\u76F8\u518C');
       }
     }).catch((error: Error) => {
       console.error('显示分享对话框失败:', error.message);
     });
   }
 
-  deleteImage(image: AncientImage): void {
+  async deleteImage(image: AncientImageItem): Promise<void> {
     promptAction.showDialog({
-      title: '删除图片',
-      message: `确定要删除「${image.title}」吗？此操作不可恢复。`,
-      buttons: [{ text: '取消', color: '#999999' }, { text: '删除', color: '#FF4D4F' }]
-    }).then((result: promptAction.ShowDialogSuccessResponse) => {
+      title: '\u5220\u9664\u56FE\u7247',
+      message: '\u786E\u5B9A\u8981\u5220\u9664\u300C' + image.title + '\u300D\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u6062\u590D\u3002',
+      buttons: [{ text: '\u53D6\u6D88', color: '#999999' }, { text: '\u5220\u9664', color: '#FF4D4F' }]
+    }).then(async (result: promptAction.ShowDialogSuccessResponse) => {
       if (result.index === 1) {
-        const index: number = this.images.findIndex((img: AncientImage) => img.id === image.id);
-        if (index > -1) {
-          this.images.splice(index, 1);
-          ToastUtil.operationSuccess('已删除');
+        try {
+          const url: string = ApiConstants.ANCIENT_IMAGE_DELETE + image.id;
+          const response: BaseResponse<string> = await HttpUtil.delete<string>(url);
+
+          if (response.success) {
+            const index: number = this.images.findIndex((img: AncientImageItem) => img.id === image.id);
+            if (index > -1) {
+              this.images.splice(index, 1);
+              this.totalImages -= 1;
+            }
+            ToastUtil.operationSuccess('\u5DF2\u5220\u9664');
+          } else {
+            throw new Error(response.message ? response.message : '\u5220\u9664\u5931\u8D25');
+          }
+        } catch (e) {
+          console.error('\u5220\u9664\u5931\u8D25:', e);
+          ToastUtil.showInfo('\u5220\u9664\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5');
         }
       }
     });
@@ -261,30 +281,30 @@ struct AncientMedicalImgPage {
   build() {
     Stack() {
       Column() {
-        Header({ title: '古医图管理', showBack: true });
+        Header({ title: '\u53E4\u533B\u56FE\u7BA1\u7406', showBack: true });
 
-        Scroll() {
+        Scroll(this.scroller) {
           Column({ space: 16 }) {
 
             Row({ space: 12 }) {
-              Text('📚 古医图库')
+              Text('\uD83D\uDCDA \u53E4\u533B\u56FE\u5E93')
                 .fontSize(18)
                 .fontWeight(FontWeight.Bold)
                 .fontColor('#333333')
                 .layoutWeight(1);
 
-              Text(`${this.images.length} 张`)
+              Text(this.totalImages + ' \u5F20')
                 .fontSize(12)
                 .fontColor('#1677FF')
                 .backgroundColor('#E6F7FF')
                 .padding({ left: 10, right: 10, top: 4, bottom: 4 })
                 .borderRadius(12);
 
-              Button('+ 上传')
+              Button('+ \u4E0A\u4F20')
                 .height(32)
                 .fontSize(12)
                 .fontColor('#FFFFFF')
-                .backgroundColor('#1677FF')
+                .backgroundColor('#722ED1')
                 .borderRadius(16)
                 .onClick(() => this.openUploadDialog());
             }
@@ -309,16 +329,28 @@ struct AncientMedicalImgPage {
             .scrollBar(BarState.Off)
             .width('100%');
 
-            if (this.getFilteredImages().length === 0) {
+            if (this.isLoading) {
+              Column({ space: 12 }) {
+                Text('\uD83D\uDD04')
+                  .fontSize(40);
+
+                Text('\u6B63\u5728\u52A0\u8F7D...')
+                  .fontSize(14)
+                  .fontColor('#666666');
+              }
+              .width('100%')
+              .height(250)
+              .justifyContent(FlexAlign.Center);
+            } else if (this.getFilteredImages().length === 0) {
               Column({ space: 16 }) {
-                Text('📜')
+                Text('\uD83D\uDCDC')
                   .fontSize(64);
 
-                Text('暂无图片')
+                Text('\u6682\u65E0\u56FE\u7247')
                   .fontSize(16)
-                  .fontColor('#666666');
+                .fontColor('#666666');
 
-                Text('点击"上传"按钮添加古医图片')
+                Text('\u70B9\u51FB\u201C\u4E0A\u4F201D\u6309\u94AE\u6DFB\u52A0\u53E4\u533B\u56FE\u7247')
                   .fontSize(13)
                   .fontColor('#999999');
               }
@@ -326,9 +358,9 @@ struct AncientMedicalImgPage {
               .height(300)
               .justifyContent(FlexAlign.Center);
             } else {
-              ForEach(this.getFilteredImages(), (image: AncientImage) => {
+              ForEach(this.getFilteredImages(), (image: AncientImageItem) => {
                 this.buildImageCard(image);
-              }, (image: AncientImage) => image.id);
+              }, (image: AncientImageItem) => image.id.toString());
             }
           }
           .width('85%')
@@ -358,7 +390,7 @@ struct AncientMedicalImgPage {
   }
 
   @Builder
-  buildImageCard(image: AncientImage) {
+  buildImageCard(image: AncientImageItem) {
     Column({ space: 12 }) {
       Stack({ alignContent: Alignment.TopEnd }) {
         Column()
@@ -372,27 +404,31 @@ struct AncientMedicalImgPage {
           .justifyContent(FlexAlign.Center);
 
         Column() {
-          Text('📜')
+          Text('\uD83D\uDCDC')
             .fontSize(48);
 
-          Text(image.category)
-            .fontSize(11)
-            .fontColor('#FFFFFF')
-            .backgroundColor(this.getCategoryColor(image.category))
-            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-            .borderRadius(8)
-            .margin({ top: 8 });
+          if (image.desc && image.desc.indexOf('[') >= 0) {
+            if (image.desc.lastIndexOf('[') >= 0 && image.desc.lastIndexOf(']') > image.desc.lastIndexOf('[')) {
+              Text(image.desc.substring(image.desc.lastIndexOf('[') + 1, image.desc.lastIndexOf(']')))
+                .fontSize(11)
+                .fontColor('#FFFFFF')
+                .backgroundColor('#722ED1')
+                .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                .borderRadius(8)
+                .margin({ top: 8 });
+            }
+          }
         }
 
         Row({ space: 6 }) {
-          Text(this.getStatusIcon(image.status))
+          Text(this.getStatusIcon(this.getStatusText(image)))
             .fontSize(14);
 
-          Text(this.getStatusText(image.status))
+          Text(this.getStatusText(image))
             .fontSize(11)
-            .fontColor(this.getStatusColor(image.status))
+            .fontColor(this.getStatusColor(this.getStatusText(image)))
             .fontWeight(FontWeight.Medium)
-            .backgroundColor(this.getStatusColor(image.status) + '15')
+            .backgroundColor(this.getStatusColor(this.getStatusText(image)) + '15')
             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
             .borderRadius(10);
         }
@@ -407,46 +443,21 @@ struct AncientMedicalImgPage {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis });
 
-        Text(image.description)
+        Text(image.desc)
           .fontSize(12)
           .fontColor('#666666')
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .lineHeight(18);
 
-        if (image.status === 'processing') {
-          Column({ space: 6 }) {
-            Row() {
-              Text(`复原进度 ${image.progress}%`)
-                .fontSize(11)
-                .fontColor('#1677FF')
-                .layoutWeight(1);
-
-              Text(`${image.progress}%`)
-                .fontSize(11)
-                .fontColor('#1677FF')
-                .fontWeight(FontWeight.Bold);
-            }
-            .width('100%');
-
-            Progress({ value: image.progress, total: 100, type: ProgressType.Linear })
-              .width('100%')
-              .height(6)
-              .color('#1677FF')
-              .backgroundColor('#E6F7FF')
-              .borderRadius(3);
-          }
-          .width('100%');
-        }
-
         Row({ space: 8 }) {
-          Text(`📅 ${image.uploadTime}`)
+          Text('\uD83D\uDCC5 ' + (image.createTime ? image.createTime.substring(0, 10) : ''))
             .fontSize(10)
             .fontColor('#999999')
             .layoutWeight(1);
 
-          if (image.restoreTime) {
-            Text(`✨ ${image.restoreTime}`)
+          if (image.updateTime && image.updateTime !== image.createTime) {
+            Text('\u2728 ' + image.updateTime.substring(0, 10))
               .fontSize(10)
               .fontColor('#52C41A');
           }
@@ -454,8 +465,8 @@ struct AncientMedicalImgPage {
         .width('100%');
 
         Row({ space: 8 }) {
-          if (image.status === 'pending' || image.status === 'failed') {
-            Button('开始复原')
+          if (!image.restoreUrl || image.restoreUrl.length === 0) {
+            Button('\u5F00\u59CB\u590D\u539F')
               .layoutWeight(1)
               .height(32)
               .fontSize(12)
@@ -465,8 +476,8 @@ struct AncientMedicalImgPage {
               .onClick(() => this.triggerRestore(image));
           }
 
-          if (image.status === 'completed') {
-            Button('对比查看')
+          if (image.restoreUrl && image.restoreUrl.length > 0) {
+            Button('\u5BF9\u6BD4\u67E5\u770B')
               .layoutWeight(1)
               .height(32)
               .fontSize(12)
@@ -475,7 +486,7 @@ struct AncientMedicalImgPage {
               .borderRadius(16)
               .onClick(() => this.openCompare(image));
 
-            Button('分享')
+            Button('\u5206\u4EAB')
               .layoutWeight(1)
               .height(32)
               .fontSize(12)
@@ -485,7 +496,7 @@ struct AncientMedicalImgPage {
               .onClick(() => this.shareResult(image));
           }
 
-          Button('删除')
+          Button('\u5220\u9664')
             .height(32)
             .fontSize(12)
             .fontColor('#FF4D4F')
@@ -511,13 +522,13 @@ struct AncientMedicalImgPage {
 
       Column({ space: 20 }) {
         Row() {
-          Text('上传古医图片')
+          Text('\u4E0A\u4F20\u53E4\u533B\u56FE\u7247')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor('#333333')
             .layoutWeight(1);
 
-          Text('✕')
+          Text('\u2715')
             .fontSize(22)
             .fontColor('#999999')
             .onClick(() => {
@@ -535,21 +546,46 @@ struct AncientMedicalImgPage {
             .justifyContent(FlexAlign.Center)
             .backgroundColor('#FAFAFA')
             .onClick(() => {
-              ToastUtil.showInfo('选择图片来源：拍照或相册');
+              ToastUtil.showInfo('\u9009\u62E9\u56FE\u7247\u6765\u6E90\uFF1A\u62CD\u7167\u6216\u76F8\u518C');
             });
 
           Column({ space: 4 }) {
-            Text('点击选择图片')
+            Text('\u70B9\u51FB\u9009\u62E9\u56FE\u7247')
               .fontSize(14)
               .fontColor('#666666');
 
-            Text('支持 JPG、PNG 格式，最大 10MB')
+            Text('\u652F\u6301 JPG\u3001PNG \u683C\u5F0F\uFF0C\u6700\u5927 10MB')
               .fontSize(11)
               .fontColor('#999999');
           }
+
+          if (this.isUploading) {
+            Column({ space: 8 }) {
+              Row() {
+                Text('\u4E0A\u4F20\u8FDB\u5EA6 ' + this.uploadProgress + '%')
+                  .fontSize(12)
+                  .fontColor('#722ED1')
+                  .layoutWeight(1);
+
+                Text(this.uploadProgress + '%')
+                  .fontSize(12)
+                  .fontColor('#722ED1')
+                  .fontWeight(FontWeight.Bold);
+              }
+              .width('100%');
+
+              Progress({ value: this.uploadProgress, total: 100, type: ProgressType.Linear })
+                .width('100%')
+                .height(8)
+                .color('#722ED1')
+                .backgroundColor('#F9F0FF')
+                .borderRadius(4);
+            }
+            .width('100%');
+          }
         }
 
-        TextInput({ placeholder: '输入图片标题（如：本草纲目插图）', text: this.newTitle })
+        TextInput({ placeholder: '\u8F93\u5165\u56FE\u7247\u6807\u9898\uFF08\u5982\uFF1A\u672C\u8349\u7EB2\u76EE\u63D2\u56FE\uFF09', text: this.newTitle })
           .width('100%')
           .height(44)
           .fontSize(14)
@@ -559,7 +595,7 @@ struct AncientMedicalImgPage {
             this.newTitle = value;
           });
 
-        TextArea({ placeholder: '输入图片描述（可选）', text: this.newDescription })
+        TextArea({ placeholder: '\u8F93\u5165\u56FE\u7247\u63CF\u8FF0\uFF08\u53EF\u9009\uFF09', text: this.newDescription })
           .width('100%')
           .height(80)
           .fontSize(13)
@@ -570,14 +606,14 @@ struct AncientMedicalImgPage {
           });
 
         Column({ space: 8 }) {
-          Text('分类 *')
+          Text('\u5206\u7C7B *')
             .fontSize(14)
             .fontWeight(FontWeight.Medium)
             .fontColor('#333333')
             .width('100%');
 
           Flex({ wrap: FlexWrap.Wrap }) {
-            ForEach(['中医典籍', '针灸图谱', '本草图谱', '方剂配图'], (cat: string) => {
+            ForEach(['\u4E2D\u533B\u5178\u7BB1', '\u9488\u7078\u56FE\u8C31', '\u672C\u8349\u56FE\u8C31', '\u65B9\u5242\u914D\u56FE'], (cat: string) => {
               Text(cat)
                 .fontSize(12)
                 .fontColor(this.newCategory === cat ? '#FFFFFF' : '#666666')
@@ -595,7 +631,7 @@ struct AncientMedicalImgPage {
         .width('100%');
 
         Row({ space: 12 }) {
-          Button('取消')
+          Button('\u53D6\u6D88')
             .layoutWeight(1)
             .height(44)
             .fontSize(15)
@@ -606,13 +642,14 @@ struct AncientMedicalImgPage {
               this.showUploadDialog = false;
             });
 
-          Button('上传并复原')
+          Button('\u4E0A\u4F20\u5E76\u590D\u539F')
             .layoutWeight(1)
             .height(44)
             .fontSize(15)
             .fontColor('#FFFFFF')
             .backgroundColor('#722ED1')
             .borderRadius(22)
+            .enabled(!this.isUploading)
             .onClick(() => this.simulateUpload());
         }
         .width('100%');
@@ -638,13 +675,13 @@ struct AncientMedicalImgPage {
 
       Column({ space: 16 }) {
         Row() {
-          Text('🔍 复原结果对比')
+          Text('\uD83D\uDD0D \u590D\u539F\u7ED3\u679C\u5BF9\u6BD4')
             .fontSize(17)
             .fontWeight(FontWeight.Bold)
             .fontColor('#333333')
             .layoutWeight(1);
 
-          Text('✕')
+          Text('\u2715')
             .fontSize(22)
             .fontColor('#999999')
             .onClick(() => {
@@ -670,7 +707,7 @@ struct AncientMedicalImgPage {
 
         Row({ space: 24 }) {
           Column({ space: 6 }) {
-            Text('原图')
+            Text('\u539F\u56FE')
               .fontSize(12)
               .fontColor('#FF4D4F')
               .fontWeight(FontWeight.Medium);
@@ -684,17 +721,17 @@ struct AncientMedicalImgPage {
               .justifyContent(FlexAlign.Center)
               .clip(true);
 
-            Text('模糊/破损')
+            Text('\u6A21\u7CCA/\u7834\u635F')
               .fontSize(10)
               .fontColor('#999999');
           }
 
-          Text('→')
+          Text('\u2192')
             .fontSize(24)
             .fontColor('#52C41A');
 
           Column({ space: 6 }) {
-            Text('复原图')
+            Text('\u590D\u539F\u56FE')
               .fontSize(12)
               .fontColor('#52C41A')
               .fontWeight(FontWeight.Medium);
@@ -704,11 +741,11 @@ struct AncientMedicalImgPage {
               .height(60)
               .backgroundColor('#F6FFED')
               .borderRadius(8)
-              .border({ width: 1, color:'#B7EB8F' })
+              .border({ width: 1, color: '#B7EB8F' })
               .justifyContent(FlexAlign.Center)
               .clip(true);
 
-            Text('清晰完整')
+            Text('\u6E05\u6670/\u5B8C\u6574')
               .fontSize(10)
               .fontColor('#999999');
           }
@@ -716,34 +753,43 @@ struct AncientMedicalImgPage {
         .width('100%')
         .justifyContent(FlexAlign.Center);
 
+        if (this.selectedImage?.desc) {
+          Text(this.selectedImage.desc)
+            .fontSize(13)
+            .fontColor('#666666')
+            .lineHeight(20)
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#FAFAFA')
+            .borderRadius(8);
+        }
+
         Row({ space: 12 }) {
-          Button('💾 保存复原图')
+          Button('\u5173\u95ED')
             .layoutWeight(1)
-            .height(42)
+            .height(40)
+            .fontSize(14)
+            .fontColor('#666666')
+            .backgroundColor('#F5F5F5')
+            .borderRadius(20)
+            .onClick(() => {
+              this.showCompareDialog = false;
+            });
+
+          Button('\u4E0B\u8F7D\u590D\u539F\u56FE')
+            .layoutWeight(1)
+            .height(40)
             .fontSize(14)
             .fontColor('#FFFFFF')
             .backgroundColor('#52C41A')
-            .borderRadius(21)
+            .borderRadius(20)
             .onClick(() => {
-              ToastUtil.operationSuccess('复原图已保存');
-            });
-
-          Button('📤 分享成果')
-            .layoutWeight(1)
-            .height(42)
-            .fontSize(14)
-            .fontColor('#722ED1')
-            .backgroundColor('#F9F0FF')
-            .borderRadius(21)
-            .onClick(() => {
-              if (this.selectedImage) {
-                this.shareResult(this.selectedImage);
-              }
+              ToastUtil.operationSuccess('\u5DF2\u4FDD\u5B58\u5230\u76F8\u518C');
             });
         }
         .width('100%');
       }
-      .width('92%')
+      .width('90%')
       .padding(20)
       .backgroundColor('#FFFFFF')
       .borderRadius(16)

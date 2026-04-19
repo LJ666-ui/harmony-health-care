@@ -5,6 +5,47 @@ interface ApiConstantsInterface {
   REHAB_PLAN_LIST: string;
   REHAB_PLAN_DETAIL: string;
   UPLOAD_3D: string;
+  KNOWLEDGE_GRAPH: string;
+  KNOWLEDGE_EXPLORE: string;
+  KNOWLEDGE_SEARCH: string;
+  KNOWLEDGE_NODE_DETAIL: string;
+  HEALTH_RECORD_ADD: string;
+  HEALTH_RECORD_MY: string;
+  HEALTH_RECORD_LATEST: string;
+  ARTICLE_LIST: string;
+  ARTICLE_PAGE: string;
+  ARTICLE_DETAIL: string;
+  ARTICLE_SEARCH: string;
+  ARTICLE_CATEGORIES_PARENT: string;
+  ARTICLE_CATEGORIES_CHILDREN: string;
+  ARTICLE_COLLECT: string;
+  ARTICLE_UNCOLLECT: string;
+  FOOD_LIST: string;
+  FOOD_PAGE: string;
+  FOOD_DETAIL: string;
+  FOOD_COLLECT: string;
+  FOOD_UNCOLLECT: string;
+  DEVICE_DISCOVER: string;
+  DEVICE_BIND: string;
+  DEVICE_UNBIND: string;
+  DEVICE_LIST: string;
+  DEVICE_ONLINE: string;
+  DEVICE_SYNC: string;
+  DEVICE_STATUS: string;
+  PRIVACY_SETTINGS: string;
+  PRIVACY_AUTH_LIST: string;
+  PRIVACY_CREATE_AUTH: string;
+  PRIVACY_REVOKE_AUTH: string;
+  PRIVACY_ACCESS_LOGS: string;
+  AI_CHAT: string;
+  AI_CONSULT: string;
+  AI_HISTORY: string;
+  AI_HISTORY_DETAIL: string;
+  ANCIENT_IMAGE_UPLOAD: string;
+  ANCIENT_IMAGE_LIST: string;
+  ANCIENT_IMAGE_DETAIL: string;
+  ANCIENT_IMAGE_RESTORE: string;
+  ANCIENT_IMAGE_DELETE: string;
 }
 
 export const ApiConstants: ApiConstantsInterface = {
@@ -13,5 +54,46 @@ export const ApiConstants: ApiConstantsInterface = {
   REHAB_ACTION_DETAIL: '/api/rehab/action/detail/',
   REHAB_PLAN_LIST: '/api/rehab/plan/list',
   REHAB_PLAN_DETAIL: '/api/rehab/plan/detail/',
-  UPLOAD_3D: '/api/upload/3d'
+  UPLOAD_3D: '/api/upload/3d',
+  KNOWLEDGE_GRAPH: '/api/knowledge/graph',
+  KNOWLEDGE_EXPLORE: '/api/knowledge/explore',
+  KNOWLEDGE_SEARCH: '/api/knowledge/search',
+  KNOWLEDGE_NODE_DETAIL: '/api/knowledge/node/',
+  HEALTH_RECORD_ADD: '/healthRecord/add',
+  HEALTH_RECORD_MY: '/healthRecord/my',
+  HEALTH_RECORD_LATEST: '/healthRecord/my',
+  ARTICLE_LIST: '/healthArticle/list',
+  ARTICLE_PAGE: '/healthArticle/page',
+  ARTICLE_DETAIL: '/healthArticle/detail/',
+  ARTICLE_SEARCH: '/healthArticle/list',
+  ARTICLE_CATEGORIES_PARENT: '/healthArticle/categories/parent',
+  ARTICLE_CATEGORIES_CHILDREN: '/healthArticle/categories/children/',
+  ARTICLE_COLLECT: '/api/article/',
+  ARTICLE_UNCOLLECT: '/api/article/',
+  FOOD_LIST: '/healthFood/list',
+  FOOD_PAGE: '/healthFood/page',
+  FOOD_DETAIL: '/healthFood/detail/',
+  FOOD_COLLECT: '/api/food/',
+  FOOD_UNCOLLECT: '/api/food/',
+  DEVICE_DISCOVER: '/device/discover',
+  DEVICE_BIND: '/device/bind',
+  DEVICE_UNBIND: '/device/unbind',
+  DEVICE_LIST: '/device/list',
+  DEVICE_ONLINE: '/device/online',
+  DEVICE_SYNC: '/device/sync',
+  DEVICE_STATUS: '/device/status',
+  PRIVACY_SETTINGS: '/privacy/settings',
+  PRIVACY_AUTH_LIST: '/privacy/myAuths',
+  PRIVACY_CREATE_AUTH: '/privacy/createAuth',
+  PRIVACY_REVOKE_AUTH: '/privacy/revokeAuth',
+  PRIVACY_ACCESS_LOGS: '/privacy/accessLogs',
+  AI_CHAT: '/ai/chat',
+  AI_CONSULT: '/ai/consult',
+  AI_HISTORY: '/ai/history',
+  AI_HISTORY_DETAIL: '/ai/history/detail',
+  ANCIENT_IMAGE_UPLOAD: '/ancient-image/upload',
+  ANCIENT_IMAGE_LIST: '/ancient-image/list',
+  ANCIENT_IMAGE_DETAIL: '/ancient-image/',
+  ANCIENT_IMAGE_RESTORE: '/ancient-image/',
+  ANCIENT_IMAGE_DELETE: '/ancient-image/'
 };

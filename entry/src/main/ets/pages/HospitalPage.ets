@@ -125,7 +125,9 @@ struct HospitalPage {
   }
 
   openARNavigation(): void {
-    router.pushUrl({ url: 'pages/ARNavigationPage' });
+    router.pushUrl({ url: 'pages/ARNavigationPage' }).catch((error: Error) => {
+      console.error('导航失败:', error.message);
+    });
   }
 
   build() {

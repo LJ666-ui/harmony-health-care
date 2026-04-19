@@ -32,7 +32,7 @@ struct TransferApplyPage {
   @State hasError: boolean = false;
   @State hospitals: Hospital[] = [];
   @State filteredHospitals: Hospital[] = [];
-  @State searchKeyword: string = '';
+  @State @Watch('handleSearch') searchKeyword: string = '';
   @State selectedHospital: Hospital | null = null;
   @State selectedReason: string = '';
   @State customReason: string = '';
@@ -264,11 +264,7 @@ struct TransferApplyPage {
             Input({
               placeholder: '搜索医院名称或地址',
               inputType: 'text',
-              text: $searchKeyword,
-              onChange: (value: string) => {
-                this.searchKeyword = value;
-                this.handleSearch();
-              }
+              text: $searchKeyword
             })
 
             // 医院列表

@@ -1,154 +1,238 @@
 import { router } from '@kit.ArkUI';
+import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
+import { ToastUtil } from '../common/utils/ToastUtil';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import BrowseTracker from '../utils/BrowseTracker';
+import RdbHelper from '../utils/RdbHelper';
+import {
+  TABLE_COLLECTION_CACHE,
+  COLUMN_COLLECT_TYPE,
+  COLUMN_TARGET_ID,
+  COLUMN_TARGET_TITLE,
+  COLUMN_TARGET_IMAGE,
+  COLUMN_COLLECT_TIME,
+  COLUMN_IS_SYNCED
+} from '../utils/DatabaseConstants';
+import relationalStore from '@ohos.data.relationalStore';
 
-interface FoodItem {
-  id: string;
-  name: string;
-  image: string;
-  calories: number; // 热量（千卡）
-  protein: number; // 蛋白质（克）
-  fat: number; // 脂肪（克）
-  carbs: number; // 碳水化合物（克）
-  suitableFor: string[]; // 适用人群
-  notSuitableFor: string[]; // 不适用人群
-  nutrition: Record<string, number>; // 详细营养成分
-  recommendedAmount: string; // 推荐食用量
-  suitablePairings: string[]; // 搭配食材
-  relatedRecipes: string[]; // 相关食谱
+export interface FoodDetailData {
+  id: number;
+  foodId: string;
+  foodName: string;
+  dietTherapy: string;
+  applicableDisease: string;
+  efficacy: string;
+  dietaryTaboo: string;
+}
+
+interface RecipeStep {
+  title: string;
+  steps: string[];
 }
 
 @Entry
 @Component
 struct FoodDetailPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @State food: FoodItem | null = null;
-  @State loading: boolean = true;
+
+  @State foodId: string = '';
+  @State foodName: string = '';
+  @State foodDetail: FoodDetailData | null = null;
+  @State isLoading: boolean = true;
+  @State isFavorited: boolean = false;
+  @State isCollecting: boolean = false;
+  @State recipes: RecipeStep[] = [];
+  @State isInShoppingList: boolean = false;
+
+  private browseRecordId: number | undefined = undefined;
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+
+    const params = router.getParams() as Record<string, Object>;
+    if (params?.foodId) {
+      this.foodId = params.foodId as string;
+    }
+    if (params?.foodName) {
+      this.foodName = params.foodName as string;
+    }
+
     this.loadFoodDetail();
+    this.checkCollectionStatus();
+    this.checkShoppingListStatus();
   }
 
-  loadFoodDetail(): void {
-    // 模拟从本地数据加载食材详情
-    const foods: FoodItem[] = [
-      {
-        id: '1',
-        name: '西兰花',
-        image: '🥦',
-        calories: 34,
-        protein: 2.8,
-        fat: 0.4,
-        carbs: 7,
-        suitableFor: ['糖尿病', '高血压', '痛风'],
-        notSuitableFor: [],
-        nutrition: {
-          '维生素C': 89.2,
-          '维生素K': 101.6,
-          '叶酸': 63.2,
-          '膳食纤维': 2.6
-        },
-        recommendedAmount: '每天100-150克',
-        suitablePairings: ['鸡胸肉', '虾仁', '豆腐'],
-        relatedRecipes: ['清炒西兰花', '西兰花虾仁', '西兰花豆腐汤']
-      },
-      {
-        id: '2',
-        name: '三文鱼',
-        image: '🐟',
-        calories: 208,
-        protein: 20.4,
-        fat: 13.4,
-        carbs: 0,
-        suitableFor: ['高血压', '痛风'],
-        notSuitableFor: [],
-        nutrition: {
-          'Omega-3脂肪酸': 2.26,
-          '维生素D': 11.2,
-          '维生素B12': 2.6,
-          '硒': 41.8
-        },
-        recommendedAmount: '每周200-300克',
-        suitablePairings: ['柠檬', '橄榄油', '芦笋'],
-        relatedRecipes: ['烤三文鱼', '三文鱼沙拉', '三文鱼炒饭']
-      },
-      {
-        id: '3',
-        name: '糙米',
-        image: '🌾',
-        calories: 111,
-        protein: 2.6,
-        fat: 0.9,
-        carbs: 23.7,
-        suitableFor: ['糖尿病', '高血压'],
-        notSuitableFor: [],
-        nutrition: {
-          '膳食纤维': 1.8,
-          '镁': 42,
-          '磷': 63,
-          '锌': 0.8
-        },
-        recommendedAmount: '每天50-100克',
-        suitablePairings: ['蔬菜', '瘦肉', '豆类'],
-        relatedRecipes: ['糙米饭', '糙米粥', '糙米沙拉']
-      },
-      {
-        id: '4',
-        name: '豆腐',
-        image: '🥛',
-        calories: 76,
-        protein: 8,
-        fat: 4.8,
-        carbs: 1.9,
-        suitableFor: ['糖尿病', '高血压', '痛风'],
-        notSuitableFor: [],
-        nutrition: {
-          '钙': 126,
-          '铁': 1.5,
-          '镁': 27,
-          '蛋白质': 8
-        },
-        recommendedAmount: '每天50-100克',
-        suitablePairings: ['蔬菜', '肉类', '蘑菇'],
-        relatedRecipes: ['麻婆豆腐', '豆腐汤', '豆腐炒青菜']
-      },
-      {
-        id: '5',
-        name: '香蕉',
-        image: '🍌',
-        calories: 89,
-        protein: 1.1,
-        fat: 0.3,
-        carbs: 22.8,
-        suitableFor: ['高血压', '痛风'],
-        notSuitableFor: ['糖尿病'],
-        nutrition: {
-          '钾': 358,
-          '维生素B6': 0.367,
-          '膳食纤维': 2.6,
-          '维生素C': 8.7
-        },
-        recommendedAmount: '每天1-2根',
-        suitablePairings: ['牛奶', '燕麦', '坚果'],
-        relatedRecipes: ['香蕉奶昔', '香蕉燕麦粥', '烤香蕉']
-      }
-    ];
-
-    const params = router.getParams() as Record<string, string>;
-    if (params && params.foodId) {
-      const foodId = params.foodId;
-      this.food = foods.find(f => f.id === foodId) || null;
+  aboutToDisappear(): void {
+    if (this.browseRecordId) {
+      BrowseTracker.recordEnd(this.browseRecordId);
     }
-    this.loading = false;
+  }
+
+  async loadFoodDetail(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const url: string = ApiConstants.FOOD_DETAIL + this.foodId;
+      const response: BaseResponse<FoodDetailData> = await HttpUtil.get<FoodDetailData>(url);
+
+      if (response.success && response.data) {
+        this.foodDetail = response.data;
+        this.recipes = this.parseRecipes(response.data.dietTherapy);
+
+        BrowseTracker.recordStart('FOOD_DETAIL', 'FOOD', Number(this.foodId), this.foodDetail.foodName)
+          .then(id => {
+            this.browseRecordId = id;
+          });
+      } else {
+        ToastUtil.showSuccess('\u52A0\u8F7D\u5931\u8D25');
+      }
+    } catch (e) {
+      console.error('\u52A0\u8F7D\u98DF\u6750\u8BE6\u60C5\u5931\u8D25:', e);
+      ToastUtil.showSuccess('\u7F51\u7EDC\u5F02\u5E38\uFF0C\u8BF7\u68C0\u67E5\u8FDE\u63A5');
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  parseRecipes(dietTherapy: string): RecipeStep[] {
+    if (!dietTherapy || dietTherapy.length === 0) return [];
+
+    const result: RecipeStep[] = [];
+    const recipeBlocks: string[] = dietTherapy.split(/[\u3010\u3011]/);
+
+    let currentTitle: string = '';
+    for (let i = 0; i < recipeBlocks.length; i++) {
+      const block: string = recipeBlocks[i].trim();
+      if (block.length === 0) continue;
+
+      if (i % 2 === 1) {
+        currentTitle = block;
+      } else if (currentTitle && block.length > 0) {
+        const lines: string[] = block.split('\n');
+        const steps: string[] = [];
+        for (let j = 0; j < lines.length; j++) {
+          const line: string = lines[j].trim();
+          if (line.length > 3) {
+            steps.push(line);
+          }
+        }
+        if (steps.length > 0) {
+          result.push({ title: currentTitle, steps: steps });
+        }
+        currentTitle = '';
+      }
+    }
+
+    return result;
+  }
+
+  async checkCollectionStatus(): Promise<void> {
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
+      predicates.equalTo(COLUMN_COLLECT_TYPE, 'FOOD');
+      predicates.equalTo(COLUMN_TARGET_ID, Number(this.foodId));
+
+      const result = await RdbHelper.queryByPredicates(predicates, ['id']);
+      if (result && result.rowCount > 0) {
+        this.isFavorited = true;
+        result.close();
+      }
+    } catch (e) {
+      console.error('\u67E5\u8BE2\u6536\u85CF\u72B6\u6001\u5931\u8D25:', e);
+    }
+  }
+
+  async checkShoppingListStatus(): Promise<void> {
+    try {
+      const storage = AppStorage.get<string[]>('shopping_list');
+      if (storage) {
+        for (let i = 0; i < storage.length; i++) {
+          if (storage[i] === this.foodId) {
+            this.isInShoppingList = true;
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e.toString());
+    }
+  }
+
+  async handleFavorite(): Promise<void> {
+    if (this.isCollecting || !this.foodDetail) return;
+
+    this.isCollecting = true;
+
+    try {
+      if (this.isFavorited) {
+        this.isFavorited = false;
+        ToastUtil.showSuccess('\u53D6\u6D88\u6536\u85CF\u6210\u529F');
+
+        const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
+        predicates.equalTo(COLUMN_COLLECT_TYPE, 'FOOD');
+        predicates.equalTo(COLUMN_TARGET_ID, Number(this.foodId));
+        await RdbHelper.delete(predicates);
+      } else {
+        this.isFavorited = true;
+        ToastUtil.showSuccess('\u6536\u85CF\u6210\u529F');
+
+        const collectValues: relationalStore.ValuesBucket = {};
+        collectValues[COLUMN_COLLECT_TYPE] = 'FOOD';
+        collectValues[COLUMN_TARGET_ID] = this.foodDetail.id;
+        collectValues[COLUMN_TARGET_TITLE] = this.foodDetail.foodName;
+        collectValues[COLUMN_TARGET_IMAGE] = '';
+        collectValues[COLUMN_COLLECT_TIME] = Date.now();
+        collectValues[COLUMN_IS_SYNCED] = 1;
+
+        await RdbHelper.insert(TABLE_COLLECTION_CACHE, collectValues);
+      }
+    } catch (e) {
+      console.error('\u6536\u85CF\u64CD\u4F5C\u5931\u8D25:', e);
+      ToastUtil.showSuccess('\u64CD\u4F5C\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC');
+    } finally {
+      this.isCollecting = false;
+    }
+  }
+
+  addToShoppingList(): void {
+    if (!this.foodDetail) return;
+
+    try {
+      let shoppingList: string[] = [];
+      const stored = AppStorage.get<string[]>('shopping_list');
+      if (stored) {
+        shoppingList = stored;
+      }
+
+      if (this.isInShoppingList) {
+        const newList: string[] = [];
+        for (let i = 0; i < shoppingList.length; i++) {
+          if (shoppingList[i] !== this.foodId) {
+            newList.push(shoppingList[i]);
+          }
+        }
+        shoppingList = newList;
+        this.isInShoppingList = false;
+        ToastUtil.showSuccess('\u5DF2\u79FB\u51FA\u8D2D\u7269\u6E05\u5355');
+      } else {
+        shoppingList.push(this.foodId);
+        this.isInShoppingList = true;
+        ToastUtil.showSuccess('\u5DF2\u52A0\u5165\u8D2D\u7269\u6E05\u5355');
+      }
+
+      AppStorage.setOrCreate<string[]>('shopping_list', shoppingList);
+    } catch (e) {
+      console.error('\u8D2D\u7269\u6E05\u5355\u64CD\u4F5C\u5931\u8D25:', e);
+    }
   }
 
   build() {
     Column() {
-      // 头部
       Row() {
-        Text('←')
+        Text('\u2190')
           .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
           .fontColor('#1677FF')
           .width(40)
@@ -159,12 +243,13 @@ struct FoodDetailPage {
           .onClick(() => {
             router.back();
           })
-        Text('食材详情')
+        Text('\u{1F360} ' + (this.foodDetail ? this.foodDetail.foodName : '\u98DF\u6750\u8BE6\u60C5'))
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor('#333333')
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
+          .maxLines(1)
         Text('').width(40)
       }
       .width('100%')
@@ -173,211 +258,233 @@ struct FoodDetailPage {
       .padding({ left: 16, right: 16 })
       .justifyContent(FlexAlign.Center)
 
-      if (this.loading) {
-        // 加载状态
-        Column() {
-          Text('加载中...')
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontColor('#999999');
-        }
-        .width('100%')
-        .height(400)
-        .justifyContent(FlexAlign.Center)
-        .alignItems(HorizontalAlign.Center);
-      } else if (!this.food) {
-        // 食材不存在
-        Column() {
-          Text('🍎')
-            .fontSize(48)
-            .margin({ bottom: 16 });
-          Text('食材不存在')
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontColor('#999999');
-        }
-        .width('100%')
-        .height(400)
-        .justifyContent(FlexAlign.Center)
-        .alignItems(HorizontalAlign.Center);
-      } else {
-        Scroll() {
-          Column() {
-            // 食材基本信息
+      Scroll() {
+        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
+          if (this.isLoading) {
             Column() {
-              Text(this.food.image)
-                .fontSize(80)
-                .margin({ bottom: 16 });
-              Text(this.food.name)
-                .fontSize(24)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#333333')
-                .margin({ bottom: 8 });
-              Row() {
-                Text(`热量: ${this.food.calories}kcal`)
-                  .fontSize(14)
-                  .fontColor('#666666')
-                  .margin({ right: 16 });
-                Text(`蛋白质: ${this.food.protein}g`)
-                  .fontSize(14)
-                  .fontColor('#666666');
-              };
-              Row() {
-                Text(`脂肪: ${this.food.fat}g`)
-                  .fontSize(14)
-                  .fontColor('#666666')
-                  .margin({ right: 16 });
-                Text(`碳水: ${this.food.carbs}g`)
-                  .fontSize(14)
-                  .fontColor('#666666');
-              }
-              .margin({ top: 4 });
-              Row() {
-                ForEach(this.food.suitableFor, (item: string) => {
-                  Text(item)
-                    .fontSize(12)
-                    .fontColor('#52C41A')
-                    .backgroundColor('#F6FFED')
-                    .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                    .borderRadius(4)
-                    .margin({ right: 8 });
-                }, (item: string) => item);
-                ForEach(this.food.notSuitableFor, (item: string) => {
-                  Text(item)
-                    .fontSize(12)
-                    .fontColor('#FF4757')
-                    .backgroundColor('#FFF1F0')
-                    .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                    .borderRadius(4)
-                    .margin({ right: 8 });
-                }, (item: string) => item);
-              }
-              .margin({ top: 12 });
-            }
-            .width('100%')
-            .padding({ top: 24, bottom: 24 })
-            .backgroundColor('#FFFFFF')
-            .alignItems(HorizontalAlign.Center);
-
-            // 详细营养成分表
-            Column() {
-              Text('详细营养成分')
-                .fontSize(18)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#333333')
-                .margin({ bottom: 16 })
-                .width('100%')
-                .textAlign(TextAlign.Start);
-              ForEach(Object.entries(this.food.nutrition), (item: [string, number]) => {
-                Row() {
-                  Text(item[0])
-                    .fontSize(14)
-                    .fontColor('#666666')
-                    .layoutWeight(1);
-                  Text(item[1].toString())
-                    .fontSize(14)
-                    .fontColor('#333333')
-                    .fontWeight(FontWeight.Bold);
-                }
-                .width('100%')
-                .padding({ top: 8, bottom: 8 });
-              }, (item: [string, number]) => item[0]);
-            }
-            .width('85%')
-            .margin({ top: 16, bottom: 16, left: '7.5%', right: '7.5%' })
-            .padding(16)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12)
-            .border({ width: 1, color: '#F0F0F0' });
-
-            // 推荐食用量
-            Column() {
-              Text('推荐食用量')
-                .fontSize(18)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#333333')
-                .margin({ bottom: 12 })
-                .width('100%')
-                .textAlign(TextAlign.Start);
-              Text(this.food.recommendedAmount)
+              LoadingProgress()
+                .width(40)
+                .height(40)
+                .color('#FA8C16');
+              Text('\u6B63\u5728\u52A0\u8F7D...')
                 .fontSize(14)
                 .fontColor('#666666')
-                .width('100%')
-                .textAlign(TextAlign.Start);
+                .margin({ top: 12 });
             }
-            .width('85%')
-            .margin({ bottom: 16, left: '7.5%', right: '7.5%' })
-            .padding(16)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12)
-            .border({ width: 1, color: '#F0F0F0' });
-
-            // 搭配食材
+            .width('100%')
+            .height(400)
+            .justifyContent(FlexAlign.Center);
+          } else if (this.foodDetail) {
             Column() {
-              Text('搭配食材')
-                .fontSize(18)
-                .fontWeight(FontWeight.Bold)
+              Text(this.foodDetail.foodName)
+                .fontSize(this.isElderMode ? 28 : 24)
+                .fontWeight('bold')
                 .fontColor('#333333')
-                .margin({ bottom: 12 })
-                .width('100%')
-                .textAlign(TextAlign.Start);
-              Row({ space: 12 }) {
-                ForEach(this.food.suitablePairings, (item: string) => {
-                  Text(item)
-                    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                    .fontSize(14)
-                    .fontColor('#1677FF')
-                    .backgroundColor('#E6F4FF')
-                    .borderRadius(16);
-                }, (item: string) => item);
-              }
-            }
-            .width('85%')
-            .margin({ bottom: 16, left: '7.5%', right: '7.5%' })
-            .padding(16)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12)
-            .border({ width: 1, color: '#F0F0F0' });
+                .margin({ bottom: 16 });
 
-            // 相关食谱
-            Column() {
-              Text('相关食谱')
-                .fontSize(18)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#333333')
-                .margin({ bottom: 12 })
-                .width('100%')
-                .textAlign(TextAlign.Start);
-              ForEach(this.food.relatedRecipes, (item: string) => {
-                Row() {
-                  Text('🍳')
-                    .fontSize(16)
-                    .margin({ right: 12 });
-                  Text(item)
+              if (this.foodDetail.efficacy && this.foodDetail.efficacy.length > 0) {
+                Row({ space: 8 }) {
+                  Text('\u{1F489}')
                     .fontSize(14)
-                    .fontColor('#333333')
-                    .layoutWeight(1);
-                  Text('›')
-                    .fontSize(20)
-                    .fontColor('#999999');
+                  ForEach(this.foodDetail.efficacy.split('\u3001'), (tag: string) => {
+                    Text(tag.trim())
+                      .fontSize(11)
+                      .fontColor('#52C41A')
+                      .backgroundColor('#F6FFED')
+                      .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                      .borderRadius(12);
+                  }, (tag: string) => tag.trim());
                 }
                 .width('100%')
-                .padding({ top: 12, bottom: 12 });
-              }, (item: string) => item);
+                .margin({ bottom: 12 });
+              }
             }
-            .width('85%')
-            .margin({ bottom: 100, left: '7.5%', right: '7.5%' })
-            .padding(16)
+            .width('100%')
+            .padding(GlobalTheme.getSpacingLG(this.isElderMode))
             .backgroundColor('#FFFFFF')
             .borderRadius(12)
-            .border({ width: 1, color: '#F0F0F0' });
+            .border({ width: 1, color: '#FFF7E6' })
+            .alignItems(HorizontalAlign.Start);
+
+            if (this.foodDetail.applicableDisease && this.foodDetail.applicableDisease.length > 0) {
+              Column() {
+                Text('\u9002\u7528\u75C7\u72B6')
+                  .fontSize(18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#333333')
+                  .margin({ bottom: 12 })
+                  .width('100%')
+                  .textAlign(TextAlign.Start);
+                Text(this.foodDetail.applicableDisease)
+                  .fontSize(this.isElderMode ? 16 : 14)
+                  .fontColor('#666666')
+                  .lineHeight(22)
+                  .width('100%')
+                  .textAlign(TextAlign.Start);
+              }
+              .width('85%')
+              .padding(16)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .border({ width: 1, color: '#E6F4FF' })
+              .alignItems(HorizontalAlign.Start);
+            }
+
+            if (this.recipes.length > 0) {
+              Column() {
+                Text('\u{1F373} \u98DF\u7597\u505A\u6CD5')
+                  .fontSize(18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#333333')
+                  .margin({ bottom: 16 })
+                  .width('100%')
+                  .textAlign(TextAlign.Start);
+
+                ForEach(this.recipes, (recipe: RecipeStep, index: number) => {
+                  Column() {
+                    Row() {
+                      Text((index + 1).toString())
+                        .fontSize(18)
+                        .fontWeight('bold')
+                        .fontColor('#FFFFFF')
+                        .width(32)
+                        .height(32)
+                        .backgroundColor('#FA8C16')
+                        .borderRadius(16)
+                        .textAlign(TextAlign.Center)
+                        .layoutWeight(0)
+                      Text(recipe.title)
+                        .fontSize(this.isElderMode ? 17 : 15)
+                        .fontWeight(FontWeight.Bold)
+                        .fontColor('#FA8C16')
+                        .margin({ left: 10 })
+                        .layoutWeight(1)
+                    }
+                    .width('100%')
+                    .alignItems(VerticalAlign.Center)
+                    .margin({ bottom: 12 });
+
+                    Column({ space: 8 }) {
+                      ForEach(recipe.steps, (step: string, stepIndex: number) => {
+                        Row({ space: 10 }) {
+                          Text((stepIndex + 1).toString())
+                            .fontSize(13)
+                            .fontColor('#999999')
+                            .width(20)
+                            .height(20)
+                            .backgroundColor('#F5F5F5')
+                            .borderRadius(10)
+                            .textAlign(TextAlign.Center)
+                            .flexShrink(0)
+                          Text(step)
+                            .fontSize(this.isElderMode ? 15 : 13)
+                            .fontColor('#444444')
+                            .lineHeight(20)
+                            .layoutWeight(1);
+                        }
+                        .width('100%')
+                        .alignItems(VerticalAlign.Top);
+                      }, (step: string, stepIndex: number) => index.toString() + '-' + stepIndex.toString());
+                    }
+                    .width('100%')
+                    .padding(12)
+                    .backgroundColor('#FFFBF0')
+                    .borderRadius(8)
+                    .alignItems(HorizontalAlign.Start);
+                  }
+                  .width('100%')
+                  .padding({ bottom: 16 });
+                }, (recipe: RecipeStep, index: number) => index.toString());
+              }
+              .width('85%')
+              .padding(16)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .border({ width: 1, color: '#FFF7E6' })
+              .alignItems(HorizontalAlign.Start);
+            }
+
+            if (this.foodDetail.dietaryTaboo && this.foodDetail.dietaryTaboo.length > 0) {
+              Column() {
+                Row() {
+                  Text('\u26A0\uFE0F')
+                    .fontSize(16)
+                    .margin({ right: 8 })
+                  Text('\u996E\u98DF\u7981\u5FCC')
+                    .fontSize(18)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#CF1322');
+                }
+                .width('100%')
+                .margin({ bottom: 12 });
+
+                Text(this.foodDetail.dietaryTaboo)
+                  .fontSize(this.isElderMode ? 16 : 14)
+                  .fontColor('#666666')
+                  .lineHeight(22)
+                  .width('100%')
+                  .textAlign(TextAlign.Start);
+              }
+              .width('85%')
+              .padding(16)
+              .backgroundColor('#FFF1F0')
+              .borderRadius(12)
+              .border({ width: 1, color: '#FFCCC7' })
+              .alignItems(HorizontalAlign.Start);
+            }
           }
-          .width('100%')
-          .padding({ top: 0 });
         }
-        .height(0)
-        .layoutWeight(1)
-        .scrollBar(BarState.Off)
-        .align(Alignment.Top);
+        .width('100%')
+        .padding({ top: GlobalTheme.getSpacingMD(this.isElderMode), bottom: 120 });
       }
+      .height(0)
+      .layoutWeight(1)
+      .scrollBar(BarState.Off)
+      .align(Alignment.Top);
+
+      Column() {
+        Row() {
+          Button(this.isFavorited ? '\u2764\uFE0F' : '\u{1F90D}')
+            .width(56)
+            .height(56)
+            .fontSize(24)
+            .backgroundColor('transparent')
+            .border({ width: 0 })
+            .onClick(() => {
+              this.handleFavorite();
+            });
+
+          Button(this.isInShoppingList ? '\u{1F6D2} \u79FB\u51FA' : '\u{1F6D2} \u52A0\u5165\u8D2D\u7269')
+            .height(44)
+            .fontSize(14)
+            .fontColor(this.isInShoppingList ? '#999999' : '#FFFFFF')
+            .backgroundColor(this.isInShoppingList ? '#F5F5F5' : '#FA8C16')
+            .borderRadius(22)
+            .onClick(() => {
+              this.addToShoppingList();
+            });
+
+          Text('')
+            .width(0)
+            .layoutWeight(1)
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16 })
+        .justifyContent(FlexAlign.SpaceBetween)
+        .alignItems(VerticalAlign.Center);
+      }
+      .width('100%')
+      .height(80)
+      .padding({ top: 12, bottom: 12 })
+      .backgroundColor('#FFFFFF')
+      .shadow({
+        radius: 12,
+        color: '#00000012',
+        offsetX: 0,
+        offsetY: -4
+      });
+
+      Footer({ activeIndex: 1 });
     }
     .width('100%')
     .height('100%')

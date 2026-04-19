@@ -2,9 +2,55 @@ import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { EfficacyTag } from '../components/EfficacyTag';
-import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
-import { HerbalInfo, getHerbalById } from '../mock/herbalMock';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+
+interface BackendHerbalDetail {
+  id?: number;
+  name?: string;
+  pinyin?: string;
+  alias?: string;
+  category?: string;
+  nature?: string;
+  taste?: string;
+  meridian?: string;
+  efficacySummary?: string;
+  efficacyDetail?: string;
+  indication?: string;
+  usageDosage?: string;
+  contraindication?: string;
+  toxicity?: string;
+  processingMethod?: string;
+  sourceOrigin?: string;
+  appearance?: string;
+  imageUrl?: string;
+}
+
+interface HerbalInfo {
+  id: string;
+  name: string;
+  pinyin: string;
+  alias: string[];
+  category: string;
+  nature: string;
+  taste: string;
+  meridian: string[];
+  efficacySummary: string;
+  efficacyDetail: string;
+  indication: string;
+  usageDosage: string;
+  contraindication: string;
+  toxicity: string;
+  processingMethod: string;
+  sourceOrigin: string;
+  appearance: string;
+  imageUrl: string;
+  efficacy: string[];
+  indications: string[];
+  usage: string;
+  dosage: string;
+  caution: string;
+}
 
 @Entry
 @Component
@@ -13,10 +59,12 @@ struct HerbalDetailPage {
 
   @State herbal: HerbalInfo | undefined = undefined;
   @State isCollected: boolean = false;
+  @State isLoading: boolean = true;
   @State showBackToTop: boolean = false;
   private scroller: Scroller = new Scroller();
+  private herbalId: string = '';
 
-  aboutToAppear(): void {
+  async aboutToAppear(): Promise<void> {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
@@ -25,21 +73,71 @@ struct HerbalDetailPage {
 
     const params: Record<string, Object> | undefined = router.getParams() as Record<string, Object> | undefined;
     if (params && params['herbalId']) {
-      const herbalId: string = params['herbalId'] as string;
-      this.herbal = getHerbalById(herbalId);
-      if (this.herbal) {
-        this.isCollected = this.herbal.isCollected;
+      this.herbalId = params['herbalId'] as string;
+
+      try {
+        const response: BaseResponse<Object> = await HttpUtil.get<Object>(`/herbal/info/${this.herbalId}`);
+        if (response.success && response.data) {
+          const data: Record<string, Object> = response.data as Record<string, Object>;
+          this.herbal = {
+            id: String(data['id'] || 0),
+            name: (data['name'] as string) || '',
+            pinyin: (data['pinyin'] as string) || '',
+            alias: data['alias'] ? (data['alias'] as string).split(',') : [],
+            category: (data['category'] as string) || '',
+            nature: (data['nature'] as string) || '',
+            taste: (data['taste'] as string) || '',
+            meridian: data['meridian'] ? (data['meridian'] as string).split(',') : [],
+            efficacySummary: (data['efficacySummary'] as string) || '',
+            efficacyDetail: (data['efficacyDetail'] as string) || '',
+            indication: (data['indication'] as string) || '',
+            usageDosage: (data['usageDosage'] as string) || '',
+            contraindication: (data['contraindication'] as string) || '',
+            toxicity: (data['toxicity'] as string) || '',
+            processingMethod: (data['processingMethod'] as string) || '',
+            sourceOrigin: (data['sourceOrigin'] as string) || '',
+            appearance: (data['appearance'] as string) || '',
+            imageUrl: (data['imageUrl'] as string) || '',
+            efficacy: data['efficacySummary'] ? (data['efficacySummary'] as string).split(',') : [],
+            indications: data['indication'] ? (data['indication'] as string).split(',') : [],
+            usage: (data['usageDosage'] as string) || '',
+            dosage: (data['usageDosage'] as string) || '',
+            caution: (data['contraindication'] as string) || ''
+          } as HerbalInfo;
+        }
+      } catch (error) {
+        console.error('加载药材详情失败:', error);
+      } finally {
+        this.isLoading = false;
       }
+    } else {
+      this.isLoading = false;
     }
   }
 
-  toggleCollect(): void {
-    if (this.herbal) {
-      this.isCollected = !this.isCollected;
-      if (this.isCollected) {
-        ToastUtil.operationSuccess();
-      } else {
-        ToastUtil.showInfo('已取消收藏');
+  async toggleCollect(): Promise<void> {
+    if (this.herbal && this.herbalId) {
+      try {
+        if (!this.isCollected) {
+          const response: BaseResponse<Object> = await HttpUtil.post<Object>(`/herbal/${this.herbalId}/collect`);
+          if (response.success) {
+            this.isCollected = true;
+            ToastUtil.operationSuccess();
+          } else {
+            ToastUtil.showError(response.message || '收藏失败', 2000);
+          }
+        } else {
+          const deleteRes: BaseResponse<Object> = await HttpUtil.delete<Object>(`/herbal/${this.herbalId}/collect`);
+          if (deleteRes.success) {
+            this.isCollected = false;
+            ToastUtil.showInfo('已取消收藏');
+          } else {
+            ToastUtil.showError(deleteRes.message || '取消收藏失败', 2000);
+          }
+        }
+      } catch (error) {
+        console.error('操作收藏失败:', error);
+        ToastUtil.showError('网络请求失败', 2000);
       }
     }
   }

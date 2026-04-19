@@ -108,6 +108,8 @@ struct DataAuthPage {
           ToastUtil.showSuccess('\u64A4\u9502\u6388\u6743\u5931\u8D25');
         }
       }
+    }).catch((error: Error) => {
+      console.error('显示撤销授权对话框失败:', error.message);
     });
   }
 

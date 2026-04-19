@@ -75,7 +75,7 @@ export class HttpUtil {
 
       return await HttpUtil.handleResponse<T>(response);
     } catch (error) {
-      return HttpUtil.handleError<T>(error as Error);
+      return HttpUtil.handleError<T>(error);
     }
   }
 
@@ -97,7 +97,28 @@ export class HttpUtil {
 
       return await HttpUtil.handleResponse<T>(response);
     } catch (error) {
-      return HttpUtil.handleError<T>(error as Error);
+      return HttpUtil.handleError<T>(error);
+    }
+  }
+
+  static async delete<T>(url: string): Promise<BaseResponse<T>> {
+    try {
+      const fullUrl = HttpUtil.BASE_URL + url;
+
+      const token = HttpUtil.getToken();
+
+      const options: HttpRequestOptions = {
+        method: http.RequestMethod.DELETE,
+        headers: {
+          'Content-Type': 'application/json',
+          'Token': token ? token : ''
+        }
+      };
+      const response = await HttpUtil.fetch(fullUrl, options);
+
+      return await HttpUtil.handleResponse<T>(response);
+    } catch (error) {
+      return HttpUtil.handleError<T>(error);
     }
   }
 
@@ -186,7 +207,20 @@ export class HttpUtil {
   }
 
   private static async handleResponse<T>(response: HttpResponse): Promise<BaseResponse<T>> {
-    const raw = response.result;
+    let raw: Object = response.result;
+
+    if (typeof raw === 'string') {
+      try {
+        raw = JSON.parse(raw as string);
+      } catch (error) {
+        console.error('解析响应JSON失败:', error);
+        return {
+          success: false,
+          message: '服务器响应格式错误',
+          code: response.responseCode as number
+        };
+      }
+    }
 
     if (response.responseCode !== 200) {
       if (response.responseCode === 401) {
@@ -224,10 +258,11 @@ export class HttpUtil {
     };
   }
 
-  private static handleError<T>(error: Error): BaseResponse<T> {
+  private static handleError<T>(error: Object): BaseResponse<T> {
     let message = '网络请求失败';
-    if (error && error.message) {
-      message = error.message;
+    const err = error as Error;
+    if (err && err.message) {
+      message = err.message;
     }
 
     try {

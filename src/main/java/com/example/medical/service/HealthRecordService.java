@@ -45,4 +45,11 @@ public interface HealthRecordService extends IService<HealthRecord> {
      * @return 分页结果
      */
     PageResult<HealthRecord> findByUserIdWithPage(Long userId, Integer page, Integer size, Long accessUserId, String accessIp);
+
+    /**
+     * 获取用户最新一条健康记录
+     * @param userId 用户ID
+     * @return 最新健康记录，如果没有返回null
+     */
+    HealthRecord getLatestByUserId(Long userId);
 }

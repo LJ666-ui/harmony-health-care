@@ -135,4 +135,24 @@ public class HealthRecordController {
         }
         return ip;
     }
+
+    /**
+     * 获取最新一条健康记录
+     */
+    @GetMapping("/latest")
+    public Result<?> getLatestRecord(@RequestParam Long userId) {
+        try {
+            if (userId == null) {
+                return Result.error("用户ID不能为空");
+            }
+            HealthRecord latestRecord = healthRecordService.getLatestByUserId(userId);
+            if (latestRecord == null) {
+                return Result.success(null);
+            }
+            return Result.success(latestRecord);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取最新记录失败：" + e.getMessage());
+        }
+    }
 }

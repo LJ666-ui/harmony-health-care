@@ -66,6 +66,39 @@ class RdbHelper {
     }
   }
 
+  public async insertOrUpdate(table: string, values: relationalStore.ValuesBucket, idColumn: string, idValue: number): Promise<number> {
+    try {
+      const predicates = new relationalStore.RdbPredicates(table);
+      predicates.equalTo(idColumn, idValue);
+
+      const resultSet = await this.getRdb().query(predicates, ['COUNT(*) as count']);
+      if (resultSet.goToFirstRow()) {
+        const count = resultSet.getLong(0);
+        resultSet.close();
+
+        if (count > 0) {
+          return await this.getRdb().update(values, predicates);
+        }
+      } else {
+        resultSet.close();
+      }
+
+      return await this.getRdb().insert(table, values);
+    } catch (error) {
+      hilog.error(0x0000, TAG, 'Failed to insertOrUpdate in %{public}s', table);
+      throw new Error('Failed to insertOrUpdate');
+    }
+  }
+
+  public async queryByPredicates(predicates: relationalStore.RdbPredicates, columns?: string[]): Promise<relationalStore.ResultSet> {
+    try {
+      return await this.getRdb().query(predicates, columns || []);
+    } catch (error) {
+      hilog.error(0x0000, TAG, 'Failed to query with predicates');
+      throw new Error('Failed to query with predicates');
+    }
+  }
+
   public async update(table: string, values: relationalStore.ValuesBucket, predicates: relationalStore.RdbPredicates): Promise<number> {
     try {
       return await this.getRdb().update(values, predicates);

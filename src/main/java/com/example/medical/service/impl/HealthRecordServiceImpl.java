@@ -96,4 +96,13 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
         // 构建分页结果
         return new PageResult<>(pageInfo.getTotal(), pageInfo.getRecords(), page, size);
     }
+
+    @Override
+    public HealthRecord getLatestByUserId(Long userId) {
+        return lambdaQuery()
+                .eq(HealthRecord::getUserId, userId)
+                .orderByDesc(HealthRecord::getRecordTime)
+                .last("LIMIT 1")
+                .one();
+    }
 }

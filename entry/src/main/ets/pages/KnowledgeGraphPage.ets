@@ -4,6 +4,7 @@ import { GraphCanvas } from '../components/GraphCanvas';
 import { GlobalTheme } from '../global';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import BrowseTracker from '../utils/BrowseTracker';
 
 interface SearchNode {
   id: number;
@@ -19,6 +20,19 @@ struct KnowledgeGraphPage {
   @State searchText: string = '';
   @State showSearch: boolean = false;
   @State searchResults: SearchNode[] = [];
+  @State recordId: number = 0;
+
+  aboutToAppear(): void {
+    BrowseTracker.recordStart('KNOWLEDGE_GRAPH', 'PAGE', 5, '中医知识图谱').then(id => {
+      this.recordId = id;
+    });
+  }
+
+  aboutToDisappear(): void {
+    if (this.recordId > 0) {
+      BrowseTracker.recordEnd(this.recordId);
+    }
+  }
 
   handleSearch(): void {
     if (!this.searchText.trim()) {
@@ -83,7 +97,7 @@ struct KnowledgeGraphPage {
                   Column({ space: 2 }) {
                     Text(node.name)
                       .fontSize(14)
-                      .fontWeight('bold')
+                      .fontWeight(FontWeight.Bold)
                       .fontColor(GlobalTheme.TEXT_PRIMARY);
                     if (node.description) {
                       Text(node.description)

@@ -1,0 +1,1004 @@
+"E:\HmOS\DevEco Studio\tools\node\node.exe" "E:\HmOS\DevEco Studio\tools\hvigor\bin\hvigorw.js" clean --mode module -p product=default assembleHap --analyze=normal --parallel --incremental --daemon
+> hvigor Finished :entry:clean... after 848 ms 
+> hvigor Finished :entry:default@PreBuild... after 539 ms 
+> hvigor Finished :entry:default@CreateModuleInfo... after 2 ms 
+> hvigor Finished :entry:default@GenerateMetadata... after 13 ms 
+> hvigor Finished :entry:default@ConfigureCmake... after 1 ms 
+> hvigor Finished :entry:default@MergeProfile... after 14 ms 
+> hvigor Finished :entry:default@CreateBuildProfile... after 9 ms 
+> hvigor Finished :entry:default@PreCheckSyscap... after 1 ms 
+> hvigor Finished :entry:default@GeneratePkgContextInfo... after 17 ms 
+> hvigor Finished :entry:default@ProcessIntegratedHsp... after 3 ms 
+> hvigor Finished :entry:default@BuildNativeWithCmake... after 1 ms 
+> hvigor Finished :entry:default@MakePackInfo... after 20 ms 
+> hvigor Finished :entry:default@SyscapTransform... after 10 ms 
+> hvigor Finished :entry:default@ProcessProfile... after 292 ms 
+> hvigor Finished :entry:default@ProcessRouterMap... after 17 ms 
+> hvigor Finished :entry:default@ProcessShareConfig... after 11 ms 
+> hvigor Finished :entry:default@ProcessStartupConfig... after 5 ms 
+> hvigor Finished :entry:default@BuildNativeWithNinja... after 6 ms 
+> hvigor Finished :entry:default@ProcessResource... after 48 ms 
+> hvigor Finished :entry:default@GenerateLoaderJson... after 69 ms 
+> hvigor Finished :entry:default@ProcessLibs... after 46 ms 
+> hvigor Finished :entry:default@CompileResource... after 3 s 402 ms 
+> hvigor Finished :entry:default@DoNativeStrip... after 24 ms 
+> hvigor Finished :entry:default@BuildJS... after 7 ms 
+> hvigor Finished :entry:default@CacheNativeLibs... after 20 ms 
+> hvigor ERROR: Failed :entry:default@CompileArkTS... 
+> hvigor WARN: 
+1 WARN: ArkTS:WARN: For details about ArkTS syntax errors, see FAQs
+2 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Index.ets:20:16
+ 'replaceUrl' has been deprecated.
+
+3 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/Header.ets:28:20
+ 'back' has been deprecated.
+
+4 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/Footer.ets:42:18
+ 'pushUrl' has been deprecated.
+
+5 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:17:20
+ 'showToast' has been deprecated.
+
+6 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:30:20
+ 'showToast' has been deprecated.
+
+7 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:43:20
+ 'showToast' has been deprecated.
+
+8 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:56:20
+ 'showToast' has been deprecated.
+
+9 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:185:20
+ 'showToast' has been deprecated.
+
+10 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:396:5
+ Function may throw exceptions. Special handling is required.
+
+11 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:396:18
+ 'showToast' has been deprecated.
+
+12 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:405:7
+ Function may throw exceptions. Special handling is required.
+
+13 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:405:20
+ 'showToast' has been deprecated.
+
+14 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Login.ets:48:16
+ 'replaceUrl' has been deprecated.
+
+15 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Login.ets:133:20
+ 'replaceUrl' has been deprecated.
+
+16 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Login.ets:226:26
+ 'pushUrl' has been deprecated.
+
+17 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Register.ets:91:20
+ 'back' has been deprecated.
+
+18 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Register.ets:187:26
+ 'back' has been deprecated.
+
+19 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HomePage.ets:208:16
+ 'pushUrl' has been deprecated.
+
+20 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/MedicalPage.ets:99:22
+ 'pushUrl' has been deprecated.
+
+21 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RehabPage.ets:97:22
+ 'pushUrl' has been deprecated.
+
+22 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:475:24
+ 'pushUrl' has been deprecated.
+
+23 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:562:32
+ 'pushUrl' has been deprecated.
+
+24 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:689:30
+ 'pushUrl' has been deprecated.
+
+25 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HospitalPage.ets:128:12
+ 'pushUrl' has been deprecated.
+
+26 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HospitalPage.ets:165:28
+ 'pushUrl' has been deprecated.
+
+27 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/DepartmentPage.ets:73:22
+ 'pushUrl' has been deprecated.
+
+28 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:288:18
+ 'back' has been deprecated.
+
+29 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:533:26
+ 'push' has been deprecated.
+
+30 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:581:18
+ 'push' has been deprecated.
+
+31 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:587:68
+ 'push' has been deprecated.
+
+32 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:589:68
+ 'push' has been deprecated.
+
+33 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:590:68
+ 'push' has been deprecated.
+
+34 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:591:68
+ 'push' has been deprecated.
+
+35 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AddHealthRecord.ets:117:18
+ 'back' has been deprecated.
+
+36 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AddHealthRecord.ets:136:18
+ 'back' has been deprecated.
+
+37 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:92:12
+ 'push' has been deprecated.
+
+38 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:101:12
+ 'back' has been deprecated.
+
+39 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:130:18
+ 'back' has been deprecated.
+
+40 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:276:24
+ 'push' has been deprecated.
+
+41 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Appointments.ets:251:33
+ 'pushUrl' has been deprecated.
+
+42 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Appointments.ets:374:24
+ 'pushUrl' has been deprecated.
+
+43 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Medications.ets:185:12
+ 'pushUrl' has been deprecated.
+
+44 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Profile.ets:62:16
+ 'pushUrl' has been deprecated.
+
+45 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Profile.ets:198:26
+ 'replaceUrl' has been deprecated.
+
+46 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AddAppointmentPage.ets:114:14
+ 'back' has been deprecated.
+
+47 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AddAppointmentPage.ets:278:39
+ 'back' has been deprecated.
+
+48 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RehabListPage.ets:204:26
+ 'pushUrl' has been deprecated.
+
+49 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:152:27
+ 'getParams' has been deprecated.
+
+50 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:297:9
+ 'animateTo' has been deprecated.
+
+51 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:317:5
+ 'animateTo' has been deprecated.
+
+52 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:331:5
+ 'animateTo' has been deprecated.
+
+53 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ScienceListPage.ets:257:20
+ 'back' has been deprecated.
+
+54 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ScienceListPage.ets:430:26
+ 'pushUrl' has been deprecated.
+
+55 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ScienceDetailPage.ets:76:27
+ 'getParams' has been deprecated.
+
+56 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ScienceDetailPage.ets:313:20
+ 'back' has been deprecated.
+
+57 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/DeviceDiscoveryPage.ets:121:16
+ 'back' has been deprecated.
+
+58 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/DeviceDiscoveryPage.ets:197:20
+ 'back' has been deprecated.
+
+59 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/DeviceManagePage.ets:273:20
+ 'back' has been deprecated.
+
+60 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/DeviceManagePage.ets:291:20
+ 'pushUrl' has been deprecated.
+
+61 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:532:19
+ 'show' has been deprecated.
+
+62 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:559:19
+ 'show' has been deprecated.
+
+63 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:66:12
+ 'push' has been deprecated.
+
+64 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:82:20
+ 'back' has been deprecated.
+
+65 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:94:20
+ 'push' has been deprecated.
+
+66 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskHistoryPage.ets:71:20
+ 'back' has been deprecated.
+
+67 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskHistoryPage.ets:193:22
+ 'push' has been deprecated.
+
+68 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:155:5
+ Function may throw exceptions. Special handling is required.
+
+69 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:155:12
+ 'pushUrl' has been deprecated.
+
+70 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:159:5
+ Function may throw exceptions. Special handling is required.
+
+71 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:159:18
+ 'showDialog' has been deprecated.
+
+72 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:171:5
+ Function may throw exceptions. Special handling is required.
+
+73 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:171:18
+ 'showDialog' has been deprecated.
+
+74 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:182:18
+ 'replaceUrl' has been deprecated.
+
+75 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacyPolicyPage.ets:20:12
+ 'back' has been deprecated.
+
+76 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacyPage.ets:90:5
+ Function may throw exceptions. Special handling is required.
+
+77 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/PrivacyPage.ets:90:12
+ 'pushUrl' has been deprecated.
+
+78 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ARNavigationPage.ets:33:12
+ 'back' has been deprecated.
+
+79 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/VoiceAssistantPage.ets:278:20
+ 'pushUrl' has been deprecated.
+
+80 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/VoiceAssistantPage.ets:454:20
+ 'back' has been deprecated.
+
+81 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/VoiceAssistantPage.ets:469:25
+ 'show' has been deprecated.
+
+82 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AiChatPage.ets:895:20
+ 'back' has been deprecated.
+
+83 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AiChatPage.ets:917:27
+ 'show' has been deprecated.
+
+84 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HerbalListPage.ets:295:12
+ 'pushUrl' has been deprecated.
+
+85 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HerbalDetailPage.ets:74:63
+ 'getParams' has been deprecated.
+
+86 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/HerbalDetailPage.ets:181:26
+ 'back' has been deprecated.
+
+87 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/DataAuthPage.ets:100:18
+ 'showDialog' has been deprecated.
+
+88 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:242:18
+ 'showDialog' has been deprecated.
+
+89 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:262:5
+ Function may throw exceptions. Special handling is required.
+
+90 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:262:18
+ 'showDialog' has been deprecated.
+
+91 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:484:28
+ 'push' has been deprecated.
+
+92 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/MyCollectPage.ets:84:20
+ 'back' has been deprecated.
+
+93 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/MyCollectPage.ets:188:24
+ 'pushUrl' has been deprecated.
+
+94 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:204:5
+ Function may throw exceptions. Special handling is required.
+
+95 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:204:12
+ 'pushUrl' has been deprecated.
+
+96 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:222:20
+ 'back' has been deprecated.
+
+97 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/FoodDetailPage.ets:56:27
+ 'getParams' has been deprecated.
+
+98 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/FoodDetailPage.ets:247:20
+ 'back' has been deprecated.
+
+99 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/MedicationDetailPage.ets:138:27
+ 'getParams' has been deprecated.
+
+100 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/MedicationDetailPage.ets:166:20
+ 'back' has been deprecated.
+
+101 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/GuideComponents.ets:218:9
+ The @Prop property 'targetPosition' cannot be an optional parameter.
+102 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/ClickFeedback.ets:10:9
+ The @Prop property 'onItemClick' cannot be an optional parameter.
+103 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/ClickFeedback.ets:44:9
+ The @Prop property 'onItemClick' cannot be an optional parameter.
+104 WARN: ArkTS:WARN File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/ClickFeedback.ets:140:9
+ The @Prop property 'onItemClick' cannot be an optional parameter.
+> hvigor ERROR: ArkTS Compiler Error
+1 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/ai/RiskAssessmentEngine.ets:366:53
+
+
+2 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/ai/RiskAssessmentEngine.ets:393:25
+
+
+3 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/ai/RiskAssessmentEngine.ets:394:21
+
+
+4 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/ai/RiskAssessmentEngine.ets:395:17
+
+
+5 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/ai/RiskAssessmentEngine.ets:396:20
+
+
+6 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/ai/RiskAssessmentEngine.ets:397:23
+
+
+7 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/RadarChart.ets:3:15
+
+
+8 ERROR: 10605008 ArkTS Compiler Error
+Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/RadarChart.ets:36:60
+
+
+9 ERROR: 10605008 ArkTS Compiler Error
+Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/RadarChart.ets:40:33
+
+
+10 ERROR: 10605043 ArkTS Compiler Error
+Error Message: Array literals must contain elements of only inferrable types (arkts-no-noninferrable-arr-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/GaugeChart.ets:81:22
+
+
+11 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/GaugeChart.ets:82:7
+
+
+12 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/GaugeChart.ets:83:7
+
+
+13 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/GaugeChart.ets:84:7
+
+
+14 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/GaugeChart.ets:85:7
+
+
+15 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:12:29
+
+
+16 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:13:25
+
+
+17 ERROR: 10605142 ArkTS Compiler Error
+Error Message: "as const" assertions are not supported (arkts-no-as-const) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:17:20
+
+
+18 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:18:17
+
+
+19 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:21:22
+
+
+20 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:25:21
+
+
+21 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:29:18
+
+
+22 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:32:20
+
+
+23 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:37:24
+
+
+24 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:42:24
+
+
+25 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:48:18
+
+
+26 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:85:24
+
+
+27 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:110:23
+
+
+28 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:144:42
+
+
+29 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:151:12
+
+
+30 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:152:21
+
+
+31 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:161:17
+
+
+32 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:170:13
+
+
+33 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:179:16
+
+
+34 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:188:19
+
+
+35 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:200:46
+
+
+36 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:302:25
+
+
+37 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:306:27
+
+
+38 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:311:27
+
+
+39 ERROR: 10605043 ArkTS Compiler Error
+Error Message: Array literals must contain elements of only inferrable types (arkts-no-noninferrable-arr-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:424:15
+
+
+40 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:425:11
+
+
+41 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:426:11
+
+
+42 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:427:11
+
+
+43 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:428:11
+
+
+44 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:429:11
+
+
+45 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:201:36
+
+
+46 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:203:54
+
+
+47 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:210:19
+
+
+48 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:237:21
+
+
+49 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:242:12
+
+
+50 ERROR: 10605034 ArkTS Compiler Error
+Error Message: Type inference in case of generic function calls is limited (arkts-no-inferred-generic-params) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:257:11
+
+
+51 ERROR: 10605034 ArkTS Compiler Error
+Error Message: Type inference in case of generic function calls is limited (arkts-no-inferred-generic-params) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:280:11
+
+
+52 ERROR: 10605034 ArkTS Compiler Error
+Error Message: Type inference in case of generic function calls is limited (arkts-no-inferred-generic-params) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:301:13
+
+
+53 ERROR: 10605087 ArkTS Compiler Error
+Error Message: "throw" statements cannot accept values of arbitrary types (arkts-limited-throw) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:311:7
+
+
+54 ERROR: 10605028 ArkTS Compiler Error
+Error Message: Indexed access types are not supported (arkts-no-aliases-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:543:40
+
+
+55 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:543:62
+
+
+56 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:550:16
+
+
+57 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:556:16
+
+
+58 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:562:16
+
+
+59 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/medical/ImageAnalysisService.ets:568:16
+
+
+60 ERROR: 10605028 ArkTS Compiler Error
+Error Message: Indexed access types are not supported (arkts-no-aliases-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:37:9
+
+
+61 ERROR: 10605028 ArkTS Compiler Error
+Error Message: Indexed access types are not supported (arkts-no-aliases-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:45:14
+
+
+62 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:52:40
+
+
+63 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:53:20
+
+
+64 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:54:17
+
+
+65 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:55:18
+
+
+66 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:57:17
+
+
+67 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:58:16
+
+
+68 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:59:15
+
+
+69 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:61:16
+
+
+70 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:62:13
+
+
+71 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:63:18
+
+
+72 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:66:48
+
+
+73 ERROR: 10605029 ArkTS Compiler Error
+Error Message: Indexed access is not supported for fields (arkts-no-props-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:147:24
+
+
+74 ERROR: 10605060 ArkTS Compiler Error
+Error Message: "typeof" operator is allowed only in expression contexts (arkts-no-type-query) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:147:76
+
+
+75 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:388:50
+
+
+76 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:394:12
+
+
+77 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:402:45
+
+
+78 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AnomalyDetector.ets:434:12
+
+
+79 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:37:56
+
+
+80 ERROR: 10605028 ArkTS Compiler Error
+Error Message: Indexed access types are not supported (arkts-no-aliases-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:38:15
+
+
+81 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:43:15
+
+
+82 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:44:12
+
+
+83 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:45:15
+
+
+84 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:46:13
+
+
+85 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:47:17
+
+
+86 ERROR: 10605028 ArkTS Compiler Error
+Error Message: Indexed access types are not supported (arkts-no-aliases-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:77:42
+
+
+87 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:148:25
+
+
+88 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:160:12
+
+
+89 ERROR: 10605028 ArkTS Compiler Error
+Error Message: Indexed access types are not supported (arkts-no-aliases-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/AlertManager.ets:306:36
+
+
+90 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:6:18
+
+
+91 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:7:15
+
+
+92 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:8:14
+
+
+93 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:9:11
+
+
+94 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:10:16
+
+
+95 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:17:20
+
+
+96 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:49:38
+
+
+97 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:52:22
+
+
+98 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:126:7
+
+
+99 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:175:14
+
+
+100 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:179:21
+
+
+101 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:179:37
+
+
+102 ERROR: 10605008 ArkTS Compiler Error
+Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:315:42
+
+
+103 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:362:26
+
+
+104 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/RealtimeMonitor.ets:368:12
+
+
+105 ERROR: 10605028 ArkTS Compiler Error
+Error Message: Indexed access types are not supported (arkts-no-aliases-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:24:13
+
+
+106 ERROR: 10605138 ArkTS Compiler Error
+Error Message: Some of utility types are not supported (arkts-no-utility-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:124:25
+
+
+107 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:126:7
+
+
+108 ERROR: 10605144 ArkTS Compiler Error
+Error Message: Usage of standard library is restricted (arkts-limited-stdlib) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:151:7
+
+
+109 ERROR: 10605028 ArkTS Compiler Error
+Error Message: Indexed access types are not supported (arkts-no-aliases-by-index) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:227:28
+
+
+110 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:256:29
+
+
+111 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:304:20
+
+
+112 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:323:12
+
+
+113 ERROR: 10605099 ArkTS Compiler Error
+Error Message: It is possible to spread only arrays or classes derived from arrays into the rest parameter or array literals (arkts-no-spread) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/monitoring/ReminderScheduler.ets:392:11
+
+
+114 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:20:12
+
+
+115 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:21:22
+
+
+116 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:26:19
+
+
+117 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:31:18
+
+
+118 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:35:15
+
+
+119 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:39:20
+
+
+120 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:50:12
+
+
+121 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:51:22
+
+
+122 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:56:19
+
+
+123 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:61:18
+
+
+124 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:65:15
+
+
+125 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:69:20
+
+
+126 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:80:12
+
+
+127 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:81:22
+
+
+128 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:86:19
+
+
+129 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:91:18
+
+
+130 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:95:15
+
+
+131 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:99:20
+
+
+132 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:380:20
+
+
+133 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:381:24
+
+
+134 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:386:21
+
+
+135 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:391:20
+
+
+136 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:395:17
+
+
+137 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:399:22
+
+
+138 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type 'HealthData[]' is not assignable to parameter of type '"RULE_BASED" | "AI_MODEL" | "HYBRID"'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/ai/RiskAssessmentEngine.ets:144:9
+
+
+139 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'size' in type 'RadarChart' is not assignable to the same property in base type 'CustomComponent'.
+  Type 'number' is not assignable to type '(value: SizeOptions) => CommonAttribute'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/RadarChart.ets:4:10
+
+
+140 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '(context: CanvasRenderingContext2D) => void' is not assignable to parameter of type 'CanvasRenderingContext2D | DrawingRenderingContext'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/RadarChart.ets:56:14
+
+
+141 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'size' in type 'GaugeChart' is not assignable to the same property in base type 'CustomComponent'.
+  Type 'number' is not assignable to type '(value: SizeOptions) => CommonAttribute'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/GaugeChart.ets:4:9
+
+
+142 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '(context: CanvasRenderingContext2D) => void' is not assignable to parameter of type 'CanvasRenderingContext2D | DrawingRenderingContext'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/GaugeChart.ets:40:14
+
+
+143 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '{ horizontal: number; vertical: number; }' is not assignable to parameter of type 'Length | Padding | LocalizedPadding'.
+  Object literal may only specify known properties, and 'horizontal' does not exist in type 'Resource | Padding | LocalizedPadding'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/SuggestionsList.ets:82:26
+
+
+144 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '{ horizontal: number; vertical: number; }' is not assignable to parameter of type 'Length | Padding | LocalizedPadding'.
+  Object literal may only specify known properties, and 'horizontal' does not exist in type 'Resource | Padding | LocalizedPadding'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/SuggestionsList.ets:159:26
+
+
+145 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '{ horizontal: number; vertical: number; }' is not assignable to parameter of type 'Length | Padding | LocalizedPadding'.
+  Object literal may only specify known properties, and 'horizontal' does not exist in type 'Resource | Padding | LocalizedPadding'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/components/SuggestionsList.ets:183:15
+
+
+146 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type 'string' is not assignable to type '"LOW" | "MEDIUM" | "HIGH" | "CRITICAL"'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:102:7
+
+
+147 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type '{ hypertension: { disease: string; label: string; probability: number; level: string; color: string; factors: string[]; evidence: string; }; diabetes: { disease: string; label: string; probability: number; level: string; color: string; factors: string[]; evidence: string; }; fall: { ...; }; frailty: { ...; }; sarcop...' is not assignable to type 'RisksMap'.
+  The types of 'hypertension.level' are incompatible between these types.
+    Type 'string' is not assignable to type '"LOW" | "MEDIUM" | "HIGH" | "CRITICAL"'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:103:7
+
+
+148 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type '{ hypertension: { disease: string; label: string; probability: number; level: string; color: string; factors: string[]; evidence: string; }; diabetes: { disease: string; label: string; probability: number; level: string; color: string; factors: string[]; evidence: string; }; fall: { ...; }; frailty: { ...; }; sarcop...' is not assignable to type 'RisksMap'.
+  The types of 'hypertension.level' are incompatible between these types.
+    Type 'string' is not assignable to type '"LOW" | "MEDIUM" | "HIGH" | "CRITICAL"'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:127:7
+
+
+149 ERROR: 10505001 ArkTS Compiler Error
+Error Message: 'private' modifier cannot be used here. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:144:3
+
+
+150 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Modifiers cannot appear here. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:144:3
+
+
+151 ERROR: 10505001 ArkTS Compiler Error
+Error Message: 'private' modifier cannot be used here. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:200:3
+
+
+152 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Modifiers cannot appear here. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:200:3
+
+
+153 ERROR: 10505001 ArkTS Compiler Error
+Error Message: 'private' modifier cannot be used here. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:320:3
+
+
+154 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Modifiers cannot appear here. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:320:3
+
+
+155 ERROR: 10505001 ArkTS Compiler Error
+Error Message: 'private' modifier cannot be used here. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:327:3
+
+
+156 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Modifiers cannot appear here. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/riskAssessmentMock.ets:327:3
+
+
+157 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '{ horizontal: number; vertical: number; }' is not assignable to parameter of type 'Length | Padding | LocalizedPadding'.
+  Object literal may only specify known properties, and 'horizontal' does not exist in type 'Resource | Padding | LocalizedPadding'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:263:16
+
+
+158 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'scrollable' does not exist on type 'RowAttribute'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:464:10
+
+
+159 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '{ title: string; message: string; primaryText: string; }' is not assignable to parameter of type 'AlertDialogParamWithConfirm | AlertDialogParamWithButtons | AlertDialogParamWithOptions'.
+  Object literal may only specify known properties, and 'primaryText' does not exist in type 'AlertDialogParamWithConfirm | AlertDialogParamWithButtons | AlertDialogParamWithOptions'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:535:9
+
+
+160 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '{ title: string; message: string; primaryText: string; }' is not assignable to parameter of type 'AlertDialogParamWithConfirm | AlertDialogParamWithButtons | AlertDialogParamWithOptions'.
+  Object literal may only specify known properties, and 'primaryText' does not exist in type 'AlertDialogParamWithConfirm | AlertDialogParamWithButtons | AlertDialogParamWithOptions'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:562:9
+
+
+161 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type 'string' is not assignable to type '"heart_rate" | "blood_pressure" | "blood_sugar" | "temperature" | "weight"'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:428:7
+
+
+162 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type 'string' is not assignable to type '"CRITICAL" | "INFO" | "WARNING" | "DANGER"'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/mock/monitoringMock.ets:429:7
+
+
+COMPILE RESULT:FAIL {ERROR:163 WARN:104}
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+
+> hvigor ERROR: BUILD FAILED in 50 s 255 ms 
+
+Process finished with exit code -1

@@ -10,7 +10,7 @@ interface EnvConfig {
 }
 
 const ENV_MAP: Record<EnvType, EnvConfig> = {
-  [EnvType.DEV]: { BASE_URL: 'http://192.168.91.233:8080', UPLOAD_URL: 'http://192.168.91.233:8080/upload' },
+  [EnvType.DEV]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };

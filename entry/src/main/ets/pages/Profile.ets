@@ -4,6 +4,15 @@ import { Footer } from '../components/Footer';
 import { AccessibilitySettingsPanel, FirstTimeGuide } from '../components/GuideComponents';
 import { NetworkStatusBanner } from '../components/ErrorComponents';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
+import { HttpUtil } from '../common/utils/HttpUtil';
+import { ToastUtil } from '../common/utils/ToastUtil';
+
+interface UserInfo {
+  username: string;
+  avatar: string;
+  age: number;
+  gender: string;
+}
 
 interface MenuItem {
   icon: string;
@@ -180,7 +189,16 @@ struct Profile {
               })
               .accessibilityText('退出登录按钮')
               .onClick(() => {
-                router.pushUrl({ url: 'pages/Login' });
+                try {
+                  AppStorage.setOrCreate<boolean>('isLoggedIn', false);
+                  AppStorage.setOrCreate<string>('token', '');
+                  AppStorage.setOrCreate<UserInfo | null>('userInfo', null);
+                  HttpUtil.clearToken();
+                  ToastUtil.showInfo('已退出登录');
+                  router.replaceUrl({ url: 'pages/Login' });
+                } catch (error) {
+                  console.error('退出登录失败:', error);
+                }
               });
           }
           .width('85%')

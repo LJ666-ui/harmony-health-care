@@ -93,6 +93,7 @@ struct Login {
         if (response.data && response.data.token) {
           try {
             AppStorage.setOrCreate<string>('token', response.data.token);
+            HttpUtil.saveToken(response.data.token);
           } catch (error) {
             console.error('保存Token失败:', error);
           }

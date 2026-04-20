@@ -42,6 +42,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/login",
                         "/user/register",
                         "/ai/**",
+                        "/herbal/**",  // 药材百科接口无需登录
                         "/error",
                         "/uploads/**",
                         "/api/rehab/action/list",

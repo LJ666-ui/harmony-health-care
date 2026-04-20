@@ -1,5 +1,4 @@
 import promptAction from '@ohos.promptAction';
-import dataStorage from '@ohos.data.storage';
 import http from '@ohos.net.http';
 import connection from '@ohos.net.connection';
 import { getBaseUrl } from '../constants/ApiConstants';
@@ -428,9 +427,11 @@ export class HttpUtil {
 
   static getToken(): string | null {
     try {
-      const storage = dataStorage.getStorageSync('token_storage');
-      const token = storage.getSync('token', '');
-      return token as string;
+      const token: string | undefined = AppStorage.get<string>('token');
+      if (token && token.length > 0) {
+        return token;
+      }
+      return null;
     } catch (error) {
       console.error('[HttpUtil] 获取Token失败:', error);
       return null;
@@ -439,9 +440,7 @@ export class HttpUtil {
 
   static saveToken(token: string): void {
     try {
-      const storage = dataStorage.getStorageSync('token_storage');
-      storage.putSync('token', token);
-      storage.flushSync();
+      AppStorage.setOrCreate<string>('token', token);
     } catch (error) {
       console.error('[HttpUtil] 保存Token失败:', error);
     }
@@ -449,9 +448,7 @@ export class HttpUtil {
 
   static clearToken(): void {
     try {
-      const storage = dataStorage.getStorageSync('token_storage');
-      storage.deleteSync('token');
-      storage.flushSync();
+      AppStorage.setOrCreate<string>('token', '');
     } catch (error) {
       console.error('[HttpUtil] 清除Token失败:', error);
     }

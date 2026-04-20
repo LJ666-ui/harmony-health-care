@@ -14,12 +14,30 @@ export interface FoodItem {
   applicableDisease: string;
   efficacy: string;
   dietaryTaboo: string;
+  category?: string;
 }
 
 interface PageResultData<T> {
   records: T[];
   total: number;
 }
+
+const CATEGORY_MAP: Record<string, string> = {
+  '\u7CA5': '\u517B\u751F\u7CA5',
+  '\u7CA5\u54C1': '\u517B\u751F\u7CA5',
+  '\u6C64': '\u6C54\u54C1',
+  '\u6C54': '\u6C54\u54C1',
+  '\u8336': '\u8336\u996E',
+  '\u996E': '\u8336\u996E',
+  '\u6CFD': '\u8336\u996E',
+  '\u836F\u80B4': '\u836F\u80B4',
+  '\u7FB9': '\u836F\u80B4',
+  '\u7096': '\u836F\u80B2',
+  '\u71AC': '\u836F\u80B2',
+  '\u84B8': '\u84B8\u83DC',
+  '\u51C9': '\u51C9\u83DC',
+  '\u7092': '\u5BB6\u5E38\u83DC'
+};
 
 @Entry
 @Component
@@ -35,7 +53,7 @@ struct FoodEncyclopediaPage {
   @State pageSize: number = 20;
   @State hasMore: boolean = true;
 
-  private categories: string[] = ['全部', '降血压', '降血糖', '降血脂', '健脾', '养胃', '清热', '补钙', '美容'];
+  private categories: string[] = ['全部', '养生粥', '汤品', '茶饮', '药膳', '蒸菜', '家常菜'];
   private recordId: number | undefined = undefined;
 
   aboutToAppear(): void {
@@ -70,18 +88,35 @@ struct FoodEncyclopediaPage {
       let url: string = ApiConstants.FOOD_PAGE + '?page=' + this.currentPage + '&size=' + this.pageSize;
 
       if (this.searchText.trim()) {
-        url = url + '&foodName=' + encodeURIComponent(this.searchText.trim());
+        url = url + '&keyword=' + encodeURIComponent(this.searchText.trim());
       }
 
       if (this.selectedCategory !== '全部') {
-        url = url + '&efficacy=' + encodeURIComponent(this.selectedCategory);
+        url = url + '&category=' + encodeURIComponent(this.selectedCategory);
       }
 
       const response: BaseResponse<PageResultData<FoodItem>> = await HttpUtil.get<PageResultData<FoodItem>>(url);
 
       if (response.success && response.data) {
         const data: PageResultData<FoodItem> = response.data;
-        const list: FoodItem[] = data.records || [];
+        let list: FoodItem[] = data.records || [];
+
+        const resultList: FoodItem[] = [];
+        for (let i = 0; i < list.length; i++) {
+          const item: FoodItem = list[i];
+          const newItem: FoodItem = {
+            id: item.id,
+            foodId: item.foodId,
+            foodName: item.foodName,
+            dietTherapy: item.dietTherapy,
+            applicableDisease: item.applicableDisease,
+            efficacy: item.efficacy,
+            dietaryTaboo: item.dietaryTaboo,
+            category: this.getFoodCategory(item.foodName)
+          };
+          resultList.push(newItem);
+        }
+        list = resultList;
 
         if (isRefresh) {
           this.foods = list;
@@ -135,6 +170,16 @@ struct FoodEncyclopediaPage {
     if (!this.hasMore || this.isLoading) return;
     this.currentPage++;
     this.loadFoods();
+  }
+
+  getFoodCategory(foodName: string): string {
+    const keys: string[] = Object.keys(CATEGORY_MAP);
+    for (let i = 0; i < keys.length; i++) {
+      if (foodName.indexOf(keys[i]) >= 0) {
+        return CATEGORY_MAP[keys[i]];
+      }
+    }
+    return '\u5176\u4ED6';
   }
 
   getFoodEmoji(foodName: string): string {
@@ -201,10 +246,14 @@ struct FoodEncyclopediaPage {
   }
 
   navigateToFoodDetail(food: FoodItem): void {
-    router.pushUrl({
-      url: 'pages/FoodDetailPage',
-      params: { foodId: food.id.toString(), foodName: food.foodName }
-    });
+    try {
+      router.pushUrl({
+        url: 'pages/FoodDetailPage',
+        params: { foodId: food.id.toString(), foodName: food.foodName }
+      });
+    } catch (e) {
+      console.error('\u9875\u9762\u8DF3\u8F6C\u5931\u8D25:', e);
+    }
   }
 
   build() {
@@ -337,56 +386,104 @@ struct FoodEncyclopediaPage {
             List() {
               ForEach(this.foods, (food: FoodItem) => {
                 ListItem() {
-                  Row() {
-                    Column() {
-                      Text(this.getFoodEmoji(food.foodName))
-                        .fontSize(36)
-                    }
-                    .width(64)
-                    .height(64)
-                    .backgroundColor('#FFF7E6')
-                    .borderRadius(12)
-                    .justifyContent(FlexAlign.Center)
-                    .alignItems(HorizontalAlign.Center)
+                  Column() {
+                    Row() {
+                      Column() {
+                        Text(this.getFoodEmoji(food.foodName))
+                          .fontSize(36)
+                      }
+                      .width(64)
+                      .height(64)
+                      .backgroundColor('#FFF7E6')
+                      .borderRadius(12)
+                      .justifyContent(FlexAlign.Center)
+                      .alignItems(HorizontalAlign.Center)
 
-                    Column() {
-                      Text(food.foodName)
-                        .fontSize(this.isElderMode ? 19 : 16)
-                        .fontWeight(FontWeight.Bold)
-                        .fontColor('#333333')
-                        .maxLines(1)
+                      Column() {
+                        Row() {
+                          Text(food.foodName)
+                            .fontSize(this.isElderMode ? 19 : 16)
+                            .fontWeight(FontWeight.Bold)
+                            .fontColor('#333333')
+                            .maxLines(1)
+                            .layoutWeight(1)
 
-                      Text(this.getShortSummary(food))
-                        .fontSize(this.isElderMode ? 15 : 12)
-                        .fontColor('#999999')
-                        .maxLines(1)
-                        .margin({ top: 4 })
+                          if (food.category && food.category !== '其他') {
+                            Text(food.category)
+                              .fontSize(10)
+                              .fontColor('#1677FF')
+                              .backgroundColor('#E6F4FF')
+                              .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                              .borderRadius(8)
+                              .margin({ left: 8 })
+                          }
+                        }
+                        .width('100%')
 
-                      Row() {
-                        Text('\u{1F373} ' + this.getRecipeCount(food.dietTherapy).toString() + '\u9053\u98DF\u7597\u65B9')
-                          .fontSize(11)
-                          .fontColor('#FA8C16')
-                          .backgroundColor('#FFF7E6')
-                          .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-                          .borderRadius(4)
+                        Text(this.getShortSummary(food))
+                          .fontSize(this.isElderMode ? 15 : 12)
+                          .fontColor('#999999')
+                          .maxLines(1)
+                          .margin({ top: 4 })
 
-                        if (food.efficacy && food.efficacy.length > 0) {
-                          Text(food.efficacy.substring(0, 4))
+                        Row() {
+                          Text('\u{1F373} ' + this.getRecipeCount(food.dietTherapy).toString() + '\u9053\u98DF\u7597\u65B9')
                             .fontSize(11)
-                            .fontColor('#52C41A')
-                            .backgroundColor('#F6FFED')
+                            .fontColor('#FA8C16')
+                            .backgroundColor('#FFF7E6')
+                            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                            .borderRadius(4)
+
+                          if (food.efficacy && food.efficacy.length > 0) {
+                            Text(food.efficacy.substring(0, 4))
+                              .fontSize(11)
+                              .fontColor('#52C41A')
+                              .backgroundColor('#F6FFED')
+                              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                              .borderRadius(4)
+                              .margin({ left: 8 })
+                          }
+
+                          Text('\u26F0\uFE0F \u7B80\u5355')
+                            .fontSize(11)
+                            .fontColor('#722ED1')
+                            .backgroundColor('#F9F0FF')
+                            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                            .borderRadius(4)
+                            .margin({ left: 8 })
+
+                          Text('\u23F1\uFE0F 30\u5206\u949F')
+                            .fontSize(11)
+                            .fontColor('#FA541C')
+                            .backgroundColor('#FFF2E8')
                             .padding({ left: 8, right: 8, top: 3, bottom: 3 })
                             .borderRadius(4)
                             .margin({ left: 8 })
                         }
+                        .width('100%')
+                        .margin({ top: 6 })
                       }
-                      .width('100%')
-                      .margin({ top: 6 })
+                      .layoutWeight(1)
+                      .alignItems(HorizontalAlign.Start)
+                      .margin({ left: 12 })
                     }
-                    .layoutWeight(1)
-                    .alignItems(HorizontalAlign.Start)
-                    .margin({ left: 12 })
+                    .width('100%')
+                    .alignItems(VerticalAlign.Top)
+
+                    if (food.applicableDisease && food.applicableDisease.length > 10) {
+                      Text('\u9002\u5408: ' + food.applicableDisease.substring(0, 20) + '...')
+                        .fontSize(11)
+                        .fontColor('#666666')
+                        .width('100%')
+                        .maxLines(1)
+                        .margin({ top: 8 })
+                        .padding(8)
+                        .backgroundColor('#FAFAFA')
+                        .borderRadius(6)
+                    }
                   }
+                  .width('100%')
+                  .padding({ bottom: 4 })
                 }
                 .width('100%')
                 .margin({ bottom: 10 })

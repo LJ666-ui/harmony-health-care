@@ -14,7 +14,11 @@ import {
   COLUMN_DEVICE_TYPE,
   COLUMN_DEVICE_MODEL,
   COLUMN_PAIRED,
-  COLUMN_LAST_CONNECT_TIME
+  COLUMN_LAST_CONNECT_TIME,
+  COLUMN_DATA_PERMISSION,
+  COLUMN_PERMISSION_TYPES,
+  COLUMN_SIGNAL_STRENGTH,
+  COLUMN_DISTANCE
 } from '../utils/DatabaseConstants';
 import relationalStore from '@ohos.data.relationalStore';
 
@@ -28,6 +32,10 @@ export interface BoundDevice {
   lastConnectTime: number;
   isOnline: boolean;
   syncStatus: 'success' | 'syncing' | 'failed' | 'pending';
+  dataPermission: 'allowed' | 'denied';
+  permissionTypes: string[];
+  signalStrength: number;
+  distance: number;
 }
 
 export interface SyncLogItem {
@@ -77,11 +85,15 @@ struct DeviceManagePage {
       const predicates = new relationalStore.RdbPredicates(TABLE_DEVICE_CACHE);
       predicates.equalTo(COLUMN_PAIRED, 1);
       const result = await RdbHelper.queryByPredicates(predicates, [
-        COLUMN_ID, COLUMN_DEVICE_ID, COLUMN_DEVICE_NAME, COLUMN_DEVICE_TYPE, COLUMN_DEVICE_MODEL, COLUMN_LAST_CONNECT_TIME
+        COLUMN_ID, COLUMN_DEVICE_ID, COLUMN_DEVICE_NAME, COLUMN_DEVICE_TYPE, COLUMN_DEVICE_MODEL,
+        COLUMN_LAST_CONNECT_TIME, COLUMN_DATA_PERMISSION, COLUMN_PERMISSION_TYPES,
+        COLUMN_SIGNAL_STRENGTH, COLUMN_DISTANCE
       ]);
 
+      const localDeviceMap: Record<string, BoundDevice> = {};
+
       if (result && result.rowCount > 0) {
-        const devices: BoundDevice[] = [];
+        console.info('[DeviceManage] 本地缓存找到 ' + result.rowCount + ' 条设备记录');
         while (result.goToNextRow()) {
           const rowId: number = result.getLong(0);
           const devId: string = result.getString(1);
@@ -89,8 +101,19 @@ struct DeviceManagePage {
           const devType: string = result.getString(3);
           const devModel: string = result.getString(4);
           const lastConnect: number = result.getLong(5);
+          const dataPermission: string = result.getString(6) || 'allowed';
+          const permissionTypesStr: string = result.getString(7) || '[]';
+          const signalStrength: number = result.getLong(8);
+          const distance: number = result.getLong(9);
 
-          devices.push({
+          let permissionTypes: string[] = [];
+          try {
+            permissionTypes = JSON.parse(permissionTypesStr);
+          } catch (e) {
+            permissionTypes = [];
+          }
+
+          localDeviceMap[devId] = {
             id: rowId,
             deviceId: devId,
             deviceName: devName,
@@ -99,35 +122,132 @@ struct DeviceManagePage {
             isPaired: true,
             lastConnectTime: lastConnect,
             isOnline: true,
-            syncStatus: 'success'
-          });
+            syncStatus: 'success',
+            dataPermission: dataPermission as 'allowed' | 'denied',
+            permissionTypes: permissionTypes,
+            signalStrength: signalStrength,
+            distance: distance
+          };
         }
         result.close();
-        this.boundDevices = devices;
       } else {
+        console.info('[DeviceManage] 本地缓存无设备记录，尝试从后端加载');
         if (result) result.close();
       }
 
+      console.info('[DeviceManage] 开始请求后端 /device/list ...');
+      let apiSuccess: boolean = false;
       try {
-        const onlineResponse: BaseResponse<BoundDevice[]> = await HttpUtil.get<BoundDevice[]>(ApiConstants.DEVICE_ONLINE);
-        if (onlineResponse.success && onlineResponse.data) {
-          const onlineList: BoundDevice[] = onlineResponse.data || [];
-          for (let i = 0; i < this.boundDevices.length; i++) {
-            let foundOnline: boolean = false;
-            for (let j = 0; j < onlineList.length; j++) {
-              if (onlineList[j].deviceId === this.boundDevices[i].deviceId) {
-                foundOnline = true;
-                break;
-              }
+        const listResponse: BaseResponse<Object[]> = await HttpUtil.get<Object[]>(ApiConstants.DEVICE_LIST);
+        console.info('[DeviceManage] /device/list 响应: success=' + listResponse.success +
+          ' code=' + listResponse.code + ' msg=' + listResponse.message +
+          ' dataType=' + typeof listResponse.data +
+          ' dataLength=' + (Array.isArray(listResponse.data) ? listResponse.data.length : 'N/A'));
+
+        if (listResponse.success && Array.isArray(listResponse.data) && listResponse.data.length > 0) {
+          apiSuccess = true;
+          console.info('[DeviceManage] 后端返回 ' + listResponse.data.length + ' 条设备，开始解析...');
+          const rawItems: Object[] = listResponse.data;
+
+          for (let i = 0; i < rawItems.length; i++) {
+            const item: Record<string, Object> = rawItems[i] as Record<string, Object>;
+            const allKeys: string = Object.keys(item).join(',');
+            console.info('[DeviceManage] 后端设备[' + i + '] keys=[' + allKeys + '] raw=' + JSON.stringify(item));
+
+            const devId: string = String(item['deviceId'] || item['device_id'] || '');
+            if (!devId) {
+              console.warn('[DeviceManage] 设备[' + i + '] 无 deviceId，跳过');
+              continue;
             }
-            this.boundDevices[i].isOnline = foundOnline;
+            if (localDeviceMap[devId]) {
+              console.info('[DeviceManage] 设备[' + i + '] ' + devId + ' 已存在于本地缓存，跳过');
+              continue;
+            }
+
+            let lastConnectTime: number = Date.now();
+            const lastSyncVal = item['lastSyncTime'] || item['last_sync_time'];
+            if (lastSyncVal) {
+              try { lastConnectTime = new Date(String(lastSyncVal)).getTime(); } catch (e) { /* ignore */ }
+            }
+            const bindTimeVal = item['bindTime'] || item['bind_time'];
+            if (bindTimeVal && !lastSyncVal) {
+              try { lastConnectTime = new Date(String(bindTimeVal)).getTime(); } catch (e) { /* ignore */ }
+            }
+
+            let permTypes: string[] = ['血压数据', '心率数据', '血氧数据'];
+            const permVal = item['permissionTypes'] || item['permission_types'];
+            if (permVal instanceof Array && (permVal as Array<Object>).length > 0) {
+              permTypes = permVal as string[];
+            }
+
+            const statusVal = item['status'];
+            const isOnline: boolean = statusVal != null &&
+              ((statusVal === 1) || (statusVal === '1') ||
+                (statusVal === 'online') || (String(statusVal) === '1'));
+
+            localDeviceMap[devId] = {
+              id: 0,
+              deviceId: devId,
+              deviceName: String(item['deviceName'] || item['device_name'] || '未知设备'),
+              deviceType: String(item['deviceType'] || item['device_type'] || ''),
+              deviceModel: String(item['deviceModel'] || item['device_model'] || ''),
+              isPaired: true,
+              lastConnectTime: lastConnectTime,
+              isOnline: isOnline,
+              syncStatus: 'success',
+              dataPermission: 'allowed',
+              permissionTypes: permTypes,
+              signalStrength: 80,
+              distance: 0
+            };
+            console.info('[DeviceManage] ✓ 添加设备: ' + devId +
+              ' name=' + (item['deviceName'] || item['device_name']) +
+              ' online=' + isOnline);
+          }
+        } else {
+          console.warn('[DeviceManage] /device/list 无有效数据: success=' + listResponse.success +
+            ' isArray=' + Array.isArray(listResponse.data) +
+            ' len=' + (Array.isArray(listResponse.data) ? listResponse.data.length : '-') +
+            ' msg=' + listResponse.message +
+            ' code=' + listResponse.code);
+        }
+      } catch (apiError) {
+        console.error('[DeviceManage] /device/list 请求异常:', JSON.stringify(apiError));
+      }
+
+      if (!apiSuccess && Object.keys(localDeviceMap).length === 0) {
+        console.warn('[DeviceManage] 本地和后端均无设备数据，检查: 1.是否已登录 2.后端服务状态 3.数据库user_id匹配');
+      }
+
+      const devices: BoundDevice[] = [];
+      const keys: string[] = Object.keys(localDeviceMap);
+      for (let k = 0; k < keys.length; k++) {
+        devices.push(localDeviceMap[keys[k]]);
+      }
+      this.boundDevices = devices;
+      console.info('[DeviceManage] 最终渲染设备数: ' + this.boundDevices.length);
+
+      try {
+        const onlineResponse: BaseResponse<Object[]> = await HttpUtil.get<Object[]>(ApiConstants.DEVICE_ONLINE);
+        if (onlineResponse.success && Array.isArray(onlineResponse.data)) {
+          const onlineList: Object[] = onlineResponse.data;
+          const onlineIds: Record<string, boolean> = {};
+          for (let j = 0; j < onlineList.length; j++) {
+            const ol = onlineList[j] as Record<string, Object>;
+            const olDevId = String(ol['deviceId'] || ol['device_id'] || '');
+            if (olDevId) {
+              onlineIds[olDevId] = true;
+            }
+          }
+          for (let i = 0; i < this.boundDevices.length; i++) {
+            this.boundDevices[i].isOnline = !!onlineIds[this.boundDevices[i].deviceId];
           }
         }
       } catch (e) {
-        console.error('\u68C0\u67E5\u5728\u7EBF\u72B6\u6001\u5931\u8D25:', e);
+        console.error('[DeviceManage] 检查在线状态失败:', e);
       }
     } catch (e) {
-      console.error('\u52A0\u8F7D\u5DF2\u7ED1\u5B9A\u8BBE\u5907\u5931\u8D25:', e);
+      console.error('[DeviceManage] loadBoundDevices 总体异常:', JSON.stringify(e));
     } finally {
       this.isLoadingDevices = false;
     }
@@ -163,7 +283,7 @@ struct DeviceManagePage {
 
   async triggerSync(device: BoundDevice): Promise<void> {
     if (!device.isOnline) {
-      ToastUtil.showSuccess('\u8BBE\u5907\u79BB\u7EBF\uFF0C\u65E0\u6CD5\u540C\u6B65');
+      ToastUtil.showSuccess('设备离线，无法同步');
       return;
     }
 
@@ -184,23 +304,50 @@ struct DeviceManagePage {
           id: 'log' + Date.now(),
           deviceId: device.deviceId,
           deviceName: device.deviceName,
-          action: '\u6570\u636E\u540C\u6B65',
-          dataType: '\u5065\u5EBB\u6570\u636E',
+          action: '数据同步',
+          dataType: '健康数据',
           timestamp: this.formatTime(new Date()),
           status: 'success',
-          detail: '\u6210\u529F\u540C\u6B65'
+          detail: '成功同步'
         };
         this.syncLogs.unshift(log);
 
-        ToastUtil.showSuccess('\u540C\u6B65\u6210\u529F');
+        ToastUtil.showSuccess('同步成功');
       } else {
         device.syncStatus = 'failed';
-        ToastUtil.showSuccess('\u540C\u6B65\u5931\u8D25');
+        ToastUtil.showSuccess('同步失败');
       }
     } catch (e) {
       device.syncStatus = 'failed';
-      console.error('\u540C\u6B65\u5931\u8D25:', e);
-      ToastUtil.showSuccess('\u540C\u6B65\u5931\u8D25');
+      console.error('同步失败:', e);
+      ToastUtil.showSuccess('同步失败');
+    }
+  }
+
+  async setDataPermission(device: BoundDevice, permission: 'allowed' | 'denied'): Promise<void> {
+    try {
+      const permissionData: Record<string, Object> = {};
+      permissionData['deviceId'] = device.deviceId;
+      permissionData['permission'] = permission;
+
+      const response: BaseResponse<Object> = await HttpUtil.post<Object>('/device/permission/set', permissionData);
+
+      if (response.success) {
+        device.dataPermission = permission;
+
+        const predicates = new relationalStore.RdbPredicates(TABLE_DEVICE_CACHE);
+        predicates.equalTo(COLUMN_DEVICE_ID, device.deviceId);
+        const updateValues: relationalStore.ValuesBucket = {};
+        updateValues[COLUMN_DATA_PERMISSION] = permission;
+        await RdbHelper.update(TABLE_DEVICE_CACHE, updateValues, predicates);
+
+        ToastUtil.showSuccess(permission === 'allowed' ? '已允许设备访问健康数据' : '已禁止设备访问健康数据');
+      } else {
+        ToastUtil.showSuccess(response.message ? response.message : '权限设置失败');
+      }
+    } catch (e) {
+      console.error('设置数据权限失败:', e);
+      ToastUtil.showSuccess('权限设置失败');
     }
   }
 
@@ -352,84 +499,133 @@ struct DeviceManagePage {
               }.width('100%').height(250).justifyContent(FlexAlign.Center);
             } else {
               ForEach(this.boundDevices, (device: BoundDevice) => {
-                Row({ space: 12 }) {
-                  Stack({ alignContent: Alignment.BottomEnd }) {
-                    Column() {
-                      Text(this.getDeviceIcon(device.deviceType)).fontSize(30);
+                Column({ space: 10 }) {
+                  Row({ space: 12 }) {
+                    Stack({ alignContent: Alignment.BottomEnd }) {
+                      Column() {
+                        Text(this.getDeviceIcon(device.deviceType)).fontSize(30);
+                      }
+                      .width(58)
+                      .height(58)
+                      .backgroundColor(device.isOnline ? '#E6F7FF' : '#F5F5F5')
+                      .borderRadius(14)
+                      .justifyContent(FlexAlign.Center)
+                      .border({ width: 1, color: device.isOnline ? '#91D5FF' : '#D9D9D9' });
+
+                      Circle()
+                        .width(10)
+                        .height(10)
+                        .fill(device.isOnline ? '#52C41A' : '#D9D9D9')
+                        .border({ width: 2, color: '#FFFFFF' });
                     }
                     .width(58)
-                    .height(58)
-                    .backgroundColor(device.isOnline ? '#E6F7FF' : '#F5F5F5')
-                    .borderRadius(14)
-                    .justifyContent(FlexAlign.Center)
-                    .border({ width: 1, color: device.isOnline ? '#91D5FF' : '#D9D9D9' });
+                    .height(58);
 
-                    Circle()
-                      .width(10)
-                      .height(10)
-                      .fill(device.isOnline ? '#52C41A' : '#D9D9D9')
-                      .border({ width: 2, color: '#FFFFFF' });
-                  }
-                  .width(58)
-                  .height(58);
+                    Column({ space: 5 }) {
+                      Row({ space: 6 }) {
+                        Text(device.deviceName)
+                          .fontSize(this.isElderMode ? 17 : 15)
+                          .fontWeight(FontWeight.Bold)
+                          .fontColor('#333333')
+                          .maxLines(1)
+                          .layoutWeight(1);
 
-                  Column({ space: 5 }) {
-                    Row({ space: 6 }) {
-                      Text(device.deviceName)
-                        .fontSize(this.isElderMode ? 17 : 15)
-                        .fontWeight(FontWeight.Bold)
-                        .fontColor('#333333')
-                        .maxLines(1)
-                        .layoutWeight(1);
+                        Text(device.isOnline ? '在线' : '离线')
+                          .fontSize(10)
+                          .fontColor(device.isOnline ? '#FFFFFF' : '#999999')
+                          .backgroundColor(device.isOnline ? '#52C41A' : '#F0F0F0')
+                          .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                          .borderRadius(8);
+                      }
 
-                      Text(device.isOnline ? '\u5728\u7EBF' : '\u79BB\u7EBF')
-                        .fontSize(10)
-                        .fontColor(device.isOnline ? '#FFFFFF' : '#999999')
-                        .backgroundColor(device.isOnline ? '#52C41A' : '#F0F0F0')
-                        .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                        .borderRadius(8);
-                    }
+                      Text((device.deviceModel ? device.deviceModel : '') + ' · ' + device.deviceType)
+                        .fontSize(11)
+                        .fontColor('#999999');
 
-                    Text((device.deviceModel ? device.deviceModel : '') + ' · ' + device.deviceType)
-                      .fontSize(11)
-                      .fontColor('#999999');
+                      Row({ space: 10 }) {
+                        Text('上次同步: ' + this.getRelativeTime(device.lastConnectTime))
+                          .fontSize(10)
+                          .fontColor('#666666');
 
-                    Row({ space: 10 }) {
-                      Text('\u4E0A\u6B21\u540C\u6B65: ' + this.getRelativeTime(device.lastConnectTime))
-                        .fontSize(10)
-                        .fontColor('#666666');
+                        if (device.syncStatus === 'syncing') {
+                          Text('同步中...').fontSize(10).fontColor('#1677FF').fontWeight(FontWeight.Medium);
+                        } else if (device.syncStatus === 'failed') {
+                          Text('❌ 失败').fontSize(10).fontColor('#FF4D4F');
+                        }
+                      }
 
-                      if (device.syncStatus === 'syncing') {
-                        Text('\u540C\u6B65\u4E2D...').fontSize(10).fontColor('#1677FF').fontWeight(FontWeight.Medium);
-                      } else if (device.syncStatus === 'failed') {
-                        Text('\u274C \u5931\u8D25').fontSize(10).fontColor('#FF4D4F');
+                      Row({ space: 8 }) {
+                        if (device.dataPermission === 'allowed') {
+                          Text('✅ 允许访问数据')
+                            .fontSize(10)
+                            .fontColor('#52C41A')
+                            .backgroundColor('#F6FFED')
+                            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                            .borderRadius(8);
+                        } else {
+                          Text('🚫 禁止访问数据')
+                            .fontSize(10)
+                            .fontColor('#FF4D4F')
+                            .backgroundColor('#FFF1F0')
+                            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                            .borderRadius(8);
+                        }
+
+                        if (device.permissionTypes && device.permissionTypes.length > 0) {
+                          Text('权限: ' + device.permissionTypes.join(', '))
+                            .fontSize(9)
+                            .fontColor('#888888')
+                            .maxLines(1);
+                        }
                       }
                     }
-                  }
-                  .layoutWeight(1)
-                  .alignItems(HorizontalAlign.Start);
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start);
 
-                  Column({ space: 6 }) {
-                    if (device.isOnline) {
-                      Button('\u540C\u6B65')
+                    Column({ space: 6 }) {
+                      if (device.isOnline) {
+                        Button('同步')
+                          .width(54)
+                          .height(28)
+                          .fontSize(11)
+                          .fontColor('#FFFFFF')
+                          .backgroundColor('#1677FF')
+                          .borderRadius(14)
+                          .onClick(() => { this.triggerSync(device); });
+                      }
+                      Button('解绑')
                         .width(54)
                         .height(28)
                         .fontSize(11)
-                        .fontColor('#FFFFFF')
-                        .backgroundColor('#1677FF')
+                        .fontColor('#FF4D4F')
+                        .backgroundColor('#FFF1F0')
                         .borderRadius(14)
-                        .onClick(() => { this.triggerSync(device); });
+                        .border({ width: 1, color: '#FFCCC7' })
+                        .onClick(() => { this.unbindDevice(device); });
                     }
-                    Button('\u89E3\u7ED1')
-                      .width(54)
+                  }
+                  .width('100%');
+
+                  Row({ space: 8 }) {
+                    Text('🔐 数据权限设置:')
+                      .fontSize(12)
+                      .fontColor('#666666')
+                      .layoutWeight(1);
+
+                    Button(device.dataPermission === 'allowed' ? '禁止访问' : '允许访问')
                       .height(28)
                       .fontSize(11)
-                      .fontColor('#FF4D4F')
-                      .backgroundColor('#FFF1F0')
+                      .fontColor(device.dataPermission === 'allowed' ? '#FF4D4F' : '#52C41A')
+                      .backgroundColor(device.dataPermission === 'allowed' ? '#FFF1F0' : '#F6FFED')
                       .borderRadius(14)
-                      .border({ width: 1, color: '#FFCCC7' })
-                      .onClick(() => { this.unbindDevice(device); });
+                      .border({ width: 1, color: device.dataPermission === 'allowed' ? '#FFCCC7' : '#B7EB8F' })
+                      .onClick(() => {
+                        const newPermission = device.dataPermission === 'allowed' ? 'denied' : 'allowed';
+                        this.setDataPermission(device, newPermission);
+                      });
                   }
+                  .width('100%')
+                  .padding({ left: 70, right: 12 })
                 }
                 .width('100%')
                 .padding(14)

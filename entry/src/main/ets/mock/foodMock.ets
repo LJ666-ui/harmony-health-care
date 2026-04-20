@@ -1,5 +1,5 @@
 import { BaseResponse } from '../common/utils/HttpUtil';
-import { registerMockHandler, USE_MOCK } from './index';
+import { registerMockHandler, USE_MOCK, CallbackHandler } from './index';
 
 export interface FoodItem {
   id: number;
@@ -91,57 +91,75 @@ function findFoodById(id: number): FoodItem | undefined {
   return undefined;
 }
 
+interface MockPageData {
+  records: Object;
+  total: number;
+  page: number;
+  size: number;
+}
+
+class MockPageDataImpl implements MockPageData {
+  records: Object = [];
+  total: number = 0;
+  page: number = 0;
+  size: number = 0;
+
+  constructor(records: Object, total: number, page: number, size: number) {
+    this.records = records;
+    this.total = total;
+    this.page = page;
+    this.size = size;
+  }
+}
+
+function makeResponse<T>(success: boolean, message: string, code: number, data: T): BaseResponse<T> {
+  const result: BaseResponse<T> = { success: success, message: message, code: code, data: data };
+  return result;
+}
+
 if (USE_MOCK) {
-  registerMockHandler('/healthFood/page', async (url, data, params) => {
-    let pageVal = 1;
-    let sizeVal = 6;
-    if (params) {
-      const p = params as Record<string, Object>;
-      if (p['page']) {
-        pageVal = Number(p['page']);
+  registerMockHandler('/healthFood/page', new CallbackHandler<Object>(
+    async (_url: string, _data?: object, params?: Object): Promise<BaseResponse<Object>> => {
+      let pageVal = 1;
+      let sizeVal = 6;
+      if (params) {
+        const p = params as Record<string, Object>;
+        if (p['page']) {
+          pageVal = Number(p['page']);
+        }
+        if (p['size']) {
+          sizeVal = Number(p['size']);
+        }
       }
-      if (p['size']) {
-        sizeVal = Number(p['size']);
-      }
+      const start = (pageVal - 1) * sizeVal;
+
+      const pageData: MockPageData = new MockPageDataImpl(
+        mockFoods.slice(start, start + sizeVal),
+        mockFoods.length,
+        pageVal,
+        sizeVal
+      );
+
+      return makeResponse<Object>(true, '查询成功', 200, pageData as Object);
     }
-    const start = (pageVal - 1) * sizeVal;
+  ));
 
-    const pageData = {
-      records: mockFoods.slice(start, start + sizeVal),
-      total: mockFoods.length,
-      page: pageVal,
-      size: sizeVal
-    };
+  registerMockHandler('/healthFood/list', new CallbackHandler<Object>(
+    async (_url: string, _data?: object, _params?: Object): Promise<BaseResponse<Object>> => {
+      return makeResponse<Object>(true, '查询成功', 200, mockFoods as Object);
+    }
+  ));
 
-    return {
-      success: true,
-      message: '查询成功',
-      code: 200,
-      data: pageData
-    };
-  });
-
-  registerMockHandler('/healthFood/list', async () => {
-    return {
-      success: true,
-      message: '查询成功',
-      code: 200,
-      data: mockFoods
-    };
-  });
-
-  registerMockHandler('/healthFood/detail/', async (url) => {
-    const parts = url.split('/');
-    const lastPart = parts[parts.length - 1];
-    const id = parseInt(lastPart);
-    const food = findFoodById(id);
-    return {
-      success: !!food,
-      message: food ? '查询成功' : '食材不存在',
-      code: food ? 200 : 404,
-      data: food || null
-    };
-  });
+  registerMockHandler('/healthFood/detail/', new CallbackHandler<Object>(
+    async (url: string, _data?: object, _params?: Object): Promise<BaseResponse<Object>> => {
+      const parts: string[] = url.split('/');
+      const lastPart: string = parts[parts.length - 1];
+      const id: number = parseInt(lastPart);
+      const food: FoodItem | undefined = findFoodById(id);
+      return makeResponse<Object>(!!food, food ? '查询成功' : '食材不存在', food ? 200 : 404,
+        (food !== undefined ? food : null) as Object);
+    }
+  ));
 }
 
 export function getMockFoods(): FoodItem[] {

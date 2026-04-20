@@ -1,6 +1,6 @@
 import { BaseResponse } from '../common/utils/HttpUtil';
 
-export const USE_MOCK: boolean = true;
+export const USE_MOCK: boolean = false;
 
 let mockEnabled: boolean = true;
 
@@ -12,8 +12,23 @@ export function isMockEnabled(): boolean {
   return mockEnabled;
 }
 
-export interface MockHandler<T> {
-  (url: string, data?: object, params?: Object): Promise<BaseResponse<T>>;
+export abstract class MockHandler<T> {
+  abstract handle(url: string, data?: object, params?: Object): Promise<BaseResponse<T>>;
+}
+
+type HandlerCallback<T> = (url: string, data?: object, params?: Object) => Promise<BaseResponse<T>>;
+
+export class CallbackHandler<T> extends MockHandler<T> {
+  private callback: HandlerCallback<T>;
+
+  constructor(callback: HandlerCallback<T>) {
+    super();
+    this.callback = callback;
+  }
+
+  handle(url: string, data?: object, params?: Object): Promise<BaseResponse<T>> {
+    return this.callback(url, data, params);
+  }
 }
 
 interface HandlerEntry {
@@ -37,7 +52,7 @@ export function unregisterMockHandler(urlPattern: string): void {
 
 export async function resolveMockResponse<T>(
   url: string,
-  method: string,
+  _method: string,
   data?: object,
   params?: Object
 ): Promise<BaseResponse<T> | null> {
@@ -51,7 +66,7 @@ export async function resolveMockResponse<T>(
     if (url.indexOf(entry.pattern) >= 0) {
       console.log('[MockManager] 匹配Mock: ' + entry.pattern + ' -> ' + url);
       try {
-        const result = await entry.handler(url, data, params);
+        const result = await entry.handler.handle(url, data, params);
         return result as BaseResponse<T>;
       } catch (error) {
         console.error('[MockManager] Mock处理失败(' + entry.pattern + '):', error);

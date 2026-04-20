@@ -12,7 +12,11 @@ import {
   COLUMN_DEVICE_TYPE,
   COLUMN_DEVICE_MODEL,
   COLUMN_PAIRED,
-  COLUMN_LAST_CONNECT_TIME
+  COLUMN_LAST_CONNECT_TIME,
+  COLUMN_DATA_PERMISSION,
+  COLUMN_PERMISSION_TYPES,
+  COLUMN_SIGNAL_STRENGTH,
+  COLUMN_DISTANCE
 } from '../utils/DatabaseConstants';
 import relationalStore from '@ohos.data.relationalStore';
 
@@ -24,6 +28,8 @@ export interface DeviceInfo {
   deviceModel: string;
   isOnline: boolean;
   signalStrength: number;
+  distance: number;
+  rssi: number;
   bindTime: string | null;
 }
 
@@ -72,19 +78,21 @@ struct DeviceDiscoveryPage {
           const device: DeviceInfo = {
             id: item.deviceId ? item.deviceId : String(item.id),
             deviceId: item.deviceId ? item.deviceId : String(item.id),
-            deviceName: item.deviceName ? item.deviceName : '\u672A\u77E5\u8BBE\u5907',
-            deviceType: item.deviceType ? item.deviceType : '\u5065\u5EBB\u8BBE\u5907',
+            deviceName: item.deviceName ? item.deviceName : '未知设备',
+            deviceType: item.deviceType ? item.deviceType : '健身设备',
             deviceModel: item.deviceModel ? item.deviceModel : '',
-            isOnline: item.isOnline ? item.isOnline : false,
+            isOnline: item.isOnline !== undefined ? item.isOnline : true,
             signalStrength: item.signalStrength ? item.signalStrength : 80,
+            distance: item.distance !== undefined ? item.distance : 0,
+            rssi: item.rssi !== undefined ? item.rssi : -60,
             bindTime: item.bindTime
           };
           this.devices.push(device);
         }
       }
     } catch (e) {
-      console.error('\u53D1\u73B0\u8BBE\u5907\u5931\u8D25:', e);
-      ToastUtil.showSuccess('\u8FDE\u63A5\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC');
+      console.error('发现设备失败:', e);
+      ToastUtil.showSuccess('连接失败，请检查网络');
     } finally {
       this.isScanning = false;
       this.isLoading = false;
@@ -102,7 +110,7 @@ struct DeviceDiscoveryPage {
       const response: BaseResponse<Object> = await HttpUtil.post<Object>(ApiConstants.DEVICE_BIND, bindData);
 
       if (response.success) {
-        ToastUtil.showSuccess('\u8BBE\u5907\u7ED1\u5B9A\u6210\u529F');
+        ToastUtil.showSuccess('设备绑定成功');
 
         const cacheValues: relationalStore.ValuesBucket = {};
         cacheValues[COLUMN_DEVICE_ID] = device.deviceId;
@@ -111,20 +119,25 @@ struct DeviceDiscoveryPage {
         cacheValues[COLUMN_DEVICE_MODEL] = device.deviceModel;
         cacheValues[COLUMN_PAIRED] = 1;
         cacheValues[COLUMN_LAST_CONNECT_TIME] = Date.now();
+        cacheValues[COLUMN_DATA_PERMISSION] = 'allowed';
+        cacheValues[COLUMN_PERMISSION_TYPES] = JSON.stringify(['血压数据', '心率数据', '血氧数据']);
+        cacheValues[COLUMN_SIGNAL_STRENGTH] = device.signalStrength;
+        cacheValues[COLUMN_DISTANCE] = device.distance;
 
         try {
           await RdbHelper.insert(TABLE_DEVICE_CACHE, cacheValues);
+          console.log('写入本地设备缓存成功, deviceId:', device.deviceId);
         } catch (dbError) {
-          console.error('\u5199\u5165\u672C\u5730\u8BBE\u5907\u7F13\u5B58\u5931\u8D25:', dbError);
+          console.error('写入本地设备缓存失败:', dbError);
         }
 
         router.back();
       } else {
-        ToastUtil.showSuccess(response.message ? response.message : '\u7ED1\u5B9A\u5931\u8D25');
+        ToastUtil.showSuccess(response.message ? response.message : '绑定失败');
       }
     } catch (e) {
-      console.error('\u7ED1\u5B9A\u8BBE\u5907\u5931\u8D25:', e);
-      ToastUtil.showSuccess('\u7ED1\u5B9A\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC');
+      console.error('绑定设备失败:', e);
+      ToastUtil.showSuccess('绑定失败，请检查网络');
     }
   }
 
@@ -307,15 +320,44 @@ struct DeviceDiscoveryPage {
                           .padding({ left: GlobalTheme.getSpacingSM(this.isElderMode), right: GlobalTheme.getSpacingSM(this.isElderMode), top: GlobalTheme.getSpacingXS(this.isElderMode), bottom: GlobalTheme.getSpacingXS(this.isElderMode) })
                           .borderRadius(GlobalTheme.RADIUS_SM);
 
+                        if (device.deviceModel) {
+                          Text(device.deviceModel)
+                            .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                            .fontColor('#666666')
+                            .backgroundColor('#F5F5F5')
+                            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                            .borderRadius(GlobalTheme.RADIUS_SM);
+                        }
+
                         if (device.isOnline) {
-                          Text('\u25CF \u5728\u7EBF')
+                          Text('● 在线')
                             .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                             .fontColor(GlobalTheme.SUCCESS_COLOR)
                             .fontWeight(FontWeight.Bold);
                         } else {
-                          Text('\u79BB\u7EBF')
+                          Text('离线')
                             .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                             .fontColor(GlobalTheme.TEXT_HINT);
+                        }
+                      }
+
+                      Row({
+                        space: GlobalTheme.getSpacingSM(this.isElderMode)
+                      }) {
+                        if (device.distance > 0) {
+                          Text('📍 ' + device.distance.toFixed(1) + 'm')
+                            .fontSize(10)
+                            .fontColor('#999999');
+                        }
+
+                        Text('📶 ' + this.getSignalText(device.signalStrength) + ' (' + device.signalStrength + '%)')
+                          .fontSize(10)
+                          .fontColor(this.getSignalColor(device.signalStrength));
+
+                        if (device.rssi !== undefined && device.rssi !== 0) {
+                          Text('RSSI: ' + device.rssi + ' dBm')
+                            .fontSize(10)
+                            .fontColor('#BBBBBB');
                         }
                       }
                     }

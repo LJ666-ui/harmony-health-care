@@ -174,8 +174,15 @@ struct PrivacySettingPage {
       buttons: [{ text: '\u53D6\u6D88', color: '#999999' }, { text: '\u786E\u5B9A\u9000\u51FA', color: '#FF4D4F' }]
     }).then((result: promptAction.ShowDialogSuccessResponse) => {
       if (result.index === 1) {
-        ToastUtil.showInfo('\u5DF2\u9000\u51FA\u767B\u5F55');
-        router.replaceUrl({ url: 'pages/Login' });
+        try {
+          AppStorage.setOrCreate<boolean>('isLoggedIn', false);
+          AppStorage.setOrCreate<string>('token', '');
+          HttpUtil.clearToken();
+          ToastUtil.showInfo('已退出登录');
+          router.replaceUrl({ url: 'pages/Login' });
+        } catch (error) {
+          console.error('退出登录失败:', error);
+        }
       }
     });
   }

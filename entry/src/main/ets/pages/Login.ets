@@ -7,14 +7,19 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 interface UserInfo {
+  userId?: number;
   username: string;
-  avatar: string;
-  age: number;
-  gender: string;
+  userType?: number;
+  avatar?: string;
+  age?: number;
+  gender?: string;
 }
 interface LoginResponseData {
   token: string;
-  userInfo: UserInfo;
+  userId?: number;
+  username?: string;
+  userType?: number;
+  userInfo?: UserInfo;
 }
 
 interface LoginRequestData {
@@ -94,9 +99,21 @@ struct Login {
         }
 
         // 保存用户信息
-        if (response.data && response.data.userInfo) {
+        if (response.data) {
           try {
-            AppStorage.setOrCreate<UserInfo>('userInfo', response.data.userInfo);
+            const userInfo: UserInfo = response.data.userInfo || {
+              userId: response.data.userId,
+              username: response.data.username || '',
+              userType: response.data.userType,
+              avatar: '',
+              age: undefined,
+              gender: undefined
+            } as UserInfo;
+            AppStorage.setOrCreate<UserInfo>('userInfo', userInfo);
+            AppStorage.setOrCreate<string>('username', userInfo.username || '');
+            if (userInfo.userId) {
+              AppStorage.setOrCreate<number>('userId', userInfo.userId);
+            }
           } catch (error) {
             console.error('保存用户信息失败:', error);
           }

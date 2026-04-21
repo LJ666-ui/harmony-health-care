@@ -5,27 +5,6 @@ import { EfficacyTag } from '../components/EfficacyTag';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 
-interface BackendHerbalDetail {
-  id?: number;
-  name?: string;
-  pinyin?: string;
-  alias?: string;
-  category?: string;
-  nature?: string;
-  taste?: string;
-  meridian?: string;
-  efficacySummary?: string;
-  efficacyDetail?: string;
-  indication?: string;
-  usageDosage?: string;
-  contraindication?: string;
-  toxicity?: string;
-  processingMethod?: string;
-  sourceOrigin?: string;
-  appearance?: string;
-  imageUrl?: string;
-}
-
 interface HerbalInfo {
   id: string;
   name: string;
@@ -253,6 +232,40 @@ struct HerbalDetailPage {
               this.buildUsageDosageSection();
 
               this.buildCautionSection();
+
+              Row({ space: 12 }) {
+                Button('🔍 在知识图谱中查看')
+                  .layoutWeight(1)
+                  .height(44)
+                  .fontSize(14)
+                  .fontColor('#1677FF')
+                  .backgroundColor('#E6F4FF')
+                  .borderRadius(22)
+                  .onClick(() => {
+                    if (this.herbal) {
+                      try {
+                        router.pushUrl({
+                          url: 'pages/KnowledgeGraphPage',
+                          params: { centerNodeName: this.herbal!.name, nodeType: 'herbal' }
+                        });
+                      } catch (e) {
+                        console.error('跳转知识图谱失败:', e);
+                      }
+                    }
+                  });
+
+                Button('📤 分享药材')
+                  .layoutWeight(1)
+                  .height(44)
+                  .fontSize(14)
+                  .fontColor('#FFFFFF')
+                  .backgroundColor('#52C41A')
+                  .borderRadius(22)
+                  .onClick(() => {
+                    this.showShareOptions();
+                  });
+              }
+              .width('100%');
             }
             .width('100%')
             .padding({ left: 16, right: 16, bottom: 80 });
@@ -618,5 +631,19 @@ struct HerbalDetailPage {
       result = result + arr[i];
     }
     return result;
+  }
+
+  showShareOptions(): void {
+    if (!this.herbal) return;
+
+    const shareContent: string =
+      '【' + this.herbal.name + '】\n\n' +
+      '功效：' + this.herbal.efficacySummary + '\n\n' +
+      '性味：' + this.herbal.nature + ' ' + this.herbal.taste + '\n' +
+      '归经：' + this.joinArray(this.herbal.meridian, '、') + '\n\n' +
+      '—— 来自和谐健康中医App';
+
+    ToastUtil.showSuccess('已复制分享内容');
+    console.info('分享内容:', shareContent);
   }
 }

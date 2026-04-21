@@ -207,6 +207,12 @@ interface ApiConstantsInterface {
   HEALTH_STANDARD_GENDER: string;
 
   UPLOAD_3D: string;
+
+  APPOINTMENT_CREATE: string;
+  APPOINTMENT_LIST: string;
+  APPOINTMENT_MY: string;
+  APPOINTMENT_CANCEL: string;
+  APPOINTMENT_DETAIL: string;
 }
 
 export const ApiConstants: ApiConstantsInterface = {
@@ -382,5 +388,11 @@ export const ApiConstants: ApiConstantsInterface = {
   HEALTH_STANDARD_AGE_GROUP: '/healthStandard/ageGroup',
   HEALTH_STANDARD_GENDER: '/healthStandard/gender',
 
-  UPLOAD_3D: '/api/upload/3d'
+  UPLOAD_3D: '/api/upload/3d',
+
+  APPOINTMENT_CREATE: '/api/appointment/create',
+  APPOINTMENT_LIST: '/api/appointment/list',
+  APPOINTMENT_MY: '/api/appointment/my',
+  APPOINTMENT_CANCEL: '/api/appointment/cancel',
+  APPOINTMENT_DETAIL: '/api/appointment/detail/'
 };

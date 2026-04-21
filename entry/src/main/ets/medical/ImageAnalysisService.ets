@@ -79,6 +79,14 @@ export interface ModelStatus {
   mode: 'REAL' | 'MOCK';
 }
 
+export interface MockFinding {
+  label: string;
+  confidence: number;
+  bbox: BoundingBox;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  description: string;
+}
+
 export class ImageAnalysisService {
   private static instance: ImageAnalysisService | null = null;
 
@@ -243,7 +251,7 @@ export class ImageAnalysisService {
       canvasSize: {
         width: canvasWidth,
         height: canvasHeight
-      } as CanvasSize
+      }
     };
 
     console.log(`[ImageAnalysisService] 标注数据准备完成`);
@@ -252,11 +260,7 @@ export class ImageAnalysisService {
   }
 
   getSampleImagesList(): SampleImageInfo[] {
-    const result: SampleImageInfo[] = [];
-    for (let i = 0; i < ImageAnalysisService.SAMPLE_IMAGES.length; i++) {
-      result.push(ImageAnalysisService.SAMPLE_IMAGES[i]);
-    }
-    return result;
+    return Array.from(ImageAnalysisService.SAMPLE_IMAGES);
   }
 
   getSampleImageByIndex(index: number): SampleImageInfo | null {
@@ -343,7 +347,11 @@ export class ImageAnalysisService {
     } catch (error) {
       console.error('[ImageAnalysisService] 模型加载失败:', error instanceof Error ? error.message : String(error));
       this.isModelLoaded = false;
-      throw error instanceof Error ? error : new Error(String(error));
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error(String(error));
+      }
     }
   }
 
@@ -521,7 +529,7 @@ export class ImageAnalysisService {
 
   private generateRandomMockResult(modelType?: ModelType): AnalysisResult {
     const hasFinding = Math.random() > 0.3;
-    
+
     const findings: Finding[] = [];
 
     if (hasFinding) {
@@ -530,49 +538,57 @@ export class ImageAnalysisService {
       for (let i = 0; i < numFindings; i++) {
         const labels = ['异常阴影', '结节', '渗出', '钙化', '积液', '增厚'];
         const severities: ('HIGH' | 'MEDIUM' | 'LOW')[] = ['HIGH', 'MEDIUM', 'LOW'];
-        
-        findings.push({
+
+        const findingBbox: BoundingBox = {
+          x: Math.floor(Math.random() * 250 + 50),
+          y: Math.floor(Math.random() * 180 + 50),
+          width: Math.floor(Math.random() * 100 + 40),
+          height: Math.floor(Math.random() * 80 + 30)
+        };
+
+        const mockFinding: MockFinding = {
           label: labels[Math.floor(Math.random() * labels.length)],
           confidence: parseFloat((0.65 + Math.random() * 0.30).toFixed(2)),
-          bbox: {
-            x: Math.floor(Math.random() * 250 + 50),
-            y: Math.floor(Math.random() * 180 + 50),
-            width: Math.floor(Math.random() * 100 + 40),
-            height: Math.floor(Math.random() * 80 + 30)
-          },
+          bbox: findingBbox,
           severity: severities[Math.floor(Math.random() * severities.length)],
           description: '系统检测到影像异常区域，建议进一步检查确认。'
-        });
+        };
+        findings.push(mockFinding as Finding);
       }
     }
 
     const urgencies: ('CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW')[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    const selectedUrgency: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' = hasFinding ?
+      urgencies[Math.min(findings.filter(f => f.severity === 'HIGH').length, 3)] :
+      'LOW';
 
-    return {
+    const resultRecommendations: string[] = hasFinding ? [
+      '建议携带影像资料至相关科室就诊',
+      '结合临床症状和实验室检查综合判断',
+      '遵医嘱进行必要的后续检查或治疗',
+      '注意观察身体变化，如有不适及时就医'
+    ] : [
+      '✅ 当前影像未检出明显异常',
+      '继续保持健康生活方式',
+      '按医嘱定期进行健康体检',
+      '如有任何不适请及时就医检查'
+    ];
+
+    const mockResult: AnalysisResult = {
       imageType: modelType || 'GENERAL',
       findings: findings,
       overallDiagnosis: hasFinding ?
         '影像显示存在异常发现，建议结合临床资料进一步评估。' :
         '当前影像未见明显异常，建议定期随访复查。',
-      urgencyLevel: hasFinding ?
-        urgencies[Math.min(findings.filter(f => f.severity === 'HIGH').length, 3)] :
-        'LOW',
-      recommendations: hasFinding ? [
-        '建议携带影像资料至相关科室就诊',
-        '结合临床症状和实验室检查综合判断',
-        '遵医嘱进行必要的后续检查或治疗',
-        '注意观察身体变化，如有不适及时就医'
-      ] : [
-        '✅ 当前影像未检出明显异常',
-        '继续保持健康生活方式',
-        '按医嘱定期进行健康体检',
-        '如有任何不适请及时就医检查'
-      ],
+      urgencyLevel: selectedUrgency,
+      recommendations: resultRecommendations,
       disclaimer: '⚠️ 本结果由AI辅助生成，仅供参考，不作为最终诊断依据。请以专业医生诊断为准。',
       analysisTimeMs: 0,
       modelVersion: '1.0.0-Mock-Random',
       timestamp: ''
     };
+
+    return mockResult;
   }
 
   private getAnnotationStyle(severity: FindingSeverity): AnnotationStyle {

@@ -1,5 +1,6 @@
 import { EmergencyContact } from '../monitoring/RealtimeMonitor';
 import { EmergencyNotifier } from '../monitoring/EmergencyNotifier';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component

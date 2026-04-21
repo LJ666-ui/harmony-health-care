@@ -19,6 +19,12 @@ public class AncientMedicalImage {
 
     private String model3dUrl;
 
+    private String animationUrl;
+
+    private String enhanceStatus;
+
+    private Integer enhanceProgress;
+
     private String title;
 
     private String desc;

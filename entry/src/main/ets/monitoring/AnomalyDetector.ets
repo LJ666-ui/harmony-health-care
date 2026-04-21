@@ -121,22 +121,43 @@ export interface StatisticalParams {
   trendWindow: number;
 }
 
+export class RiskLevelMap {
+  static getPriority(level: RiskLevelType): number {
+    switch (level) {
+      case 'NORMAL': return 0;
+      case 'LOW': return 1;
+      case 'MEDIUM': return 2;
+      case 'HIGH': return 3;
+      case 'CRITICAL': return 4;
+      default: return 0;
+    }
+  }
+}
+
 export class AnomalyDetector {
   private static instance: AnomalyDetector | null = null;
 
-  private static readonly THRESHOLDS: ThresholdsConfig = {
-    bloodPressure: {
-      systolic: { criticalHigh: 180, high: 160, normalHigh: 140, normalLow: 90, low: 80, criticalLow: 70 },
-      diastolic: { criticalHigh: 110, high: 100, normalHigh: 90, normalLow: 60, low: 50, criticalLow: 40 }
-    },
-    bloodSugar: {
-      fasting: { criticalHigh: 11.0, high: 7.0, normalHigh: 6.1, normalLow: 3.9, low: 3.3, criticalLow: 2.8 },
-      random: { criticalHigh: 13.9, high: 11.1, normalHigh: 7.8, normalLow: 3.9, low: 3.3, criticalLow: 2.8 }
-    },
-    heartRate: { criticalHigh: 120, high: 100, normalHigh: 85, normalLow: 60, low: 50, criticalLow: 40 },
-    weight: { deviationPercent: 5 },
-    temperature: { criticalHigh: 39.5, high: 38.5, normalHigh: 37.3, normalLow: 36.0, low: 35.5, criticalLow: 35.0 }
-  };
+  private static readonly THRESHOLDS: ThresholdsConfig = (() => {
+    const systolicRange: ThresholdRange = { criticalHigh: 180, high: 160, normalHigh: 140, normalLow: 90, low: 80, criticalLow: 70 };
+    const diastolicRange: ThresholdRange = { criticalHigh: 110, high: 100, normalHigh: 90, normalLow: 60, low: 50, criticalLow: 40 };
+    const bloodPressureThresholds: BloodPressureThresholds = { systolic: systolicRange, diastolic: diastolicRange };
+
+    const fastingRange: ThresholdRange = { criticalHigh: 11.0, high: 7.0, normalHigh: 6.1, normalLow: 3.9, low: 3.3, criticalLow: 2.8 };
+    const randomRange: ThresholdRange = { criticalHigh: 13.9, high: 11.1, normalHigh: 7.8, normalLow: 3.9, low: 3.3, criticalLow: 2.8 };
+    const bloodSugarThresholds: BloodSugarThresholds = { fasting: fastingRange, random: randomRange };
+
+    const heartRateThresholds: HeartRateThresholds = { criticalHigh: 120, high: 100, normalHigh: 85, normalLow: 60, low: 50, criticalLow: 40 };
+    const weightThresholds: WeightThresholds = { deviationPercent: 5 };
+    const temperatureThresholds: TemperatureThresholds = { criticalHigh: 39.5, high: 38.5, normalHigh: 37.3, normalLow: 36.0, low: 35.5, criticalLow: 35.0 };
+
+    return {
+      bloodPressure: bloodPressureThresholds,
+      bloodSugar: bloodSugarThresholds,
+      heartRate: heartRateThresholds,
+      weight: weightThresholds,
+      temperature: temperatureThresholds
+    };
+  })();
 
   private static readonly STATISTICAL_PARAMS: StatisticalParams = {
     standardDeviations: 2,
@@ -519,21 +540,14 @@ export class AnomalyDetector {
 
   private getHighestRiskLevel(levels: ('NORMAL' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL')[]):
     'NORMAL' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
-    
-    const priorityMap: Record<string, number> = {
-      'NORMAL': 0,
-      'LOW': 1,
-      'MEDIUM': 2,
-      'HIGH': 3,
-      'CRITICAL': 4
-    };
 
     let highestLevel: 'NORMAL' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'NORMAL';
     let highestPriority = 0;
 
     for (const level of levels) {
-      if (priorityMap[level] > highestPriority) {
-        highestPriority = priorityMap[level];
+      const priority = RiskLevelMap.getPriority(level);
+      if (priority > highestPriority) {
+        highestPriority = priority;
         highestLevel = level;
       }
     }

@@ -63,6 +63,13 @@ export interface EmergencyContact {
   enabled: boolean;
 }
 
+export interface MonitoringConfigUpdate {
+  checkIntervalMs?: number;
+  enableAutoAlert?: boolean;
+  alertThresholds?: AlertThresholds;
+  emergencyContacts?: EmergencyContact[];
+}
+
 export class RealtimeMonitor {
   private static instance: RealtimeMonitor | null = null;
 
@@ -73,10 +80,8 @@ export class RealtimeMonitor {
   private anomalyDetector: AnomalyDetector = AnomalyDetector.getInstance();
   private alertManager: AlertManager = AlertManager.getInstance();
 
-  private config: MonitoringConfig = {
-    checkIntervalMs: 5 * 60 * 1000,
-    enableAutoAlert: true,
-    alertThresholds: {
+  private config: MonitoringConfig = (() => {
+    const thresholds: AlertThresholds = {
       systolicHigh: 180,
       systolicLow: 90,
       diastolicHigh: 110,
@@ -85,26 +90,33 @@ export class RealtimeMonitor {
       sugarLow: 3.9,
       heartRateHigh: 120,
       heartRateLow: 50
-    },
-    emergencyContacts: [
-      {
-        id: 'EC_001',
-        name: '张医生',
-        phone: '13800138000',
-        relationship: '家庭医生',
-        isPrimary: true,
-        enabled: true
-      },
-      {
-        id: 'EC_002',
-        name: '李女士',
-        phone: '13900139000',
-        relationship: '女儿',
-        isPrimary: false,
-        enabled: true
-      }
-    ]
-  };
+    };
+
+    const contact1: EmergencyContact = {
+      id: 'EC_001',
+      name: '张医生',
+      phone: '13800138000',
+      relationship: '家庭医生',
+      isPrimary: true,
+      enabled: true
+    };
+
+    const contact2: EmergencyContact = {
+      id: 'EC_002',
+      name: '李女士',
+      phone: '13900139000',
+      relationship: '女儿',
+      isPrimary: false,
+      enabled: true
+    };
+
+    return {
+      checkIntervalMs: 5 * 60 * 1000,
+      enableAutoAlert: true,
+      alertThresholds: thresholds,
+      emergencyContacts: [contact1, contact2]
+    };
+  })();
 
   private constructor() {
     console.log('[RealtimeMonitor] 初始化实时监控服务');
@@ -210,7 +222,7 @@ export class RealtimeMonitor {
     };
   }
 
-  updateConfig(updates: Partial<MonitoringConfig>): void {
+  updateConfig(updates: MonitoringConfigUpdate): void {
     if (updates.checkIntervalMs !== undefined) {
       this.config.checkIntervalMs = updates.checkIntervalMs;
     }

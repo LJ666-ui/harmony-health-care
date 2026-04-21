@@ -34,12 +34,27 @@ export interface SeverityInfo {
   description: string;
 }
 
+export interface SeverityGroupMap {
+  INFO: number;
+  WARNING: number;
+  DANGER: number;
+  CRITICAL: number;
+}
+
+export interface TypeGroupMap {
+  blood_pressure: number;
+  blood_sugar: number;
+  heart_rate: number;
+  weight: number;
+  temperature: number;
+}
+
 export interface AlertStatistics {
   total: number;
   unread: number;
   active: number;
-  bySeverity: Record<string, number>;
-  byType: Record<string, number>;
+  bySeverity: SeverityGroupMap;
+  byType: TypeGroupMap;
   todayCount: number;
   criticalCount: number;
 }
@@ -51,13 +66,22 @@ export class AlertManager {
   private alertRules: AlertRule[] = [];
   private alertHistory: Alert[] = [];
 
-  private static readonly SEVERITY_MAP: Record<string, SeverityInfo> = {
-    'NORMAL': { severity: 'INFO', color: '#52C41A', icon: '✅', description: '正常' },
-    'LOW': { severity: 'INFO', color: '#1890FF', icon: 'ℹ️', description: '轻微异常' },
-    'MEDIUM': { severity: 'WARNING', color: '#FAAD14', icon: '⚠️', description: '中等风险' },
-    'HIGH': { severity: 'DANGER', color: '#FF4D4F', icon: '🔴', description: '高风险' },
-    'CRITICAL': { severity: 'CRITICAL', color: '#CF1322', icon: '⛔', description: '极高风险' }
-  };
+  static getSeverityInfo(riskLevel: RiskLevelType): SeverityInfo {
+    switch (riskLevel) {
+      case 'NORMAL':
+        return { severity: 'INFO', color: '#52C41A', icon: '✅', description: '正常' };
+      case 'LOW':
+        return { severity: 'INFO', color: '#1890FF', icon: 'ℹ️', description: '轻微异常' };
+      case 'MEDIUM':
+        return { severity: 'WARNING', color: '#FAAD14', icon: '⚠️', description: '中等风险' };
+      case 'HIGH':
+        return { severity: 'DANGER', color: '#FF4D4F', icon: '🔴', description: '高风险' };
+      case 'CRITICAL':
+        return { severity: 'CRITICAL', color: '#CF1322', icon: '⛔', description: '极高风险' };
+      default:
+        return { severity: 'INFO', color: '#52C41A', icon: '✅', description: '正常' };
+    }
+  }
 
   private constructor() {
     console.log('[AlertManager] 初始化预警管理器');
@@ -78,9 +102,8 @@ export class AlertManager {
   ): Promise<Alert> {
     
     const alertId = `ALERT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    const severityInfo = AlertManager.SEVERITY_MAP[detectionResult.riskLevel] || 
-                         AlertManager.SEVERITY_MAP['NORMAL'];
+
+    const severityInfo = AlertManager.getSeverityInfo(detectionResult.riskLevel);
 
     const alert: Alert = {
       alertId: alertId,
@@ -312,23 +335,40 @@ export class AlertManager {
   }
 
   private generateAlertTitle(type: HealthRecordType, riskLevel: string): string {
-    const typeLabels: Record<string, string> = {
-      'blood_pressure': '血压异常',
-      'blood_sugar': '血糖异常',
-      'heart_rate': '心率异常',
-      'weight': '体重变化',
-      'temperature': '体温异常'
-    };
+    let label: string = '健康数据异常';
+    switch (type) {
+      case 'blood_pressure':
+        label = '血压异常';
+        break;
+      case 'blood_sugar':
+        label = '血糖异常';
+        break;
+      case 'heart_rate':
+        label = '心率异常';
+        break;
+      case 'weight':
+        label = '体重变化';
+        break;
+      case 'temperature':
+        label = '体温异常';
+        break;
+    }
 
-    const levelPrefixes: Record<string, string> = {
-      'LOW': '⚡',
-      'MEDIUM': '⚠️',
-      'HIGH': '🔴',
-      'CRITICAL': '⛔'
-    };
-
-    const prefix = levelPrefixes[riskLevel] || '';
-    const label = typeLabels[type] || '健康数据异常';
+    let prefix: string = '';
+    switch (riskLevel) {
+      case 'LOW':
+        prefix = '⚡';
+        break;
+      case 'MEDIUM':
+        prefix = '⚠️';
+        break;
+      case 'HIGH':
+        prefix = '🔴';
+        break;
+      case 'CRITICAL':
+        prefix = '⛔';
+        break;
+    }
 
     return `${prefix} ${label}`;
   }
@@ -424,21 +464,61 @@ export class AlertManager {
     }
   }
 
-  private groupBySeverity(): Record<string, number> {
-    const groups: Record<string, number> = {};
-    
+  private groupBySeverity(): SeverityGroupMap {
+    const groups: SeverityGroupMap = {
+      INFO: 0,
+      WARNING: 0,
+      DANGER: 0,
+      CRITICAL: 0
+    };
+
     for (const alert of this.alerts) {
-      groups[alert.severity] = (groups[alert.severity] || 0) + 1;
+      switch (alert.severity) {
+        case 'INFO':
+          groups.INFO = groups.INFO + 1;
+          break;
+        case 'WARNING':
+          groups.WARNING = groups.WARNING + 1;
+          break;
+        case 'DANGER':
+          groups.DANGER = groups.DANGER + 1;
+          break;
+        case 'CRITICAL':
+          groups.CRITICAL = groups.CRITICAL + 1;
+          break;
+      }
     }
 
     return groups;
   }
 
-  private groupByType(): Record<string, number> {
-    const groups: Record<string, number> = {};
+  private groupByType(): TypeGroupMap {
+    const groups: TypeGroupMap = {
+      blood_pressure: 0,
+      blood_sugar: 0,
+      heart_rate: 0,
+      weight: 0,
+      temperature: 0
+    };
 
     for (const alert of this.alerts) {
-      groups[alert.type] = (groups[alert.type] || 0) + 1;
+      switch (alert.type) {
+        case 'blood_pressure':
+          groups.blood_pressure = groups.blood_pressure + 1;
+          break;
+        case 'blood_sugar':
+          groups.blood_sugar = groups.blood_sugar + 1;
+          break;
+        case 'heart_rate':
+          groups.heart_rate = groups.heart_rate + 1;
+          break;
+        case 'weight':
+          groups.weight = groups.weight + 1;
+          break;
+        case 'temperature':
+          groups.temperature = groups.temperature + 1;
+          break;
+      }
     }
 
     return groups;

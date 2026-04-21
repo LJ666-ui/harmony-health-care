@@ -7,7 +7,7 @@ export interface RadarDataItem {
 @Component
 export struct RadarChart {
   @Prop data: RadarDataItem[] = [];
-  @State chartSize: number = 300;
+  @State radarChartSize: number = 300;
   @State showValue: boolean = true;
   @State animated: boolean = true;
 

@@ -17,17 +17,34 @@ export interface RiskProbabilities {
   sarcopenia: number;
 }
 
+export interface MockRiskItem {
+  disease: string;
+  label: string;
+  probability: number;
+  level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  color: string;
+  factors: string[];
+  evidence: string;
+}
+
+export interface MockSuggestion {
+  category: string;
+  content: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  targetDisease?: string;
+}
+
 export class RiskAssessmentMock {
-  private static instance: RiskAssessmentMock | null = null;
+  static instance: RiskAssessmentMock | null = null;
 
   sampleUserHealthData: MockUserHealthProfile = {
     userId: 'USER_001',
     name: '张三',
     age: 68,
-    gender: 'MALE' as 'MALE' | 'FEMALE',
+    gender: 'MALE',
     healthData: {
       age: 68,
-      gender: 'MALE' as 'MALE' | 'FEMALE',
+      gender: 'MALE',
       bloodPressure: {
         systolic: 145,
         diastolic: 92
@@ -140,7 +157,7 @@ export class RiskAssessmentMock {
       risks: this.createRiskItems(riskProbs),
       suggestions: this.generateSuggestions(riskProbs),
       featureInterpretations: [
-        { name: '年龄', value: '68岁', status: 'warning' },
+        { name: '年龄', value: '68岁', status: 'normal' },
         { name: 'BMI', value: '22.0', status: 'normal' },
         { name: '收缩压', value: '145mmHg', status: 'abnormal' },
         { name: '舒张压', value: '92mmHg', status: 'warning' },
@@ -150,169 +167,179 @@ export class RiskAssessmentMock {
         { name: '用药数量', value: '5种', status: 'warning' },
         { name: 'MMS评分', value: '27分', status: 'normal' },
         { name: '运动频率', value: '2次/周', status: 'warning' }
-      ]
+      ] as FeatureInterpretation[]
     };
   }
 
   createRiskItems(probabilities: RiskProbabilities): RisksMap {
-    return {
-      hypertension: this.createMockRiskItem(
-        'hypertension', '高血压', probabilities.hypertension,
-        this.getRiskLevelFromProbability(probabilities.hypertension), '#FF4D4F',
-        ['收缩压145mmHg', '舒张压92mmHg', '年龄68岁'],
-        `基于血压值${probabilities.hypertension > 0.7 ? '显著' : ''}高于正常范围`
-      ),
-      diabetes: this.createMockRiskItem(
-        'diabetes', '糖尿病', probabilities.diabetes,
-        this.getRiskLevelFromProbability(probabilities.diabetes), '#FAAD14',
-        ['空腹血糖6.8mmol/L', 'HbA1c 6.5%', '年龄因素'],
-        `空腹血糖${probabilities.diabetes > 0.6 ? '接近' : '略'}糖尿病诊断阈值`
-      ),
-      fall: this.createMockRiskItem(
-        'fall', '跌倒风险', probabilities.fall,
-        this.getRiskLevelFromProbability(probabilities.fall), '#FF7875',
-        ['步速0.85m/s', 'tandem站立12秒', '服用5种药物'],
-        '步速低于0.8m/s阈值，结合多药治疗增加跌倒概率'
-      ),
-      frailty: this.createMockRiskItem(
-        'frailty', '衰弱综合征', probabilities.frailty,
-        this.getRiskLevelFromProbability(probabilities.frailty), '#FFA39E',
-        ['体重偏低(BMI=22)', '握力26kg(男性<28kg)', '步速减慢'],
-        '符合Fried衰弱表型中3项标准：体重减轻、握力下降、步速减慢'
-      ),
-      sarcopenia: this.createMockRiskItem(
-        'sarcopenia', '肌少症', probabilities.sarcopenia,
-        this.getRiskLevelFromProbability(probabilities.sarcopenia), '#FFCCC7',
-        ['握力26kg', '步速0.85m/s', '运动频率不足'],
-        '握力和步速均低于肌少症诊断临界值'
-      )
+    const hypertensionItem: MockRiskItem = {
+      disease: 'hypertension',
+      label: '高血压',
+      probability: probabilities.hypertension,
+      level: this.getRiskLevelFromProbability(probabilities.hypertension),
+      color: '#FF4D4F',
+      factors: ['收缩压145mmHg', '舒张压92mmHg', '年龄68岁'],
+      evidence: `基于血压值${probabilities.hypertension > 0.7 ? '显著' : ''}高于正常范围`
     };
+
+    const diabetesItem: MockRiskItem = {
+      disease: 'diabetes',
+      label: '糖尿病',
+      probability: probabilities.diabetes,
+      level: this.getRiskLevelFromProbability(probabilities.diabetes),
+      color: '#FAAD14',
+      factors: ['空腹血糖6.8mmol/L', 'HbA1c 6.5%', '年龄因素'],
+      evidence: `空腹血糖${probabilities.diabetes > 0.6 ? '接近' : '略'}糖尿病诊断阈值`
+    };
+
+    const fallItem: MockRiskItem = {
+      disease: 'fall',
+      label: '跌倒风险',
+      probability: probabilities.fall,
+      level: this.getRiskLevelFromProbability(probabilities.fall),
+      color: '#FF7875',
+      factors: ['步速0.85m/s', 'tandem站立12秒', '服用5种药物'],
+      evidence: '步速低于0.8m/s阈值，结合多药治疗增加跌倒概率'
+    };
+
+    const frailtyItem: MockRiskItem = {
+      disease: 'frailty',
+      label: '衰弱综合征',
+      probability: probabilities.frailty,
+      level: this.getRiskLevelFromProbability(probabilities.frailty),
+      color: '#FFA39E',
+      factors: ['体重偏低(BMI=22)', '握力26kg(男性<28kg)', '步速减慢'],
+      evidence: '符合Fried衰弱表型中3项标准：体重减轻、握力下降、步速减慢'
+    };
+
+    const sarcopeniaItem: MockRiskItem = {
+      disease: 'sarcopenia',
+      label: '肌少症',
+      probability: probabilities.sarcopenia,
+      level: this.getRiskLevelFromProbability(probabilities.sarcopenia),
+      color: '#FFCCC7',
+      factors: ['握力26kg', '步速0.85m/s', '运动频率不足'],
+      evidence: '握力和步速均低于肌少症诊断临界值'
+    };
+
+    const result: RisksMap = {
+      hypertension: hypertensionItem as RiskItem,
+      diabetes: diabetesItem as RiskItem,
+      fall: fallItem as RiskItem,
+      frailty: frailtyItem as RiskItem,
+      sarcopenia: sarcopeniaItem as RiskItem
+    };
+    return result;
   }
 
   generateSuggestions(probabilities: RiskProbabilities): Suggestion[] {
     const suggestions: Suggestion[] = [];
 
     if (probabilities.hypertension > 0.6) {
-      const sug1: Suggestion = {
+      suggestions.push({
         category: '血压管理',
         content: '每日早晚各测量一次血压并记录，建议控制在140/90mmHg以下',
         priority: 'HIGH',
         targetDisease: 'hypertension'
-      };
-      suggestions.push(sug1);
+      });
 
-      const sug2: Suggestion = {
+      suggestions.push({
         category: '饮食调整',
         content: '减少钠盐摄入，每日食盐量不超过5克；增加钾摄入，多吃蔬菜水果',
         priority: 'HIGH',
         targetDisease: 'hypertension'
-      };
-      suggestions.push(sug2);
+      });
     }
 
     if (probabilities.diabetes > 0.5) {
-      const sug3: Suggestion = {
+      suggestions.push({
         category: '血糖管理',
         content: '定期监测空腹血糖和餐后2小时血糖，建议复查糖化血红蛋白(HbA1c)',
         priority: 'HIGH',
         targetDisease: 'diabetes'
-      };
-      suggestions.push(sug3);
+      });
 
-      const sug4: Suggestion = {
+      suggestions.push({
         category: '运动处方',
         content: '每周进行150分钟中等强度有氧运动（如快走），有助于改善胰岛素敏感性',
         priority: 'MEDIUM',
         targetDisease: 'diabetes'
-      };
-      suggestions.push(sug4);
+      });
     }
 
     if (probabilities.fall > 0.45) {
-      const sug5: Suggestion = {
+      suggestions.push({
         category: '安全防护',
         content: '进行居家环境安全评估：清除地面障碍物、安装扶手、改善照明',
         priority: 'HIGH',
         targetDisease: 'fall'
-      };
-      suggestions.push(sug5);
+      });
 
-      const sug6: Suggestion = {
+      suggestions.push({
         category: '运动训练',
         content: '每周3次平衡训练（如太极拳、单腿站立练习）和下肢力量训练',
         priority: 'MEDIUM',
         targetDisease: 'fall'
-      };
-      suggestions.push(sug6);
+      });
 
-      const sug7: Suggestion = {
+      suggestions.push({
         category: '生活方式',
         content: '与医生沟通是否可以减少不必要的药物，特别是镇静催眠类药物',
         priority: 'MEDIUM',
         targetDisease: 'fall'
-      };
-      suggestions.push(sug7);
+      });
     }
 
     if (probabilities.frailty > 0.5) {
-      const sug8: Suggestion = {
+      suggestions.push({
         category: '营养干预',
         content: '增加优质蛋白质摄入至每天1.2-1.5g/kg体重，推荐鱼、蛋、奶制品',
         priority: 'HIGH',
         targetDisease: 'frailty'
-      };
-      suggestions.push(sug8);
+      });
 
-      const sug9: Suggestion = {
+      suggestions.push({
         category: '运动处方',
         content: '开始抗阻力训练计划：每周2-3次，使用弹力带或轻重量器械',
         priority: 'HIGH',
         targetDisease: 'frailty'
-      };
-      suggestions.push(sug9);
+      });
 
-      const sug10: Suggestion = {
+      suggestions.push({
         category: '肌肉健康',
         content: '补充维生素D和钙剂，有助于维持肌肉功能和骨密度',
         priority: 'MEDIUM',
         targetDisease: 'frailty'
-      };
-      suggestions.push(sug10);
+      });
     }
 
     if (probabilities.sarcopenia > 0.4) {
-      const sug11: Suggestion = {
+      suggestions.push({
         category: '肌肉健康',
         content: '进行握力训练：使用握力器或提重物练习，目标提升至28kg以上',
         priority: 'MEDIUM',
         targetDisease: 'sarcopenia'
-      };
-      suggestions.push(sug11);
+      });
 
-      const sug12: Suggestion = {
+      suggestions.push({
         category: '运动建议',
         content: '增加日常活动量，如爬楼梯代替电梯，步行代替乘车',
         priority: 'LOW',
         targetDisease: 'sarcopenia'
-      };
-      suggestions.push(sug12);
+      });
     }
 
-    const sug13: Suggestion = {
+    suggestions.push({
       category: '睡眠管理',
       content: '保持规律作息，每晚保证7-8小时高质量睡眠',
-      priority: 'LOW',
-      targetDisease: undefined
-    };
-    suggestions.push(sug13);
+      priority: 'LOW'
+    });
 
-    const sug14: Suggestion = {
+    suggestions.push({
       category: '定期评估',
       content: '每月进行一次AI风险评估以监控健康变化趋势',
-      priority: 'LOW',
-      targetDisease: undefined
-    };
-    suggestions.push(sug14);
+      priority: 'LOW'
+    });
 
     return suggestions;
   }
@@ -362,34 +389,14 @@ export class RiskAssessmentMock {
     };
   }
 
-  private createMockRiskItem(
-    disease: string,
-    label: string,
-    probability: number,
-    level: string,
-    color: string,
-    factors: string[],
-    evidence: string
-  ): RiskItem {
-    return {
-      disease: disease,
-      label: label,
-      probability: probability,
-      level: level as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
-      color: color,
-      factors: factors,
-      evidence: evidence
-    };
-  }
-
-  private getRiskLevelFromProbability(probability: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+  getRiskLevelFromProbability(probability: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     if (probability < 0.35) return 'LOW';
     if (probability < 0.55) return 'MEDIUM';
     if (probability < 0.75) return 'HIGH';
     return 'CRITICAL';
   }
 
-  private getOverallLevelFromScore(score: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+  getOverallLevelFromScore(score: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     if (score < 0.35) return 'LOW';
     if (score < 0.55) return 'MEDIUM';
     if (score < 0.75) return 'HIGH';

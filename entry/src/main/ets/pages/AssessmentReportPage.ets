@@ -1,9 +1,25 @@
 import { RiskAssessmentResult } from '../ai/RiskAssessmentEngine';
 import { ReportGenerator, GeneratedReport } from '../ai/ReportGenerator';
-import { RadarChart } from './RadarChart';
-import { GaugeChart } from './GaugeChart';
-import { RiskCard } from './RiskCard';
-import { SuggestionsList } from './SuggestionsList';
+import { RadarChart } from '../components/RadarChart';
+import { GaugeChart } from '../components/GaugeChart';
+import { RiskCard } from '../components/RiskCard';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
+import { SuggestionsList } from '../components/SuggestionsList';
+import { router } from '@kit.ArkUI';
+
+export interface ScoreInfoItem {
+  label: string;
+  value: string;
+  icon: string;
+}
+
+export interface ActionDisplayItem {
+  id: string;
+  category: string;
+  description: string;
+  priority: string;
+  responsibleParty: string;
+}
 
 @Entry
 @Component
@@ -302,7 +318,7 @@ struct AssessmentReportPage {
             { label: '处理耗时', value: `${this.assessmentResult?.processingTimeMs || 0}ms`, icon: '⏱️' },
             { label: '模型版本', value: this.assessmentResult?.modelVersion || '-', icon: '🤖' }
           ], (item: Object) => {
-            const info = item as { label: string; value: string; icon: string };
+            const info = item as ScoreInfoItem;
             
             Row({ space: 8 }) {
               Text(info.icon)
@@ -417,7 +433,7 @@ struct AssessmentReportPage {
         .fontWeight(FontWeight.Bold)
 
       ForEach(this.generatedReport.actionItems.slice(0, 6), (action: Object, index: number) => {
-        const item = action as { id: string; category: string; description: string; priority: string; responsibleParty: string };
+        const item = action as ActionDisplayItem;
         
         Row({ space: 10 }) {
           Text((index + 1).toString())
@@ -515,37 +531,4 @@ struct AssessmentReportPage {
   }
 }
 
-@Component
-struct NavigationTitleBar {
-  @Prop title: string = '';
-  @Prop showBack: boolean = false;
-
-  build() {
-    Row() {
-      if (this.showBack) {
-        Image($r('app.media.ic_back'))
-          .width(24)
-          .height(24)
-          .fillColor('#333333')
-          .onClick(() => {
-            router.back();
-          })
-      }
-
-      Text(this.title)
-        .fontSize(18)
-        .fontColor('#333333')
-        .fontWeight(FontWeight.Bold)
-        .layoutWeight(1)
-        .textAlign(TextAlign.Center)
-
-      if (this.showBack) {
-        Text('')
-          .width(24)
-      }
-    }
-    .width('100%')
-    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-    .backgroundColor('#FFFFFF')
-  }
 }

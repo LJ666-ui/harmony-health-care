@@ -1,5 +1,6 @@
 import { ParkingService, ParkingConstants } from '../parking/ParkingService';
 import { parkingMockData } from '../mock/parkingMock';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component

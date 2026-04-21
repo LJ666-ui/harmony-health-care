@@ -1,6 +1,7 @@
 import { Alert } from '../monitoring/AnomalyDetector';
 import { AlertManager } from '../monitoring/AlertManager';
 import { AlertBadge } from '../components/AlertBadge';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component
@@ -41,7 +42,7 @@ struct AlertHistoryPage {
               AlertBadge({
                 alert: alertItem,
                 showDetails: false,
-                onClick: (selectedAlert: Alert) => this.handleAlertClick(selectedAlert)
+                onAlertClick: (selectedAlert: Alert) => this.handleAlertClick(selectedAlert)
               })
             })
           }

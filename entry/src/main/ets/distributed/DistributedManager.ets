@@ -19,8 +19,8 @@ import {
 
 export class DistributedManager {
   private static instance: DistributedManager;
-  private deviceManager: any = null;
-  private kvStore: any = null;
+  private deviceManager: ESObject | null = null;
+  private kvStore: ESObject | null = null;
   private connectedDevices: Map<string, DeviceInfo> = new Map();
   private sessionKeys: Map<string, string> = new Map();
   private isInitialized: boolean = false;
@@ -50,11 +50,11 @@ export class DistributedManager {
     try {
       console.log('[DistributedManager] 开始初始化...');
 
-      const distributedDeviceKit = requireNapi('ohos.distributedDeviceManager', true);
+      const distributedDeviceKit: ESObject = requireNapi('ohos.distributedDeviceManager', true);
       
       this.deviceManager = distributedDeviceKit.createDeviceManager('com.example.healthcare');
       
-      this.deviceManager.on('deviceStateChange', (data: any) => {
+      this.deviceManager.on('deviceStateChange', (data: ESObject) => {
         console.log('[DistributedManager] 设备状态变化:', JSON.stringify(data));
         this.handleDeviceStateChange(data);
       });
@@ -86,11 +86,11 @@ export class DistributedManager {
         const deviceList = this.deviceManager.getTrustedDeviceListSync();
         
         for (let i = 0; i < deviceList.length; i++) {
-          const rawDevice = deviceList[i];
+          const rawDevice: ESObject = deviceList[i];
           const deviceInfo: DeviceInfo = {
-            deviceId: rawDevice.deviceId || '',
-            deviceName: rawDevice.deviceName || '未知设备',
-            deviceType: this.mapDeviceType(rawDevice.deviceType),
+            deviceId: (rawDevice['deviceId'] as string) || '',
+            deviceName: (rawDevice['deviceName'] as string) || '未知设备',
+            deviceType: this.mapDeviceType(rawDevice['deviceType'] as number),
             isOnline: true,
             lastConnectTime: Date.now()
           };
@@ -132,7 +132,7 @@ export class DistributedManager {
         };
       }
 
-      const isTrusted = this.deviceManager.checkTrusted(deviceId);
+      const isTrusted: boolean = this.deviceManager.checkTrusted(deviceId);
       
       if (isTrusted) {
         console.log('[DistributedManager] 设备已信任，无需重新配对');
@@ -171,24 +171,37 @@ export class DistributedManager {
    * @param storeId 存储ID
    * @returns KVStore实例
    */
-  async createDataStore(storeId: string): Promise<any> {
+  async createDataStore(storeId: string): Promise<ESObject> {
     try {
       await this.ensureInitialized();
 
       console.log('[DistributedManager] 创建分布式KVStore: ' + storeId);
 
-      const distributedDataKit = requireNapi('ohos.distributedKVStore', true);
-      
-      const kvConfig = {
+      const distributedDataKit: ESObject = requireNapi('ohos.distributedKVStore', true);
+
+      export interface KVConfig {
+        storeId: string;
+        securityLevel: ESObject;
+        createIfMissing: boolean;
+      }
+
+      const kvConfig: KVConfig = {
         storeId: storeId,
         securityLevel: distributedDataKit.SecurityLevel.S1,
         createIfMissing: true
       };
 
-      const kvManager = distributedDataKit.createKVManager({
+      export interface KVManagerConfig {
+        context: ESObject;
+        bundleName: string;
+      }
+
+      const kvManagerConfig: KVManagerConfig = {
         context: getContext(this),
         bundleName: 'com.example.healthcare'
-      });
+      };
+
+      const kvManager: ESObject = distributedDataKit.createKVManager(kvManagerConfig);
 
       this.kvStore = await kvManager.getKVStore(kvConfig);
       
@@ -324,16 +337,16 @@ export class DistributedManager {
   /**
    * 处理设备状态变化事件
    */
-  private handleDeviceStateChange(data: any): void {
-    const action = data.action || '';
-    const device = data.device || {};
+  private handleDeviceStateChange(data: ESObject): void {
+    const action: string = (data['action'] as string) || '';
+    const device: ESObject = (data['device'] as ESObject) || {} as ESObject;
 
     switch (action) {
       case 'ONLINE':
         const onlineDevice: DeviceInfo = {
-          deviceId: device.deviceId || '',
-          deviceName: device.deviceName || '',
-          deviceType: this.mapDeviceType(device.deviceType),
+          deviceId: (device['deviceId'] as string) || '',
+          deviceName: (device['deviceName'] as string) || '',
+          deviceType: this.mapDeviceType(device['deviceType'] as number),
           isOnline: true,
           lastConnectTime: Date.now()
         };
@@ -476,7 +489,7 @@ export class DistributedManager {
    * 根据权限等级脱敏病历
    */
   private desensitizeByPermission(record: MedicalRecordForSync, level: PermissionLevel): MedicalRecordForSync {
-    const desensitizedRecord = { ...record };
+    const desensitizedRecord: MedicalRecordForSync = JSON.parse(JSON.stringify(record));
 
     switch (level) {
       case PermissionLevel.FAMILY:

@@ -1,6 +1,7 @@
 import { Reminder, ReminderTemplate } from '../monitoring/ReminderScheduler';
 import { ReminderScheduler } from '../monitoring/ReminderScheduler';
 import { ReminderListItem } from '../components/ReminderListItem';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component

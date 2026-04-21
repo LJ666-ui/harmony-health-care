@@ -6,6 +6,8 @@ import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import BrowseTracker from '../utils/BrowseTracker';
 import RdbHelper from '../utils/RdbHelper';
+import { SettingsUtil } from '../utils/SettingsUtil';
+import { CommentSection } from '../components/CommentSection';
 import {
   TABLE_COLLECTION_CACHE,
   COLUMN_COLLECT_TYPE,
@@ -16,6 +18,7 @@ import {
   COLUMN_IS_SYNCED,
   TABLE_ARTICLE_CACHE,
   COLUMN_ARTICLE_ID,
+  COLUMN_ID,
   COLUMN_TITLE,
   COLUMN_CONTENT_SUMMARY,
   COLUMN_COVER_IMAGE,
@@ -63,6 +66,10 @@ struct ScienceDetailPage {
   @State isLoading: boolean = true;
   @State contentSections: string[] = [];
   @State isCollecting: boolean = false;
+  @State isOfflineAvailable: boolean = false;
+  @State isDownloading: boolean = false;
+  @State downloadProgress: number = 0;
+  @State settingsUtil: SettingsUtil = SettingsUtil.getInstance();
 
   private browseRecordId: number | undefined = undefined;
 
@@ -81,10 +88,39 @@ struct ScienceDetailPage {
       this.articleTitle = params['articleTitle'] as string;
     }
 
-    this.fontSize = this.isElderMode ? 18 : 16;
-
+    this.loadSavedFontSize();
     this.loadArticleDetail();
     this.checkCollectionStatus();
+    this.checkOfflineStatus();
+  }
+
+  async loadSavedFontSize(): Promise<void> {
+    try {
+      const savedSize: number = await this.settingsUtil.getFontSize();
+      if (savedSize >= 12 && savedSize <= 24) {
+        this.fontSize = savedSize;
+      } else {
+        this.fontSize = this.isElderMode ? 18 : 16;
+      }
+    } catch (e) {
+      console.error('加载字体设置失败:', e);
+      this.fontSize = this.isElderMode ? 18 : 16;
+    }
+  }
+
+  async checkOfflineStatus(): Promise<void> {
+    try {
+      const predicates = new relationalStore.RdbPredicates(TABLE_ARTICLE_CACHE);
+      predicates.equalTo(COLUMN_ARTICLE_ID, Number(this.articleId));
+
+      const result = await RdbHelper.queryByPredicates(predicates, [COLUMN_ID]);
+      if (result && result.rowCount > 0) {
+        this.isOfflineAvailable = true;
+        result.close();
+      }
+    } catch (e) {
+      console.error('检查离线状态失败:', e);
+    }
   }
 
   aboutToDisappear(): void {
@@ -126,8 +162,8 @@ struct ScienceDetailPage {
     const sections: string[] = [];
 
     const paragraphs: string[] = content.split('\n');
-    for (let i = 0; i < paragraphs.length; i++) {
-      const para: string = paragraphs[i].trim();
+    for (let idx = 0; idx < paragraphs.length; idx++) {
+      const para: string = paragraphs[idx].trim();
       if (para.length === 0) continue;
 
       if (para.indexOf('# ') === 0) {
@@ -160,9 +196,9 @@ struct ScienceDetailPage {
 
   private isNumberedListItem(text: string): boolean {
     const numChars = '1234567890一二三四五六七八九十';
-    for (let i = 0; i < text.length; i++) {
-      if (numChars.indexOf(text.charAt(i)) >= 0) {
-        if (i + 1 < text.length && (text.charAt(i + 1) === '.' || text.charAt(i + 1) === '、')) {
+    for (let charIdx = 0; charIdx < text.length; charIdx++) {
+      if (numChars.indexOf(text.charAt(charIdx)) >= 0) {
+        if (charIdx + 1 < text.length && (text.charAt(charIdx + 1) === '.' || text.charAt(charIdx + 1) === '、')) {
           return true;
         }
       }
@@ -271,6 +307,59 @@ struct ScienceDetailPage {
       this.fontSize += 2;
     } else if (direction === 'decrease' && this.fontSize > 12) {
       this.fontSize -= 2;
+    }
+
+    this.saveFontSizeSetting();
+  }
+
+  async saveFontSizeSetting(): Promise<void> {
+    try {
+      await this.settingsUtil.setFontSize(this.fontSize);
+      console.info('字体大小已保存:', this.fontSize);
+    } catch (e) {
+      console.error('保存字体设置失败:', e);
+    }
+  }
+
+  async downloadForOffline(): Promise<void> {
+    if (!this.articleDetail || this.isDownloading) return;
+
+    this.isDownloading = true;
+    this.downloadProgress = 0;
+
+    try {
+      const totalSteps: number = 5;
+
+      for (let step = 1; step <= totalSteps; step++) {
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 300));
+        this.downloadProgress = Math.round((step / totalSteps) * 100);
+      }
+
+      const values: relationalStore.ValuesBucket = {};
+      values[COLUMN_ARTICLE_ID] = this.articleDetail.id;
+      values[COLUMN_TITLE] = this.articleDetail.title;
+      let fullContent: string = '';
+      if (this.articleDetail.content && this.articleDetail.content.length > 1000) {
+        fullContent = this.articleDetail.content.substring(0, 1000);
+      } else if (this.articleDetail.content) {
+        fullContent = this.articleDetail.content;
+      }
+      values[COLUMN_CONTENT_SUMMARY] = fullContent;
+      values[COLUMN_COVER_IMAGE] = this.articleDetail.coverImage ? this.articleDetail.coverImage : '';
+      values[COLUMN_CATEGORY_ID] = this.articleDetail.categoryId ? this.articleDetail.categoryId : 0;
+      values[COLUMN_CACHED_TIME] = Date.now();
+      values[COLUMN_LAST_READ_TIME] = Date.now();
+
+      await RdbHelper.insertOrUpdate(TABLE_ARTICLE_CACHE, values, COLUMN_ARTICLE_ID, this.articleDetail.id);
+
+      this.isOfflineAvailable = true;
+      ToastUtil.showSuccess('离线下载完成 ✓');
+    } catch (e) {
+      console.error('离线下载失败:', e);
+      ToastUtil.showError('下载失败，请检查存储空间');
+    } finally {
+      this.isDownloading = false;
+      this.downloadProgress = 0;
     }
   }
 
@@ -396,14 +485,14 @@ struct ScienceDetailPage {
             .alignItems(HorizontalAlign.Start);
 
             Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-              ForEach(this.contentSections, (text: string, i: number) => {
-                Text(text)
+              ForEach(this.contentSections, (item: string, index: number) => {
+                Text(item)
                   .fontSize(this.fontSize)
                   .fontColor('#444444')
                   .lineHeight(this.fontSize * 1.8)
                   .width('100%')
                   .textAlign(TextAlign.Start);
-              }, (text: string, i: number) => this.articleId + '-p-' + i.toString());
+              }, (item: string, index: number) => this.articleId + '-p-' + index.toString());
             }
             .width('100%')
             .padding(GlobalTheme.getSpacingLG(this.isElderMode))
@@ -411,6 +500,10 @@ struct ScienceDetailPage {
             .borderRadius(12)
             .border({ width: 1, color: '#F0F0F0' })
             .alignItems(HorizontalAlign.Start);
+
+            CommentSection({ articleId: this.articleId })
+              .margin({ top: 16 })
+              .constraintSize({ minHeight: 400 });
           }
         }
         .width('85%')
@@ -440,6 +533,44 @@ struct ScienceDetailPage {
             .backgroundColor('transparent')
             .border({ width: 0 })
             .onClick(() => this.handleLike());
+
+          if (this.isOfflineAvailable) {
+            Text('✓ 已离线')
+              .height(40)
+              .fontSize(12)
+              .fontColor('#52C41A')
+              .padding({ left: 10, right: 10 })
+              .backgroundColor('#F6FFED')
+              .borderRadius(16)
+              .alignSelf(ItemAlign.Center);
+          } else {
+            Column() {
+              if (this.isDownloading) {
+                Column({ space: 4 }) {
+                  Progress({ value: this.downloadProgress, total: 100, type: ProgressType.Ring })
+                    .width(32)
+                    .height(32)
+                    .color('#1677FF')
+                    .backgroundColor('#E6F4FF');
+
+                  Text(this.downloadProgress + '%')
+                    .fontSize(9)
+                    .fontColor('#1677FF');
+                }
+                .width(40)
+                .height(40);
+              } else {
+                Button('⬇ 离线')
+                  .height(36)
+                  .fontSize(11)
+                  .fontColor('#1677FF')
+                  .backgroundColor('#E6F4FF')
+                  .borderRadius(18)
+                  .onClick(() => this.downloadForOffline());
+              }
+            }
+            .alignSelf(ItemAlign.Center);
+          }
 
           Row() {
             Button('A-')

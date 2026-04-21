@@ -1,6 +1,7 @@
 import { ParkingService, NavigationEngine, LocationService } from '../parking/ParkingService';
 import { ARNavigationView } from '../components/ARNavigationView';
 import { parkingMockData } from '../mock/parkingMock';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component

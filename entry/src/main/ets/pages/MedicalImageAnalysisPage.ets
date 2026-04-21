@@ -1,5 +1,6 @@
 import { ImageAnalysisService, AnalysisResult, Finding, SampleImageInfo } from '../medical/ImageAnalysisService';
 import { AnnotationOverlay } from '../components/AnnotationOverlay';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component

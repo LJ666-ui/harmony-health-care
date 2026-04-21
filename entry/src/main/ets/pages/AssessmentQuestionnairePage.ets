@@ -1,11 +1,19 @@
 import { HealthData } from '../ai/HealthFeatureExtractor';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
+import { router } from '@kit.ArkUI';
 
-interface QuestionItem {
+export interface QuestionOption {
+  label: string;
+  value: string | number;
+  score: number;
+}
+
+export interface QuestionItem {
   id: string;
   category: string;
   question: string;
   type: 'SINGLE' | 'MULTI' | 'NUMBER' | 'SLIDER';
-  options?: { label: string; value: any; score: number }[];
+  options?: QuestionOption[];
   min?: number;
   max?: number;
   unit?: string;
@@ -16,7 +24,7 @@ interface QuestionItem {
 @Component
 struct AssessmentQuestionnairePage {
   @State currentStep: number = 0;
-  @State answers: { [key: string]: any } = {};
+  @State answers: Map<string, string | number> = new Map<string, string | number>();
   @State isSubmitting: boolean = false;
 
   private questions: QuestionItem[] = [
@@ -290,10 +298,10 @@ struct AssessmentQuestionnairePage {
   @Builder buildSingleChoice(question: QuestionItem) {
     Column({ space: 10 }) {
       ForEach(question.options || [], (option: Object) => {
-        const opt = option as { label: string; value: any; score: number };
+        const opt = option as QuestionOption;
         
         Row({ space: 10 }) {
-          if (this.answers[question.id] === opt.value) {
+          if (this.answers.get(question.id) === opt.value) {
             Text('✓')
               .fontSize(16)
               .fontColor('#FFFFFF')
@@ -322,15 +330,15 @@ struct AssessmentQuestionnairePage {
         .width('100%')
         .padding(14)
         .backgroundColor(
-          this.answers[question.id] === opt.value ? '#E6F4FF' : '#FAFAFA'
+          this.answers.get(question.id) === opt.value ? '#E6F4FF' : '#FAFAFA'
         )
         .borderRadius(10)
         .border({
-          width: this.answers[question.id] === opt.value ? 2 : 1,
-          color: this.answers[question.id] === opt.value ? '#1677FF' : '#E8E8E8'
+          width: this.answers.get(question.id) === opt.value ? 2 : 1,
+          color: this.answers.get(question.id) === opt.value ? '#1677FF' : '#E8E8E8'
         })
         .onClick(() => {
-          this.answers[question.id] = opt.value;
+          this.answers.set(question.id, opt.value);
         })
       })
     }
@@ -341,7 +349,7 @@ struct AssessmentQuestionnairePage {
     Column({ space: 12 }) {
       TextInput({ 
         placeholder: `请输入${question.unit || ''}`,
-        text: this.answers[question.id]?.toString() || ''
+        text: this.answers.get(question.id)?.toString() || ''
       })
         .type(InputType.Number)
         .width('100%')
@@ -352,13 +360,13 @@ struct AssessmentQuestionnairePage {
         .onChange((value: string) => {
           const numValue = parseFloat(value);
           if (!isNaN(numValue)) {
-            this.answers[question.id] = numValue;
+            this.answers.set(question.id, numValue);
           }
         })
 
       if (question.min !== undefined && question.max !== undefined) {
         Slider({
-          value: this.answers[question.id] || ((question.min! + question.max!) / 2),
+          value: this.answers.get(question.id) as number ?? ((question.min! + question.max!) / 2),
           min: question.min!,
           max: question.max!,
           step: question.unit === 'mmol/L' ? 0.1 : 1,
@@ -369,7 +377,7 @@ struct AssessmentQuestionnairePage {
           .selectedColor('#1677FF')
           .showTips(true)
           .onChange((value: number) => {
-            this.answers[question.id] = parseFloat(value.toFixed(1));
+            this.answers.set(question.id, parseFloat(value.toFixed(1)));
           })
       }
     }
@@ -378,7 +386,7 @@ struct AssessmentQuestionnairePage {
 
   @Builder buildSliderInput(question: QuestionItem) {
     Column({ space: 16 }) {
-      Text(`${this.answers[question.id] || '-'} ${question.unit || ''}`)
+      Text(`${this.answers.get(question.id) ?? '-'} ${question.unit || ''}`)
         .fontSize(32)
         .fontColor('#1677FF')
         .fontWeight(FontWeight.Bold)
@@ -386,7 +394,7 @@ struct AssessmentQuestionnairePage {
         .width('100%')
 
       Slider({
-        value: this.answers[question.id] || ((question.min! + question.max!) / 2),
+        value: this.answers.get(question.id) as number ?? ((question.min! + question.max!) / 2),
         min: question.min!,
         max: question.max!,
         step: question.unit === 'mmol/L' ? 0.1 : 1,
@@ -397,7 +405,7 @@ struct AssessmentQuestionnairePage {
         .selectedColor('#1677FF')
         .showTips(true)
         .onChange((value: number) => {
-          this.answers[question.id] = parseFloat(value.toFixed(1));
+          this.answers.set(question.id, parseFloat(value.toFixed(1)));
         })
 
       Row() {
@@ -492,9 +500,9 @@ struct AssessmentQuestionnairePage {
   }
 
   private formatAnswer(question: QuestionItem): string {
-    const value = this.answers[question.id];
+    const value = this.answers.get(question.id);
     
-    if (value === undefined || value === null) return '-';
+    if (value === undefined) return '-';
     
     if (question.unit && typeof value === 'number') {
       return `${value}${question.unit}`;
@@ -502,7 +510,7 @@ struct AssessmentQuestionnairePage {
     
     if (question.options) {
       const option = question.options.find(opt => opt.value === value);
-      return option?.label || String(value);
+      return option?.label ?? String(value);
     }
     
     return String(value);
@@ -511,7 +519,7 @@ struct AssessmentQuestionnairePage {
   private goToNext(): void {
     const question = this.questions[this.currentStep];
 
-    if (question.required && this.answers[question.id] === undefined) {
+    if (question.required && this.answers.get(question.id) === undefined) {
       AlertDialog.show({
         title: '提示',
         message: '请先回答此问题再继续',
@@ -561,68 +569,33 @@ struct AssessmentQuestionnairePage {
   }
 
   private convertAnswersToHealthData(): HealthData {
-    const height = parseFloat(this.answers['height']) || 170;
-    const weight = parseFloat(this.answers['weight']) || 70;
+    const height = parseFloat(this.answers.get('height') as string) || 170;
+    const weight = parseFloat(this.answers.get('weight') as string) || 70;
     const bmi = weight / ((height / 100) ** 2);
 
     return {
-      age: parseInt(this.answers['age']) || 65,
-      gender: this.answers['gender'] || 'MALE',
+      age: parseInt(this.answers.get('age') as string) || 65,
+      gender: (this.answers.get('gender') as string) || 'MALE',
       bloodPressure: {
-        systolic: parseFloat(this.answers['systolic_bp']) || 120,
-        diastolic: parseFloat(this.answers['diastolic_bp']) || 80
+        systolic: parseFloat(this.answers.get('systolic_bp') as string) || 120,
+        diastolic: parseFloat(this.answers.get('diastolic_bp') as string) || 80
       },
       bloodGlucose: {
-        fasting: parseFloat(this.answers['fasting_glucose']) || 5.5
+        fasting: parseFloat(this.answers.get('fasting_glucose') as string) || 5.5
       },
       heartRate: {
-        resting: parseFloat(this.answers['resting_hr']) || 72
+        resting: parseFloat(this.answers.get('resting_hr') as string) || 72
       },
       bodyMetrics: {
         height: height,
         weight: weight,
         bmi: parseFloat(bmi.toFixed(1))
       },
-      exerciseFrequency: parseFloat(this.answers['exercise_freq']) || 2,
-      medicationCount: parseInt(this.answers['medication_count']) || 0,
+      exerciseFrequency: parseFloat(this.answers.get('exercise_freq') as string) || 2,
+      medicationCount: parseInt(this.answers.get('medication_count') as string) || 0,
       sleepData: {
-        durationHours: parseFloat(this.answers['sleep_duration']) || 7
+        durationHours: parseFloat(this.answers.get('sleep_duration') as string) || 7
       }
     };
-  }
-}
-
-@Component
-struct NavigationTitleBar {
-  @Prop title: string = '';
-  @Prop showBack: boolean = false;
-
-  build() {
-    Row() {
-      if (this.showBack) {
-        Image($r('app.media.ic_back'))
-          .width(24)
-          .height(24)
-          .fillColor('#333333')
-          .onClick(() => {
-            router.back();
-          })
-      }
-
-      Text(this.title)
-        .fontSize(18)
-        .fontColor('#333333')
-        .fontWeight(FontWeight.Bold)
-        .layoutWeight(1)
-        .textAlign(TextAlign.Center)
-
-      if (this.showBack) {
-        Text('')
-          .width(24)
-      }
-    }
-    .width('100%')
-    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-    .backgroundColor('#FFFFFF')
   }
 }

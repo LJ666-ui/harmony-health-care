@@ -2,6 +2,7 @@ import { ParkingService, ParkingConstants } from '../parking/ParkingService';
 import { ARNavigationView } from '../components/ARNavigationView';
 import { ParkingTimer } from '../components/ParkingTimer';
 import { parkingMockData } from '../mock/parkingMock';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component

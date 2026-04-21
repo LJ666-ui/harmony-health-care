@@ -105,13 +105,13 @@ export class DesensitizationUtil {
 
     switch (level) {
       case DesensitizeLevel.FULL:
-        result = this.fullDesensitize(result);
+        result = DesensitizationUtil.fullDesensitize(result);
         break;
       case DesensitizeLevel.PARTIAL:
-        result = this.partialDesensitize(result);
+        result = DesensitizationUtil.partialDesensitize(result);
         break;
       case DesensitizeLevel.MINIMAL:
-        result = this.minimalDesensitize(result);
+        result = DesensitizationUtil.minimalDesensitize(result);
         break;
       default:
         console.warn('[Desensitization] 未知的脱敏等级: ' + level);
@@ -127,9 +127,9 @@ export class DesensitizationUtil {
   private static fullDesensitize(content: string): string {
     let result = content;
 
-    result = result.replace(this.ID_CARD_REGEX, '$1********$2');
-    result = result.replace(this.PHONE_REGEX, '$1****$2');
-    result = result.replace(this.EMAIL_REGEX, '***@***.com');
+    result = result.replace(DesensitizationUtil.ID_CARD_REGEX, '$1********$2');
+    result = result.replace(DesensitizationUtil.PHONE_REGEX, '$1****$2');
+    result = result.replace(DesensitizationUtil.EMAIL_REGEX, '***@***.com');
 
     const lines = result.split('\n');
     for (let i = 0; i < lines.length; i++) {
@@ -153,20 +153,20 @@ export class DesensitizationUtil {
   private static partialDesensitize(content: string): string {
     let result = content;
 
-    result = result.replace(this.ID_CARD_REGEX, '$1********$2');
-    result = result.replace(this.PHONE_REGEX, '$1****$2');
-    result = result.replace(this.EMAIL_REGEX, '$1@$2');
+    result = result.replace(DesensitizationUtil.ID_CARD_REGEX, '$1********$2');
+    result = result.replace(DesensitizationUtil.PHONE_REGEX, '$1****$2');
+    result = result.replace(DesensitizationUtil.EMAIL_REGEX, '$1@$2');
 
     const lines = result.split('\n');
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
       if (line.includes('姓名')) {
-        lines[i] = this.desensitizeName(line.split(':')[1]?.trim() || '');
+        lines[i] = DesensitizationUtil.desensitizeName(line.split(':')[1]?.trim() || '');
       }
       
       if (line.includes('住址') || line.includes('地址')) {
-        lines[i] = line.replace(/[:：]\s*(.+)$/, ': ' + this.desensitizeAddress('$1'));
+        lines[i] = line.replace(/[:：]\s*(.+)$/, ': ' + DesensitizationUtil.desensitizeAddress('$1'));
       }
     }
 
@@ -179,8 +179,8 @@ export class DesensitizationUtil {
   private static minimalDesensitize(content: string): string {
     let result = content;
 
-    result = result.replace(this.ID_CARD_REGEX, '$1********$2');
-    result = result.replace(this.PHONE_REGEX, '$1****$2');
+    result = result.replace(DesensitizationUtil.ID_CARD_REGEX, '$1********$2');
+    result = result.replace(DesensitizationUtil.PHONE_REGEX, '$1****$2');
 
     return result;
   }
@@ -196,36 +196,37 @@ export class DesensitizationUtil {
     try {
       console.log('[Encryption] 开始加密数据...');
       
-      const cryptoFramework = requireNapi('security.cryptoFramework', true);
-      
-      const keyData: cryptoFramework.DataBlob = {
-        data: this.base64ToArrayBuffer(keyBase64)
-      };
-      
-      const symKeyGenerator = cryptoFramework.createSymKeyGenerator('AES256');
-      const key = await symKeyGenerator.convertKey(keyData);
+      const cryptoFramework: ESObject = requireNapi('security.cryptoFramework', true);
 
-      const cipher = cryptoFramework.createCipher('AES256|GCM|NoPadding');
-      
-      const ivData: cryptoFramework.DataBlob = {
+      const keyData: ESObject = {
+        data: DesensitizationUtil.base64ToArrayBuffer(keyBase64)
+      };
+
+      const symKeyGenerator: ESObject = cryptoFramework.createSymKeyGenerator('AES256');
+      const key: ESObject = await symKeyGenerator.convertKey(keyData);
+
+      const cipher: ESObject = cryptoFramework.createCipher('AES256|GCM|NoPadding');
+
+      const ivData: ESObject = {
         data: new Uint8Array(12).buffer as ArrayBuffer
       };
-      
-      await cipher.init(cryptoFramework.CryptoMode.ENCRYPT_MODE, key, { algName: 'GcmParamsSpec', iv: ivData });
-      
-      const plainBlob: crypto_framework.DataBlob = {
+
+      await cipher.init(cryptoFramework.CryptoMode, key, { algName: 'GcmParamsSpec', iv: ivData } as ESObject);
+
+      const plainBlob: ESObject = {
         data: new TextEncoder().encode(plainText).buffer as ArrayBuffer
       };
 
-      const encryptedBlob = await cipher.doFinal(plainBlob);
+      const encryptedBlob: ESObject = await cipher.doFinal(plainBlob);
       
-      const encryptedBase64 = this.arrayBufferToBase64(encryptedBlob.data);
+      const encryptedBase64 = DesensitizationUtil.arrayBufferToBase64(encryptedBlob.data);
       console.log('[Encryption] 加密成功，密文长度: ' + encryptedBase64.length);
       
       return encryptedBase64;
     } catch (error) {
-      console.error('[Encryption] 加密失败:', error.message);
-      throw new Error('数据加密失败: ' + error.message);
+      const err = error as Error;
+      console.error('[Encryption] 加密失败:', err.message);
+      throw new Error('数据加密失败: ' + err.message);
     }
   }
 
@@ -240,36 +241,37 @@ export class DesensitizationUtil {
     try {
       console.log('[Decryption] 开始解密数据...');
 
-      const cryptoFramework = requireNapi('security.cryptoFramework', true);
-      
-      const keyData: cryptoFramework.DataBlob = {
-        data: this.base64ToArrayBuffer(keyBase64)
-      };
-      
-      const symKeyGenerator = cryptoFramework.createSymKeyGenerator('AES256');
-      const key = await symKeyGenerator.convertKey(keyData);
+      const cryptoFramework: ESObject = requireNapi('security.cryptoFramework', true);
 
-      const decipher = cryptoFramework.createCipher('AES256|GCM|NoPadding');
-      
-      const ivData: cryptoFramework.DataBlob = {
+      const keyData: ESObject = {
+        data: DesensitizationUtil.base64ToArrayBuffer(keyBase64)
+      };
+
+      const symKeyGenerator: ESObject = cryptoFramework.createSymKeyGenerator('AES256');
+      const key: ESObject = await symKeyGenerator.convertKey(keyData);
+
+      const decipher: ESObject = cryptoFramework.createCipher('AES256|GCM|NoPadding');
+
+      const ivData: ESObject = {
         data: new Uint8Array(12).buffer as ArrayBuffer
       };
-      
-      await decipher.init(cryptoFramework.CryptoMode.DECRYPT_MODE, key, { algName: 'GcmParamsSpec', iv: ivData });
-      
-      const encryptedBlob: cryptoFramework.DataBlob = {
-        data: this.base64ToArrayBuffer(encryptedBase64)
+
+      await decipher.init(cryptoFramework.CryptoMode, key, { algName: 'GcmParamsSpec', iv: ivData } as ESObject);
+
+      const encryptedBlob: ESObject = {
+        data: DesensitizationUtil.base64ToArrayBuffer(encryptedBase64)
       };
 
-      const decryptedBlob = await decipher.doFinal(encryptedBlob);
-      
+      const decryptedBlob: ESObject = await decipher.doFinal(encryptedBlob);
+
       const decryptedText = new TextDecoder().decode(decryptedBlob.data);
       console.log('[Decryption] 解密成功，明文长度: ' + decryptedText.length);
       
       return decryptedText;
     } catch (error) {
-      console.error('[Decryption] 解密失败:', error.message);
-      throw new Error('数据解密失败: ' + error.message);
+      const err = error as Error;
+      console.error('[Decryption] 解密失败:', err.message);
+      throw new Error('数据解密失败: ' + err.message);
     }
   }
 
@@ -281,7 +283,7 @@ export class DesensitizationUtil {
     for (let i = 0; i < 32; i++) {
       keyBytes[i] = Math.floor(Math.random() * 256);
     }
-    return this.arrayBufferToBase64(keyBytes.buffer as ArrayBuffer);
+    return DesensitizationUtil.arrayBufferToBase64(keyBytes.buffer as ArrayBuffer);
   }
 
   /**

@@ -5,6 +5,7 @@ import { ReminderScheduler, Reminder } from '../monitoring/ReminderScheduler';
 import { VitalSignsCard } from '../components/VitalSignsCard';
 import { AlertBadge } from '../components/AlertBadge';
 import { ReminderListItem } from '../components/ReminderListItem';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component
@@ -236,7 +237,7 @@ struct MonitoringDashboard {
           AlertBadge({
             alert: alertItem,
             showDetails: true,
-            onClick: (selectedAlert: Alert) => this.handleAlertClick(selectedAlert)
+            onAlertClick: (selectedAlert: Alert) => this.handleAlertClick(selectedAlert)
           })
         })
       } else {

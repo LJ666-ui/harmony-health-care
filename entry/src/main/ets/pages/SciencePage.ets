@@ -5,6 +5,7 @@ import { ToastUtil } from '../common/utils/ToastUtil';
 import BrowseTracker from '../utils/BrowseTracker';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { SettingsUtil, NotificationFrequency, SubscriptionInfo } from '../utils/SettingsUtil';
 
 export interface ArticleCategory {
   id: number;
@@ -60,6 +61,10 @@ struct SciencePage {
   @State pageSize: number = 20;
   @State hasMore: boolean = true;
   @State currentBannerIndex: number = 0;
+  @State subscribedCategories: Map<number, boolean> = new Map();
+  @State notificationFreq: NotificationFrequency = 'immediate';
+  @State showSubscriptionPanel: boolean = false;
+  @State settingsUtil: SettingsUtil = SettingsUtil.getInstance();
 
   private recordId: number | undefined = undefined;
 
@@ -97,12 +102,92 @@ struct SciencePage {
       await Promise.all([
         this.loadCategories(),
         this.loadHotArticles(),
-        this.loadArticles()
+        this.loadArticles(),
+        this.loadSubscriptionStatus()
       ]);
     } catch (e) {
       console.error('加载数据失败:', e);
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  async loadSubscriptionStatus(): Promise<void> {
+    try {
+      const freq: NotificationFrequency = await this.settingsUtil.getNotificationFrequency();
+      this.notificationFreq = freq;
+
+      if (this.categories.length > 0) {
+        for (let i = 0; i < this.categories.length; i++) {
+          const cat: ArticleCategory = this.categories[i];
+          const isSub: boolean = await this.settingsUtil.isSubscribed(cat.id);
+          this.subscribedCategories.set(cat.id, isSub);
+        }
+      }
+    } catch (e) {
+      console.error('加载订阅状态失败:', e);
+    }
+  }
+
+  async toggleSubscription(categoryId: number, categoryName: string): Promise<void> {
+    try {
+      const currentStatus: boolean | undefined = this.subscribedCategories.get(categoryId);
+      const newStatus: boolean = !currentStatus;
+
+      await this.settingsUtil.setSubscription(categoryId, newStatus);
+      this.subscribedCategories.set(categoryId, newStatus);
+
+      if (newStatus) {
+        ToastUtil.showSuccess('已订阅「' + categoryName + '」分类');
+        this.showNotificationToast('订阅成功', '您将收到【' + categoryName + '】分类的新文章通知');
+      } else {
+        ToastUtil.showInfo('已取消订阅「' + categoryName + '」');
+      }
+    } catch (e) {
+      console.error('切换订阅状态失败:', e);
+      ToastUtil.showError('操作失败，请重试');
+    }
+  }
+
+  async changeNotificationFrequency(freq: NotificationFrequency): Promise<void> {
+    try {
+      await this.settingsUtil.setNotificationFrequency(freq);
+      this.notificationFreq = freq;
+
+      let freqText: string = '';
+      switch (freq) {
+        case 'immediate':
+          freqText = '即时推送';
+          break;
+        case 'daily':
+          freqText = '每日汇总';
+          break;
+        case 'weekly':
+          freqText = '每周汇总';
+          break;
+      }
+      ToastUtil.showSuccess('推送频率已设置为：' + freqText);
+    } catch (e) {
+      console.error('设置推送频率失败:', e);
+      ToastUtil.showError('设置失败');
+    }
+  }
+
+  showNotificationToast(title: string, content: string): void {
+    ToastUtil.showSuccess(title + ': ' + content);
+    console.info('通知提示:', title, content);
+  }
+
+  getFrequencyLabel(freq: NotificationFrequency): string {
+    switch (freq) {
+      case 'immediate':
+        return '即时';
+      case 'daily':
+        return '每日';
+      case 'weekly':
+        return '每周';
+      default:
+        return '即时';
     }
   }
 
@@ -340,14 +425,36 @@ struct SciencePage {
 
   build(): void {
     Column() {
-      Text('健康科普')
-        .width('100%')
-        .height(56)
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#333333')
-        .backgroundColor('#FFFFFF')
-        .textAlign(TextAlign.Center)
+      Row() {
+        Text('健康科普')
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .layoutWeight(1)
+          .textAlign(TextAlign.Start)
+
+        Button('+ 写文章')
+          .height(32)
+          .fontSize(13)
+          .fontColor('#FFFFFF')
+          .backgroundColor('#1677FF')
+          .borderRadius(16)
+          .onClick(() => {
+            try {
+              router.pushUrl({
+                url: 'pages/AddArticlePage'
+              });
+            } catch (error) {
+              console.error('跳转发表文章页面失败:', error);
+              ToastUtil.showError('跳转失败');
+            }
+          });
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#FFFFFF')
+      .padding({ left: 16, right: 16 })
+      .alignItems(VerticalAlign.Center)
 
       Scroll() {
         Column() {
@@ -502,6 +609,99 @@ struct SciencePage {
           }
           .scrollBar(BarState.Off)
           .scrollable(ScrollDirection.Horizontal)
+
+          Column() {
+            Row() {
+              Text('🔔 订阅管理')
+                .fontSize(15)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#333333')
+                .layoutWeight(1);
+
+              Button('设置频率 (' + this.getFrequencyLabel(this.notificationFreq) + ')')
+                .height(32)
+                .fontSize(12)
+                .fontColor('#1677FF')
+                .backgroundColor('#E6F4FF')
+                .borderRadius(16)
+                .onClick(() => {
+                  this.showSubscriptionPanel = !this.showSubscriptionPanel;
+                });
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 12, bottom: 8 });
+
+            if (this.showSubscriptionPanel) {
+              Column({ space: 10 }) {
+                Text('选择推送频率：')
+                  .fontSize(13)
+                  .fontColor('#666666')
+                  .width('100%')
+                  .padding({ left: 16 });
+
+                Row({ space: 12 }) {
+                  ForEach(['immediate', 'daily', 'weekly'] as NotificationFrequency[], (freq: NotificationFrequency) => {
+                    Text(freq === 'immediate' ? '即时推送' : freq === 'daily' ? '每日汇总' : '每周汇总')
+                      .fontSize(13)
+                      .fontColor(this.notificationFreq === freq ? '#FFFFFF' : '#666666')
+                      .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+                      .backgroundColor(this.notificationFreq === freq ? '#1677FF' : '#F5F7FA')
+                      .borderRadius(16)
+                      .onClick(() => this.changeNotificationFrequency(freq));
+                  }, (freq: NotificationFrequency) => freq);
+                }
+                .width('100%')
+                .padding({ left: 16 });
+
+                Scroll() {
+                  Column({ space: 8 }) {
+                    ForEach(this.categories, (cat: ArticleCategory) => {
+                      Row() {
+                        Column({ space: 4 }) {
+                          Text(cat.categoryName)
+                            .fontSize(14)
+                            .fontColor('#333333');
+
+                          Text(this.subscribedCategories.get(cat.id) ? '已订阅 · 将接收新文章通知' : '未订阅')
+                            .fontSize(11)
+                            .fontColor(this.subscribedCategories.get(cat.id) ? '#52C41A' : '#999999');
+                        }
+                        .layoutWeight(1)
+                        .alignItems(HorizontalAlign.Start);
+
+                        Toggle({ type: ToggleType.Switch, isOn: this.subscribedCategories.get(cat.id) || false })
+                          .width(44)
+                          .height(24)
+                          .selectedColor('#1677FF')
+                          .switchPointColor('#FFFFFF')
+                          .onChange((isOn: boolean) => {
+                            this.toggleSubscription(cat.id, cat.categoryName);
+                          });
+                      }
+                      .width('100%')
+                      .padding(12)
+                      .backgroundColor('#FAFAFA')
+                      .borderRadius(8)
+                      .alignItems(VerticalAlign.Center);
+                    }, (cat: ArticleCategory) => cat.id.toString());
+                  }
+                  .width('100%')
+                  .padding({ left: 16, right: 16 });
+                }
+                .constraintSize({ maxHeight: 250 })
+                .scrollBar(BarState.Off)
+                .width('100%');
+              }
+              .width('100%')
+              .padding({ bottom: 12 })
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .border({ width: 1, color: '#E6F4FF' })
+              .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+            }
+          }
+          .width('90%')
+          .margin({ left: '5%', right: '5%', bottom: 8 })
 
           Column() {
             Text('热门推荐')

@@ -158,6 +158,8 @@ interface ApiConstantsInterface {
   DEVICE_SYNC: string;
   DEVICE_STATUS: string;
   DEVICE_INFO: string;
+  DEVICE_PERMISSION_SET: string;
+  DEVICE_PERMISSION_GET: string;
 
   PRIVACY_SETTINGS: string;
   PRIVACY_AUTH_LIST: string;
@@ -332,6 +334,8 @@ export const ApiConstants: ApiConstantsInterface = {
   DEVICE_SYNC: '/device/sync',
   DEVICE_STATUS: '/device/status',
   DEVICE_INFO: '/device/info',
+  DEVICE_PERMISSION_SET: '/device/permission/set',
+  DEVICE_PERMISSION_GET: '/device/permission/get',
 
   PRIVACY_SETTINGS: '/privacy/settings',
   PRIVACY_AUTH_LIST: '/privacy/myAuths',

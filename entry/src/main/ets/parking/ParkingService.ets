@@ -59,6 +59,12 @@ export interface ParkingRecord {
   isActive: boolean;             // 是否有效（未离场）
 }
 
+export interface FeeBreakdownItem {
+  day: number;
+  hours: number;
+  fee: number;
+}
+
 export interface FeeDetail {
   totalFee: number;              // 总费用
   parkedHours: number;           // 停放时长（小时）
@@ -66,11 +72,7 @@ export interface FeeDetail {
   chargedHours: number;          // 计费时长
   hourlyRate: number;            // 小时费率
   dailyCap: number;              // 日封顶金额
-  breakdown: {                  // 费用明细
-    day: number;                 // 第几天
-    hours: number;               // 当天小时数
-    fee: number;                 // 当天费用
-  }[];
+  breakdown: FeeBreakdownItem[];
 }
 
 // ==================== 缓存数据结构 ====================
@@ -82,11 +84,19 @@ interface CacheItem<T> {
 
 export class ParkingService {
   private static instance: ParkingService;
-  
+
+  export interface ReservationData {
+    spaceId: string;
+    lotId: string;
+    reservedAt: number;
+    expiresAt: number;
+    userId: string;
+  }
+
   private parkingLotsCache: CacheItem<ParkingLot[]> | null = null;
-  private spacesCache: Map<string, CacheItem<ParkingSpace[]>> = new Map();
-  private activeReservations: Map<string, any> = new Map();       // reservationId → ReservationData
-  private activeRecords: Map<string, ParkingRecord> = new Map();   // userId → ParkingRecord
+  private spacesCache: Map<string, CacheItem<ParkingSpace[]>> = new Map<string, CacheItem<ParkingSpace[]>>();
+  private activeReservations: Map<string, ReservationData> = new Map<string, ReservationData>();
+  private activeRecords: Map<string, ParkingRecord> = new Map<string, ParkingRecord>();   // userId → ParkingRecord
 
   private constructor() {}
 
@@ -219,10 +229,11 @@ export class ParkingService {
       };
 
     } catch (error) {
-      console.error('[ParkingService] 预约失败:', error.message);
+      const err = error as Error;
+      console.error('[ParkingService] 预约失败:', err.message);
       return {
         success: false,
-        message: '预约失败: ' + error.message
+        message: '预约失败: ' + err.message
       };
     }
   }
@@ -245,7 +256,8 @@ export class ParkingService {
       return true;
 
     } catch (error) {
-      console.error('[ParkingService] 取消预约失败:', error.message);
+      const err = error as Error;
+      console.error('[ParkingService] 取消预约失败:', err.message);
       return false;
     }
   }
@@ -304,8 +316,9 @@ export class ParkingService {
       return record;
 
     } catch (error) {
-      console.error('[ParkingService] 记录停车位置失败:', error.message);
-      throw error;
+      const err = error as Error;
+      console.error('[ParkingService] 记录停车位置失败:', err.message);
+      throw new Error(err.message);
     }
   }
 
@@ -349,20 +362,20 @@ export class ParkingService {
 
       let totalFee = 0;
       let remainingHours = chargedHours;
-      const breakdown: { day: number; hours: number; fee: number }[] = [];
+      const breakdown: FeeBreakdownItem[] = [];
 
       for (let day = 1; day <= config.maxDays && remainingHours > 0; day++) {
         const dayHours = Math.min(remainingHours, 24);
         const dayFee = Math.min(dayHours * config.hourlyRate, config.dailyCap);
-        
+
         totalFee += dayFee;
         remainingHours -= dayHours;
-        
+
         breakdown.push({
           day: day,
           hours: Math.round(dayHours * 100) / 100,
           fee: dayFee
-        });
+        } as FeeBreakdownItem);
       }
 
       const result: FeeDetail = {
@@ -408,11 +421,11 @@ export class ParkingService {
    * 获取所有车位（用于预约检查）
    */
   private async getAllSpacesForReservation(spaceId: string): Promise<ParkingSpace[]> {
-    const mockData = await import('../mock/parkingMock');
-    const lots = mockData.getParkingLots();
-    
+    const mockData: ESObject = await import('../mock/parkingMock') as ESObject;
+    const lots: ParkingLot[] = mockData.getParkingLots() as ParkingLot[];
+
     for (const lot of lots) {
-      const spaces = mockData.getParkingSpaces(lot.id);
+      const spaces: ParkingSpace[] = mockData.getParkingSpaces(lot.id) as ParkingSpace[];
       const target = spaces.find(s => s.id === spaceId);
       if (target) {
         return spaces;

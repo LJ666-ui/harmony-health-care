@@ -60,7 +60,19 @@ export interface ParkingRecord {
 }
 
 // ==================== UI颜色配置 ====================
-export const ParkingColors = {
+export interface ParkingColorsType {
+  AVAILABLE: string;
+  OCCUPIED: string;
+  RESERVED: string;
+  PRIMARY: string;
+  BACKGROUND: string;
+  CARD_BG: string;
+  TEXT_PRIMARY: string;
+  TEXT_SECONDARY: string;
+  TEXT_HINT: string;
+}
+
+export const ParkingColors: ParkingColorsType = {
   AVAILABLE: '#52C41A',        // 空闲 - 绿色
   OCCUPIED: '#FF4D4F',         // 占用 - 红色
   RESERVED: '#FAAD14',         // 预约 - 黄色
@@ -97,7 +109,14 @@ export const CACHE_EXPIRY_MS = 5 * 60 * 1000;          // 停车场数据缓存5
 export const GPS_ACCURACY_THRESHOLD = 10;               // GPS精度阈值（米）
 
 // ==================== AR导航配置 ====================
-export const AR_NAVIGATION_CONFIG = {
+export interface ArNavigationConfigType {
+  arrowColor: string;
+  arrowBorderColor: string;
+  arrivalThreshold: number;
+  updateIntervalMs: number;
+}
+
+export const AR_NAVIGATION_CONFIG: ArNavigationConfigType = {
   arrowColor: '#FFFFFF',                            // 箭头颜色
   arrowBorderColor: '#1677FF',                      // 箭头边框颜色
   arrivalThreshold: 5,                              // 到达阈值（米）

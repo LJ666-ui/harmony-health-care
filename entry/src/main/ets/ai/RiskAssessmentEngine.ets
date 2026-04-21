@@ -143,7 +143,7 @@ export class RiskAssessmentEngine {
 
       console.log('\n[Step 3/4] 构建评估结果对象...');
       const result = this.buildAssessmentResult(
-        rawProbabilities,
+        rawProbabilities as number[],
         features,
         featureInterpretations,
         healthData,

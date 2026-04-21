@@ -1,5 +1,5 @@
 import { HealthData, HealthFeatureExtractor } from './HealthFeatureExtractor';
-import { RiskAssessmentResult } from './RiskAssessmentEngine';
+import { RiskAssessmentResult, RisksMap, RiskItem } from './RiskAssessmentEngine';
 
 export interface TrendPoint {
   timestamp: string;
@@ -17,11 +17,13 @@ export interface TrendAnalysis {
   trendDescription: string;
   dataPoints: TrendPoint[];
   volatility: number;
-  prediction?: {
-    nextMonthScore: number;
-    confidence: number;
-    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  };
+  prediction?: PredictionInfo;
+}
+
+export interface PredictionInfo {
+  nextMonthScore: number;
+  confidence: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 }
 
 export interface OverallTrend {
@@ -34,9 +36,29 @@ export interface OverallTrend {
   recommendations: string[];
 }
 
+interface TrendThresholds {
+  improving: number;
+  stable_low: number;
+  stable_high: number;
+  worsening: number;
+}
+
+interface OverallTrendResult {
+  direction: 'IMPROVING' | 'STABLE' | 'WORSENING';
+  changeRate: number;
+}
+
+class DiseaseDataPoints {
+  hypertension: TrendPoint[] = [];
+  diabetes: TrendPoint[] = [];
+  fall: TrendPoint[] = [];
+  frailty: TrendPoint[] = [];
+  sarcopenia: TrendPoint[] = [];
+}
+
 export class TrendAnalyzer {
 
-  private static readonly TREND_THRESHOLDS = {
+  private static readonly TREND_THRESHOLDS: TrendThresholds = {
     improving: -0.08,
     stable_low: -0.08,
     stable_high: 0.08,
@@ -53,17 +75,14 @@ export class TrendAnalyzer {
     console.log(`[TrendAnalyzer] 开始分析趋势，历史记录数: ${historyResults.length}`);
 
     if (historyResults.length < 2) {
-      return this.createInsufficientDataResult(currentResult);
+      return TrendAnalyzer.createInsufficientDataResult(currentResult);
     }
 
-    const diseases = ['hypertension', 'diabetes', 'fall', 'frailty', 'sarcopenia'];
-    const labels = ['高血压', '糖尿病', '跌倒风险', '衰弱综合征', '肌少症'];
-
     const diseaseTrends: TrendAnalysis[] = [];
-    const allDataPoints: { [key: string]: TrendPoint[] } = {};
+    const dataPoints = new DiseaseDataPoints();
 
-    for (const disease of diseases) {
-      allDataPoints[disease] = historyResults.map(result => ({
+    for (const result of historyResults) {
+      dataPoints.hypertension.push({
         timestamp: result.timestamp,
         date: new Date(result.timestamp).toLocaleDateString('zh-CN'),
         values: [
@@ -73,27 +92,84 @@ export class TrendAnalyzer {
           result.risks.frailty.probability,
           result.risks.sarcopenia.probability
         ]
-      }));
+      });
+      dataPoints.diabetes.push({
+        timestamp: result.timestamp,
+        date: new Date(result.timestamp).toLocaleDateString('zh-CN'),
+        values: [
+          result.risks.hypertension.probability,
+          result.risks.diabetes.probability,
+          result.risks.fall.probability,
+          result.risks.frailty.probability,
+          result.risks.sarcopenia.probability
+        ]
+      });
+      dataPoints.fall.push({
+        timestamp: result.timestamp,
+        date: new Date(result.timestamp).toLocaleDateString('zh-CN'),
+        values: [
+          result.risks.hypertension.probability,
+          result.risks.diabetes.probability,
+          result.risks.fall.probability,
+          result.risks.frailty.probability,
+          result.risks.sarcopenia.probability
+        ]
+      });
+      dataPoints.frailty.push({
+        timestamp: result.timestamp,
+        date: new Date(result.timestamp).toLocaleDateString('zh-CN'),
+        values: [
+          result.risks.hypertension.probability,
+          result.risks.diabetes.probability,
+          result.risks.fall.probability,
+          result.risks.frailty.probability,
+          result.risks.sarcopenia.probability
+        ]
+      });
+      dataPoints.sarcopenia.push({
+        timestamp: result.timestamp,
+        date: new Date(result.timestamp).toLocaleDateString('zh-CN'),
+        values: [
+          result.risks.hypertension.probability,
+          result.risks.diabetes.probability,
+          result.risks.fall.probability,
+          result.risks.frailty.probability,
+          result.risks.sarcopenia.probability
+        ]
+      });
     }
 
-    for (let i = 0; i < diseases.length; i++) {
-      const disease = diseases[i];
-      
-      const trend = this.analyzeDiseaseTrend(
-        disease,
-        labels[i],
-        historyResults.map(r => r.risks[disease as keyof typeof r.risks].probability),
-        allDataPoints[disease],
-        currentResult.risks[disease as keyof typeof currentResult.risks].probability
-      );
+    const histHypertension = historyResults.map(r => r.risks.hypertension.probability);
+    const histDiabetes = historyResults.map(r => r.risks.diabetes.probability);
+    const histFall = historyResults.map(r => r.risks.fall.probability);
+    const histFrailty = historyResults.map(r => r.risks.frailty.probability);
+    const histSarcopenia = historyResults.map(r => r.risks.sarcopenia.probability);
 
-      diseaseTrends.push(trend);
-    }
+    diseaseTrends.push(TrendAnalyzer.analyzeDiseaseTrend(
+      'hypertension', '高血压', histHypertension, dataPoints.hypertension,
+      currentResult.risks.hypertension.probability
+    ));
+    diseaseTrends.push(TrendAnalyzer.analyzeDiseaseTrend(
+      'diabetes', '糖尿病', histDiabetes, dataPoints.diabetes,
+      currentResult.risks.diabetes.probability
+    ));
+    diseaseTrends.push(TrendAnalyzer.analyzeDiseaseTrend(
+      'fall', '跌倒风险', histFall, dataPoints.fall,
+      currentResult.risks.fall.probability
+    ));
+    diseaseTrends.push(TrendAnalyzer.analyzeDiseaseTrend(
+      'frailty', '衰弱综合征', histFrailty, dataPoints.frailty,
+      currentResult.risks.frailty.probability
+    ));
+    diseaseTrends.push(TrendAnalyzer.analyzeDiseaseTrend(
+      'sarcopenia', '肌少症', histSarcopenia, dataPoints.sarcopenia,
+      currentResult.risks.sarcopenia.probability
+    ));
 
-    const overallTrend = this.calculateOverallTrend(diseaseTrends);
-    const timeSpanDays = this.calculateTimeSpan(historyResults);
-    const keyFindings = this.generateKeyFindings(diseaseTrends, overallTrend);
-    const recommendations = this.generateRecommendations(diseaseTrends);
+    const overallTrend = TrendAnalyzer.calculateOverallTrend(diseaseTrends);
+    const timeSpanDays = TrendAnalyzer.calculateTimeSpan(historyResults);
+    const keyFindings = TrendAnalyzer.generateKeyFindings(diseaseTrends, overallTrend);
+    const recommendations = TrendAnalyzer.generateRecommendations(diseaseTrends);
 
     const result: OverallTrend = {
       assessmentCount: historyResults.length + 1,
@@ -126,19 +202,19 @@ export class TrendAnalyzer {
     const changeRate = currentValue - previousValue;
 
     let trendDirection: 'IMPROVING' | 'STABLE' | 'WORSENING';
-    if (changeRate < this.TREND_THRESHOLDS.improving) {
+    if (changeRate < TrendAnalyzer.TREND_THRESHOLDS.improving) {
       trendDirection = 'IMPROVING';
-    } else if (changeRate > this.TREND_THRESHOLDS.worsening) {
+    } else if (changeRate > TrendAnalyzer.TREND_THRESHOLDS.worsening) {
       trendDirection = 'WORSENING';
     } else {
       trendDirection = 'STABLE';
     }
 
-    const volatility = this.calculateVolatility(historicalValues);
+    const volatility = TrendAnalyzer.calculateVolatility(historicalValues);
 
-    const prediction = this.predictNextMonth(historicalValues, currentValue, volatility);
+    const prediction = TrendAnalyzer.predictNextMonth(historicalValues, currentValue, volatility);
 
-    const trendDescription = this.generateTrendDescription(
+    const trendDescription = TrendAnalyzer.generateTrendDescription(
       label,
       currentValue,
       previousValue,
@@ -176,7 +252,7 @@ export class TrendAnalyzer {
     historicalValues: number[],
     currentValue: number,
     volatility: number
-  ): { nextMonthScore: number; confidence: number; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' } | undefined {
+  ): PredictionInfo | undefined {
     
     if (historicalValues.length < 3) return undefined;
 
@@ -217,7 +293,7 @@ export class TrendAnalyzer {
     previous: number,
     changeRate: number,
     direction: 'IMPROVING' | 'STABLE' | 'WORSENING',
-    prediction?: { nextMonthScore: number; confidence: number; riskLevel: string }
+    prediction?: PredictionInfo
   ): string {
     
     const currentPercent = (current * 100).toFixed(1);
@@ -244,8 +320,7 @@ export class TrendAnalyzer {
     return description;
   }
 
-  private static calculateOverallTrend(diseaseTrends: TrendAnalysis[]): 
-    { direction: 'IMPROVING' | 'STABLE' | 'WORSENING'; changeRate: number } {
+  private static calculateOverallTrend(diseaseTrends: TrendAnalysis[]): OverallTrendResult {
     
     const weights = [0.25, 0.25, 0.15, 0.20, 0.15];
     let weightedChange = 0;
@@ -255,9 +330,9 @@ export class TrendAnalyzer {
     }
 
     let direction: 'IMPROVING' | 'STABLE' | 'WORSENING';
-    if (weightedChange < this.TREND_THRESHOLDS.improving) {
+    if (weightedChange < TrendAnalyzer.TREND_THRESHOLDS.improving) {
       direction = 'IMPROVING';
-    } else if (weightedChange > this.TREND_THRESHOLDS.worsening) {
+    } else if (weightedChange > TrendAnalyzer.TREND_THRESHOLDS.worsening) {
       direction = 'WORSENING';
     } else {
       direction = 'STABLE';
@@ -278,7 +353,7 @@ export class TrendAnalyzer {
     return Math.round((lastDate - firstDate) / (1000 * 60 * 60 * 24));
   }
 
-  private static generateKeyFindings(trends: TrendAnalysis[], overall: { direction: string; changeRate: number }): string[] {
+  private static generateKeyFindings(trends: TrendAnalysis[], overall: OverallTrendResult): string[] {
     const findings: string[] = [];
 
     findings.push(`在${trends[0].dataPoints.length}次评估中，整体健康风险呈${overall.direction === 'IMPROVING' ? '改善' : overall.direction === 'WORSENING' ? '恶化' : '稳定'}趋势`);
@@ -303,7 +378,7 @@ export class TrendAnalyzer {
       findings.push(`${highVolatilityDiseases.map(d => d.label).join('、')}波动较大，需关注稳定性`);
     }
 
-    const criticalPredictions = trends.filter(t => t.prediction?.riskLevel === 'CRITICAL');
+    const criticalPredictions = trends.filter(t => t.prediction !== undefined && t.prediction.riskLevel === 'CRITICAL');
     if (criticalPredictions.length > 0) {
       findings.push(`⚠️ 预警：${criticalPredictions.map(d => d.label).join('、')}可能在下月达到极高风险`);
     }
@@ -321,22 +396,22 @@ export class TrendAnalyzer {
     }
 
     const hypertensionTrend = trends.find(t => t.disease === 'hypertension');
-    if (hypertensionTrend?.trendDirection === 'WORSENING') {
+    if (hypertensionTrend !== undefined && hypertensionTrend.trendDirection === 'WORSENING') {
       recommendations.push('血压管理需要加强，建议每日监测并记录血压值');
     }
 
     const diabetesTrend = trends.find(t => t.disease === 'diabetes');
-    if (diabetesTrend?.trendDirection === 'WORSENING') {
+    if (diabetesTrend !== undefined && diabetesTrend.trendDirection === 'WORSENING') {
       recommendations.push('血糖控制不佳，建议调整饮食结构并复查糖化血红蛋白');
     }
 
     const fallTrend = trends.find(t => t.disease === 'fall');
-    if (fallTrend?.currentScore > 0.45) {
+    if (fallTrend !== undefined && fallTrend.currentScore > 0.45) {
       recommendations.push('跌倒风险较高，建议进行居家环境安全评估和平衡训练');
     }
 
     const frailtyTrend = trends.find(t => t.disease === 'frailty');
-    if (frailtyTrend?.trendDirection === 'WORSENING') {
+    if (frailtyTrend !== undefined && frailtyTrend.trendDirection === 'WORSENING') {
       recommendations.push('衰弱迹象加重，建议增加蛋白质摄入和抗阻力运动');
     }
 
@@ -367,7 +442,7 @@ export class TrendAnalyzer {
 
     report += `评估记录数: ${trend.assessmentCount}次\n`;
     report += `时间跨度: ${trend.timeSpanDays}天\n`;
-    report += `总体趋势: ${this.getTrendLabel(trend.overallTrend)}\n`;
+    report += `总体趋势: ${TrendAnalyzer.getTrendLabel(trend.overallTrend)}\n`;
     report += `综合变化率: ${(trend.overallChangeRate * 100).toFixed(1)}%\n\n`;
 
     report += '【各维度趋势详情】\n';
@@ -393,7 +468,7 @@ export class TrendAnalyzer {
 
     if (trend.recommendations.length > 0) {
       report += '\n【改进建议】\n';
-      trend.recommendations.forEach((rec, idx) => {
+      trend.recommendations.forEach((rec) => {
         report += `• ${rec}\n`;
       });
     }

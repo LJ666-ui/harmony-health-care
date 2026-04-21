@@ -17,35 +17,23 @@ export class MonitoringMock {
   getSampleVitalSigns(): VitalSignsSnapshot {
     const now = new Date().toISOString();
 
-    return {
-      bloodPressure: {
-        systolic: 142,
-        diastolic: 88,
-        timestamp: now
-      },
-      bloodSugar: {
-        value: 6.8,
-        type: 'fasting',
-        timestamp: now
-      },
-      heartRate: {
-        value: 78,
-        timestamp: now
-      },
-      weight: {
-        value: 68.5,
-        timestamp: now
-      },
-      temperature: {
-        value: 36.8,
-        timestamp: now
-      },
-      oxygenSaturation: {
-        value: 98,
-        timestamp: now
-      },
+    const bpData: BloodPressureData = { systolic: 142, diastolic: 88, timestamp: now };
+    const bsData: BloodSugarData = { value: 6.8, type: 'fasting', timestamp: now };
+    const hrData: VitalSignData = { value: 78, timestamp: now };
+    const wtData: VitalSignData = { value: 68.5, timestamp: now };
+    const tmpData: VitalSignData = { value: 36.8, timestamp: now };
+    const oxyData: VitalSignData = { value: 98, timestamp: now };
+
+    const snapshot: VitalSignsSnapshot = {
+      bloodPressure: bpData,
+      bloodSugar: bsData,
+      heartRate: hrData,
+      weight: wtData,
+      temperature: tmpData,
+      oxygenSaturation: oxyData,
       lastUpdateTime: now
     };
+    return snapshot;
   }
 
   getNormalVitalSigns(): VitalSignsSnapshot {

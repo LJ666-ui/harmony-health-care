@@ -1,6 +1,8 @@
-import { RiskAssessmentResult } from '../ai/RiskAssessmentEngine';
+import { RiskAssessmentResult, RisksMap } from '../ai/RiskAssessmentEngine';
 import { OverallTrend, TrendAnalyzer, TrendAnalysis } from '../ai/TrendAnalyzer';
-import { RadarChart } from './RadarChart';
+import { RadarChart, RadarDataItem } from '../components/RadarChart';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
+import { router } from '@kit.ArkUI';
 
 @Entry
 @Component
@@ -58,7 +60,7 @@ struct RiskTrendPage {
   }
 
   private createMockResult(timestamp: number, overallScore: number): RiskAssessmentResult {
-    return {
+    const result: RiskAssessmentResult = {
       assessmentId: `ASSESS_${timestamp}`,
       timestamp: new Date(timestamp).toISOString(),
       assessmentMethod: 'RULE_BASED',
@@ -115,10 +117,11 @@ struct RiskTrendPage {
           factors: ['步速减慢'],
           evidence: '基于历史数据模拟'
         }
-      },
+      } as RisksMap,
       suggestions: [],
       featureInterpretations: []
     };
+    return result;
   }
 
   build() {
@@ -308,7 +311,7 @@ struct RiskTrendPage {
             label: trend.label,
             value: trend.currentScore,
             color: this.getDiseaseColor(trend.disease)
-          })),
+          } as RadarDataItem)),
           size: 280,
           showValue: true,
           animated: true
@@ -560,59 +563,26 @@ struct RiskTrendPage {
   }
 
   private getDiseaseIcon(disease: string): string {
-    const icons: { [key: string]: string } = {
-      'hypertension': '💓',
-      'diabetes': '🩸',
-      'fall': '⚠️',
-      'frailty': '👴',
-      'sarcopenia': '💪'
-    };
-    return icons[disease] || '📊';
+    const diseaseIcons = new Map<string, string>([
+      ['hypertension', '💓'],
+      ['diabetes', '🩸'],
+      ['fall', '⚠️'],
+      ['frailty', '👴'],
+      ['sarcopenia', '💪']
+    ]);
+    return diseaseIcons.get(disease) ?? '📊';
   }
 
   private getDiseaseColor(disease: string): string {
-    const colors: { [key: string]: string } = {
-      'hypertension': '#FF4D4F',
-      'diabetes': '#FAAD14',
-      'fall': '#FF7875',
-      'frailty': '#FFA39E',
-      'sarcopenia': '#FFCCC7'
-    };
-    return colors[disease] || '#999999';
+    const diseaseColors = new Map<string, string>([
+      ['hypertension', '#FF4D4F'],
+      ['diabetes', '#FAAD14'],
+      ['fall', '#FF7875'],
+      ['frailty', '#FFA39E'],
+      ['sarcopenia', '#FFCCC7']
+    ]);
+    return diseaseColors.get(disease) ?? '#999999';
   }
 }
 
-@Component
-struct NavigationTitleBar {
-  @Prop title: string = '';
-  @Prop showBack: boolean = false;
 
-  build() {
-    Row() {
-      if (this.showBack) {
-        Image($r('app.media.ic_back'))
-          .width(24)
-          .height(24)
-          .fillColor('#333333')
-          .onClick(() => {
-            router.back();
-          })
-      }
-
-      Text(this.title)
-        .fontSize(18)
-        .fontColor('#333333')
-        .fontWeight(FontWeight.Bold)
-        .layoutWeight(1)
-        .textAlign(TextAlign.Center)
-
-      if (this.showBack) {
-        Text('')
-          .width(24)
-      }
-    }
-    .width('100%')
-    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-    .backgroundColor('#FFFFFF')
-  }
-}

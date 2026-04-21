@@ -49,9 +49,16 @@ export class LocationService {
     try {
       console.log('[LocationService] 开始获取当前位置...');
 
-      const locationKit = requireNapi('ohos.geoLocationManager', true);
-      
-      const requestInfo: any = {
+      const locationKit: ESObject = requireNapi('ohos.geoLocationManager', true);
+
+      export interface LocationRequestInfo {
+        priority: ESObject;
+        scenario: ESObject;
+        maxAccuracy: number;
+        timeoutMs: number;
+      }
+
+      const requestInfo: LocationRequestInfo = {
         priority: locationKit.LocationRequestPriority.ACCURACY,
         scenario: locationKit.LocationRequestScenario.UNSET,
         maxAccuracy: GPS_ACCURACY_THRESHOLD,
@@ -59,7 +66,7 @@ export class LocationService {
       };
 
       const location = await new Promise<Location>((resolve, reject) => {
-        locationKit.getCurrentLocation(requestInfo, (err: any, data: any) => {
+        locationKit.getCurrentLocation(requestInfo, (err: Error, data: ESObject) => {
           if (err) {
             reject(new Error(err.message));
           } else {
@@ -124,13 +131,19 @@ export class LocationService {
     return Math.round(distance);
   }
 
+export interface DistanceDirectionResult {
+  distance: number;
+  direction: string;
+  bearing: number;
+}
+
   /**
    * 计算从当前位置到目标位置的距离和方向
    */
   getDistanceAndDirection(
     targetLat: number,
     targetLng: number
-  ): { distance: number; direction: string; bearing: number } | null {
+  ): DistanceDirectionResult | null {
     if (!this.currentLocation) {
       return null;
     }
@@ -151,11 +164,12 @@ export class LocationService {
 
     const direction = this.bearingToDirection(bearing);
 
-    return {
+    const result: DistanceDirectionResult = {
       distance: distance,
       direction: direction,
       bearing: bearing
     };
+    return result;
   }
 
   /**
@@ -256,15 +270,21 @@ export class LocationService {
    * 方位角转方向文字
    */
   private bearingToDirection(bearing: number): string {
-    const directions = [
-      { min: 337.5, max: 22.5, label: '北' },
-      { min: 22.5, max: 67.5, label: '东北' },
-      { min: 67.5, max: 112.5, label: '东' },
-      { min: 112.5, max: 157.5, label: '东南' },
-      { min: 157.5, max: 202.5, label: '南' },
-      { min: 202.5, max: 247.5, label: '西南' },
-      { min: 247.5, max: 292.5, label: '西' },
-      { min: 292.5, max: 337.5, label: '西北' }
+    export interface DirectionItem {
+      min: number;
+      max: number;
+      label: string;
+    }
+
+    const directions: DirectionItem[] = [
+      { min: 337.5, max: 22.5, label: '北' } as DirectionItem,
+      { min: 22.5, max: 67.5, label: '东北' } as DirectionItem,
+      { min: 67.5, max: 112.5, label: '东' } as DirectionItem,
+      { min: 112.5, max: 157.5, label: '东南' } as DirectionItem,
+      { min: 157.5, max: 202.5, label: '南' } as DirectionItem,
+      { min: 202.5, max: 247.5, label: '西南' } as DirectionItem,
+      { min: 247.5, max: 292.5, label: '西' } as DirectionItem,
+      { min: 292.5, max: 337.5, label: '西北' } as DirectionItem
     ];
 
     for (const dir of directions) {

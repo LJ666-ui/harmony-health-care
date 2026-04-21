@@ -4,7 +4,7 @@ import { Alert } from '../monitoring/AnomalyDetector';
 export struct AlertBadge {
   @Prop alert: Alert;
   @Prop showDetails: boolean = false;
-  @Prop onClick?: (alert: Alert) => void;
+  private onAlertClick?: (alert: Alert) => void;
 
   private getSeverityColor(): string {
     switch (this.alert.severity) {
@@ -104,7 +104,7 @@ export struct AlertBadge {
               .fontSize(11)
               .fontColor(this.getSeverityColor())
               .fontWeight(FontWeight.Bold)
-              .padding({ horizontal: 5, vertical: 2 })
+              .padding({ left: 5, right: 5, top: 2, bottom: 2 })
               .backgroundColor(this.getSeverityBgColor())
               .borderRadius(8)
 
@@ -170,7 +170,7 @@ export struct AlertBadge {
           Text(`处理备注：${this.alert.handlingNotes}`)
             .fontSize(12)
             .fontColor('#52C41A')
-            .backgroundColor('#F6FFED'
+            .backgroundColor('#F6FFED')
             .padding(8)
             .borderRadius(6)
             .width('100%')
@@ -201,8 +201,8 @@ export struct AlertBadge {
   }
 
   private handleClick(): void {
-    if (this.onClick) {
-      this.onClick(this.alert);
+    if (this.onAlertClick) {
+      this.onAlertClick(this.alert);
     }
   }
 

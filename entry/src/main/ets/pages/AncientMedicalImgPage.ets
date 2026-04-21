@@ -6,6 +6,8 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { Image3DViewer } from '../components/Image3DViewer';
+import { AIAnimationPlayer } from '../components/AIAnimationPlayer';
 import BrowseTracker from '../utils/BrowseTracker';
 
 export interface AncientImageItem {
@@ -13,6 +15,9 @@ export interface AncientImageItem {
   originalUrl: string;
   restoreUrl: string;
   model3dUrl: string;
+  animationUrl: string;
+  enhanceStatus: string;
+  enhanceProgress: number;
   title: string;
   desc: string;
   source: string;
@@ -32,6 +37,8 @@ struct AncientMedicalImgPage {
   @State currentCategory: string = '全部';
   @State showUploadDialog: boolean = false;
   @State showCompareDialog: boolean = false;
+  @State show3DViewer: boolean = false;
+  @State showAnimationPlayer: boolean = false;
   @State selectedImage: AncientImageItem | null = null;
   @State newTitle: string = '';
   @State newDescription: string = '';
@@ -92,6 +99,9 @@ struct AncientMedicalImgPage {
             originalUrl: record['originalUrl'] as string || '',
             restoreUrl: record['restoreUrl'] as string || '',
             model3dUrl: record['model3dUrl'] as string || '',
+            animationUrl: record['animationUrl'] as string || '',
+            enhanceStatus: record['enhanceStatus'] as string || 'PENDING',
+            enhanceProgress: record['enhanceProgress'] as number || 0,
             title: record['title'] as string || '未命名图片',
             desc: record['desc'] as string || '',
             source: record['source'] as string || '',
@@ -125,24 +135,34 @@ struct AncientMedicalImgPage {
   }
 
   getStatusText(image: AncientImageItem): string {
-    if (image.restoreUrl && image.restoreUrl.length > 0) {
+    if (image.enhanceStatus === 'COMPLETED' && image.animationUrl && image.animationUrl.length > 0) {
       return '已完成';
+    } else if (image.enhanceStatus === 'ENHANCING') {
+      return '增强中';
+    } else if (image.enhanceStatus === 'ANIMATING') {
+      return '动画生成中';
+    } else if (image.restoreUrl && image.restoreUrl.length > 0) {
+      return '已复原';
     }
     return '等待复原';
   }
 
   getStatusColor(status: string): string {
     switch (status) {
-      case '已完成': return '#52C41A';
-      case '复原中': return '#1677FF';
+      case '已完成':
+      case '已复原': return '#52C41A';
+      case '增强中':
+      case '动画生成中': return '#1677FF';
       default: return '#FAAD14';
     }
   }
 
   getStatusIcon(status: string): string {
     switch (status) {
-      case '已完成': return '\u2705';
-      case '复原中': return '\uD83D\uDD04';
+      case '已完成':
+      case '已复原': return '\u2705';
+      case '增强中':
+      case '动画生成中': return '\uD83D\uDD04';
       default: return '\u23F3';
     }
   }
@@ -203,19 +223,22 @@ struct AncientMedicalImgPage {
   }
 
   async triggerRestore(image: AncientImageItem): Promise<void> {
-    if (image.restoreUrl && image.restoreUrl.length > 0) {
+    if (image.enhanceStatus === 'COMPLETED' || (image.restoreUrl && image.restoreUrl.length > 0)) {
       ToastUtil.showInfo('\u8BE5\u56FE\u7247\u5DF2\u5B8C\u6210\u590D\u539F');
       return;
     }
 
     try {
-      ToastUtil.operationSuccess('\u6B63\u5728\u542F\u52A8AI\u590D\u539F...');
+      ToastUtil.operationSuccess('\u6B63\u5728\u542F\u52A8AI\u8D85\u5206\u8FA8\u7387\u4FEE\u590D...');
 
       const url: string = ApiConstants.ANCIENT_IMAGE_RESTORE + image.id + '/restore';
       const response: BaseResponse<string> = await HttpUtil.post<string>(url, {} as Record<string, Object>);
 
       if (response.success) {
-        ToastUtil.operationSuccess('\u590D\u539F\u4EFB\u52A1\u5DF2\u542F\u52A8\uFF0C\u8BF7\u7A0D\u5019...');
+        ToastUtil.operationSuccess('AI\u589E\u5F3A\u4EFB\u52A1\u5DF2\u542F\u52A8\uFF0C\u8BF7\u7A0D\u5019...');
+
+        this.startProgressPolling(image.id);
+
         setTimeout(() => {
           this.loadImageList();
         }, 5000);
@@ -226,6 +249,124 @@ struct AncientMedicalImgPage {
       console.error('\u590D\u539F\u64CD\u4F5C\u9519\u8BEF:', e);
       ToastUtil.showInfo('\u542F\u52A8\u590D\u539F\u5931\u8D25');
     }
+  }
+
+  startProgressPolling(imageId: number): void {
+    let pollCount = 0;
+    const maxPolls = 20;
+
+    const pollInterval = setInterval(async () => {
+      pollCount++;
+      if (pollCount > maxPolls) {
+        clearInterval(pollInterval);
+        return;
+      }
+
+      try {
+        const url: string = ApiConstants.ANCIENT_IMAGE_LIST.replace('/list', '/' + imageId + '/progress');
+        const response: BaseResponse<AncientImageItem> = await HttpUtil.get<AncientImageItem>(url);
+
+        if (response.success && response.data) {
+          const progressData: AncientImageItem = response.data;
+
+          const imgIndex: number = this.images.findIndex((img: AncientImageItem) => img.id === imageId);
+          if (imgIndex >= 0) {
+            this.images[imgIndex].enhanceStatus = progressData.enhanceStatus;
+            this.images[imgIndex].enhanceProgress = progressData.enhanceProgress;
+            this.images[imgIndex].restoreUrl = progressData.restoreUrl;
+            this.images[imgIndex].model3dUrl = progressData.model3dUrl;
+            this.images[imgIndex].animationUrl = progressData.animationUrl;
+          }
+
+          if (progressData.enhanceStatus === 'COMPLETED' || progressData.enhanceStatus === 'FAILED') {
+            clearInterval(pollInterval);
+            this.loadImageList();
+          }
+        }
+      } catch (e) {
+        console.error('\u8F6E\u8BE2\u5EA6\u5931\u8D25:', e);
+      }
+    }, 2000);
+  }
+
+  async generate3DModel(image: AncientImageItem): Promise<void> {
+    if (!image.restoreUrl || image.restoreUrl.length === 0) {
+      ToastUtil.showInfo('\u8BF7\u5148\u5B8C\u6210\u56FE\u50CF\u590D\u539F');
+      return;
+    }
+
+    if (image.model3dUrl && image.model3dUrl.length > 0) {
+      this.open3DViewer(image);
+      return;
+    }
+
+    try {
+      ToastUtil.operationSuccess('\u6B63\u5728\u751F\u62103D\u6A21\u578B...');
+
+      const url: string = ApiConstants.ANCIENT_IMAGE_LIST.replace('/list', '/' + image.id + '/3d-model');
+      const response: BaseResponse<AncientImageItem> = await HttpUtil.post<AncientImageItem>(url, {} as Record<string, Object>);
+
+      if (response.success) {
+        ToastUtil.operationSuccess('3D\u6A21\u578B\u751F\u6210\u4EFB\u52A1\u5DF2\u542F\u52A8\uFF0C\u8BF7\u7A0D\u5019...');
+        setTimeout(() => {
+          this.loadImageList();
+        }, 4000);
+      } else {
+        throw new Error(response.message ? response.message : '\u751F\u6210\u5931\u8D25');
+      }
+    } catch (e) {
+      console.error('3D\u5EFA\u6A21\u64CD\u4F5C\u9519\u8BEF:', e);
+      ToastUtil.showInfo('3D\u5EFA\u6A21\u5931\u8D25');
+    }
+  }
+
+  open3DViewer(image: AncientImageItem): void {
+    if (!image.model3dUrl || image.model3dUrl.length === 0) {
+      ToastUtil.showInfo('\u8BF7\u5148\u751F\u62103D\u6A21\u578B');
+      return;
+    }
+    this.selectedImage = image;
+    this.show3DViewer = true;
+  }
+
+  async generateAnimation(image: AncientImageItem): Promise<void> {
+    if (!image.restoreUrl || image.restoreUrl.length === 0) {
+      ToastUtil.showInfo('\u8BF7\u5148\u5B8C\u6210\u56FE\u50CF\u590D\u539F');
+      return;
+    }
+
+    if (image.animationUrl && image.animationUrl.length > 0) {
+      this.openAnimationPlayer(image);
+      return;
+    }
+
+    try {
+      ToastUtil.operationSuccess('\u6B63\u5728\u751F\u6210AI\u52A8\u753B...');
+
+      const url: string = ApiConstants.ANCIENT_IMAGE_LIST.replace('/list', '/' + image.id + '/animation');
+      const response: BaseResponse<AncientImageItem> = await HttpUtil.post<AncientImageItem>(url, {} as Record<string, Object>);
+
+      if (response.success) {
+        ToastUtil.operationSuccess('AI\u52A8\u753B\u751F\u6210\u4EFB\u52A1\u5DF2\u542F\u52A8\uFF0C\u8BF7\u7A0D\u5019...');
+        setTimeout(() => {
+          this.loadImageList();
+        }, 5000);
+      } else {
+        throw new Error(response.message ? response.message : '\u751F\u6210\u5931\u8D25');
+      }
+    } catch (e) {
+      console.error('\u52A8\u753B\u751F\u6210\u64CD\u4F5C\u9519\u8BEF:', e);
+      ToastUtil.showInfo('\u52A8\u753B\u751F\u6210\u5931\u8D25');
+    }
+  }
+
+  openAnimationPlayer(image: AncientImageItem): void {
+    if (!image.animationUrl || image.animationUrl.length === 0) {
+      ToastUtil.showInfo('\u8BF7\u5148\u751F\u6210AI\u52A8\u753B');
+      return;
+    }
+    this.selectedImage = image;
+    this.showAnimationPlayer = true;
   }
 
   openCompare(image: AncientImageItem): void {
@@ -393,6 +534,30 @@ struct AncientMedicalImgPage {
       if (this.showCompareDialog && this.selectedImage) {
         this.buildCompareDialog();
       }
+
+      if (this.show3DViewer && this.selectedImage) {
+        Image3DViewer({
+          imageUrl: this.selectedImage.originalUrl,
+          model3dUrl: this.selectedImage.model3dUrl,
+          title: this.selectedImage.title,
+          onClose: () => {
+            this.show3DViewer = false;
+          }
+        });
+      }
+
+      if (this.showAnimationPlayer && this.selectedImage) {
+        AIAnimationPlayer({
+          originalUrl: this.selectedImage.originalUrl,
+          restoreUrl: this.selectedImage.restoreUrl,
+          animationUrl: this.selectedImage.animationUrl,
+          title: this.selectedImage.title,
+          desc: this.selectedImage.desc,
+          onClose: () => {
+            this.showAnimationPlayer = false;
+          }
+        });
+      }
     }
     .width('100%')
     .height('100%');
@@ -475,7 +640,7 @@ struct AncientMedicalImgPage {
 
         Row({ space: 8 }) {
           if (!image.restoreUrl || image.restoreUrl.length === 0) {
-            Button('\u5F00\u59CB\u590D\u539F')
+            Button('\u2728 AI\u589E\u5F3A')
               .layoutWeight(1)
               .height(32)
               .fontSize(12)
@@ -486,23 +651,66 @@ struct AncientMedicalImgPage {
           }
 
           if (image.restoreUrl && image.restoreUrl.length > 0) {
-            Button('\u5BF9\u6BD4\u67E5\u770B')
-              .layoutWeight(1)
+            Button('\uD83D\uDD0D \u5BF9\u6BD4')
               .height(32)
-              .fontSize(12)
-              .fontColor('#722ED1')
-              .backgroundColor('#F9F0FF')
+              .fontSize(11)
+              .fontColor('#1677FF')
+              .backgroundColor('#E6F7FF')
               .borderRadius(16)
               .onClick(() => this.openCompare(image));
 
-            Button('\u5206\u4EAB')
-              .layoutWeight(1)
+            Button('\uD83C\uDFAE 3D')
               .height(32)
-              .fontSize(12)
+              .fontSize(11)
+              .fontColor(image.model3dUrl ? '#FFFFFF' : '#722ED1')
+              .backgroundColor(image.model3dUrl ? '#52C41A' : '#F9F0FF')
+              .borderRadius(16)
+              .onClick(() => {
+                if (image.model3dUrl) {
+                  this.open3DViewer(image);
+                } else {
+                  this.generate3DModel(image);
+                }
+              });
+
+            Button('\uD83C\uDFAC \u52A8\u753B')
+              .height(32)
+              .fontSize(11)
+              .fontColor(image.animationUrl ? '#FFFFFF' : '#722ED1')
+              .backgroundColor(image.animationUrl ? '#52C41A' : '#F9F0FF')
+              .borderRadius(16)
+              .onClick(() => {
+                if (image.animationUrl) {
+                  this.openAnimationPlayer(image);
+                } else {
+                  this.generateAnimation(image);
+                }
+              });
+
+            Button('\uD83D\uCEE4 \u5206\u4EAB')
+              .height(32)
+              .fontSize(11)
               .fontColor('#FFFFFF')
               .backgroundColor('#52C41A')
               .borderRadius(16)
               .onClick(() => this.shareResult(image));
+          }
+
+          if (image.enhanceStatus === 'ENHANCING' || image.enhanceStatus === 'ANIMATING') {
+            Column() {
+              Text(`\u5904\u7406\u4E2D ${image.enhanceProgress}%`)
+                .fontSize(10)
+                .fontColor('#722ED1');
+
+              Progress({ value: image.enhanceProgress, total: 100, type: ProgressType.Linear })
+                .width('100%')
+                .height(4)
+                .color('#722ED1')
+                .backgroundColor('#F9F0FF')
+                .borderRadius(2);
+            }
+            .layoutWeight(2)
+            .padding({ left: 8, right: 8 });
           }
 
           Button('\u5220\u9664')

@@ -3,6 +3,7 @@ package com.example.medical.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.medical.common.Result;
 import com.example.medical.entity.AncientMedicalImage;
+import com.example.medical.service.AncientImageEnhanceService;
 import com.example.medical.service.AncientMedicalImageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,9 @@ public class AncientMedicalImageController {
 
     @Autowired
     private AncientMedicalImageService ancientMedicalImageService;
+
+    @Autowired
+    private AncientImageEnhanceService ancientImageEnhanceService;
 
     @PostMapping("/upload")
     public Result<?> uploadImage(@RequestParam("file") MultipartFile file,
@@ -57,10 +61,53 @@ public class AncientMedicalImageController {
     @PostMapping("/{id}/restore")
     public Result<?> startRestoration(@PathVariable Long id) {
         try {
-            ancientMedicalImageService.startRestoration(id);
-            return Result.success("复原任务已启动");
+            AncientMedicalImage result = ancientImageEnhanceService.enhanceImage(id);
+            return Result.success(result);
         } catch (Exception e) {
             return Result.error("启动失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/3d-model")
+    public Result<?> generate3DModel(@PathVariable Long id) {
+        try {
+            AncientMedicalImage result = ancientImageEnhanceService.generate3DModel(id);
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error("3D建模失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/animation")
+    public Result<?> generateAnimation(@PathVariable Long id) {
+        try {
+            AncientMedicalImage result = ancientImageEnhanceService.generateAnimation(id);
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error("动画生成失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/progress")
+    public Result<?> getEnhanceProgress(@PathVariable Long id) {
+        try {
+            AncientMedicalImage image = ancientImageEnhanceService.getEnhanceProgress(id);
+            if (image == null) {
+                return Result.error("图片不存在");
+            }
+            return Result.success(image);
+        } catch (Exception e) {
+            return Result.error("查询失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/batch-enhance")
+    public Result<?> batchEnhance(@RequestBody Long[] imageIds) {
+        try {
+            String message = ancientImageEnhanceService.batchEnhance(imageIds);
+            return Result.success(message);
+        } catch (Exception e) {
+            return Result.error("批量增强失败：" + e.getMessage());
         }
     }
 

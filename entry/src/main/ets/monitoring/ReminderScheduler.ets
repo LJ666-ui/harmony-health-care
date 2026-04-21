@@ -47,13 +47,21 @@ export interface ReminderInput {
   advanceNoticeMinutes?: number;
 }
 
+export interface ReminderTypeGroupMap {
+  MEDICATION: number;
+  MEASUREMENT: number;
+  EXERCISE: number;
+  APPOINTMENT: number;
+  CUSTOM: number;
+}
+
 export interface ReminderStatistics {
   total: number;
   active: number;
   completed: number;
   overdue: number;
   upcoming: number;
-  byType: Record<string, number>;
+  byType: ReminderTypeGroupMap;
   completionRate: number;
 }
 
@@ -463,11 +471,33 @@ export class ReminderScheduler {
     }
   }
 
-  private groupByType(): Record<string, number> {
-    const groups: Record<string, number> = {};
+  private groupByType(): ReminderTypeGroupMap {
+    const groups: ReminderTypeGroupMap = {
+      MEDICATION: 0,
+      MEASUREMENT: 0,
+      EXERCISE: 0,
+      APPOINTMENT: 0,
+      CUSTOM: 0
+    };
 
     for (const reminder of this.reminders) {
-      groups[reminder.type] = (groups[reminder.type] || 0) + 1;
+      switch (reminder.type) {
+        case 'MEDICATION':
+          groups.MEDICATION = groups.MEDICATION + 1;
+          break;
+        case 'MEASUREMENT':
+          groups.MEASUREMENT = groups.MEASUREMENT + 1;
+          break;
+        case 'EXERCISE':
+          groups.EXERCISE = groups.EXERCISE + 1;
+          break;
+        case 'APPOINTMENT':
+          groups.APPOINTMENT = groups.APPOINTMENT + 1;
+          break;
+        case 'CUSTOM':
+          groups.CUSTOM = groups.CUSTOM + 1;
+          break;
+      }
     }
 
     return groups;

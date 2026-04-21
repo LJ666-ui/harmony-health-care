@@ -46,6 +46,10 @@ export const COLUMN_DEVICE_TYPE = 'device_type';
 export const COLUMN_DEVICE_MODEL = 'device_model';
 export const COLUMN_PAIRED = 'paired';
 export const COLUMN_LAST_CONNECT_TIME = 'last_connect_time';
+export const COLUMN_DATA_PERMISSION = 'data_permission';
+export const COLUMN_PERMISSION_TYPES = 'permission_types';
+export const COLUMN_SIGNAL_STRENGTH = 'signal_strength';
+export const COLUMN_DISTANCE = 'distance';
 
 // sync_queue
 export const COLUMN_TABLE_NAME = 'table_name';
@@ -127,7 +131,11 @@ export const CREATE_TABLE_DEVICE_CACHE = `
     ${COLUMN_DEVICE_TYPE} TEXT,
     ${COLUMN_DEVICE_MODEL} TEXT,
     ${COLUMN_PAIRED} INTEGER DEFAULT 0,
-    ${COLUMN_LAST_CONNECT_TIME} INTEGER
+    ${COLUMN_LAST_CONNECT_TIME} INTEGER,
+    ${COLUMN_DATA_PERMISSION} TEXT DEFAULT 'allowed',
+    ${COLUMN_PERMISSION_TYPES} TEXT,
+    ${COLUMN_SIGNAL_STRENGTH} INTEGER DEFAULT 0,
+    ${COLUMN_DISTANCE} REAL DEFAULT 0
   )
 `;
 

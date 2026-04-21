@@ -2,6 +2,7 @@ import { ParkingService, ParkingConstants, SpaceStatus, SpaceType } from '../par
 import { ParkingMap } from '../components/ParkingMap';
 import { SpaceMarker } from '../components/SpaceMarker';
 import { parkingMockData } from '../mock/parkingMock';
+import { NavigationTitleBar } from '../components/NavigationTitleBar';
 
 @Entry
 @Component

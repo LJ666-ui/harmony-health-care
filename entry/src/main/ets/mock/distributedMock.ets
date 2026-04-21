@@ -88,139 +88,141 @@ const mockDevices: DeviceInfo[] = [
 
 // ==================== 完整病历Mock数据（含敏感信息） ====================
 
-const mockMedicalRecords: Map<string, MedicalRecordForSync> = new Map([
-  ['PAT_001', {
-    recordId: 'REC_PAT_001_001',
-    patientBasicInfo: {
-      name: '张三',
-      gender: '男',
-      age: 68,
-      idCard: '110101195801011234',
-      phone: '13812345678',
-      address: '北京市朝阳区建国路88号阳光小区3号楼2单元501室',
-      emergencyContact: '李四（儿子）',
-      emergencyPhone: '13987654321',
-      bloodType: 'A型',
-      insuranceNumber: 'BJ20240001'
-    },
-    diagnosisInfo: [
-      {
-        diagnosisId: 'DIAG_001',
-        diseaseName: '冠状动脉粥样硬化性心脏病',
-        diagnosisDate: '2024-06-15',
-        doctorName: '王主任',
-        hospitalName: '北京协和医院',
-        status: '未愈',
-        description: '冠脉造影显示左前降支狭窄75%，右冠脉狭窄50%，建议行PCI介入治疗'
-      },
-      {
-        diagnosisId: 'DIAG_002',
-        diseaseName: '高血压病3级（极高危）',
-        diagnosisDate: '2024-03-10',
-        doctorName: '刘医生',
-        hospitalName: '北京协和医院',
-        status: '好转',
-        description: '血压控制不佳，最高达180/110mmHg，已调整用药方案'
-      }
-    ],
-    treatmentHistory: [
-      {
-        treatmentId: 'TREAT_001',
-        treatmentDate: '2024-08-20',
-        treatmentType: 'PCI介入治疗',
-        description: '左前降支植入药物洗脱支架1枚',
-        result: '手术成功，血流恢复TIMI 3级',
-        doctorName: '王主任',
-        hospitalName: '北京协和医院'
-      },
-      {
-        treatmentId: 'TREAT_002',
-        treatmentDate: '2025-01-15',
-        treatmentType: '药物治疗调整',
-        description: '增加氨氯地平剂量至5mg qd，加用螺内酯25mg qd',
-        result: '血压控制在140/90mmHg左右',
-        doctorName: '刘医生',
-        hospitalName: '北京协和医院'
-      }
-    ],
-    medicationList: [
-      {
-        medicationId: 'MED_001',
-        name: '阿司匹林肠溶片',
-        dosage: '100mg',
-        frequency: '每日1次',
-        startDate: '2024-08-21',
-        endDate: '长期',
-        prescribingDoctor: '王主任',
-        notes: '餐后服用，注意观察出血倾向'
-      },
-      {
-        medicationId: 'MED_002',
-        name: '氯吡格雷片',
-        dosage: '75mg',
-        frequency: '每日1次',
-        startDate: '2024-08-21',
-        endDate: '2025-08-20（术后满1年停药）',
-        prescribingDoctor: '王主任',
-        notes: '与阿司匹林双联抗血小板治疗'
-      },
-      {
-        medicationId: 'MED_003',
-        name: '琥珀酸美托洛尔缓释片',
-        dosage: '47.5mg',
-        frequency: '每日1次',
-        startDate: '2024-08-21',
-        endDate: '长期',
-        prescribingDoctor: '王主任',
-        notes: '晨起空腹服用，监测心率不低于55次/分'
-      },
-      {
-        medicationId: 'MED_004',
-        name: '氨氯地平片',
-        dosage: '5mg',
-        frequency: '每日1次',
-        startDate: '2025-01-16',
-        endDate: '长期',
-        prescribingDoctor: '刘医生',
-        notes: '晨起服用，监测血压和踝部水肿'
-      }
-    ],
-    examinationResults: [
-      {
-        examId: 'EXAM_001',
-        examType: '心电图',
-        examDate: '2025-04-01',
-        hospitalName: '北京协和医院',
-        resultSummary: '窦性心律，心率68次/分，ST-T改变（V1-V3导联）',
-        imageUrl: '',
-        isAbnormal: true,
-        abnormalDescription: '心肌缺血表现，与前降支病变相符'
-      },
-      {
-        examId: 'EXAM_002',
-        examType: '心脏彩超',
-        examDate: '2025-03-15',
-        hospitalName: '北京协和医院',
-        resultSummary: 'LVEF 58%，左室舒张功能减退（E/A<1）',
-        imageUrl: '',
-        isAbnormal: true,
-        abnormalDescription: '左室舒张功能II度减退'
-      },
-      {
-        examId: 'EXAM_003',
-        examType: '血常规+生化全套',
-        examDate: '2025-04-10',
-        hospitalName: '北京协和医院',
-        resultSummary: 'WBC 6.8×10^9/L, Hb 135g/L, PLT 198×10^9/L, Cr 85μmol/L, K+ 4.2mmol/L',
-        isAbnormal: false
-      }
-    ],
-    allergies: ['青霉素', '磺胺类药物'],
-    syncPermission: PermissionLevel.DOCTOR_FULL,
-    createTime: '2024-06-15T08:30:00Z',
-    updateTime: '2025-04-10T14:20:00Z'
-  }]
-]);
+const mockMedicalRecords: Map<string, MedicalRecordForSync> = new Map<string, MedicalRecordForSync>();
+
+const pat001Record: MedicalRecordForSync = {
+  recordId: 'REC_PAT_001_001',
+  patientBasicInfo: {
+    name: '张三',
+    gender: '男',
+    age: 68,
+    idCard: '110101195801011234',
+    phone: '13812345678',
+    address: '北京市朝阳区建国路88号阳光小区3号楼2单元501室',
+    emergencyContact: '李四（儿子）',
+    emergencyPhone: '13987654321',
+    bloodType: 'A型',
+    insuranceNumber: 'BJ20240001'
+  } as PatientBasicInfo,
+  diagnosisInfo: [
+    {
+      diagnosisId: 'DIAG_001',
+      diseaseName: '冠状动脉粥样硬化性心脏病',
+      diagnosisDate: '2024-06-15',
+      doctorName: '王主任',
+      hospitalName: '北京协和医院',
+      status: '未愈',
+      description: '冠脉造影显示左前降支狭窄75%，右冠脉狭窄50%，建议行PCI介入治疗'
+    } as DiagnosisInfo,
+    {
+      diagnosisId: 'DIAG_002',
+      diseaseName: '高血压病3级（极高危）',
+      diagnosisDate: '2024-03-10',
+      doctorName: '刘医生',
+      hospitalName: '北京协和医院',
+      status: '好转',
+      description: '血压控制不佳，最高达180/110mmHg，已调整用药方案'
+    } as DiagnosisInfo
+  ] as DiagnosisInfo[],
+  treatmentHistory: [
+    {
+      treatmentId: 'TREAT_001',
+      treatmentDate: '2024-08-20',
+      treatmentType: 'PCI介入治疗',
+      description: '左前降支植入药物洗脱支架1枚',
+      result: '手术成功，血流恢复TIMI 3级',
+      doctorName: '王主任',
+      hospitalName: '北京协和医院'
+    } as TreatmentRecord,
+    {
+      treatmentId: 'TREAT_002',
+      treatmentDate: '2025-01-15',
+      treatmentType: '药物治疗调整',
+      description: '增加氨氯地平剂量至5mg qd，加用螺内酯25mg qd',
+      result: '血压控制在140/90mmHg左右',
+      doctorName: '刘医生',
+      hospitalName: '北京协和医院'
+    } as TreatmentRecord
+  ] as TreatmentRecord[],
+  medicationList: [
+    {
+      medicationId: 'MED_001',
+      name: '阿司匹林肠溶片',
+      dosage: '100mg',
+      frequency: '每日1次',
+      startDate: '2024-08-21',
+      endDate: '长期',
+      prescribingDoctor: '王主任',
+      notes: '餐后服用，注意观察出血倾向'
+    } as MedicationInfo,
+    {
+      medicationId: 'MED_002',
+      name: '氯吡格雷片',
+      dosage: '75mg',
+      frequency: '每日1次',
+      startDate: '2024-08-21',
+      endDate: '2025-08-20（术后满1年停药）',
+      prescribingDoctor: '王主任',
+      notes: '与阿司匹林双联抗血小板治疗'
+    } as MedicationInfo,
+    {
+      medicationId: 'MED_003',
+      name: '琥珀酸美托洛尔缓释片',
+      dosage: '47.5mg',
+      frequency: '每日1次',
+      startDate: '2024-08-21',
+      endDate: '长期',
+      prescribingDoctor: '王主任',
+      notes: '晨起空腹服用，监测心率不低于55次/分'
+    } as MedicationInfo,
+    {
+      medicationId: 'MED_004',
+      name: '氨氯地平片',
+      dosage: '5mg',
+      frequency: '每日1次',
+      startDate: '2025-01-16',
+      endDate: '长期',
+      prescribingDoctor: '刘医生',
+      notes: '晨起服用，监测血压和踝部水肿'
+    } as MedicationInfo
+  ] as MedicationInfo[],
+  examinationResults: [
+    {
+      examId: 'EXAM_001',
+      examType: '心电图',
+      examDate: '2025-04-01',
+      hospitalName: '北京协和医院',
+      resultSummary: '窦性心律，心率68次/分，ST-T改变（V1-V3导联）',
+      imageUrl: '',
+      isAbnormal: true,
+      abnormalDescription: '心肌缺血表现，与前降支病变相符'
+    } as ExaminationResult,
+    {
+      examId: 'EXAM_002',
+      examType: '心脏彩超',
+      examDate: '2025-03-15',
+      hospitalName: '北京协和医院',
+      resultSummary: 'LVEF 58%，左室舒张功能减退（E/A<1）',
+      imageUrl: '',
+      isAbnormal: true,
+      abnormalDescription: '左室舒张功能II度减退'
+    } as ExaminationResult,
+    {
+      examId: 'EXAM_003',
+      examType: '血常规+生化全套',
+      examDate: '2025-04-10',
+      hospitalName: '北京协和医院',
+      resultSummary: 'WBC 6.8×10^9/L, Hb 135g/L, PLT 198×10^9/L, Cr 85μmol/L, K+ 4.2mmol/L',
+      isAbnormal: false
+    } as ExaminationResult
+  ] as ExaminationResult[],
+  allergies: ['青霉素', '磺胺类药物'] as string[],
+  syncPermission: PermissionLevel.DOCTOR_FULL,
+  createTime: '2024-06-15T08:30:00Z',
+  updateTime: '2025-04-10T14:20:00Z'
+};
+
+mockMedicalRecords.set('PAT_001', pat001Record);
 
 // ==================== 导出函数 ====================
 
@@ -235,14 +237,22 @@ export function getPendingApplications(): TransferApplication[] {
  * 获取所有转院申请（包括历史记录）
  */
 export function getAllApplications(): TransferApplication[] {
-  return [...mockApplications];
+  const result: TransferApplication[] = [];
+  for (const app of mockApplications) {
+    result.push(app);
+  }
+  return result;
 }
 
 /**
  * 获取已发现的设备列表
  */
 export function getDiscoveredDevices(): DeviceInfo[] {
-  return [...mockDevices];
+  const result: DeviceInfo[] = [];
+  for (const device of mockDevices) {
+    result.push(device);
+  }
+  return result;
 }
 
 /**
@@ -261,21 +271,25 @@ export function getMedicalRecordForPatient(patientId: string): MedicalRecordForS
  * 测试脱敏功能
  * 返回原始病历 + 三种脱敏等级的结果对比
  */
-export function testDesensitization(patientId: string): {
+export interface DesensitizationTestResult {
   original: MedicalRecordForSync;
   fullDesensitized: MedicalRecordForSync;
   partialDesensitized: MedicalRecordForSync;
   minimalDesensitized: MedicalRecordForSync;
-} | null {
+}
+
+export function testDesensitization(patientId: string): DesensitizationTestResult | null {
   const record = mockMedicalRecords.get(patientId);
   if (!record) return null;
 
-  const { DesensitizationUtil } = require('../distributed/DesensitizationUtil');
+  const desensitizationModule = require('../distributed/DesensitizationUtil');
+  const DesensitizationUtil = desensitizationModule.DesensitizationUtil;
 
-  return {
+  const result: DesensitizationTestResult = {
     original: record,
-    fullDesensitized: JSON.parse(JSON.stringify(record)),
-    partialDesensitized: JSON.parse(JSON.stringify(record)),
-    minimalDesensitized: JSON.parse(JSON.stringify(record))
+    fullDesensitized: JSON.parse(JSON.stringify(record)) as MedicalRecordForSync,
+    partialDesensitized: JSON.parse(JSON.stringify(record)) as MedicalRecordForSync,
+    minimalDesensitized: JSON.parse(JSON.stringify(record)) as MedicalRecordForSync
   };
+  return result;
 }

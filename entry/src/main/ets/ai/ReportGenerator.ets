@@ -1,4 +1,4 @@
-import { RiskAssessmentResult, Suggestion } from './RiskAssessmentEngine';
+import { RiskAssessmentResult, Suggestion, RiskItem } from './RiskAssessmentEngine';
 import { OverallTrend } from './TrendAnalyzer';
 
 export interface ReportSection {
@@ -27,9 +27,20 @@ export interface ActionItem {
   responsibleParty: string;
 }
 
+export interface DiseaseInfo {
+  key: string;
+  name: string;
+  icon: string;
+}
+
+export interface ReportTemplates {
+  header: string;
+  disclaimer: string;
+}
+
 export class ReportGenerator {
 
-  private static readonly REPORT_TEMPLATES = {
+  private static readonly REPORT_TEMPLATES: ReportTemplates = {
     header: `
 ═══════════════════════════════════════
     🏥 星云医疗助手 - AI健康风险评估报告
@@ -57,26 +68,26 @@ export class ReportGenerator {
     
     const sections: ReportSection[] = [];
 
-    sections.push(this.generateBasicInfoSection(result));
-    sections.push(this.generateOverallScoreSection(result));
-    sections.push(this.generateDetailedRisksSection(result));
-    
+    sections.push(ReportGenerator.generateBasicInfoSection(result));
+    sections.push(ReportGenerator.generateOverallScoreSection(result));
+    sections.push(ReportGenerator.generateDetailedRisksSection(result));
+
     if (result.featureInterpretations && result.featureInterpretations.length > 0) {
-      sections.push(this.generateFeatureAnalysisSection(result));
+      sections.push(ReportGenerator.generateFeatureAnalysisSection(result));
     }
 
     if (result.suggestions && result.suggestions.length > 0) {
-      sections.push(this.generateSuggestionsSection(result));
+      sections.push(ReportGenerator.generateSuggestionsSection(result));
     }
 
     if (trendData) {
-      sections.push(this.generateTrendSection(trendData));
+      sections.push(ReportGenerator.generateTrendSection(trendData));
     }
 
-    sections.push(this.generateActionPlanSection(result));
+    sections.push(ReportGenerator.generateActionPlanSection(result));
 
-    const summary = this.generateSummary(result);
-    const actionItems = this.extractActionItems(result);
+    const summary = ReportGenerator.generateSummary(result);
+    const actionItems = ReportGenerator.extractActionItems(result);
 
     const report: GeneratedReport = {
       id: `REPORT_${Date.now()}`,
@@ -97,7 +108,7 @@ export class ReportGenerator {
     const content = `
 评估编号：${result.assessmentId}
 评估时间：${new Date(result.timestamp).toLocaleString('zh-CN')}
-评估方法：${this.getMethodLabel(result.assessmentMethod)}
+评估方法：${ReportGenerator.getMethodLabel(result.assessmentMethod)}
 模型版本：${result.modelVersion}
 处理耗时：${result.processingTimeMs}ms
 置信度：${(result.confidence * 100).toFixed(0)}%
@@ -113,8 +124,8 @@ export class ReportGenerator {
 
   private static generateOverallScoreSection(result: RiskAssessmentResult): ReportSection {
     const score = (result.overallScore * 100).toFixed(1);
-    const levelEmoji = this.getLevelEmoji(result.overallLevel);
-    const levelLabel = this.getLevelLabel(result.overallLevel);
+    const levelEmoji = ReportGenerator.getLevelEmoji(result.overallLevel);
+    const levelLabel = ReportGenerator.getLevelLabel(result.overallLevel);
 
     const content = `
 ┌──────────────────────────────────┐
@@ -141,8 +152,8 @@ export class ReportGenerator {
 
   private static generateDetailedRisksSection(result: RiskAssessmentResult): ReportSection {
     let content = '';
-    
-    const diseases = [
+
+    const diseases: DiseaseInfo[] = [
       { key: 'hypertension', name: '高血压', icon: '💓' },
       { key: 'diabetes', name: '糖尿病', icon: '🩸' },
       { key: 'fall', name: '跌倒风险', icon: '⚠️' },
@@ -151,12 +162,31 @@ export class ReportGenerator {
     ];
 
     for (const disease of diseases) {
-      const risk = result.risks[disease.key as keyof typeof result.risks];
+      let risk: RiskItem;
+      switch (disease.key) {
+        case 'hypertension':
+          risk = result.risks.hypertension;
+          break;
+        case 'diabetes':
+          risk = result.risks.diabetes;
+          break;
+        case 'fall':
+          risk = result.risks.fall;
+          break;
+        case 'frailty':
+          risk = result.risks.frailty;
+          break;
+        case 'sarcopenia':
+          risk = result.risks.sarcopenia;
+          break;
+        default:
+          continue;
+      }
       
       content += `\n${disease.icon} ${disease.name}\n`;
       content += `${'─'.repeat(30)}\n`;
       content += `风险概率：${(risk.probability * 100).toFixed(1)}%\n`;
-      content += `风险等级：${this.getLevelEmoji(risk.level)} ${this.getLevelLabel(risk.level)}\n`;
+      content += `风险等级：${ReportGenerator.getLevelEmoji(risk.level)} ${ReportGenerator.getLevelLabel(risk.level)}\n`;
       content += `判定依据：${risk.evidence}\n`;
       
       if (risk.factors && risk.factors.length > 0) {
@@ -188,7 +218,7 @@ export class ReportGenerator {
         
         content += `[${idx.toString().padStart(2, '0')}] ${statusIcon} ${feature.name}\n`;
         content += `    数值：${feature.value}\n`;
-        content += `    状态：${this.getStatusLabel(feature.status)}\n\n`;
+        content += `    状态：${ReportGenerator.getStatusLabel(feature.status)}\n\n`;
       });
     }
 
@@ -337,11 +367,12 @@ export class ReportGenerator {
     const level = result.overallLevel;
 
     let summary = `本次AI共病风险评估于${new Date(result.timestamp).toLocaleDateString('zh-CN')}完成，`;
-    summary += `综合得分为${score}分，风险等级为${this.getLevelLabel(level)}。`;
+    summary += `综合得分为${score}分，风险等级为${ReportGenerator.getLevelLabel(level)}。`;
 
-    const highRiskDiseases = Object.values(result.risks)
-      .filter(risk => risk.probability > 0.6)
-      .map(risk => risk.label);
+    const riskValues: RiskItem[] = Object.values(result.risks);
+    const highRiskDiseases: string[] = riskValues
+      .filter((risk: RiskItem) => risk.probability > 0.6)
+      .map((risk: RiskItem) => risk.label);
 
     if (highRiskDiseases.length > 0) {
       summary += `主要风险集中在${highRiskDiseases.join('、')}方面，`;
@@ -386,7 +417,7 @@ export class ReportGenerator {
   }
 
   static formatReportForDisplay(report: GeneratedReport): string {
-    let formattedReport = this.REPORT_TEMPLATES.header;
+    let formattedReport = ReportGenerator.REPORT_TEMPLATES.header;
     
     formattedReport += `\n${report.title}\n`;
     formattedReport += `生成时间：${new Date(report.generatedAt).toLocaleString('zh-CN')}\n`;
@@ -416,7 +447,7 @@ export class ReportGenerator {
       });
     }
 
-    formattedReport += this.REPORT_TEMPLATES.disclaimer;
+    formattedReport += ReportGenerator.REPORT_TEMPLATES.disclaimer;
 
     return formattedReport;
   }

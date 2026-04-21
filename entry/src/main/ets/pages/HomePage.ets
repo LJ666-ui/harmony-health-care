@@ -77,7 +77,12 @@ struct HomePage {
     { id: 5, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
     { id: 6, icon: '🌿', title: '药材百科', description: '中药材知识库查询', url: 'pages/HerbalListPage' },
     { id: 7, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
-    { id: 8, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
+    { id: 8, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' },
+    { id: 9, icon: '🔄', title: '转院审批', description: '跨院转诊申请与审批', url: 'pages/TransferApprovalPage' },
+    { id: 10, icon: '🅿️', title: '智慧停车', description: '医院停车与寻车导航', url: 'pages/ParkingLotPage' },
+    { id: 11, icon: '🧠', title: 'AI风险评估', description: '多维度健康风险智能评估', url: 'pages/RiskAssessmentPage' },
+    { id: 12, icon: '📊', title: '实时监控', description: '健康数据实时监控预警', url: 'pages/MonitoringDashboard' },
+    { id: 13, icon: '🔬', title: '影像分析', description: '医学影像AI病灶识别', url: 'pages/MedicalImageAnalysisPage' }
   ];
 
   private recordId: number | undefined = undefined;

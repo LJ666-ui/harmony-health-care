@@ -179,10 +179,10 @@ struct HerbalListPage {
           console.log('[药材百科] 搜索失败或无数据, success:', searchRes.success, 'message:', searchRes.message);
         }
       } else {
-        console.log('[药材百科] 使用分页接口');
+        console.log('[药材百科] 使用分页接口（加载全部数据）');
         const params: Record<string, string | number | boolean> = {};
-        params['page'] = this.currentPage;
-        params['size'] = 20;
+        params['page'] = 1;
+        params['size'] = 1000;
 
         const response: BaseResponse<Object> = await HttpUtil.get<Object>('/herbal/page', params);
         console.log('[药材百科] 分页响应:', JSON.stringify(response));
@@ -197,9 +197,11 @@ struct HerbalListPage {
               tempList.push(this.convertBackendItem(records[i]));
             }
             this.allHerbalList = tempList;
-            const pagesValue: Object | undefined = pageData['pages'];
-            this.totalPages = typeof pagesValue === 'number' ? pagesValue : 1;
-            console.log('[药材百科] 总页数:', this.totalPages);
+            
+            const totalValue: Object | undefined = pageData['total'];
+            this.totalPages = typeof totalValue === 'number' ? Math.ceil(Number(totalValue) / 1000) : 1;
+            
+            console.log('[药材百科] ✅ 成功加载全部', tempList.length, '条药材数据');
           } else {
             console.log('[药材百科] 分页数据中没有records字段');
           }
@@ -340,6 +342,40 @@ struct HerbalListPage {
           onTasteChange: (taste: string) => this.handleTasteChange(taste),
           onSortChange: (sortIndex: number) => this.handleSortChange(sortIndex)
         });
+
+        Row({ space: 12 }) {
+          Button('⚖️ 药材对比')
+            .layoutWeight(1)
+            .height(40)
+            .fontSize(14)
+            .fontColor('#1677FF')
+            .backgroundColor('#E6F4FF')
+            .borderRadius(20)
+            .onClick(() => {
+              router.pushUrl({
+                url: 'pages/HerbalCompare'
+              }).catch((err: Error) => {
+                console.error('跳转药材对比失败:', err.message);
+              });
+            });
+
+          Button('📊 用量计算')
+            .layoutWeight(1)
+            .height(40)
+            .fontSize(14)
+            .fontColor('#52C41A')
+            .backgroundColor('#F6FFED')
+            .borderRadius(20)
+            .onClick(() => {
+              router.pushUrl({
+                url: 'pages/DosageCalc'
+              }).catch((err: Error) => {
+                console.error('跳转用量计算失败:', err.message);
+              });
+            });
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 8, bottom: 8 });
 
         Row() {
           Text('共找到 ' + this.filteredList.length + ' 种药材')

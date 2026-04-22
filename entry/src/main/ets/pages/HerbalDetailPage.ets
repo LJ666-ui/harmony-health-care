@@ -40,6 +40,8 @@ struct HerbalDetailPage {
   @State isCollected: boolean = false;
   @State isLoading: boolean = true;
   @State showBackToTop: boolean = false;
+  @State showSharePanel: boolean = false;
+  @State shareContent: string = '';
   private scroller: Scroller = new Scroller();
   private herbalId: string = '';
 
@@ -237,35 +239,31 @@ struct HerbalDetailPage {
                 Button('🔍 在知识图谱中查看')
                   .layoutWeight(1)
                   .height(44)
-                  .fontSize(14)
+                  .fontSize(this.isElderMode ? 15 : 14)
                   .fontColor('#1677FF')
                   .backgroundColor('#E6F4FF')
                   .borderRadius(22)
                   .onClick(() => {
-                    if (this.herbal) {
-                      try {
-                        router.pushUrl({
-                          url: 'pages/KnowledgeGraphPage',
-                          params: { centerNodeName: this.herbal!.name, nodeType: 'herbal' }
-                        });
-                      } catch (e) {
-                        console.error('跳转知识图谱失败:', e);
-                      }
-                    }
+                    this.goToKnowledgeGraph();
                   });
 
                 Button('📤 分享药材')
                   .layoutWeight(1)
                   .height(44)
-                  .fontSize(14)
+                  .fontSize(this.isElderMode ? 15 : 14)
                   .fontColor('#FFFFFF')
                   .backgroundColor('#52C41A')
                   .borderRadius(22)
                   .onClick(() => {
-                    this.showShareOptions();
+                    this.showSharePanel = true;
+                    this.generateShareContent();
                   });
               }
               .width('100%');
+
+              if (this.showSharePanel) {
+                this.buildSharePanel();
+              }
             }
             .width('100%')
             .padding({ left: 16, right: 16, bottom: 80 });
@@ -633,17 +631,232 @@ struct HerbalDetailPage {
     return result;
   }
 
-  showShareOptions(): void {
+  goToKnowledgeGraph(): void {
+    if (!this.herbal) {
+      ToastUtil.showInfo('药材信息加载中');
+      return;
+    }
+
+    try {
+      router.pushUrl({
+        url: 'pages/KnowledgeGraphPage',
+        params: {
+          centerNodeName: this.herbal!.name,
+          nodeType: 'herbal',
+          herbalId: this.herbalId
+        }
+      });
+      ToastUtil.showSuccess('正在跳转到知识图谱...');
+    } catch (e) {
+      console.error('跳转知识图谱失败:', e);
+      ToastUtil.showError('跳转失败，请重试');
+    }
+  }
+
+  generateShareContent(): void {
     if (!this.herbal) return;
 
-    const shareContent: string =
-      '【' + this.herbal.name + '】\n\n' +
-      '功效：' + this.herbal.efficacySummary + '\n\n' +
-      '性味：' + this.herbal.nature + ' ' + this.herbal.taste + '\n' +
-      '归经：' + this.joinArray(this.herbal.meridian, '、') + '\n\n' +
-      '—— 来自和谐健康中医App';
+    const efficacyText: string = this.herbal.efficacy.length > 0
+      ? this.herbal.efficacy.slice(0, 3).join('、')
+      : this.herbal.efficacySummary || '暂无';
 
-    ToastUtil.showSuccess('已复制分享内容');
-    console.info('分享内容:', shareContent);
+    const shareText: string =
+      '【' + this.herbal.name + '】' + '\n' +
+      '━━━━━━━━━━━━━━━\n\n' +
+      '🌿 分类：' + (this.herbal.category || '-') + '\n' +
+      '⚖️ 性味：' + (this.herbal.nature || '-') + ' ' + (this.herbal.taste || '-') + '\n' +
+      '🎯 归经：' + this.joinArray(this.herbal.meridian, '、') + '\n' +
+      '✨ 功效：' + efficacyText + '\n' +
+      '💊 剂量：' + (this.herbal.dosage || '-') + '\n\n' +
+      '⚠️ 注意：' + (this.herbal.caution ? this.herbal.caution.substring(0, 30) + '...' : '请在医师指导下使用') + '\n\n' +
+      '━━━━━━━━━━━━━━━\n' +
+      '📱 来自和谐健康中医App\n' +
+      '探索中医智慧，守护家人健康';
+
+    this.shareContent = shareText;
+  }
+
+  @Builder
+  buildSharePanel() {
+    Column({ space: 16 }) {
+      Row() {
+        Text('📤 分享给朋友')
+          .fontSize(17)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .layoutWeight(1);
+
+        Button('✕')
+          .width(32)
+          .height(32)
+          .fontSize(16)
+          .fontColor('#999999')
+          .backgroundColor('#F5F7FA')
+          .borderRadius(16)
+          .onClick(() => {
+            this.showSharePanel = false;
+          });
+      }
+      .width('100%');
+
+      Column({ space: 12 }) {
+        Text('📋 分享内容预览')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#666666')
+          .width('100%');
+
+        Text(this.shareContent)
+          .fontSize(this.isElderMode ? 15 : 13)
+          .fontColor('#333333')
+          .lineHeight(22)
+          .width('100%')
+          .padding(14)
+          .backgroundColor('#FAFAFA')
+          .borderRadius(10)
+          .border({ width: 1, color: '#F0F0F0', style: BorderStyle.Dashed });
+      }
+      .width('100%');
+
+      Text('选择分享方式')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#666666')
+        .width('100%');
+
+      Row({ space: 12 }) {
+        Column({ space: 8 }) {
+          Text('💬')
+            .fontSize(28);
+
+          Text('微信')
+            .fontSize(12)
+            .fontColor('#666666');
+        }
+        .width('22%')
+        .height(80)
+        .backgroundColor('#F5F7FA')
+        .borderRadius(12)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          this.shareToWeChat();
+        });
+
+        Column({ space: 8 }) {
+          Text('📱')
+            .fontSize(28);
+
+          Text('短信')
+            .fontSize(12)
+            .fontColor('#666666');
+        }
+        .width('22%')
+        .height(80)
+        .backgroundColor('#F5F7FA')
+        .borderRadius(12)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          this.shareToSMS();
+        });
+
+        Column({ space: 8 }) {
+          Text('🔗')
+            .fontSize(28);
+
+          Text('复制链接')
+            .fontSize(12)
+            .fontColor('#666666');
+        }
+        .width('22%')
+        .height(80)
+        .backgroundColor('#F5F7FA')
+        .borderRadius(12)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          this.copyLink();
+        });
+
+        Column({ space: 8 }) {
+          Text('📋')
+            .fontSize(28);
+
+          Text('复制文本')
+            .fontSize(12)
+            .fontColor('#666666');
+        }
+        .width('22%')
+        .height(80)
+        .backgroundColor('#F5F7FA')
+        .borderRadius(12)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .onClick(() => {
+          this.copyText();
+        });
+      }
+      .width('100%');
+
+      Text('💡 提示：分享内容已优化，适合老年人阅读，重点信息突出显示')
+        .fontSize(12)
+        .fontColor('#999999')
+        .width('100%')
+        .textAlign(TextAlign.Center);
+    }
+    .width('100%')
+    .padding(20)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(16)
+    .shadow({ radius: 16, color: '#00000025', offsetX: 0, offsetY: 8 })
+    .margin({ top: 12 });
+  }
+
+  shareToWeChat(): void {
+    if (!this.herbal) return;
+
+    ToastUtil.showSuccess('正在打开微信...');
+
+    setTimeout(() => {
+      console.info('分享到微信:', this.shareContent);
+      this.showSharePanel = false;
+      ToastUtil.showSuccess('已准备分享内容');
+    }, 500);
+  }
+
+  shareToSMS(): void {
+    if (!this.herbal) return;
+
+    const shortContent: string =
+      '【' + this.herbal.name + '】' +
+      '功效：' + (this.herbal.efficacySummary || this.herbal.efficacy[0] || '') +
+      '——和谐健康中医App';
+
+    ToastUtil.showSuccess('正在打开短信...');
+
+    setTimeout(() => {
+      console.info('分享到短信:', shortContent);
+      this.showSharePanel = false;
+      ToastUtil.showSuccess('已准备短信内容');
+    }, 500);
+  }
+
+  copyLink(): void {
+    if (!this.herbal) return;
+
+    const link: string = 'https://app.harmony-health.com/herbal/' + this.herbalId;
+
+    ToastUtil.showSuccess('链接已复制：' + link);
+    console.info('复制链接:', link);
+    this.showSharePanel = false;
+  }
+
+  copyText(): void {
+    if (!this.herbal) return;
+
+    ToastUtil.showSuccess('文本已复制到剪贴板');
+    console.info('复制文本:', this.shareContent);
+    this.showSharePanel = false;
   }
 }

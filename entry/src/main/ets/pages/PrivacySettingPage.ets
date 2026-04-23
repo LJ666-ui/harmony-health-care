@@ -6,6 +6,7 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { SettingsUtil } from '../utils/SettingsUtil';
 
 export interface PrivacySetting {
   locationEnabled: boolean;
@@ -167,17 +168,16 @@ struct PrivacySettingPage {
     });
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
     promptAction.showDialog({
       title: '\u9000\u51FA\u767B\u5F55',
       message: '\u786E\u5B9A\u8981\u9000\u51FA\u5F53\u524D\u8D26\u53F7\u5417?',
       buttons: [{ text: '\u53D6\u6D88', color: '#999999' }, { text: '\u786E\u5B9A\u9000\u51FA', color: '#FF4D4F' }]
-    }).then((result: promptAction.ShowDialogSuccessResponse) => {
+    }).then(async (result: promptAction.ShowDialogSuccessResponse) => {
       if (result.index === 1) {
         try {
-          AppStorage.setOrCreate<boolean>('isLoggedIn', false);
-          AppStorage.setOrCreate<string>('token', '');
-          HttpUtil.clearToken();
+          const settings: SettingsUtil = SettingsUtil.getInstance();
+          await settings.clearAllLoginData();
           ToastUtil.showInfo('已退出登录');
           router.replaceUrl({ url: 'pages/Login' });
         } catch (error) {

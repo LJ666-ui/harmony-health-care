@@ -339,6 +339,33 @@ struct DeviceManagePage {
             }
             .width('100%');
 
+            Row({ space: 10 }) {
+              Text('\uD83D\uDD17')
+                .fontSize(18);
+              Column({ space: 2 }) {
+                Text('\u8DE8\u9662\u75C5\u5386\u540C\u6B65')
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor('#1677FF');
+                Text('\u57FA\u4E8E\u9E3F\u8499\u5206\u5E03\u5F0FKVStore\uFF0C\u5B89\u5168\u540C\u6B65\u75C5\u5386\u6570\u636E')
+                  .fontSize(11)
+                  .fontColor('#666666');
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start);
+              Text('\u203A')
+                .fontSize(18)
+                .fontColor('#CCCCCC');
+            }
+            .width('100%')
+            .backgroundColor('#E6F7FF')
+            .borderRadius(12)
+            .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+            .border({ width: 1, color: '#91D5FF', style: BorderStyle.Solid })
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/MedicalRecordSyncPage' });
+            });
+
             if (this.isLoadingDevices) {
               Column() {
                 LoadingProgress().width(40).height(40).color('#1677FF');

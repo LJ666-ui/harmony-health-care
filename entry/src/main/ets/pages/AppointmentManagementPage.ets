@@ -1,6 +1,5 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
@@ -24,6 +23,8 @@ struct AppointmentManagementPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
   @State hospitals: HospitalInfo[] = [];
+  @State filteredHospitals: HospitalInfo[] = [];
+  @State searchKeyword: string = '';
   @State isLoading: boolean = true;
   @State hasError: boolean = false;
   @State errorMessage: string = '';
@@ -52,6 +53,7 @@ struct AppointmentManagementPage {
 
       if (response.success && response.data) {
         this.hospitals = response.data;
+        this.filteredHospitals = response.data;
         if (this.hospitals.length === 0) {
           this.errorMessage = '暂无医院数据';
         }
@@ -71,16 +73,55 @@ struct AppointmentManagementPage {
   }
 
   onHospitalClick(hospital: HospitalInfo): void {
-    router.pushUrl({
-      url: 'pages/HospitalDetailPage',
-      params: {
-        hospitalId: hospital.id,
-        hospitalName: hospital.name
+    console.log('点击医院:', hospital.name, 'ID:', hospital.id);
+
+    if (!hospital.id || hospital.id <= 0) {
+      console.error('医院ID无效');
+      ToastUtil.showError('医院信息不完整', 1500);
+      return;
+    }
+
+    try {
+      router.pushUrl({
+        url: 'pages/DepartmentListPage',
+        params: {
+          hospitalId: hospital.id,
+          hospitalName: hospital.name || '未知医院'
+        }
+      }).then(() => {
+        console.log('跳转到科室列表成功');
+      }).catch((err: Error) => {
+        console.error('跳转科室列表失败:', err.message);
+        ToastUtil.showError('页面跳转失败', 1500);
+      });
+    } catch (error) {
+      console.error('跳转异常:', error);
+      ToastUtil.showError('页面跳转异常', 1500);
+    }
+  }
+
+  onSearchInput(value: string): void {
+    this.searchKeyword = value;
+    this.filterHospitals();
+  }
+
+  filterHospitals(): void {
+    if (!this.searchKeyword || this.searchKeyword.trim() === '') {
+      this.filteredHospitals = this.hospitals;
+      return;
+    }
+
+    const keyword = this.searchKeyword.trim().toLowerCase();
+    const filtered: HospitalInfo[] = [];
+    for (let i = 0; i < this.hospitals.length; i++) {
+      const hospital = this.hospitals[i];
+      if (hospital.name.toLowerCase().includes(keyword) ||
+          (hospital.address && hospital.address.toLowerCase().includes(keyword)) ||
+          (hospital.level && hospital.level.toLowerCase().includes(keyword))) {
+        filtered.push(hospital);
       }
-    }).catch((err: Error) => {
-      console.error('跳转医院详情页失败:', err.message);
-      ToastUtil.showError('页面跳转失败', 1500);
-    });
+    }
+    this.filteredHospitals = filtered;
   }
 
   @Builder
@@ -176,9 +217,38 @@ struct AppointmentManagementPage {
           .padding({ left: 16, top: 16, right: 16, bottom: 12 })
           .justifyContent(FlexAlign.SpaceBetween)
 
+          Row() {
+            TextInput({ placeholder: '搜索医院名称、地址...', text: this.searchKeyword })
+              .fontSize(this.isElderMode ? 17 : 14)
+              .height(this.isElderMode ? 44 : 36)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(20)
+              .padding({ left: 16, right: 16 })
+              .layoutWeight(1)
+              .onChange((value: string) => {
+                this.onSearchInput(value);
+              })
+
+            if (this.searchKeyword.length > 0) {
+              Button('清除')
+                .fontSize(this.isElderMode ? 15 : 12)
+                .backgroundColor('#F5F5F5')
+                .fontColor('#666666')
+                .height(this.isElderMode ? 44 : 36)
+                .borderRadius(6)
+                .margin({ left: 8 })
+                .onClick(() => {
+                  this.searchKeyword = '';
+                  this.filterHospitals();
+                })
+            }
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, bottom: 12 })
+
           Scroll() {
             List({ space: 12 }) {
-              ForEach(this.hospitals, (hospital: HospitalInfo) => {
+              ForEach(this.filteredHospitals, (hospital: HospitalInfo) => {
                 ListItem() {
                   this.HospitalCard(hospital)
                 }
@@ -192,8 +262,6 @@ struct AppointmentManagementPage {
         }
         .layoutWeight(1)
       }
-
-      Footer()
     }
     .height('100%')
     .backgroundColor(GlobalTheme.BG_COLOR)

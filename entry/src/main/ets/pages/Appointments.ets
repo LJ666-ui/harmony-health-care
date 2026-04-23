@@ -1,9 +1,8 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
 import { Appointment } from '../models/HealthData';
-import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { GlobalTheme } from '../global';
 
 @Entry
 @Component
@@ -18,51 +17,6 @@ struct Appointments {
   @State isRefreshing: boolean = false;
 
   private statusOptions: string[] = ['全部', '待确认', '已确认', '已完成', '已取消'];
-
-  private defaultAppointments: Appointment[] = [
-    {
-      id: '1',
-      doctor: '张医生',
-      specialty: '内科',
-      hospital: '星云医院',
-      date: '2026-04-15',
-      time: '09:00',
-      status: 'confirmed',
-      location: '门诊楼3层',
-      notes: '复查血压控制情况',
-      avatarColor: '#1677FF',
-      createdAt: 0,
-      updatedAt: 0
-    },
-    {
-      id: '2',
-      doctor: '李医生',
-      specialty: '外科',
-      hospital: '星云医院',
-      date: '2026-04-18',
-      time: '14:30',
-      status: 'confirmed',
-      location: '门诊楼5层',
-      notes: '术后拆线复查',
-      avatarColor: '#1677FF',
-      createdAt: 0,
-      updatedAt: 0
-    },
-    {
-      id: '3',
-      doctor: '王医生',
-      specialty: '骨科',
-      hospital: '协和医疗中心',
-      date: '2026-04-20',
-      time: '10:00',
-      status: 'pending',
-      location: '骨科门诊2号诊室',
-      notes: '膝关节疼痛检查',
-      avatarColor: '#52C41A',
-      createdAt: 0,
-      updatedAt: 0
-    }
-  ];
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -80,9 +34,6 @@ struct Appointments {
       this.appointments = storedAppointments;
     } else {
       this.appointments = [];
-      for (let i = 0; i < this.defaultAppointments.length; i++) {
-        this.appointments.push(this.defaultAppointments[i]);
-      }
     }
 
     this.applyStatusFilter();
@@ -239,16 +190,6 @@ struct Appointments {
           .fontColor('#999999')
           .textAlign(TextAlign.Center)
           .width('80%');
-
-        Button('+ 新增预约')
-          .height(44)
-          .padding({ left: 28, right: 28 })
-          .fontSize(15)
-          .fontColor('#FFFFFF')
-          .backgroundColor('#1677FF')
-          .borderRadius(22)
-          .margin({ top: 8 })
-          .onClick(() => router.pushUrl({ url: 'pages/AddAppointmentPage' }));
       }
       .width('100%')
       .height(350)
@@ -333,68 +274,64 @@ struct Appointments {
   }
 
   build() {
-    Column() {
-      Header({ title: '预约管理', showBack: true });
+    Stack() {
+      Column() {
+        Header({ title: '预约管理', showBack: true });
 
-      Scroll() {
-        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
-          Text('预约管理')
-            .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor(GlobalTheme.THEME_COLOR)
-            .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
+        Scroll() {
+          Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
+            Text('预约管理')
+              .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
+              .fontWeight('bold')
+              .fontColor(GlobalTheme.THEME_COLOR)
+              .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
 
-          Scroll() {
-              Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
-                ForEach(this.statusOptions, (status: string) => {
-                  Text(status)
-                    .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                    .fontColor(this.selectedStatus === status ? '#FFFFFF' : '#666666')
-                    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                    .backgroundColor(this.selectedStatus === status ? '#1677FF' : '#F0F0F0')
-                    .borderRadius(16)
-                    .onClick(() => this.handleStatusChange(status));
-                })
+            Scroll() {
+                Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
+                  ForEach(this.statusOptions, (status: string) => {
+                    Text(status)
+                      .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                      .fontColor(this.selectedStatus === status ? '#FFFFFF' : '#666666')
+                      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                      .backgroundColor(this.selectedStatus === status ? '#1677FF' : '#F0F0F0')
+                      .borderRadius(16)
+                      .onClick(() => this.handleStatusChange(status));
+                  })
+                }
               }
-            }
-            .scrollable(ScrollDirection.Horizontal)
+              .scrollable(ScrollDirection.Horizontal)
 
-            this.buildAppointmentListContent()
+              this.buildAppointmentListContent()
 
-            Button('新增预约')
-              .width('100%')
-              .height(48)
-              .fontSize(16)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#FFFFFF')
-              .backgroundColor('#1677FF')
-              .borderRadius(24)
-              .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode) })
-              .onClick(() => {
-                router.pushUrl({ url: 'pages/AddAppointmentPage' });
-              });
+              Button('新增预约')
+                .width('100%')
+                .height(48)
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#FFFFFF')
+                .backgroundColor('#1677FF')
+                .borderRadius(24)
+                .margin({ top: GlobalTheme.getSpacingMD(this.isElderMode) })
+                .onClick(() => {
+                  router.pushUrl({ url: 'pages/AppointmentManagementPage' });
+                });
           }
-          .width('85%')
+          .width('95%')
           .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
-      }
-      .height(0)
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
-
-      Stack() {
-        if (this.showCancelDialog && this.selectedAppointment) {
-          this.buildCancelButtonDialog();
         }
+        .height('100%')
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top);
       }
       .width('100%')
-      .height(0)
-      .layoutWeight(1);
+      .height('100%')
+      .backgroundColor(GlobalTheme.BG_COLOR);
 
-      Footer({ activeIndex: 0 });
+      if (this.showCancelDialog && this.selectedAppointment) {
+        this.buildCancelButtonDialog();
+      }
     }
     .width('100%')
-    .height('100%')
-    .backgroundColor(GlobalTheme.BG_COLOR);
+    .height('100%');
   }
 }

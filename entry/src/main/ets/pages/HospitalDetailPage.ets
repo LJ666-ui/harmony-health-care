@@ -41,6 +41,8 @@ struct HospitalDetailPage {
   @State hospitalName: string = '';
   @State hospitalDetail: HospitalDetail | null = null;
   @State departments: DepartmentInfo[] = [];
+  @State filteredDepartments: DepartmentInfo[] = [];
+  @State searchKeyword: string = '';
   @State isLoading: boolean = true;
   @State hasError: boolean = false;
   @State errorMessage: string = '';
@@ -56,22 +58,42 @@ struct HospitalDetailPage {
     '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'];
 
   aboutToAppear(): void {
+    console.log('HospitalDetailPage aboutToAppear 开始');
+    
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
 
-    const params = router.getParams() as Record<string, Object>;
-    if (params) {
-      this.hospitalId = params['hospitalId'] as number || 0;
-      this.hospitalName = params['hospitalName'] as string || '';
+    try {
+      const params = router.getParams() as Record<string, Object>;
+      console.log('接收到的参数:', JSON.stringify(params));
+      
+      if (params) {
+        const id = params['hospitalId'];
+        const name = params['hospitalName'];
+        
+        if (id !== undefined && id !== null) {
+          this.hospitalId = typeof id === 'number' ? id : Number(id);
+          console.log('设置 hospitalId:', this.hospitalId);
+        }
+        
+        if (name !== undefined && name !== null) {
+          this.hospitalName = String(name);
+          console.log('设置 hospitalName:', this.hospitalName);
+        }
+      }
+    } catch (error) {
+      console.error('获取路由参数失败:', error);
     }
 
     this.initDates();
     this.loadHospitalDetail();
     this.loadDepartments();
     this.loadAppointments();
+    
+    console.log('HospitalDetailPage aboutToAppear 完成');
   }
 
   initDates(): void {
@@ -91,17 +113,32 @@ struct HospitalDetailPage {
   }
 
   async loadHospitalDetail(): Promise<void> {
+    console.log('开始加载医院详情, hospitalId:', this.hospitalId);
+    
+    if (!this.hospitalId || this.hospitalId === 0) {
+      console.warn('hospitalId 无效，跳过加载医院详情');
+      return;
+    }
+
     try {
+      const url = `${ApiConstants.HOSPITAL_DETAIL}${this.hospitalId}`;
+      console.log('请求URL:', url);
+      
       const response: BaseResponse<HospitalDetail> = await HttpUtil.request<HospitalDetail>(
         HttpMethod.GET,
-        `${ApiConstants.HOSPITAL_DETAIL}${this.hospitalId}`,
+        url,
         undefined,
         undefined,
         { showLoading: false }
       );
 
+      console.log('医院详情响应:', JSON.stringify(response));
+
       if (response.success && response.data) {
         this.hospitalDetail = response.data;
+        console.log('医院详情加载成功');
+      } else {
+        console.warn('医院详情返回数据为空或失败');
       }
     } catch (error) {
       console.error('加载医院详情失败:', error);
@@ -109,11 +146,23 @@ struct HospitalDetailPage {
   }
 
   async loadDepartments(): Promise<void> {
+    console.log('开始加载科室列表, hospitalId:', this.hospitalId);
+    
     this.isLoading = true;
     this.hasError = false;
 
+    if (!this.hospitalId || this.hospitalId === 0) {
+      console.warn('hospitalId 无效，无法加载科室列表');
+      this.hasError = true;
+      this.errorMessage = '无效的医院ID';
+      this.isLoading = false;
+      return;
+    }
+
     try {
       const queryParams: DepartmentQueryParams = { hospitalId: this.hospitalId };
+      console.log('科室查询参数:', JSON.stringify(queryParams));
+      
       const response: BaseResponse<DepartmentInfo[]> = await HttpUtil.request<DepartmentInfo[]>(
         HttpMethod.GET,
         ApiConstants.HOSPITAL_DEPARTMENT_LIST,
@@ -122,23 +171,31 @@ struct HospitalDetailPage {
         { showLoading: true, loadingText: '加载科室信息...' }
       );
 
+      console.log('科室列表响应:', JSON.stringify(response));
+
       if (response.success && response.data) {
         this.departments = response.data;
+        this.filteredDepartments = response.data;
+        console.log('科室列表加载成功, 数量:', this.departments.length);
+        
         if (this.departments.length === 0) {
           this.errorMessage = '该医院暂无科室信息';
+          console.warn('该医院暂无科室信息');
         }
       } else {
         this.hasError = true;
         this.errorMessage = response.message || '加载科室列表失败';
+        console.error('科室列表加载失败:', this.errorMessage);
         ToastUtil.showError(this.errorMessage, 2000);
       }
     } catch (error) {
       this.hasError = true;
       this.errorMessage = '网络错误，请检查网络连接';
+      console.error('加载科室列表异常:', error);
       ToastUtil.showError(this.errorMessage, 2000);
-      console.error('加载科室列表失败:', error);
     } finally {
       this.isLoading = false;
+      console.log('科室列表加载完成, isLoading:', this.isLoading);
     }
   }
 
@@ -221,6 +278,30 @@ struct HospitalDetailPage {
     );
   }
 
+  onSearchInput(value: string): void {
+    this.searchKeyword = value;
+    this.filterDepartments();
+  }
+
+  filterDepartments(): void {
+    if (!this.searchKeyword || this.searchKeyword.trim() === '') {
+      this.filteredDepartments = this.departments;
+      return;
+    }
+
+    const keyword = this.searchKeyword.trim().toLowerCase();
+    const filtered: DepartmentInfo[] = [];
+    for (let i = 0; i < this.departments.length; i++) {
+      const department = this.departments[i];
+      if (department.deptName.toLowerCase().includes(keyword) ||
+          (department.location && department.location.toLowerCase().includes(keyword)) ||
+          (department.deptIntro && department.deptIntro.toLowerCase().includes(keyword))) {
+        filtered.push(department);
+      }
+    }
+    this.filteredDepartments = filtered;
+  }
+
   build() {
     Column() {
       Header({ title: this.hospitalName || '医院详情' })
@@ -250,6 +331,35 @@ struct HospitalDetailPage {
               .margin({ left: 16, top: 20, bottom: 12 })
               .alignSelf(ItemAlign.Start)
 
+            Row() {
+              TextInput({ placeholder: '搜索科室名称...', text: this.searchKeyword })
+                .fontSize(this.isElderMode ? 17 : 14)
+                .height(this.isElderMode ? 44 : 36)
+                .backgroundColor('#FFFFFF')
+                .borderRadius(20)
+                .padding({ left: 16, right: 16 })
+                .layoutWeight(1)
+                .onChange((value: string) => {
+                  this.onSearchInput(value);
+                })
+
+              if (this.searchKeyword.length > 0) {
+                Button('清除')
+                  .fontSize(this.isElderMode ? 15 : 12)
+                  .backgroundColor('#F5F5F5')
+                  .fontColor('#666666')
+                  .height(this.isElderMode ? 44 : 36)
+                  .borderRadius(6)
+                  .margin({ left: 8 })
+                  .onClick(() => {
+                    this.searchKeyword = '';
+                    this.filterDepartments();
+                  })
+              }
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, bottom: 12 })
+
             if (this.departments.length === 0) {
               EmptyState({
                 icon: '🏥',
@@ -258,7 +368,7 @@ struct HospitalDetailPage {
               })
             } else {
               List({ space: 12 }) {
-                ForEach(this.departments, (department: DepartmentInfo) => {
+                ForEach(this.filteredDepartments, (department: DepartmentInfo) => {
                   ListItem() {
                     this.DepartmentCard(department)
                   }
@@ -274,8 +384,6 @@ struct HospitalDetailPage {
         .scrollBar(BarState.Off)
         .layoutWeight(1)
       }
-
-      Footer()
 
       if (this.showAppointmentDialog) {
         this.AppointmentDialog()
@@ -381,13 +489,32 @@ struct HospitalDetailPage {
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
 
-        if (this.hasActiveAppointment(department.deptName)) {
-          Text('已预约')
-            .fontSize(this.isElderMode ? 16 : 13)
-            .fontColor(GlobalTheme.SUCCESS_COLOR)
-            .backgroundColor('#F6FFED')
-            .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-            .borderRadius(4)
+        Column({ space: 8 }) {
+          Button('预约')
+            .fontSize(this.isElderMode ? 15 : 12)
+            .backgroundColor(GlobalTheme.THEME_COLOR)
+            .fontColor(GlobalTheme.BUTTON_TEXT_COLOR)
+            .height(this.isElderMode ? 40 : 32)
+            .padding({ left: 16, right: 16 })
+            .borderRadius(6)
+            .onClick(() => {
+              this.onDepartmentClick(department);
+            })
+
+          if (this.hasActiveAppointment(department.deptName)) {
+            Button('取消预约')
+              .fontSize(this.isElderMode ? 15 : 12)
+              .backgroundColor(GlobalTheme.CARD_BG)
+              .fontColor(GlobalTheme.ERROR_COLOR)
+              .height(this.isElderMode ? 40 : 32)
+              .padding({ left: 12, right: 12 })
+              .borderRadius(6)
+              .border({ width: 1, color: GlobalTheme.ERROR_COLOR })
+              .onClick(() => {
+                this.selectedDepartment = department;
+                this.showCancelDialog = true;
+              })
+          }
         }
       }
       .width('100%')
@@ -403,49 +530,12 @@ struct HospitalDetailPage {
           .margin({ top: 8 })
           .lineHeight(18)
       }
-
-      Row() {
-        Button('预约')
-          .fontSize(this.isElderMode ? 17 : 14)
-          .backgroundColor(GlobalTheme.THEME_COLOR)
-          .fontColor(GlobalTheme.BUTTON_TEXT_COLOR)
-          .height(this.isElderMode ? 44 : 36)
-          .padding({ left: 20, right: 20 })
-          .borderRadius(6)
-          .onClick(() => {
-            this.onDepartmentClick(department);
-          })
-
-        if (this.hasActiveAppointment(department.deptName)) {
-          Button('取消预约')
-            .fontSize(this.isElderMode ? 17 : 14)
-            .backgroundColor(GlobalTheme.CARD_BG)
-            .fontColor(GlobalTheme.ERROR_COLOR)
-            .height(this.isElderMode ? 44 : 36)
-            .padding({ left: 16, right: 16 })
-            .borderRadius(6)
-            .border({ width: 1, color: GlobalTheme.ERROR_COLOR })
-            .margin({ left: 12 })
-            .onClick(() => {
-              this.selectedDepartment = department;
-              this.showCancelDialog = true;
-            })
-        }
-      }
-      .width('100%')
-      .margin({ top: 12 })
-      .justifyContent(FlexAlign.End)
     }
     .width('100%')
     .padding(16)
     .backgroundColor(GlobalTheme.CARD_BG)
     .borderRadius(8)
     .alignItems(HorizontalAlign.Start)
-    .onClick(() => {
-      if (!this.hasActiveAppointment(department.deptName)) {
-        this.onDepartmentClick(department);
-      }
-    })
   }
 
   @Builder

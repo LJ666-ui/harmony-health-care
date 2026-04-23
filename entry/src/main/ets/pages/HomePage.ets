@@ -70,7 +70,7 @@ struct HomePage {
 
   @State featureCards: FeatureCard[] = [
     { id: 0, icon: '📋', title: '健康记录', description: '查看和管理您的健康数据', url: 'pages/HealthRecords' },
-    { id: 1, icon: '📅', title: '预约管理', description: '管理您的医疗预约', url: 'pages/Appointments' },
+    { id: 1, icon: '📅', title: '预约管理', description: '选择医院和科室进行预约', url: 'pages/AppointmentManagementPage' },
     { id: 2, icon: '💊', title: '用药管理', description: '跟踪您的用药情况', url: 'pages/Medications' },
     { id: 3, icon: '🍎', title: '饮食食谱', description: '食材百科和营养知识', url: 'pages/FoodEncyclopediaPage' },
     { id: 4, icon: '🤖', title: 'AI健康顾问', description: '智能健康问答助手', url: 'pages/AiChatPage' },

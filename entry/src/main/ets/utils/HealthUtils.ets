@@ -1,5 +1,26 @@
 // 健康工具函数
 
+interface CategoryInfo {
+  category: string;
+  color: string;
+  description: string;
+}
+
+interface BloodPressureData {
+  systolic: number;
+  diastolic: number;
+}
+
+interface HealthMetrics {
+  bmi?: number;
+  bloodPressure?: BloodPressureData;
+  bloodSugar?: number;
+  steps?: number;
+  sleep?: number;
+}
+
+type DebounceFunction = () => void;
+
 // 格式化日期
 export function formatDate(date: Date, format: string = 'YYYY-MM-DD'): string {
   const year = date.getFullYear();
@@ -38,11 +59,11 @@ export function calculateAge(birthDate: Date): number {
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
-  
+
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
-  
+
   return age;
 }
 
@@ -54,130 +75,54 @@ export function calculateBMI(weight: number, height: number): number {
 }
 
 // 获取BMI分类
-export function getBMICategory(bmi: number): {
-  category: string;
-  color: string;
-  description: string;
-} {
+export function getBMICategory(bmi: number): CategoryInfo {
   if (bmi < 18.5) {
-    return {
-      category: '偏瘦',
-      color: '#4a90e2',
-      description: '体重过轻'
-    };
+    return { category: '偏瘦', color: '#4a90e2', description: '体重过轻' };
   } else if (bmi < 24) {
-    return {
-      category: '正常',
-      color: '#4CAF50',
-      description: '健康体重'
-    };
+    return { category: '正常', color: '#4CAF50', description: '健康体重' };
   } else if (bmi < 28) {
-    return {
-      category: '超重',
-      color: '#FF9800',
-      description: '需要控制体重'
-    };
+    return { category: '超重', color: '#FF9800', description: '需要控制体重' };
   } else {
-    return {
-      category: '肥胖',
-      color: '#F44336',
-      description: '需要减重'
-    };
+    return { category: '肥胖', color: '#F44336', description: '需要减重' };
   }
 }
 
 // 计算血压分类
-export function getBloodPressureCategory(systolic: number, diastolic: number): {
-  category: string;
-  color: string;
-  description: string;
-} {
+export function getBloodPressureCategory(systolic: number, diastolic: number): CategoryInfo {
   if (systolic < 120 && diastolic < 80) {
-    return {
-      category: '正常',
-      color: '#4CAF50',
-      description: '理想血压'
-    };
+    return { category: '正常', color: '#4CAF50', description: '理想血压' };
   } else if (systolic < 130 && diastolic < 85) {
-    return {
-      category: '正常高值',
-      color: '#8BC34A',
-      description: '需要注意'
-    };
+    return { category: '正常高值', color: '#8BC34A', description: '需要注意' };
   } else if (systolic < 140 && diastolic < 90) {
-    return {
-      category: '高血压1级',
-      color: '#FF9800',
-      description: '建议就医'
-    };
+    return { category: '高血压1级', color: '#FF9800', description: '建议就医' };
   } else if (systolic < 160 && diastolic < 100) {
-    return {
-      category: '高血压2级',
-      color: '#FF5722',
-      description: '需要治疗'
-    };
+    return { category: '高血压2级', color: '#FF5722', description: '需要治疗' };
   } else {
-    return {
-      category: '高血压3级',
-      color: '#F44336',
-      description: '紧急就医'
-    };
+    return { category: '高血压3级', color: '#F44336', description: '紧急就医' };
   }
 }
 
 // 计算血糖分类
-export function getBloodSugarCategory(value: number, type: 'fasting' | 'postprandial'): {
-  category: string;
-  color: string;
-  description: string;
-} {
+export function getBloodSugarCategory(value: number, type: 'fasting' | 'postprandial'): CategoryInfo {
   if (type === 'fasting') {
     // 空腹血糖
     if (value < 3.9) {
-      return {
-        category: '低血糖',
-        color: '#F44336',
-        description: '血糖过低'
-      };
+      return { category: '低血糖', color: '#F44336', description: '血糖过低' };
     } else if (value < 6.1) {
-      return {
-        category: '正常',
-        color: '#4CAF50',
-        description: '正常范围'
-      };
+      return { category: '正常', color: '#4CAF50', description: '正常范围' };
     } else if (value < 7.0) {
-      return {
-        category: '糖尿病前期',
-        color: '#FF9800',
-        description: '需要注意'
-      };
+      return { category: '糖尿病前期', color: '#FF9800', description: '需要注意' };
     } else {
-      return {
-        category: '糖尿病',
-        color: '#F44336',
-        description: '需要治疗'
-      };
+      return { category: '糖尿病', color: '#F44336', description: '需要治疗' };
     }
   } else {
     // 餐后血糖
     if (value < 7.8) {
-      return {
-        category: '正常',
-        color: '#4CAF50',
-        description: '正常范围'
-      };
+      return { category: '正常', color: '#4CAF50', description: '正常范围' };
     } else if (value < 11.1) {
-      return {
-        category: '糖尿病前期',
-        color: '#FF9800',
-        description: '需要注意'
-      };
+      return { category: '糖尿病前期', color: '#FF9800', description: '需要注意' };
     } else {
-      return {
-        category: '糖尿病',
-        color: '#F44336',
-        description: '需要治疗'
-      };
+      return { category: '糖尿病', color: '#F44336', description: '需要治疗' };
     }
   }
 }
@@ -188,15 +133,15 @@ export function formatBloodPressure(systolic: number, diastolic: number): string
 }
 
 // 解析血压值
-export function parseBloodPressure(bpString: string): { systolic: number; diastolic: number } | null {
+export function parseBloodPressure(bpString: string): BloodPressureData | null {
   const parts = bpString.split('/');
   if (parts.length !== 2) return null;
-  
+
   const systolic = parseInt(parts[0]);
   const diastolic = parseInt(parts[1]);
-  
+
   if (isNaN(systolic) || isNaN(diastolic)) return null;
-  
+
   return { systolic, diastolic };
 }
 
@@ -217,15 +162,9 @@ export function calculateWeightProgress(current: number, target: number): number
 }
 
 // 获取健康评分
-export function calculateHealthScore(metrics: {
-  bmi?: number;
-  bloodPressure?: { systolic: number; diastolic: number };
-  bloodSugar?: number;
-  steps?: number;
-  sleep?: number;
-}): number {
+export function calculateHealthScore(metrics: HealthMetrics): number {
   let score = 100;
-  
+
   // BMI评分
   if (metrics.bmi) {
     if (metrics.bmi < 18.5 || metrics.bmi >= 28) {
@@ -234,7 +173,7 @@ export function calculateHealthScore(metrics: {
       score -= 10;
     }
   }
-  
+
   // 血压评分
   if (metrics.bloodPressure) {
     const systolic = metrics.bloodPressure.systolic;
@@ -245,7 +184,7 @@ export function calculateHealthScore(metrics: {
       score -= 10;
     }
   }
-  
+
   // 血糖评分
   if (metrics.bloodSugar) {
     if (metrics.bloodSugar >= 7.0) {
@@ -254,7 +193,7 @@ export function calculateHealthScore(metrics: {
       score -= 10;
     }
   }
-  
+
   // 步数评分
   if (metrics.steps) {
     if (metrics.steps < 5000) {
@@ -263,7 +202,7 @@ export function calculateHealthScore(metrics: {
       score += 10;
     }
   }
-  
+
   // 睡眠评分
   if (metrics.sleep) {
     if (metrics.sleep < 6) {
@@ -272,14 +211,14 @@ export function calculateHealthScore(metrics: {
       score += 10;
     }
   }
-  
+
   return Math.max(0, Math.min(100, score));
 }
 
 // 获取健康建议
 export function getHealthRecommendations(score: number): string[] {
   const recommendations: string[] = [];
-  
+
   if (score >= 90) {
     recommendations.push('继续保持健康的生活方式');
     recommendations.push('定期进行健康检查');
@@ -297,7 +236,7 @@ export function getHealthRecommendations(score: number): string[] {
     recommendations.push('调整生活方式');
     recommendations.push('遵医嘱进行治疗');
   }
-  
+
   return recommendations;
 }
 
@@ -305,11 +244,11 @@ export function getHealthRecommendations(score: number): string[] {
 export function formatTimeAgo(timestamp: number): string {
   const now = Date.now();
   const diff = now - timestamp;
-  
+
   const minutes = Math.floor(diff / (1000 * 60));
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
+
   if (minutes < 1) {
     return '刚刚';
   } else if (minutes < 60) {
@@ -325,7 +264,7 @@ export function formatTimeAgo(timestamp: number): string {
 
 // 生成随机颜色
 export function generateRandomColor(): string {
-  const colors = [
+  const colors: string[] = [
     '#4a90e2', '#96ceb4', '#ff6b6b', '#f5a623', '#9b59b6',
     '#4ecdc4', '#45b7d1', '#ff9ff3', '#54a0ff', '#5f27cd'
   ];
@@ -344,7 +283,7 @@ export function getHealthMetricIcon(type: string): string {
     'steps': '👣',
     'calories': '🔥'
   };
-  
+
   return iconMap[type] || '📊';
 }
 
@@ -360,7 +299,7 @@ export function getHealthMetricUnit(type: string): string {
     'steps': '步',
     'calories': 'kcal'
   };
-  
+
   return unitMap[type] || '';
 }
 
@@ -392,35 +331,41 @@ export function deepClone<T>(obj: T): T {
 }
 
 // 防抖函数
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
+export function debounce(
+  func: DebounceFunction,
   wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: number | undefined;
-  
-  return function executedFunction(...args: Parameters<T>) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
+): DebounceFunction {
+  let timeoutId: number | undefined = undefined;
+
+  const executedFunction: DebounceFunction = (): void => {
+    const later: DebounceFunction = (): void => {
+      clearTimeout(timeoutId);
+      func();
     };
-    
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(later, wait);
   };
+
+  return executedFunction;
 }
 
 // 节流函数
-export function throttle<T extends (...args: any[]) => any>(
-  func: T,
+export function throttle(
+  func: DebounceFunction,
   limit: number
-): (...args: Parameters<T>) => void {
-  let inThrottle: boolean;
-  
-  return function executedFunction(...args: Parameters<T>) {
+): DebounceFunction {
+  let inThrottle: boolean = false;
+
+  const executedFunction: DebounceFunction = (): void => {
     if (!inThrottle) {
-      func(...args);
+      func();
       inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
+      setTimeout((): void => {
+        inThrottle = false;
+      }, limit);
     }
   };
+
+  return executedFunction;
 }

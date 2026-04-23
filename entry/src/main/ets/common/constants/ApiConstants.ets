@@ -10,7 +10,10 @@ interface EnvConfig {
 }
 
 const ENV_MAP: Record<EnvType, EnvConfig> = {
-  [EnvType.DEV]: { BASE_URL: 'http://192.168.91.233:8080', UPLOAD_URL: 'http://192.168.91.233:8080/upload' },
+  // 🔧 说明：根据你的运行环境选择地址：
+  // - 模拟器：使用 http://10.0.2.2:8080
+  // - 真机：替换为你电脑在局域网的真实IP，如 http://192.168.x.x:8080
+  [EnvType.DEV]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
@@ -204,6 +207,12 @@ interface ApiConstantsInterface {
   HEALTH_STANDARD_AGE_GROUP: string;
   HEALTH_STANDARD_GENDER: string;
 
+  DOCTOR_LIST: string;
+  DOCTOR_DETAIL: string;
+
+  MESSAGE_SEND: string;
+  MESSAGE_HISTORY: string;
+
   UPLOAD_3D: string;
 }
 
@@ -267,15 +276,15 @@ export const ApiConstants: ApiConstantsInterface = {
   HERBAL_CATEGORY_TREE: '/herbal/category/tree',
   HERBAL_BY_EFFICACY: '/herbal/by-efficacy/',
 
-  KNOWLEDGE_GRAPH: '/knowledge/graph',
-  KNOWLEDGE_NODE: '/knowledge/node/',
-  KNOWLEDGE_NODE_DETAIL: '/knowledge/node/detail/',
-  KNOWLEDGE_SEARCH: '/knowledge/search',
-  KNOWLEDGE_PATH: '/knowledge/path',
-  KNOWLEDGE_NODES: '/knowledge/nodes',
-  KNOWLEDGE_EXPLORE: '/knowledge/explore',
-  KNOWLEDGE_STATS: '/knowledge/stats',
-  KNOWLEDGE_RELATED: '/knowledge/related/',
+  KNOWLEDGE_GRAPH: '/api/knowledge/graph',
+  KNOWLEDGE_NODE: '/api/knowledge/node/',
+  KNOWLEDGE_NODE_DETAIL: '/api/knowledge/node/',
+  KNOWLEDGE_SEARCH: '/api/knowledge/search',
+  KNOWLEDGE_PATH: '/api/knowledge/path',
+  KNOWLEDGE_NODES: '/api/knowledge/nodes',
+  KNOWLEDGE_EXPLORE: '/api/knowledge/explore',
+  KNOWLEDGE_STATS: '/api/knowledge/stats',
+  KNOWLEDGE_RELATED: '/api/knowledge/related',
 
   REHAB_PLAN_LIST: '/rehab/list',
   REHAB_PLAN_DETAIL: '/rehab/get/',
@@ -377,6 +386,12 @@ export const ApiConstants: ApiConstantsInterface = {
   HEALTH_STANDARD_DETAIL: '/healthStandard/detail/',
   HEALTH_STANDARD_AGE_GROUP: '/healthStandard/ageGroup',
   HEALTH_STANDARD_GENDER: '/healthStandard/gender',
+
+  DOCTOR_LIST: '/user/doctor/list',
+  DOCTOR_DETAIL: '/user/doctor/detail/',
+
+  MESSAGE_SEND: '/user/message/send',
+  MESSAGE_HISTORY: '/user/message/history',
 
   UPLOAD_3D: '/api/upload/3d'
 };

@@ -6,6 +6,7 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
 interface UserInfo {
   userId?: number;
   username: string;
@@ -37,18 +38,32 @@ struct Login {
   @State isLoading: boolean = false;
   @State errorMessage: string = '';
 
-  aboutToAppear(): void {
+  async aboutToAppear(): Promise<void> {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
 
-    const isLoggedIn = AppStorage.get<boolean>('isLoggedIn');
-    if (isLoggedIn) {
-      try {
-        router.replaceUrl({ url: 'pages/HomePage' });
-      } catch (error) {
-        console.error('跳转首页失败:', error);
+    try {
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      const isLoggedIn: boolean = await settings.isLoggedIn();
+      if (isLoggedIn) {
+        const token: string = await settings.getToken();
+        if (token && token.length > 0) {
+          AppStorage.setOrCreate<string>('token', token);
+          AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+          const userInfo: PersistedUserInfo | null = await settings.getUserInfo();
+          if (userInfo) {
+            AppStorage.setOrCreate<PersistedUserInfo | null>('userInfo', userInfo);
+            AppStorage.setOrCreate<string>('username', userInfo.username || '');
+            if (userInfo.userId) {
+              AppStorage.setOrCreate<number>('userId', userInfo.userId);
+            }
+          }
+          router.replaceUrl({ url: 'pages/HomePage' });
+        }
       }
+    } catch (error) {
+      console.error('检查登录状态失败:', error);
     }
   }
 
@@ -89,32 +104,26 @@ struct Login {
       const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>('/user/login', loginRequest);
 
       if (response.success) {
-        // 保存Token到AppStorage
         if (response.data && response.data.token) {
           try {
-            AppStorage.setOrCreate<string>('token', response.data.token);
-            HttpUtil.saveToken(response.data.token);
+            await HttpUtil.saveToken(response.data.token);
           } catch (error) {
             console.error('保存Token失败:', error);
           }
         }
 
-        // 保存用户信息
         if (response.data) {
           try {
-            const userInfo: UserInfo = response.data.userInfo || {
+            const settings: SettingsUtil = SettingsUtil.getInstance();
+            const userInfo: PersistedUserInfo = response.data.userInfo || {
               userId: response.data.userId,
               username: response.data.username || '',
               userType: response.data.userType,
               avatar: '',
               age: undefined,
               gender: undefined
-            } as UserInfo;
-            AppStorage.setOrCreate<UserInfo>('userInfo', userInfo);
-            AppStorage.setOrCreate<string>('username', userInfo.username || '');
-            if (userInfo.userId) {
-              AppStorage.setOrCreate<number>('userId', userInfo.userId);
-            }
+            } as PersistedUserInfo;
+            await settings.saveUserInfo(userInfo);
           } catch (error) {
             console.error('保存用户信息失败:', error);
           }

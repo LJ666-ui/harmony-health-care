@@ -2,6 +2,7 @@ import promptAction from '@ohos.promptAction';
 import http from '@ohos.net.http';
 import connection from '@ohos.net.connection';
 import { getBaseUrl } from '../constants/ApiConstants';
+import { SettingsUtil } from '../../utils/SettingsUtil';
 
 export interface BaseResponse<T> {
   success: boolean;
@@ -427,9 +428,15 @@ export class HttpUtil {
 
   static getToken(): string | null {
     try {
-      const token: string | undefined = AppStorage.get<string>('token');
-      if (token && token.length > 0) {
-        return token;
+      const tokenFromAppStorage: string | undefined = AppStorage.get<string>('token');
+      if (tokenFromAppStorage && tokenFromAppStorage.length > 0) {
+        return tokenFromAppStorage;
+      }
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      const tokenFromPrefs: string = settings.getTokenSync();
+      if (tokenFromPrefs && tokenFromPrefs.length > 0) {
+        AppStorage.setOrCreate<string>('token', tokenFromPrefs);
+        return tokenFromPrefs;
       }
       return null;
     } catch (error) {
@@ -438,17 +445,21 @@ export class HttpUtil {
     }
   }
 
-  static saveToken(token: string): void {
+  static async saveToken(token: string): Promise<void> {
     try {
       AppStorage.setOrCreate<string>('token', token);
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.saveToken(token);
     } catch (error) {
       console.error('[HttpUtil] 保存Token失败:', error);
     }
   }
 
-  static clearToken(): void {
+  static async clearToken(): Promise<void> {
     try {
       AppStorage.setOrCreate<string>('token', '');
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.clearToken();
     } catch (error) {
       console.error('[HttpUtil] 清除Token失败:', error);
     }

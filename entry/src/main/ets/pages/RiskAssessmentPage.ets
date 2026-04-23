@@ -46,6 +46,7 @@ struct RiskAssessmentPage {
     exercise: '每周1-2次',
     medicalHistory: []
   };
+  @State errorMessage: string = '';
 
   private createStepArray(): number[] {
     const arr: number[] = [];
@@ -84,7 +85,34 @@ struct RiskAssessmentPage {
     }
   }
 
+  private validateCurrentStep(): boolean {
+    this.errorMessage = '';
+    const data: AssessmentData = this.assessmentData;
+    if (this.currentStep === 2) {
+      if (!data.age || data.age.trim() === '') { this.errorMessage = '请输入年龄'; return false; }
+      if (parseFloat(data.age) < 1 || parseFloat(data.age) > 150) { this.errorMessage = '请输入有效年龄(1-150)'; return false; }
+      if (!data.height || data.height.trim() === '') { this.errorMessage = '请输入身高'; return false; }
+      if (parseFloat(data.height) < 50 || parseFloat(data.height) > 250) { this.errorMessage = '请输入有效身高(50-250cm)'; return false; }
+      if (!data.weight || data.weight.trim() === '') { this.errorMessage = '请输入体重'; return false; }
+      if (parseFloat(data.weight) < 10 || parseFloat(data.weight) > 300) { this.errorMessage = '请输入有效体重(10-300kg)'; return false; }
+    }
+    if (this.currentStep === 3) {
+      if (!data.systolic || data.systolic.trim() === '') { this.errorMessage = '请输入收缩压'; return false; }
+      if (!data.diastolic || data.diastolic.trim() === '') { this.errorMessage = '请输入舒张压'; return false; }
+      if (parseFloat(data.systolic) < 60 || parseFloat(data.systolic) > 280) { this.errorMessage = '请输入有效收缩压(60-280)'; return false; }
+      if (parseFloat(data.diastolic) < 40 || parseFloat(data.diastolic) > 180) { this.errorMessage = '请输入有效舒张压(40-180)'; return false; }
+    }
+    if (this.currentStep === 4) {
+      if (!data.fastingGlucose || data.fastingGlucose.trim() === '') { this.errorMessage = '请输入空腹血糖'; return false; }
+      if (parseFloat(data.fastingGlucose) < 1 || parseFloat(data.fastingGlucose) > 30) { this.errorMessage = '请输入有效空腹血糖(1-30mmol/L)'; return false; }
+    }
+    return true;
+  }
+
   nextStep() {
+    if (this.currentStep >= 2 && !this.validateCurrentStep()) {
+      return;
+    }
     if (this.currentStep < this.totalSteps) {
       if (this.currentStep === 1) {
         this.calculateBMI();
@@ -102,12 +130,38 @@ struct RiskAssessmentPage {
   }
 
   submitAssessment() {
+    this.errorMessage = '';
+    const data: AssessmentData = this.assessmentData;
+    if (!data.age || data.age.trim() === '') { this.errorMessage = '请完成年龄填写'; return; }
+    if (!data.height || data.height.trim() === '') { this.errorMessage = '请完成身高填写'; return; }
+    if (!data.weight || data.weight.trim() === '') { this.errorMessage = '请完成体重填写'; return; }
+    if (data.bmi <= 0) { this.calculateBMI(); }
+    if (!data.systolic || data.systolic.trim() === '') { this.errorMessage = '请完成血压数据填写'; return; }
+    if (!data.diastolic || data.diastolic.trim() === '') { this.errorMessage = '请完成血压数据填写'; return; }
+    if (!data.fastingGlucose || data.fastingGlucose.trim() === '') { this.errorMessage = '请完成血糖数据填写'; return; }
+
+    const submitData: AssessmentData = {
+      age: data.age.trim(),
+      gender: data.gender,
+      height: data.height.trim(),
+      weight: data.weight.trim(),
+      bmi: data.bmi > 0 ? data.bmi : 0,
+      systolic: data.systolic.trim(),
+      diastolic: data.diastolic.trim(),
+      fastingGlucose: data.fastingGlucose.trim(),
+      postprandialGlucose: data.postprandialGlucose.trim() || '',
+      smoking: data.smoking,
+      drinking: data.drinking,
+      exercise: data.exercise,
+      medicalHistory: data.medicalHistory
+    };
+
     this.isSubmitting = true;
     setTimeout(() => {
       this.isSubmitting = false;
       router.push({
         url: 'pages/RiskResultPage',
-        params: { assessmentData: this.assessmentData }
+        params: { assessmentData: submitData }
       });
     }, 3000);
   }
@@ -226,6 +280,19 @@ struct RiskAssessmentPage {
           // 评估表单
           Scroll() {
             Column() {
+              if (this.errorMessage) {
+                Row() {
+                  Text('⚠️ ' + this.errorMessage)
+                    .fontSize(14)
+                    .fontColor('#FF4D4F');
+                }
+                .width('100%')
+                .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+                .backgroundColor('#FFF1F0')
+                .borderRadius(8)
+                .margin({ bottom: 16 });
+              }
+
               // 第一步：基本信息
               if (this.currentStep === 2) {
                 Text('基本信息')

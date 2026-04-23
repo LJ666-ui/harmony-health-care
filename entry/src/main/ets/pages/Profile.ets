@@ -6,6 +6,7 @@ import { NetworkStatusBanner } from '../components/ErrorComponents';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
 import { HttpUtil } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { SettingsUtil } from '../utils/SettingsUtil';
 
 interface UserInfo {
   username: string;
@@ -188,12 +189,10 @@ struct Profile {
                 bottom: AccessibilityConfig.getSpacingLG()
               })
               .accessibilityText('退出登录按钮')
-              .onClick(() => {
+              .onClick(async () => {
                 try {
-                  AppStorage.setOrCreate<boolean>('isLoggedIn', false);
-                  AppStorage.setOrCreate<string>('token', '');
-                  AppStorage.setOrCreate<UserInfo | null>('userInfo', null);
-                  HttpUtil.clearToken();
+                  const settings: SettingsUtil = SettingsUtil.getInstance();
+                  await settings.clearAllLoginData();
                   ToastUtil.showInfo('已退出登录');
                   router.replaceUrl({ url: 'pages/Login' });
                 } catch (error) {

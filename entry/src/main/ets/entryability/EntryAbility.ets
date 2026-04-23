@@ -3,6 +3,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { AccessibilityConfig, FontSizeLevel, ColorMode, AnimationMode } from '../utils/AccessibilityConfig';
 import RdbHelper from '../utils/RdbHelper';
+import { SettingsUtil } from '../utils/SettingsUtil';
 import {
   CREATE_TABLE_USER_CACHE,
   CREATE_TABLE_OFFLINE_HEALTH_RECORD,
@@ -26,6 +27,7 @@ export default class EntryAbility extends UIAbility {
 
     this.initAccessibilitySettings();
     this.initDatabase();
+    this.initSettingsUtil();
 
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
   }
@@ -69,6 +71,16 @@ export default class EntryAbility extends UIAbility {
       AppStorage.setOrCreate<boolean>('ttsEnabled', false);
     }
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Accessibility settings initialized');
+  }
+
+  private async initSettingsUtil(): Promise<void> {
+    try {
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.init(this.context);
+      hilog.info(DOMAIN, 'testTag', '%{public}s', 'SettingsUtil (Preferences) initialized successfully');
+    } catch (error) {
+      hilog.error(DOMAIN, 'testTag', 'Failed to initialize SettingsUtil: %{public}s', JSON.stringify(error));
+    }
   }
 
   onDestroy(): void {

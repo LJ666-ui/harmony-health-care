@@ -76,12 +76,13 @@ struct HomePage {
     { id: 4, icon: '🍎', title: '饮食食谱', description: '食材百科和营养知识', url: 'pages/FoodEncyclopediaPage' },
     { id: 5, icon: '🤖', title: 'AI健康顾问', description: '智能健康问答助手', url: 'pages/AiChatPage' },
     { id: 6, icon: '🏥', title: 'AI智能问诊', description: '多智能体会诊服务', url: 'pages/AiConsultationPage' },
-    { id: 7, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
-    { id: 8, icon: '🌿', title: '药材百科', description: '中药材知识库查询', url: 'pages/HerbalListPage' },
-    { id: 9, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
-    { id: 10, icon: '✅', title: '转院审批', description: '审批转院申请并同步病历', url: 'pages/TransferApprovalPage' },
-    { id: 11, icon: '🔗', title: '病历同步', description: '跨院数据安全同步', url: 'pages/MedicalRecordSyncPage' },
-    { id: 12, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
+    { id: 7, icon: '📷', title: '医学影像AI分析', description: 'AI病灶识别与分析系统', url: 'pages/ImageAnalysisPage' },
+    { id: 8, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
+    { id: 9, icon: '🌿', title: '药材百科', description: '中药材知识库查询', url: 'pages/HerbalListPage' },
+    { id: 10, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
+    { id: 11, icon: '✅', title: '转院审批', description: '审批转院申请并同步病历', url: 'pages/TransferApprovalPage' },
+    { id: 12, icon: '🔗', title: '病历同步', description: '跨院数据安全同步', url: 'pages/MedicalRecordSyncPage' },
+    { id: 13, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
   ];
 
   private recordId: number | undefined = undefined;

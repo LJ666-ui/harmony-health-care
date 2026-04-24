@@ -69,12 +69,13 @@ struct HomePage {
   @State latestHealthRecord: Object | null = null;
 
   @State featureCards: FeatureCard[] = [
-    { id: 0, icon: '📋', title: '健康记录', description: '查看和管理您的健康数据', url: 'pages/HealthRecords' },
-    { id: 1, icon: '📅', title: '预约管理', description: '选择医院和科室进行预约', url: 'pages/AppointmentManagementPage' },
-    { id: 2, icon: '💊', title: '用药管理', description: '跟踪您的用药情况', url: 'pages/Medications' },
-    { id: 3, icon: '🍎', title: '饮食食谱', description: '食材百科和营养知识', url: 'pages/FoodEncyclopediaPage' },
-    { id: 4, icon: '🤖', title: 'AI健康顾问', description: '智能健康问答助手', url: 'pages/AiChatPage' },
-    { id: 5, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
+    { id: 0, icon: '❤️', title: '实时监控', description: '健康数据实时监测与预警', url: 'pages/MonitoringDashboard' },
+    { id: 1, icon: '📋', title: '健康记录', description: '查看和管理您的健康数据', url: 'pages/HealthRecords' },
+    { id: 2, icon: '📅', title: '预约管理', description: '选择医院和科室进行预约', url: 'pages/AppointmentManagementPage' },
+    { id: 3, icon: '💊', title: '用药管理', description: '跟踪您的用药情况', url: 'pages/Medications' },
+    { id: 4, icon: '🍎', title: '饮食食谱', description: '食材百科和营养知识', url: 'pages/FoodEncyclopediaPage' },
+    { id: 5, icon: '🤖', title: 'AI健康顾问', description: '智能健康问答助手', url: 'pages/AiChatPage' },
+    { id: 6, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
     { id: 7, icon: '🌿', title: '药材百科', description: '中药材知识库查询', url: 'pages/HerbalListPage' },
     { id: 8, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
     { id: 9, icon: '✅', title: '转院审批', description: '审批转院申请并同步病历', url: 'pages/TransferApprovalPage' },

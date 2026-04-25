@@ -889,30 +889,30 @@ struct AiChatPage {
       Row() {
         Text('\u2190')
           .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-          .fontColor('#1677FF')
+          .fontColor('#FFFFFF')
           .margin({ left: 16 })
           .onClick(() => {
             router.back();
           });
 
-        Text('AI\u5065\u5EBB\u987E\u95EE')
+        Text('\uD83E\uDDD0 AI\u5065\u5EBB\u987E\u95EE')
           .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
           .fontWeight('bold')
-          .fontColor('#333333')
+          .fontColor('#FFFFFF')
           .layoutWeight(1)
           .textAlign(TextAlign.Center);
 
         Row({ space: 12 }) {
           Text('\uD83D\uDCDA')
             .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-            .fontColor('#1677FF')
+            .fontColor('#FFFFFF')
             .onClick(() => {
               this.loadChatHistory();
             });
 
           Text('\uD83D\uDDD1')
             .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-            .fontColor('#999999')
+            .fontColor('#FFFFFFBB')
             .onClick(() => {
               AlertDialog.show({
                 title: '\u6E05\u7A7A\u5BF9\u8BDD',
@@ -935,7 +935,7 @@ struct AiChatPage {
       }
       .width('100%')
       .height(56)
-      .backgroundColor('#FFFFFF')
+      .backgroundColor('#1677FF')
       .justifyContent(FlexAlign.Center);
 
       if (this.showHistoryPanel) {
@@ -1090,44 +1090,82 @@ struct AiChatPage {
   @Builder
   EmptyState() {
     Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-      Text('\uD83C\uDFE5')
-        .fontSize(64)
-        .margin({ top: 60 });
+      // 渐变头部
+      Stack({ alignContent: Alignment.BottomStart }) {
+        Column()
+          .width('100%')
+          .height(180)
+          .linearGradient({
+            angle: 135,
+            colors: [['#1677FF', 0], ['#36CFC9', 1]]
+          })
+          .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 16, bottomRight: 16 });
 
-      Text('AI\u5065\u5EBB\u987E\u95EE')
-        .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
-        .fontWeight('bold')
-        .fontColor('#1677FF');
+        Column({ space: 8 }) {
+          Text('\uD83E\uDDD0')
+            .fontSize(48)
+            .margin({ bottom: 4 });
+          Text('AI 健康顾问')
+            .fontSize(24)
+            .fontWeight('bold')
+            .fontColor('#FFFFFF');
+          Text('智能健康问答助手，随时为您解答')
+            .fontSize(13)
+            .fontColor('#FFFFFFBB');
+        }
+        .width('100%')
+        .padding({ left: 28, right: 20, bottom: 24 })
+        .alignItems(HorizontalAlign.Start);
+      }
+      .width('90%')
+      .margin({ top: 16, bottom: 20 });
 
-      Text('\u6211\u53EF\u4EE5\u5E2E\u60A8\u89E3\u7B54\u5065\u5EBB\u76F8\u5173\u95EE\u9898\n\u4F8B\u5982: \u8840\u538B\u3001\u996E\u98DF\u3001\u8FD0\u52A8\u3001\u7528\u836F\u7B49')
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-        .fontColor('#666666')
-        .textAlign(TextAlign.Center)
-        .margin({ top: 8 });
-
+      // 推荐问题卡片
       Column({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
         ForEach(this.suggestedQuestions.slice(0, 3), (question: SuggestedQuestion) => {
-          Row({ space: 8 }) {
+          Row({ space: 10 }) {
             Text(question.icon)
-              .fontSize(20);
+              .fontSize(18);
 
             Text(question.question)
               .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor('#1677FF')
+              .fontColor('#333333')
               .layoutWeight(1);
+            Text('›')
+              .fontSize(16)
+              .fontColor('#CCCCCC');
           }
           .width('100%')
-          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+          .padding({ left: 16, right: 14, top: 14, bottom: 14 })
           .backgroundColor('#FFFFFF')
-          .borderRadius(12)
-          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
+          .borderRadius(14)
+          .shadow({ radius: 6, color: '#00000008', offsetX: 0, offsetY: 2 })
           .onClick(() => {
             this.handleSuggestionClick(question.question);
           });
         }, (question: SuggestedQuestion) => question.id);
+
+        // 更多问题入口
+        Row() {
+          Text('查看更多问题')
+            .fontSize(13)
+            .fontColor('#1677FF');
+          Text(' ›')
+            .fontSize(13)
+            .fontColor('#1677FF');
+        }
+        .width('100%')
+        .height(44)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F0F7FF')
+        .borderRadius(12)
+        .onClick(() => {
+          this.showSuggestions = true;
+        });
       }
-      .width('85%')
-      .margin({ top: 24 });
+      .width('85%');
+
+      Blank();
     }
     .width('100%')
     .layoutWeight(1)

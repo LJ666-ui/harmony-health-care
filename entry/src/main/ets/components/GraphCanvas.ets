@@ -36,7 +36,7 @@ export struct GraphCanvas {
   @State isLoading: boolean = true;
   @State loadError: string = '';
   @State centerId: number = 1;
-  @State depth: number = 2;
+  @State depth: number = 1;
   @State scaleValue: number = 1;
   @State panOffsetX: number = 0;
   @State panOffsetY: number = 0;
@@ -46,6 +46,9 @@ export struct GraphCanvas {
   @State baseOffsetX: number = 0;
   @State baseOffsetY: number = 0;
   @Prop startCenterId: number = 1;
+  @State selectedNode: GraphNode | null = null;
+  @State showNodePanel: boolean = false;
+  private currentRenderKey: number = 0;
   private draggingNodeId: number = -1;
   private lastDragX: number = 0;
   private lastDragY: number = 0;
@@ -55,6 +58,7 @@ export struct GraphCanvas {
   private simulationSteps: number = 0;
 
   aboutToAppear(): void {
+    this.currentRenderKey = this.startCenterId;
     this.centerId = this.startCenterId;
     this.fetchGraph();
   }
@@ -135,68 +139,64 @@ export struct GraphCanvas {
   }
 
   private startForceSimulation(): void {
+    this.clearTimer();
     this.simulationSteps = 0;
-    const maxSteps: number = 80;
     const cx: number = this.canvasWidth / 2;
     const cy: number = this.canvasHeight / 2;
+    const minDim: number = Math.min(this.canvasWidth, this.canvasHeight);
+    const maxRadius: number = minDim * 0.38;
+    const levelGroups: GraphNode[][] = [];
+    let maxDepth: number = 0;
+    for (let i: number = 0; i < this.graphNodes.length; i++) {
+      const d: number = this.graphNodes[i].depthLevel;
+      if (d > maxDepth) { maxDepth = d; }
+      if (!levelGroups[d]) { levelGroups[d] = []; }
+      levelGroups[d].push(this.graphNodes[i]);
+    }
+    for (let lv: number = 0; lv <= maxDepth; lv++) {
+      if (!levelGroups[lv]) { continue; }
+      const group: GraphNode[] = levelGroups[lv];
+      const count: number = group.length;
+      if (lv === 0 && count > 0) {
+        group[0].x = cx;
+        group[0].y = cy;
+      } else {
+        const ringRadius: number = maxRadius * (lv / Math.max(maxDepth, 1));
+        const actualR: number = Math.max(ringRadius, minDim * 0.12);
+        for (let j: number = 0; j < count; j++) {
+          const angle: number = (2 * Math.PI * j) / count - Math.PI / 2 + (Math.random() * 0.3 - 0.15);
+          group[j].x = cx + actualR * Math.cos(angle);
+          group[j].y = cy + actualR * Math.sin(angle);
+        }
+      }
+    }
     try {
       this.layoutTimer = setInterval(() => {
         this.simulationSteps++;
-        if (this.simulationSteps > maxSteps) {
+        if (this.simulationSteps > 20) {
           this.clearTimer();
           this.calculateAutoFit();
           return;
         }
-        const alpha: number = Math.max(0.01, 1 - this.simulationSteps / maxSteps);
+        const alpha: number = Math.max(0.02, 1 - this.simulationSteps / 20);
         const nodes: GraphNode[] = this.graphNodes;
-        const minDist: number = 80;
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i].id === this.centerId || nodes[i].id === this.draggingNodeId) {
-            continue;
-          }
+        for (let i: number = 0; i < nodes.length; i++) {
+          if (nodes[i].id === this.centerId || nodes[i].id === this.draggingNodeId) { continue; }
           let fx: number = 0;
           let fy: number = 0;
-          const dx: number = nodes[i].x - cx;
-          const dy: number = nodes[i].y - cy;
-          const dist: number = Math.sqrt(dx * dx + dy * dy);
-          const idealDist: number = 80 + nodes[i].depthLevel * 80;
-          if (dist > 0) {
-            fx -= (dist - idealDist) * 0.006 * alpha * dx / dist;
-            fy -= (dist - idealDist) * 0.006 * alpha * dy / dist;
-          }
-          for (let j = 0; j < nodes.length; j++) {
+          for (let j: number = 0; j < nodes.length; j++) {
             if (i === j) { continue; }
             const ddx: number = nodes[i].x - nodes[j].x;
             const ddy: number = nodes[i].y - nodes[j].y;
             const d: number = Math.sqrt(ddx * ddx + ddy * ddy);
-            if (d < 1) {
-              fx += (Math.random() - 0.5) * 10;
-              fy += (Math.random() - 0.5) * 10;
-            } else if (d < minDist) {
-              const repulse: number = (minDist - d) * (minDist - d) * 0.03 * alpha;
-              fx += repulse * ddx / d;
-              fy += repulse * ddy / d;
+            if (d < 55) {
+              const repulse: number = (55 - d) * (55 - d) * 0.04 * alpha;
+              fx += repulse * ddx / Math.max(d, 0.1);
+              fy += repulse * ddy / Math.max(d, 0.1);
             }
           }
-          for (let e = 0; e < this.graphEdges.length; e++) {
-            const edge: GraphEdge = this.graphEdges[e];
-            let other: GraphNode | null = null;
-            if (edge.source === nodes[i].id) { other = this.findNode(edge.target); }
-            else if (edge.target === nodes[i].id) { other = this.findNode(edge.source); }
-            if (other) {
-              const ex: number = other.x - nodes[i].x;
-              const ey: number = other.y - nodes[i].y;
-              const ed: number = Math.sqrt(ex * ex + ey * ey);
-              const springLen: number = minDist + (nodes[i].depthLevel + other.depthLevel) * 20;
-              if (ed > 0) {
-                const spring: number = (ed - springLen) * 0.003 * alpha;
-                fx += spring * ex / ed;
-                fy += spring * ey / ed;
-              }
-            }
-          }
-          const maxMove: number = 6 * alpha;
           const moveLen: number = Math.sqrt(fx * fx + fy * fy);
+          const maxMove: number = 3 * alpha;
           if (moveLen > maxMove) {
             fx = fx / moveLen * maxMove;
             fy = fy / moveLen * maxMove;
@@ -207,7 +207,7 @@ export struct GraphCanvas {
         const newNodes: GraphNode[] = [];
         for (let k: number = 0; k < nodes.length; k++) { newNodes.push(nodes[k]); }
         this.graphNodes = newNodes;
-      }, 16);
+      }, 25);
     } catch (e) {}
   }
 
@@ -243,11 +243,28 @@ export struct GraphCanvas {
   }
 
   handleNodeClick(node: GraphNode): void {
+    this.selectedNode = node;
+    this.showNodePanel = true;
+  }
+
+  expandAroundNode(nodeId: number): void {
+    this.showNodePanel = false;
+    this.centerId = nodeId;
+    this.fetchGraph();
+  }
+
+  navigateToDetail(node: GraphNode): void {
+    this.showNodePanel = false;
     if (node.type === 'HERBAL') {
       try {
         router.pushUrl({ url: 'pages/HerbalDetailPage', params: { herbalId: String(node.id) } });
       } catch (e) {}
     }
+  }
+
+  closeNodePanel(): void {
+    this.showNodePanel = false;
+    this.selectedNode = null;
   }
 
   handleNodeDragStart(node: GraphNode): void {
@@ -290,14 +307,40 @@ export struct GraphCanvas {
     return copy;
   }
 
-  handleNodeDragEnd(): void {
+  handleNodeDragEnd(draggedNode: GraphNode): void {
     this.draggingNodeId = -1;
     this.lastDragX = 0;
     this.lastDragY = 0;
+    const cx: number = this.canvasWidth / 2;
+    const cy: number = this.canvasHeight / 2;
+    let closestNode: GraphNode | null = null;
+    let closestDist: number = Infinity;
+    for (let i: number = 0; i < this.graphNodes.length; i++) {
+      const n: GraphNode = this.graphNodes[i];
+      const dx: number = n.x - cx;
+      const dy: number = n.y - cy;
+      const dist: number = Math.sqrt(dx * dx + dy * dy);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestNode = n;
+      }
+    }
+    if (closestNode != null && closestNode.id !== this.centerId) {
+      this.centerId = closestNode.id;
+      this.fetchGraph();
+    }
   }
 
   getNodeRadius(node: GraphNode): number {
-    return node.depthLevel === 0 ? 26 : 20;
+    if (node.depthLevel === 0) { return 30; }
+    if (node.depthLevel === 1) { return 24; }
+    return 20;
+  }
+
+  getNodeOpacity(node: GraphNode): number {
+    if (node.depthLevel === 0) { return 1.0; }
+    if (node.depthLevel === 1) { return 0.92; }
+    return 0.80;
   }
 
   getEdgeStartX(edge: GraphEdge): number {
@@ -399,28 +442,26 @@ export struct GraphCanvas {
           .width('100%')
           .height('100%')
           .startPoint([this.getEdgeStartX(edge), this.getEdgeStartY(edge)])
-          .endPoint([this.getEdgeMidX(edge), this.getEdgeMidY(edge)])
-          .strokeWidth(1.5)
-          .strokeDashArray([4, 3])
-          .stroke(this.getEdgeColor(edge) + '80');
-        Line()
-          .width('100%')
-          .height('100%')
-          .startPoint([this.getEdgeMidX(edge), this.getEdgeMidY(edge)])
           .endPoint([this.getEdgeEndX(edge), this.getEdgeEndY(edge)])
-          .strokeWidth(1.5)
-          .strokeDashArray([4, 3])
-          .stroke(this.getEdgeColor(edge) + '80');
+          .strokeWidth(2)
+          .stroke(this.getEdgeColor(edge) + 'BB');
         if (this.hasEdgeLabel(edge)) {
           Text(this.getEdgeLabelText(edge))
-            .fontSize(9)
+            .fontSize(10)
+            .fontWeight(FontWeight.Medium)
             .fontColor(this.getEdgeColor(edge))
-            .backgroundColor('#FFFFFF')
-            .padding({ left: 5, right: 5, top: 1, bottom: 1 })
+            .backgroundColor('#FFFFFFEE')
+            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
             .borderRadius(6)
-            .border({ width: 0.5, color: this.getEdgeColor(edge) + '40' });
+            .border({ width: 1, color: this.getEdgeColor(edge) + '60' })
+            .position({ x: this.getEdgeMidX(edge), y: this.getEdgeMidY(edge) })
+            .translate({ x: '-50%', y: '-50%' })
+            .markAnchor({ x: '50%', y: '50%' });
         }
       }
+      .width('100%')
+      .height('100%')
+      .clip(true)
       .position({ x: 0, y: 0 });
     }
   }
@@ -460,6 +501,15 @@ export struct GraphCanvas {
         .padding(GlobalTheme.getSpacingLG(this.isElderMode));
       } else {
         Stack() {
+          Column()
+            .width('100%')
+            .height('100%')
+            .radialGradient({
+              center: ['50%', '50%'],
+              radius: '70%',
+              colors: [['#F0F5FF', 0], ['#E8EEFA', 0.4], ['#EDEFF5', 1]]
+            });
+
           Column() {
             ForEach(this.graphEdges, (edge: GraphEdge) => {
               this.buildEdgeLine(edge);
@@ -472,18 +522,18 @@ export struct GraphCanvas {
             ForEach(this.graphNodes, (node: GraphNode) => {
               KnowledgeNode({
                 node: this.createMappedNode(node),
-                opacityValue: 1.0,
+                opacityValue: this.getNodeOpacity(node),
                 onNodeClick: (clickedNode: GraphNode) => {
-                  this.handleNodeClick(node);
+                  this.handleNodeClick(clickedNode);
                 },
-                onNodeDragStart: (draggedNode: GraphNode) => {
+                onNodeDragStart: (_draggedNode: GraphNode) => {
                   this.handleNodeDragStart(node);
                 },
-                onNodeDragUpdate: (draggedNode: GraphNode, offsetX: number, offsetY: number) => {
+                onNodeDragUpdate: (_draggedNode: GraphNode, offsetX: number, offsetY: number) => {
                   this.handleNodeDragUpdate(node, offsetX, offsetY);
                 },
-                onNodeDragEnd: () => {
-                  this.handleNodeDragEnd();
+                onNodeDragEnd: (_draggedNode: GraphNode) => {
+                  this.handleNodeDragEnd(node);
                 }
               });
             }, (node: GraphNode) => 'node-' + node.id);
@@ -518,23 +568,22 @@ export struct GraphCanvas {
         });
 
         Row() {
-          Text('节点: ' + this.graphNodes.length)
-            .fontSize(11).fontColor('#999999');
-          Text(' | 关系: ' + this.graphEdges.length)
-            .fontSize(11).fontColor('#999999');
-          Row({ space: 8 }) {
-            Text('🔍+')
-              .fontSize(14).fontColor('#1677FF')
-              .onClick(() => {
-                this.scaleValue = Math.min(this.scaleValue + 0.1, 2.0);
-              });
-            Text('🔍-')
-              .fontSize(14).fontColor('#1677FF')
-              .onClick(() => {
-                this.scaleValue = Math.max(this.scaleValue - 0.1, 0.5);
-              });
-            Text('🔄')
-              .fontSize(14).fontColor('#1677FF')
+          Text('● ' + this.graphNodes.length + ' 节点')
+            .fontSize(10).fontColor('#888888');
+          Text('  ○ ' + this.graphEdges.length + ' 关系')
+            .fontSize(10).fontColor('#888888');
+          Row({ space: 6 }) {
+            Text('＋')
+              .fontSize(15).fontColor('#1677FF').fontWeight(FontWeight.Bold)
+              .padding({ left: 4, right: 4 })
+              .onClick(() => { this.scaleValue = Math.min(this.scaleValue + 0.12, 2.0); });
+            Text('－')
+              .fontSize(16).fontColor('#1677FF').fontWeight(FontWeight.Bold)
+              .padding({ left: 4, right: 4 })
+              .onClick(() => { this.scaleValue = Math.max(this.scaleValue - 0.12, 0.5); });
+            Text('⟲')
+              .fontSize(14).fontColor('#52C41A')
+              .padding({ left: 4, right: 4 })
               .onClick(() => {
                 this.panOffsetX = 0;
                 this.panOffsetY = 0;
@@ -545,9 +594,106 @@ export struct GraphCanvas {
           .margin({ left: 8 });
         }
         .width('100%')
-        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-        .backgroundColor('#FFFFFF')
+        .padding({ left: 10, right: 8, top: 4, bottom: 4 })
+        .backgroundColor('#FAFBFC')
+        .border({ width: { top: 0.5 }, color: '#E8E8E8' })
         .justifyContent(FlexAlign.SpaceBetween);
+
+        if (this.showNodePanel && this.selectedNode) {
+          Stack() {
+            Column()
+              .width('100%')
+              .height('100%')
+              .backgroundColor('#00000044')
+              .onClick(() => {
+                this.closeNodePanel();
+              });
+
+            Column() {
+              Row() {
+                Column({ space: 4 }) {
+                  Text(this.selectedNode.name)
+                    .fontSize(18)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#333333');
+                  Text(this.getTypeName(this.selectedNode.type) + ' · ID:' + this.selectedNode.id)
+                    .fontSize(12)
+                    .fontColor('#999999');
+                }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1);
+
+                Text('✕')
+                  .fontSize(18)
+                  .fontColor('#999999')
+                  .padding(8)
+                  .onClick(() => {
+                    this.closeNodePanel();
+                  });
+              }
+              .width('100%')
+              .padding({ left: 20, right: 16, top: 16, bottom: 12 });
+
+              if (this.selectedNode.description && this.selectedNode.description.length > 0) {
+                Text(this.selectedNode.description)
+                  .fontSize(13)
+                  .fontColor('#666666')
+                  .lineHeight(20)
+                  .textAlign(TextAlign.Start)
+                  .maxLines(3)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .width('100%')
+                  .padding({ left: 20, right: 20, bottom: 12 });
+              }
+
+              Divider().color('#F0F0F0');
+
+              Row({ space: 12 }) {
+                Column({ space: 4 }) {
+                  Text('📄')
+                    .fontSize(22);
+                  Text('显示详情')
+                    .fontSize(11)
+                    .fontColor('#1677FF');
+                }
+                .layoutWeight(1)
+                .height(64)
+                .justifyContent(FlexAlign.Center)
+                .backgroundColor('#F0F7FF')
+                .borderRadius(12)
+                .onClick(() => {
+                  this.navigateToDetail(this.selectedNode!);
+                });
+
+                Column({ space: 4 }) {
+                  Text('🔍')
+                    .fontSize(22);
+                  Text('以该节点为中心展开')
+                    .fontSize(11)
+                    .fontColor('#52C41A');
+                }
+                .layoutWeight(1)
+                .height(64)
+                .justifyContent(FlexAlign.Center)
+                .backgroundColor('#F6FFED')
+                .borderRadius(12)
+                .onClick(() => {
+                  this.expandAroundNode(this.selectedNode!.id);
+                });
+              }
+              .width('100%')
+              .padding({ left: 20, right: 20, top: 16, bottom: 24 });
+            }
+            .width('100%')
+            .backgroundColor('#FFFFFF')
+            .borderRadius({ topLeft: 20, topRight: 20 })
+            .alignItems(HorizontalAlign.Center)
+            .position({ x: 0, y: '40%' });
+          }
+          .width('100%')
+          .height('100%')
+          .position({ x: 0, y: 0 });
+        }
       }
     }
     .width('100%')

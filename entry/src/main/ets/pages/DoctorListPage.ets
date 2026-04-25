@@ -85,27 +85,50 @@ struct DoctorListPage {
       .backgroundColor('#FFFFFF')
       .shadow({ radius: 4, color: '#00000010', offsetX: 0, offsetY: 2 });
 
-      Row() {
-        TextInput({
-          placeholder: '搜索医生姓名或手机号'
-        })
-          .width('100%')
-          .height(40)
-          .padding({ left: 16, right: 36 })
-          .backgroundColor('#F5F5F5')
-          .borderRadius(20)
-          .onChange((value: string) => {
-            this.searchKeyword = value;
+      // 搜索栏区域
+      Column() {
+        Text('👨‍⚕️ 选择医生')
+          .fontSize(22)
+          .fontWeight('bold')
+          .fontColor('#FFFFFF')
+          .margin({ bottom: 4 });
+        Text('选择一位医生，分享您的健康报告')
+          .fontSize(13)
+          .fontColor('#FFFFFFBB');
+
+        Row() {
+          TextInput({
+            placeholder: '搜索医生姓名或手机号'
           })
-          .onSubmit(() => {
-            this.onSearch();
-          });
-        Text('🔍')
-          .fontSize(16)
-          .position({ x: -32, y: 10 });
+            .layoutWeight(1)
+            .height(42)
+            .padding({ left: 16, right: 12 })
+            .backgroundColor('#FFFFFF')
+            .borderRadius(21)
+            .onChange((value: string) => {
+              this.searchKeyword = value;
+            })
+            .onSubmit(() => {
+              this.onSearch();
+            });
+          Text('  🔍')
+            .fontSize(16)
+            .height(42)
+            .padding({ left: 10, right: 14 })
+            .backgroundColor('#FFFFFFDD')
+            .borderRadius(21)
+            .margin({ left: 8 });
+        }
+        .width('100%')
+        .margin({ top: 16 });
       }
-      .width('85%')
-      .margin({ top: 16, bottom: 12 });
+      .width('100%')
+      .padding(20)
+      .linearGradient({
+        angle: 135,
+        colors: [['#1677FF', 0], ['#36CFC9', 1]]
+      })
+      .borderRadius({ bottomLeft: 24, bottomRight: 24 });
 
       if (this.isLoading) {
         Column() {
@@ -118,84 +141,97 @@ struct DoctorListPage {
         .justifyContent(FlexAlign.Center);
       } else if (this.doctors.length === 0) {
         Column() {
-          Text('👨‍⚕️')
-            .fontSize(56)
-            .margin({ bottom: 16 });
-          Text('暂无医生数据')
-            .fontSize(17)
-            .fontWeight('bold')
-            .fontColor('#333333')
-            .margin({ bottom: 8 });
-          Text('请稍后再试或联系管理员添加医生账号')
-            .fontSize(14)
-            .fontColor('#999999')
-            .textAlign(TextAlign.Center)
-            .width('80%');
+          Stack({ alignContent: Alignment.BottomStart }) {
+            Column()
+              .width('100%')
+              .height(180)
+              .linearGradient({
+                angle: 135,
+                colors: [['#F0F2F5', 0], ['#FAFAFA', 1]]
+              })
+              .borderRadius(20);
+
+            Column() {
+              Text('👨‍⚕️')
+                .fontSize(56)
+                .margin({ bottom: 16 });
+              Text('暂无医生数据')
+                .fontSize(18)
+                .fontWeight('bold')
+                .fontColor('#333333')
+                .margin({ bottom: 8 });
+              Text('请稍后再试或联系管理员添加医生账号')
+                .fontSize(13)
+                .fontColor('#999999')
+                .textAlign(TextAlign.Center)
+                .width('75%')
+                .lineHeight(20);
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Center)
+            .padding({ bottom: 24 });
+          }
+          .width('85%')
+          .margin({ top: 24, bottom: 24 });
         }
         .width('100%')
         .layoutWeight(1)
-        .justifyContent(FlexAlign.Center);
+        .justifyContent(FlexAlign.Start);
       } else {
         Scroll() {
           Column() {
             ForEach(this.doctors, (doctor: DoctorItem) => {
               Column() {
                 Row() {
-                  Column() {
+                  Stack({ alignContent: Alignment.BottomEnd }) {
+                    Circle()
+                      .width(52)
+                      .height(52)
+                      .fill('#1677FF');
                     Text(doctor.username.charAt(0))
-                      .fontSize(24)
+                      .fontSize(22)
                       .fontWeight('bold')
-                      .fontColor('#FFFFFF');
+                      .fontColor('#FFFFFF')
+                      .margin({ bottom: 0 });
                   }
-                  .width(56)
-                  .height(56)
-                  .borderRadius(28)
-                  .backgroundColor('#1677FF')
-                  .justifyContent(FlexAlign.Center)
-                  .alignItems(HorizontalAlign.Center)
                   .margin({ right: 14 });
 
                   Column({ space: 6 }) {
                     Row() {
                       Text(doctor.username)
-                        .fontSize(17)
+                        .fontSize(16)
                         .fontWeight('bold')
                         .fontColor('#333333');
                       Text('执业医师')
-                        .fontSize(12)
+                        .fontSize(11)
                         .fontColor('#FFFFFF')
                         .padding({ left: 8, right: 8, top: 2, bottom: 2 })
                         .backgroundColor('#52C41A')
                         .borderRadius(4)
                         .margin({ left: 10 });
                     }
-                    .width('100%');
 
                     Row() {
                       if (doctor.age > 0) {
-                        Text(doctor.age + '岁')
-                          .fontSize(13)
-                          .fontColor('#666666');
+                        Text(doctor.age + '岁 · ')
+                          .fontSize(12)
+                          .fontColor('#888888');
                       }
                       if (doctor.phone && doctor.phone !== '') {
-                        if (doctor.age > 0) {
-                          Text(' · ')
-                            .fontSize(13)
-                            .fontColor('#CCCCCC');
-                        }
                         Text(this.maskPhone(doctor.phone))
-                          .fontSize(13)
-                          .fontColor('#666666');
+                          .fontSize(12)
+                          .fontColor('#888888');
                       }
                     }
-                    .width('100%');
                   }
                   .layoutWeight(1)
                   .alignItems(HorizontalAlign.Start);
 
-                  Button('分享报告')
+                  Button('咨询')
                     .height(34)
+                    .padding({ left: 16, right: 16 })
                     .fontSize(13)
+                    .fontWeight('bold')
                     .fontColor('#1677FF')
                     .backgroundColor('#E8F0FF')
                     .borderRadius(17)
@@ -212,9 +248,9 @@ struct DoctorListPage {
               .width('100%')
               .padding(16)
               .backgroundColor('#FFFFFF')
-              .borderRadius(12)
+              .borderRadius(16)
               .margin({ bottom: 10 })
-              .shadow({ radius: 6, color: '#00000008', offsetX: 0, offsetY: 2 });
+              .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 3 });
             }, (doctor: DoctorItem) => doctor.id.toString());
           }
           .width('85%')

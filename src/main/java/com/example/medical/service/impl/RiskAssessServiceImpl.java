@@ -2,6 +2,7 @@ package com.example.medical.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.medical.dto.RiskAssessDTO;
 import com.example.medical.entity.HealthRecord;
 import com.example.medical.entity.HealthStandard;
 import com.example.medical.entity.RiskAssess;
@@ -30,15 +31,16 @@ public class RiskAssessServiceImpl extends ServiceImpl<RiskAssessMapper, RiskAss
     @Autowired
     private HealthStandardService healthStandardService;
 
+    private static final int RISK_SCORE_LOW = 85;
+    private static final int RISK_SCORE_MID = 65;
+    private static final int RISK_SCORE_HIGH = 35;
+
     @Override
     public RiskAssess assessRisk(Long userId) {
-        // 获取用户信息
         User user = userService.getById(userId);
         if (user == null) {
             throw new RuntimeException("用户不存在");
         }
-
-        // 获取用户健康记录（最新一条）
         QueryWrapper<HealthRecord> recordWrapper = new QueryWrapper<>();
         recordWrapper.eq("user_id", userId)
                 .orderByDesc("record_time")
@@ -47,8 +49,6 @@ public class RiskAssessServiceImpl extends ServiceImpl<RiskAssessMapper, RiskAss
         if (healthRecord == null) {
             throw new RuntimeException("用户健康记录不存在");
         }
-
-        // 评估各项风险
         int hypertensionRisk = assessHypertensionRisk(healthRecord.getBloodPressure());
         int diabetesRisk = assessDiabetesRisk(healthRecord.getBloodSugar());
         int fallRisk = assessFallRisk(user.getAge() != null ? user.getAge() : 0);
@@ -62,50 +62,143 @@ public class RiskAssessServiceImpl extends ServiceImpl<RiskAssessMapper, RiskAss
                 healthRecord.getWeight(),
                 healthRecord.getHeight()
         );
-
-        // 计算总分
         int totalScore = 0;
         totalScore += hypertensionRisk == 1 ? 1 : (hypertensionRisk == 2 ? 2 : 0);
         totalScore += diabetesRisk == 1 ? 1 : (diabetesRisk == 2 ? 2 : 0);
         totalScore += fallRisk == 1 ? 1 : (fallRisk == 2 ? 2 : 0);
         totalScore += frailtyRisk == 1 ? 1 : (frailtyRisk == 2 ? 2 : 0);
         totalScore += sarcopeniaRisk == 1 ? 1 : (sarcopeniaRisk == 2 ? 2 : 0);
-
-        // 计算综合风险等级
         int totalRisk = calculateTotalRisk(totalScore);
-
-        // 创建风险评估记录
         RiskAssess riskAssess = new RiskAssess();
         riskAssess.setUserId(userId);
         riskAssess.setAssessTime(new Date());
-        riskAssess.setHypertensionRisk(hypertensionRisk);
-        riskAssess.setDiabetesRisk(diabetesRisk);
-        riskAssess.setFallRisk(fallRisk);
-        riskAssess.setFrailtyRisk(frailtyRisk);
-        riskAssess.setSarcopeniaRisk(sarcopeniaRisk);
-        riskAssess.setTotalRisk(totalRisk);
+        riskAssess.setHypertensionRisk(toScore(hypertensionRisk));
+        riskAssess.setDiabetesRisk(toScore(diabetesRisk));
+        riskAssess.setFallRisk(toScore(fallRisk));
+        riskAssess.setFrailtyRisk(toScore(frailtyRisk));
+        riskAssess.setSarcopeniaRisk(toScore(sarcopeniaRisk));
+        riskAssess.setTotalRisk(toScore(totalRisk));
         riskAssess.setIsDeleted(0);
-
-        // 生成评估报告
         String assessResult = generateAssessResult(
                 hypertensionRisk, diabetesRisk, fallRisk, frailtyRisk, sarcopeniaRisk, totalRisk, totalScore
         );
         riskAssess.setAssessResult(assessResult);
-
-        // 保存评估记录
         save(riskAssess);
-
         return riskAssess;
+    }
+
+    @Override
+    public RiskAssess assessRisk(Long userId, RiskAssessDTO dto) {
+        if (dto == null) {
+            throw new RuntimeException("评估数据不能为空");
+        }
+
+        int age = 0;
+        try {
+            age = Integer.parseInt(dto.getAge());
+        } catch (NumberFormatException ignored) {
+        }
+
+        String bloodPressure = dto.getSystolic() + "/" + dto.getDiastolic();
+        BigDecimal bloodSugar = null;
+        try {
+            bloodSugar = new BigDecimal(dto.getFastingGlucose());
+        } catch (NumberFormatException ignored) {
+        }
+
+        BigDecimal weight = null;
+        try {
+            weight = new BigDecimal(dto.getWeight());
+        } catch (NumberFormatException ignored) {
+        }
+
+        BigDecimal height = null;
+        try {
+            height = new BigDecimal(dto.getHeight());
+        } catch (NumberFormatException ignored) {
+        }
+
+        int hypertensionLevel = assessHypertensionRisk(bloodPressure);
+        int diabetesLevel = assessDiabetesRisk(bloodSugar);
+        int fallLevel = assessFallRisk(age);
+        int frailtyLevel = assessFrailtyRiskFromDto(age, dto);
+        int sarcopeniaLevel = assessSarcopeniaRisk(age, weight, height);
+
+        int totalScore = 0;
+        totalScore += hypertensionLevel == 1 ? 1 : (hypertensionLevel == 2 ? 2 : 0);
+        totalScore += diabetesLevel == 1 ? 1 : (diabetesLevel == 2 ? 2 : 0);
+        totalScore += fallLevel == 1 ? 1 : (fallLevel == 2 ? 2 : 0);
+        totalScore += frailtyLevel == 1 ? 1 : (frailtyLevel == 2 ? 2 : 0);
+        totalScore += sarcopeniaLevel == 1 ? 1 : (sarcopeniaLevel == 2 ? 2 : 0);
+
+        int totalRiskLevel = calculateTotalRisk(totalScore);
+
+        RiskAssess riskAssess = new RiskAssess();
+        riskAssess.setUserId(userId);
+        riskAssess.setAssessTime(new Date());
+        riskAssess.setHypertensionRisk(toScore(hypertensionLevel));
+        riskAssess.setDiabetesRisk(toScore(diabetesLevel));
+        riskAssess.setFallRisk(toScore(fallLevel));
+        riskAssess.setFrailtyRisk(toScore(frailtyLevel));
+        riskAssess.setSarcopeniaRisk(toScore(sarcopeniaLevel));
+        riskAssess.setTotalRisk(toScore(totalRiskLevel));
+        riskAssess.setIsDeleted(0);
+
+        String assessResult = generateAssessResult(
+                hypertensionLevel, diabetesLevel, fallLevel, frailtyLevel, sarcopeniaLevel, totalRiskLevel, totalScore
+        );
+        riskAssess.setAssessResult(assessResult);
+
+        save(riskAssess);
+        return riskAssess;
+    }
+
+    private int toScore(int level) {
+        switch (level) {
+            case 0:
+                return RISK_SCORE_LOW;
+            case 1:
+                return RISK_SCORE_MID;
+            case 2:
+                return RISK_SCORE_HIGH;
+            default:
+                return RISK_SCORE_LOW;
+        }
+    }
+
+    private int assessFrailtyRiskFromDto(int age, RiskAssessDTO dto) {
+        int risk = 0;
+        if (age >= 65) {
+            risk += 1;
+        }
+        if (dto.getBmi() != null && (dto.getBmi() < 18.5 || dto.getBmi() >= 27)) {
+            risk += 1;
+        }
+        if ("是".equals(dto.getSmoking())) {
+            risk += 1;
+        }
+        if ("每周1-2次".equals(dto.getExercise())) {
+            risk += 1;
+        }
+        if (dto.getMedicalHistory() != null && dto.getMedicalHistory().size() > 0) {
+            risk += 1;
+        }
+        if (risk >= 2) {
+            return 2;
+        } else if (risk >= 1) {
+            return 1;
+        }
+        return 0;
     }
 
     @Override
     public int calculateTotalRisk(int score) {
         if (score <= 3) {
-            return 0; // 低风险
+            return 0;
         } else if (score <= 7) {
-            return 1; // 中风险
+            return 1;
         } else {
-            return 2; // 高风险
+            return 2;
         }
     }
 
@@ -114,62 +207,52 @@ public class RiskAssessServiceImpl extends ServiceImpl<RiskAssessMapper, RiskAss
         if (bloodPressure == null || bloodPressure.isEmpty()) {
             return 0;
         }
-
         try {
             String[] parts = bloodPressure.split("/");
             if (parts.length != 2) {
                 return 0;
             }
-
             int systolic = Integer.parseInt(parts[0].trim());
             int diastolic = Integer.parseInt(parts[1].trim());
 
-            // 从healthStandard表中获取高血压风险规则
             List<HealthStandard> standards = healthStandardService.list(
                     new QueryWrapper<HealthStandard>().like("indicator_name", "收缩压")
             );
 
-            // 先检查收缩压
             int systolicRisk = 0;
             for (HealthStandard standard : standards) {
                 BigDecimal min = standard.getMinValue();
                 BigDecimal max = standard.getMaxValue();
-
                 if (standard.getIndicatorName().contains("高血压")) {
                     if (min != null && systolic >= min.intValue()) {
-                        systolicRisk = 2; // 高风险
+                        systolicRisk = 2;
                         break;
                     }
                 } else if (standard.getIndicatorName().contains("正常高值")) {
                     if (min != null && max != null && systolic >= min.intValue() && systolic <= max.intValue()) {
-                        systolicRisk = 1; // 中风险
+                        systolicRisk = 1;
                     }
                 }
             }
 
-            // 再检查舒张压
             int diastolicRisk = 0;
             List<HealthStandard> diastolicStandards = healthStandardService.list(
                     new QueryWrapper<HealthStandard>().like("indicator_name", "舒张压")
             );
-
             for (HealthStandard standard : diastolicStandards) {
                 BigDecimal min = standard.getMinValue();
                 BigDecimal max = standard.getMaxValue();
-
                 if (standard.getIndicatorName().contains("高血压")) {
                     if (min != null && diastolic >= min.intValue()) {
-                        diastolicRisk = 2; // 高风险
+                        diastolicRisk = 2;
                         break;
                     }
                 } else if (standard.getIndicatorName().contains("正常高值")) {
                     if (min != null && max != null && diastolic >= min.intValue() && diastolic <= max.intValue()) {
-                        diastolicRisk = 1; // 中风险
+                        diastolicRisk = 1;
                     }
                 }
             }
-
-            // 取最高风险等级
             return Math.max(systolicRisk, diastolicRisk);
         } catch (Exception e) {
             return 0;
@@ -178,79 +261,60 @@ public class RiskAssessServiceImpl extends ServiceImpl<RiskAssessMapper, RiskAss
 
     @Override
     public int assessDiabetesRisk(BigDecimal bloodSugar) {
-        // 默认使用空腹血糖规则
         return assessDiabetesRisk(bloodSugar, "空腹血糖");
     }
 
-    /**
-     * 评估糖尿病风险，支持选择血糖类型
-     * @param bloodSugar 血糖值
-     * @param bloodSugarType 血糖类型（"空腹血糖"或"餐后2小时血糖"）
-     * @return 风险等级
-     */
+    @Override
     public int assessDiabetesRisk(BigDecimal bloodSugar, String bloodSugarType) {
         if (bloodSugar == null) {
             return 0;
         }
-
-        // 从healthStandard表中获取糖尿病风险规则
         List<HealthStandard> standards = healthStandardService.list(
                 new QueryWrapper<HealthStandard>().like("indicator_name", bloodSugarType)
         );
-
         for (HealthStandard standard : standards) {
             BigDecimal min = standard.getMinValue();
             BigDecimal max = standard.getMaxValue();
-
             if (standard.getIndicatorName().contains("确诊")) {
                 if (min != null && bloodSugar.compareTo(min) >= 0) {
-                    return 2; // 高风险
+                    return 2;
                 }
             } else if (standard.getIndicatorName().contains("偏高")) {
                 if (min != null && max != null && bloodSugar.compareTo(min) >= 0 && bloodSugar.compareTo(max) <= 0) {
-                    return 1; // 中风险
+                    return 1;
                 }
             }
         }
-
-        return 0; // 低风险
+        return 0;
     }
 
     @Override
     public int assessFallRisk(int age) {
-        // 从healthStandard表中获取跌倒风险规则
         List<HealthStandard> standards = healthStandardService.list(
                 new QueryWrapper<HealthStandard>().like("indicator_name", "跌倒风险")
         );
-
         for (HealthStandard standard : standards) {
             BigDecimal min = standard.getMinValue();
             BigDecimal max = standard.getMaxValue();
-
             if (standard.getIndicatorName().contains("高风险")) {
                 if (min != null && age >= min.intValue()) {
-                    return 2; // 高风险
+                    return 2;
                 }
             } else if (standard.getIndicatorName().contains("中风险")) {
                 if (min != null && max != null && age >= min.intValue() && age <= max.intValue()) {
-                    return 1; // 中风险
+                    return 1;
                 }
             }
         }
-
-        return 0; // 低风险
+        return 0;
     }
 
     @Override
     public int assessFrailtyRisk(int age, BigDecimal sleepDuration, Integer stepCount) {
         int risk = 0;
-
-        // 从healthStandard表中获取衰弱风险规则
         List<HealthStandard> standards = healthStandardService.list(
                 new QueryWrapper<HealthStandard>().like("indicator_name", "衰弱风险")
         );
-
-        // 年龄因素
         for (HealthStandard standard : standards) {
             if (standard.getIndicatorName().contains("年龄")) {
                 BigDecimal min = standard.getMinValue();
@@ -259,8 +323,6 @@ public class RiskAssessServiceImpl extends ServiceImpl<RiskAssessMapper, RiskAss
                 }
             }
         }
-
-        // 睡眠因素
         if (sleepDuration != null) {
             List<HealthStandard> sleepStandards = healthStandardService.list(
                     new QueryWrapper<HealthStandard>().like("indicator_name", "睡眠时间")
@@ -275,8 +337,6 @@ public class RiskAssessServiceImpl extends ServiceImpl<RiskAssessMapper, RiskAss
                 }
             }
         }
-
-        // 步数因素
         if (stepCount != null) {
             List<HealthStandard> stepStandards = healthStandardService.list(
                     new QueryWrapper<HealthStandard>().like("indicator_name", "肌少症_每日步数")
@@ -288,50 +348,41 @@ public class RiskAssessServiceImpl extends ServiceImpl<RiskAssessMapper, RiskAss
                 }
             }
         }
-
         if (risk >= 2) {
-            return 2; // 高风险
+            return 2;
         } else if (risk >= 1) {
-            return 1; // 中风险
-        } else {
-            return 0; // 低风险
+            return 1;
         }
+        return 0;
     }
 
     @Override
     public int assessSarcopeniaRisk(int age, BigDecimal weight, BigDecimal height) {
         if (age < 60 || weight == null || height == null || height.compareTo(BigDecimal.ZERO) == 0) {
-            return 0; // 低风险
+            return 0;
         }
-
-        // 计算BMI
         BigDecimal heightInMeters = height.divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP);
         BigDecimal bmi = weight.divide(heightInMeters.multiply(heightInMeters), 2, BigDecimal.ROUND_HALF_UP);
-
-        // 从healthStandard表中获取肌少症风险规则
         List<HealthStandard> standards = healthStandardService.list(
                 new QueryWrapper<HealthStandard>().like("indicator_name", "肌少症BMI")
         );
-
         for (HealthStandard standard : standards) {
             BigDecimal min = standard.getMinValue();
             BigDecimal max = standard.getMaxValue();
-
             if (standard.getIndicatorName().contains("过低")) {
                 if (max != null && bmi.compareTo(max) <= 0) {
-                    return 2; // 高风险
+                    return 2;
                 }
             } else if (standard.getIndicatorName().contains("偏低")) {
                 if (min != null && max != null && bmi.compareTo(min) >= 0 && bmi.compareTo(max) <= 0) {
-                    return 1; // 中风险
+                    return 1;
                 }
             }
         }
-
-        return 0; // 低风险
+        return 0;
     }
 
-    private String generateAssessResult(int hypertensionRisk, int diabetesRisk, int fallRisk, 
+    private String generateAssessResult(int hypertensionRisk, int diabetesRisk, int fallRisk,
                                         int frailtyRisk, int sarcopeniaRisk, int totalRisk, int totalScore) {
         StringBuilder result = new StringBuilder();
         result.append("{");

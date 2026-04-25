@@ -1,4 +1,7 @@
 import { router } from '@kit.ArkUI';
+import { RiskAssessmentResult, RiskItem as AIRiskItem, RiskLevel as AIRiskLevelType, RadarDataItem, getRiskColor, getRiskLabel } from '../models/AIModels';
+import { RadarChart } from '../components/RadarChart';
+import { getRadarDataFromResult } from '../mock/riskAssessmentMock';
 
 class AssessmentData {
   age: string = '';
@@ -16,24 +19,44 @@ class AssessmentData {
   medicalHistory: string[] = [];
 }
 
-interface RiskLevel {
-  level: string;
-  color: string;
-  icon: string;
-  message: string;
+class RiskLevelInfo {
+  level: string = '';
+  color: string = '';
+  icon: string = '';
+  message: string = '';
+
+  constructor(level?: string, color?: string, icon?: string, message?: string) {
+    if (level !== undefined) this.level = level;
+    if (color !== undefined) this.color = color;
+    if (icon !== undefined) this.icon = icon;
+    if (message !== undefined) this.message = message;
+  }
 }
 
-interface RiskItem {
-  id: string;
-  name: string;
-  level: string;
-  levelColor: string;
-  icon: string;
-  description: string;
+class RiskItemDisplay {
+  id: string = '';
+  name: string = '';
+  level: string = '';
+  levelColor: string = '';
+  icon: string = '';
+  description: string = '';
+  value: number = 0;
+
+  constructor(id?: string, name?: string, level?: string, levelColor?: string, icon?: string,
+              description?: string, value?: number) {
+    if (id !== undefined) this.id = id;
+    if (name !== undefined) this.name = name;
+    if (level !== undefined) this.level = level;
+    if (levelColor !== undefined) this.levelColor = levelColor;
+    if (icon !== undefined) this.icon = icon;
+    if (description !== undefined) this.description = description;
+    if (value !== undefined) this.value = value;
+  }
 }
 
 class PageParams {
   assessmentData: AssessmentData = new AssessmentData();
+  aiResult: RiskAssessmentResult | null = null;
 }
 
 @Entry
@@ -41,32 +64,15 @@ class PageParams {
 struct RiskResultPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State riskLevel: RiskLevel = {
-    level: '低风险',
-    color: '#52C41A',
-    icon: '🟢',
-    message: '您的健康状况良好'
-  };
+  @State riskLevel: RiskLevelInfo = new RiskLevelInfo('低风险', '#52C41A', '🟢', '您的健康状况良好');
 
-  @State riskItems: RiskItem[] = [];
-
+  @State riskItems: RiskItemDisplay[] = [];
+  @State radarData: RadarDataItem[] = [];
   @State aiSuggestions: string[] = [];
   @State hasValidData: boolean = false;
-  @State assessmentData: AssessmentData = {
-    age: '',
-    gender: '男',
-    height: '',
-    weight: '',
-    bmi: 0,
-    systolic: '',
-    diastolic: '',
-    fastingGlucose: '',
-    postprandialGlucose: '',
-    smoking: '否',
-    drinking: '否',
-    exercise: '每周1-2次',
-    medicalHistory: []
-  };
+  @State assessmentData: AssessmentData = new AssessmentData();
+  @State aiResult: RiskAssessmentResult | null = null;
+  @State overallScore: number = 0;
 
   aboutToAppear(): void {
     const params = router.getParams() as PageParams;
@@ -75,10 +81,48 @@ struct RiskResultPage {
       if (data.age && data.age.trim() !== '') {
         this.assessmentData = data;
         this.hasValidData = true;
-        this.calculateRisks();
-        this.generateSuggestions();
+        if (params.aiResult) {
+          this.aiResult = params.aiResult;
+          this.applyAIResult(params.aiResult);
+        } else {
+          this.calculateRisks();
+          this.generateSuggestions();
+        }
       }
     }
+  }
+
+  private applyAIResult(result: RiskAssessmentResult): void {
+    this.overallScore = Math.round(result.overallScore * 100);
+
+    const levelLabel: string = getRiskLabel(result.overallLevel);
+    const levelColor: string = getRiskColor(result.overallLevel);
+    let icon: string = '🟢';
+    let message: string = '您的健康状况良好';
+    if (result.overallLevel === AIRiskLevelType.HIGH || result.overallLevel === AIRiskLevelType.CRITICAL) {
+      icon = '🔴';
+      message = '发现高风险指标，建议尽早就医';
+    } else if (result.overallLevel === AIRiskLevelType.MEDIUM) {
+      icon = '🟡';
+      message = '有指标需要关注，建议改善生活方式';
+    }
+    this.riskLevel = new RiskLevelInfo(levelLabel, levelColor, icon, message);
+
+    this.riskItems = [
+      this.convertRiskItem(result.risks.hypertension, '1', '🩺'),
+      this.convertRiskItem(result.risks.diabetes, '2', '💉'),
+      this.convertRiskItem(result.risks.fall, '3', '🧓'),
+      this.convertRiskItem(result.risks.frailty, '4', '💪'),
+      this.convertRiskItem(result.risks.sarcopenia, '5', '🏋️')
+    ];
+
+    this.radarData = getRadarDataFromResult(result);
+    this.aiSuggestions = result.suggestions;
+  }
+
+  private convertRiskItem(item: AIRiskItem, id: string, icon: string): RiskItemDisplay {
+    return new RiskItemDisplay(id, item.label, getRiskLabel(item.level), item.color, icon,
+      item.description, item.value);
   }
 
   getLevelBgColor(levelColor: string): string {
@@ -94,7 +138,7 @@ struct RiskResultPage {
   handleViewReport() {
     router.push({
       url: 'pages/RiskDetailPage',
-      params: { assessmentData: this.assessmentData }
+      params: { assessmentData: this.assessmentData, aiResult: this.aiResult }
     });
   }
 
@@ -112,7 +156,7 @@ struct RiskResultPage {
 
   private calculateRisks(): void {
     const data: AssessmentData = this.assessmentData;
-    const items: RiskItem[] = [];
+    const items: RiskItemDisplay[] = [];
     let highRiskCount: number = 0;
     let midRiskCount: number = 0;
 
@@ -120,67 +164,72 @@ struct RiskResultPage {
     const systolic: number = parseFloat(data.systolic) || 0;
     const diastolic: number = parseFloat(data.diastolic) || 0;
     const fastingGlucose: number = parseFloat(data.fastingGlucose) || 0;
-    const postprandialGlucose: number = parseFloat(data.postprandialGlucose) || 0;
 
     if (systolic > 0 && diastolic > 0) {
       if (systolic >= 140 || diastolic >= 90) {
-        items.push({ id: '1', name: '高血压', level: '高风险', levelColor: '#FF4D4F', icon: '🩺', description: '血压偏高(' + systolic + '/' + diastolic + 'mmHg)，建议尽快就医检查' });
+        items.push(new RiskItemDisplay('1', '高血压', '高风险', '#FF4D4F', '🩺', '血压偏高(' + systolic + '/' + diastolic + 'mmHg)，建议尽快就医检查', 0.7));
         highRiskCount++;
       } else if (systolic >= 120 || diastolic >= 80) {
-        items.push({ id: '1', name: '高血压', level: '中风险', levelColor: '#FAAD14', icon: '🩺', description: '血压正常偏高(' + systolic + '/' + diastolic + 'mmHg)，建议定期监测' });
+        items.push(new RiskItemDisplay('1', '高血压', '中风险', '#FAAD14', '🩺', '血压正常偏高(' + systolic + '/' + diastolic + 'mmHg)，建议定期监测', 0.4));
         midRiskCount++;
       } else {
-        items.push({ id: '1', name: '高血压', level: '低风险', levelColor: '#52C41A', icon: '🩺', description: '血压正常(' + systolic + '/' + diastolic + 'mmHg)，请继续保持' });
+        items.push(new RiskItemDisplay('1', '高血压', '低风险', '#52C41A', '🩺', '血压正常(' + systolic + '/' + diastolic + 'mmHg)，请继续保持', 0.15));
       }
     } else {
-      items.push({ id: '1', name: '高血压', level: '低风险', levelColor: '#52C41A', icon: '🩺', description: '血压数据正常' });
+      items.push(new RiskItemDisplay('1', '高血压', '低风险', '#52C41A', '🩺', '血压数据正常', 0.1));
     }
 
     if (fastingGlucose > 0) {
       if (fastingGlucose >= 7.0) {
-        items.push({ id: '2', name: '糖尿病', level: '高风险', levelColor: '#FF4D4F', icon: '💉', description: '空腹血糖偏高(' + fastingGlucose + 'mmol/L)，建议就医检查' });
+        items.push(new RiskItemDisplay('2', '糖尿病', '高风险', '#FF4D4F', '💉', '空腹血糖偏高(' + fastingGlucose + 'mmol/L)，建议就医检查', 0.75));
         highRiskCount++;
       } else if (fastingGlucose >= 6.1) {
-        items.push({ id: '2', name: '糖尿病', level: '中风险', levelColor: '#FAAD14', icon: '💉', description: '空腹血糖偏高(' + fastingGlucose + 'mmol/L)，需注意饮食控制' });
+        items.push(new RiskItemDisplay('2', '糖尿病', '中风险', '#FAAD14', '💉', '空腹血糖偏高(' + fastingGlucose + 'mmol/L)，需注意饮食控制', 0.45));
         midRiskCount++;
       } else {
-        items.push({ id: '2', name: '糖尿病', level: '低风险', levelColor: '#52C41A', icon: '💉', description: '空腹血糖正常(' + fastingGlucose + 'mmol/L)' });
+        items.push(new RiskItemDisplay('2', '糖尿病', '低风险', '#52C41A', '💉', '空腹血糖正常(' + fastingGlucose + 'mmol/L)', 0.1));
       }
     } else {
-      items.push({ id: '2', name: '糖尿病', level: '低风险', levelColor: '#52C41A', icon: '💉', description: '血糖在正常范围内' });
+      items.push(new RiskItemDisplay('2', '糖尿病', '低风险', '#52C41A', '💉', '血糖在正常范围内', 0.1));
     }
 
     if (age >= 65 || data.medicalHistory.includes('骨质疏松') || data.exercise === '每周1-2次' && data.smoking === '是') {
-      items.push({ id: '3', name: '跌倒', level: '中风险', levelColor: '#FAAD14', icon: '🧓', description: age >= 65 ? '年龄较大，存在跌倒风险，建议加强平衡训练' : '存在跌倒风险因素，建议加强平衡训练' });
+      items.push(new RiskItemDisplay('3', '跌倒', '中风险', '#FAAD14', '🧓', age >= 65 ? '年龄较大，存在跌倒风险，建议加强平衡训练' : '存在跌倒风险因素，建议加强平衡训练', 0.4));
       midRiskCount++;
     } else {
-      items.push({ id: '3', name: '跌倒', level: '低风险', levelColor: '#52C41A', icon: '🧓', description: '跌倒风险较低' });
+      items.push(new RiskItemDisplay('3', '跌倒', '低风险', '#52C41A', '🧓', '跌倒风险较低', 0.1));
     }
 
     if (data.bmi < 18.5 || data.bmi >= 27) {
-      items.push({ id: '4', name: '衰弱', level: '中风险', levelColor: '#FAAD14', icon: '💪', description: 'BMI为' + data.bmi + '，需要注意营养和运动' });
+      items.push(new RiskItemDisplay('4', '衰弱', '中风险', '#FAAD14', '💪', 'BMI为' + data.bmi + '，需要注意营养和运动', 0.4));
       midRiskCount++;
     } else if (data.bmi <= 0) {
-      items.push({ id: '4', name: '衰弱', level: '低风险', levelColor: '#52C41A', icon: '💪', description: '身体状况良好' });
+      items.push(new RiskItemDisplay('4', '衰弱', '低风险', '#52C41A', '💪', '身体状况良好', 0.1));
     } else {
-      items.push({ id: '4', name: '衰弱', level: '低风险', levelColor: '#52C41A', icon: '💪', description: 'BMI正常(' + data.bmi + ')，身体状况良好' });
+      items.push(new RiskItemDisplay('4', '衰弱', '低风险', '#52C41A', '💪', 'BMI正常(' + data.bmi + ')，身体状况良好', 0.15));
     }
 
     if (data.bmi < 18.5 || data.exercise === '每周1-2次' && age >= 60) {
-      items.push({ id: '5', name: '肌少症', level: '中风险', levelColor: '#FAAD14', icon: '🏋️', description: '建议增加蛋白质摄入和抗阻运动' });
+      items.push(new RiskItemDisplay('5', '肌少症', '中风险', '#FAAD14', '🏋️', '建议增加蛋白质摄入和抗阻运动', 0.35));
       midRiskCount++;
     } else {
-      items.push({ id: '5', name: '肌少症', level: '低风险', levelColor: '#52C41A', icon: '🏋️', description: '肌肉量正常' });
+      items.push(new RiskItemDisplay('5', '肌少症', '低风险', '#52C41A', '🏋️', '肌肉量正常', 0.1));
     }
 
     this.riskItems = items;
 
+    this.radarData = [];
+    for (let i: number = 0; i < items.length; i++) {
+      const item: RiskItemDisplay = items[i];
+      this.radarData.push(new RadarDataItem(item.name, item.value, item.levelColor));
+    }
+
     if (highRiskCount > 0) {
-      this.riskLevel = { level: '高风险', color: '#FF4D4F', icon: '🔴', message: '发现' + highRiskCount + '项高风险指标，建议尽早就医' };
+      this.riskLevel = new RiskLevelInfo('高风险', '#FF4D4F', '🔴', '发现' + highRiskCount + '项高风险指标，建议尽早就医');
     } else if (midRiskCount > 0) {
-      this.riskLevel = { level: '中风险', color: '#FAAD14', icon: '🟡', message: '有' + midRiskCount + '项指标需要关注' };
+      this.riskLevel = new RiskLevelInfo('中风险', '#FAAD14', '🟡', '有' + midRiskCount + '项指标需要关注');
     } else {
-      this.riskLevel = { level: '低风险', color: '#52C41A', icon: '🟢', message: '您的健康状况良好' };
+      this.riskLevel = new RiskLevelInfo('低风险', '#52C41A', '🟢', '您的健康状况良好');
     }
   }
 
@@ -220,7 +269,6 @@ struct RiskResultPage {
 
   build() {
     Column() {
-      // 顶部导航栏
       Row() {
         Text('← 返回')
           .fontSize(16)
@@ -249,194 +297,352 @@ struct RiskResultPage {
       Scroll() {
         if (this.hasValidData) {
           Column() {
-            // 综合风险等级
-            Column() {
-              Text(this.riskLevel.icon)
-                .fontSize(64)
-                .margin({ bottom: 16 });
-              Text(this.riskLevel.level)
-                .fontSize(32)
-                .fontWeight('bold')
-                .fontColor(this.riskLevel.color)
-                .margin({ bottom: 8 });
-              Text(this.riskLevel.message)
-                .fontSize(16)
-                .fontColor('#666666');
+            Stack({ alignContent: Alignment.TopEnd }) {
+              Column()
+                .width('100%')
+                .height('100%')
+                .borderRadius(20)
+                .linearGradient({
+                  angle: 135,
+                  colors: [[this.riskLevel.color + 'DD', 0], [this.riskLevel.color + '44', 1]]
+                });
+
+              Column() {
+                Text(this.riskLevel.icon)
+                  .fontSize(56)
+                  .margin({ bottom: 12 });
+                Text(this.riskLevel.level)
+                  .fontSize(36)
+                  .fontWeight('bold')
+                  .fontColor('#FFFFFF')
+                  .margin({ bottom: 8 })
+                  .textShadow({ radius: 10, color: '#00000022', offsetX: 0, offsetY: 2 });
+                if (this.overallScore > 0) {
+                  Text('综合评分: ' + this.overallScore + '分')
+                    .fontSize(18)
+                    .fontColor('#FFFFFFCC')
+                    .margin({ bottom: 4 });
+                }
+                Text(this.riskLevel.message)
+                  .fontSize(16)
+                  .fontColor('#FFFFFFCC')
+                  .lineHeight(22);
+              }
+              .width('100%')
+              .padding(32)
+              .alignItems(HorizontalAlign.Center);
+
+              Circle()
+                .width(80)
+                .height(80)
+                .fill(this.riskLevel.color + '18')
+                .margin({ top: -20, right: -20 });
             }
             .width('100%')
-            .padding(32)
+            .height(180)
+            .borderRadius(20)
+            .shadow({ radius: 16, color: this.riskLevel.color + '30', offsetX: 0, offsetY: 8 })
+            .margin({ top: 12, bottom: 24 });
+
+            Column() {
+              Text('📊 五维风险雷达图')
+                .fontSize(18)
+                .fontWeight('bold')
+                .fontColor('#333333')
+                .margin({ bottom: 16 });
+
+              RadarChart({
+                data: this.radarData,
+                sizeValue: 300,
+                showValue: true,
+                animated: true
+              });
+
+              if (this.aiResult) {
+                Text('AI模型: ' + this.aiResult.modelVersion + ' | 耗时: ' + this.aiResult.processingTimeMs + 'ms')
+                  .fontSize(11)
+                  .fontColor('#999999')
+                  .margin({ top: 8 });
+              }
+            }
+            .width('100%')
+            .padding(20)
             .backgroundColor('#FFFFFF')
             .borderRadius(16)
+            .shadow({ radius: 4, color: '#00000006', offsetX: 0, offsetY: 2 })
             .alignItems(HorizontalAlign.Center)
-            .margin({ top: 24, bottom: 24 });
+            .margin({ bottom: 24 });
 
-            // 五项风险详情卡片
-            Text('风险详情')
-              .fontSize(20)
-              .fontWeight('bold')
-              .fontColor('#333333')
-              .margin({ bottom: 16 });
+            Row() {
+              Text('📋 风险详情')
+                .fontSize(18)
+                .fontWeight('bold')
+                .fontColor('#333333');
+              Blank();
+              Text('共 ' + this.riskItems.length + ' 项指标')
+                .fontSize(12)
+                .fontColor('#999999')
+                .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                .backgroundColor('#F5F5F5')
+                .borderRadius(10);
+            }
+            .width('100%')
+            .margin({ bottom: 16 });
 
-            ForEach(this.riskItems, (item: RiskItem) => {
+            ForEach(this.riskItems, (item: RiskItemDisplay) => {
               Column() {
                 Row() {
-                  Text(item.icon)
-                    .fontSize(32)
-                    .margin({ right: 16 });
+                  Column() {
+                    Text(item.icon)
+                      .fontSize(28);
+                    Text(item.name)
+                      .fontSize(11)
+                      .fontColor('#999999')
+                      .margin({ top: 2 });
+                  }
+                  .width(48);
+
                   Column() {
                     Row() {
-                      Text(item.name)
-                        .fontSize(16)
-                        .fontWeight('bold')
-                        .fontColor('#333333')
-                        .flexGrow(1);
                       Text(item.level)
                         .fontSize(14)
                         .fontWeight('bold')
                         .fontColor(item.levelColor)
-                        .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+                        .padding({ left: 10, right: 10, top: 3, bottom: 3 })
                         .backgroundColor(this.getLevelBgColor(item.levelColor))
-                        .borderRadius(12);
+                        .borderRadius(8);
+                      Blank();
+                      Text(Math.round(item.value * 100) + '%')
+                        .fontSize(14)
+                        .fontWeight('bold')
+                        .fontColor(item.levelColor);
                     }
+                    .width('100%');
+
+                    Progress({ value: item.value * 100, total: 100, type: ProgressType.Linear })
+                      .width('100%')
+                      .height(6)
+                      .color(item.levelColor)
+                      .backgroundColor('#F0F0F0')
+                      .margin({ top: 8, bottom: 4 });
+
                     Text(item.description)
-                      .fontSize(14)
+                      .fontSize(13)
                       .fontColor('#666666')
-                      .margin({ top: 4 });
+                      .margin({ top: 2 })
+                      .lineHeight(20);
                   }
-                  .flexGrow(1);
+                  .layoutWeight(1)
+                  .alignItems(HorizontalAlign.Start);
                 }
                 .width('100%');
               }
               .width('100%')
               .padding(16)
               .backgroundColor('#FFFFFF')
-              .borderRadius(12)
-              .margin({ bottom: 12 });
+              .borderRadius(14)
+              .shadow({ radius: 4, color: '#00000006', offsetX: 0, offsetY: 2 })
+              .margin({ bottom: 10 });
             });
 
-            // AI解读建议
-            Column() {
+            Column({ space: 14 }) {
               Row() {
-                Text('🤖 AI解读建议')
-                  .fontSize(18)
-                  .fontWeight('bold')
-                  .fontColor('#333333');
+                Row({ space: 8 }) {
+                  Text('🤖')
+                    .fontSize(20);
+                  Text('AI 智能解读建议')
+                    .fontSize(17)
+                    .fontWeight('bold')
+                    .fontColor('#333333');
+                }
+
+                Blank();
+                Text('基于您的数据生成')
+                  .fontSize(11)
+                  .fontColor('#1677FF')
+                  .padding({ left: 10, right: 10, top: 3, bottom: 3 })
+                  .backgroundColor('#E8F0FF')
+                  .borderRadius(10);
               }
-              .width('100%')
-              .margin({ bottom: 16 });
+              .width('100%');
 
               ForEach(this.aiSuggestions, (suggestion: string, index: number) => {
-                Row() {
-                  Text((index + 1) + '.')
-                    .fontSize(14)
-                    .fontColor('#1677FF')
+                Row({ space: 10 }) {
+                  Text((index + 1).toString())
+                    .fontSize(13)
                     .fontWeight('bold')
-                    .margin({ right: 8 });
+                    .fontColor('#FFFFFF')
+                    .width(22)
+                    .height(22)
+                    .textAlign(TextAlign.Center)
+                    .backgroundColor('#1677FF')
+                    .borderRadius(11);
                   Text(suggestion)
-                    .fontSize(14)
-                    .fontColor('#666666')
-                    .flexGrow(1);
+                    .fontSize(13)
+                    .fontColor('#555555')
+                    .flexGrow(1)
+                    .lineHeight(21);
                 }
                 .width('100%')
-                .margin({ bottom: 8 });
+                .margin({ bottom: 6 });
               });
             }
             .width('100%')
-            .padding(20)
-            .backgroundColor('#F0F7FF')
+            .padding(18)
+            .backgroundColor('#F8FAFF')
             .borderRadius(16)
+            .border({ width: 1, color: '#E8F0FF', style: BorderStyle.Solid })
             .margin({ top: 24, bottom: 24 });
 
-            // 操作按钮
-            Column() {
+            Column({ space: 12 }) {
+              Button('查看详细报告')
+                .width('100%')
+                .height(50)
+                .fontSize(15)
+                .fontWeight('bold')
+                .fontColor('#FFFFFF')
+                .backgroundColor('#1677FF')
+                .borderRadius(25)
+                .shadow({ radius: 10, color: '#1677FF44', offsetX: 0, offsetY: 4 })
+                .onClick(() => {
+                  this.handleViewReport();
+                });
+
               Row() {
-                Button('查看详细报告')
-                  .width('48%')
-                  .height(48)
-                  .fontSize(14)
-                  .fontColor('#1677FF')
-                  .backgroundColor('#FFFFFF')
-                  .borderRadius(24)
-                  .border({ width: 1, color: '#1677FF' })
-                  .onClick(() => {
-                    this.handleViewReport();
-                  });
                 Button('分享给医生')
-                  .width('48%')
-                  .height(48)
+                  .layoutWeight(1)
+                  .height(46)
                   .fontSize(14)
                   .fontColor('#1677FF')
                   .backgroundColor('#FFFFFF')
-                  .borderRadius(24)
-                  .border({ width: 1, color: '#1677FF' })
-                  .margin({ left: 12 })
+                  .borderRadius(23)
+                  .border({ width: 1.5, color: '#1677FF' })
+                  .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
                   .onClick(() => {
                     this.handleShare();
                   });
-              }
-              .width('100%')
-              .margin({ bottom: 12 });
-
-              Row() {
                 Button('重新评估')
-                  .width('48%')
-                  .height(48)
+                  .layoutWeight(1)
+                  .height(46)
                   .fontSize(14)
-                  .fontColor('#1677FF')
+                  .fontColor('#666666')
                   .backgroundColor('#FFFFFF')
-                  .borderRadius(24)
-                  .border({ width: 1, color: '#1677FF' })
+                  .borderRadius(23)
+                  .border({ width: 1, color: '#E0E0E0' })
+                  .margin({ left: 12 })
+                  .shadow({ radius: 4, color: '#00000006', offsetX: 0, offsetY: 2 })
                   .onClick(() => {
                     this.handleReassess();
                   });
-                Button('制定康复计划')
-                  .width('48%')
-                  .height(48)
-                  .fontSize(14)
-                  .fontColor('#FFFFFF')
-                  .backgroundColor('#1677FF')
-                  .borderRadius(24)
-                  .margin({ left: 12 })
-                  .onClick(() => {
-                    this.handleRehabPlan();
-                  });
               }
               .width('100%');
+
+              Button('制定康复计划')
+                .width('100%')
+                .height(46)
+                .fontSize(14)
+                .fontColor('#52C41A')
+                .backgroundColor('#F6FFED')
+                .borderRadius(23)
+                .border({ width: 1, color: '#B7EB8F' })
+                .onClick(() => {
+                  this.handleRehabPlan();
+                });
             }
             .width('100%')
-            .margin({ bottom: 48 });
+            .margin({ bottom: 40 });
           }
-          .width('85%')
-          .padding({ top: 24, bottom: 48 });
+          .width('90%')
+          .padding({ top: 16, bottom: 32 });
         } else {
           Column() {
-            Text('📋')
-              .fontSize(72)
-              .margin({ bottom: 24 });
-            Text('您还有未填数据')
-              .fontSize(22)
-              .fontWeight('bold')
-              .fontColor('#333333')
-              .margin({ bottom: 12 });
-            Text('请完成健康评估后再查看结果')
-              .fontSize(15)
-              .fontColor('#999999')
-              .textAlign(TextAlign.Center)
-              .margin({ bottom: 40 });
-            Button('去评估')
+            Stack({ alignContent: Alignment.BottomStart }) {
+              Column()
+                .width('100%')
+                .height(200)
+                .linearGradient({
+                  angle: 135,
+                  colors: [['#E8E8E8', 0], ['#F5F5F5', 1]]
+                })
+                .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 16, bottomRight: 16 });
+
+              Column() {
+                Text('📋')
+                  .fontSize(64)
+                  .margin({ bottom: 20 });
+                Text('暂无评估数据')
+                  .fontSize(24)
+                  .fontWeight('bold')
+                  .fontColor('#333333')
+                  .margin({ bottom: 10 });
+                Text('完成健康风险评估后，这里将展示您的专属报告')
+                  .fontSize(14)
+                  .fontColor('#999999')
+                  .textAlign(TextAlign.Center)
+                  .lineHeight(22)
+                  .width('80%');
+              }
+              .width('100%')
+              .alignItems(HorizontalAlign.Center)
+              .padding({ bottom: 32 });
+            }
+            .width('90%')
+            .margin({ top: 40, bottom: 32 });
+
+            Button('开始健康评估')
               .width('60%')
-              .height(48)
+              .height(50)
               .fontSize(16)
+              .fontWeight('bold')
               .fontColor('#FFFFFF')
               .backgroundColor('#1677FF')
-              .borderRadius(24)
+              .borderRadius(25)
+              .shadow({ radius: 10, color: '#1677FF44', offsetX: 0, offsetY: 4 })
               .onClick(() => {
                 router.push({ url: 'pages/RiskAssessmentPage' });
               });
+
+            Row({ space: 12 }) {
+              Column({ space: 6 }) {
+                Text('📊')
+                  .fontSize(24);
+                Text('历史记录')
+                  .fontSize(11)
+                  .fontColor('#666666');
+              }
+              .layoutWeight(1)
+              .height(70)
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .shadow({ radius: 4, color: '#00000006', offsetX: 0, offsetY: 2 })
+              .onClick(() => {
+                router.push({ url: 'pages/RiskHistoryPage' });
+              });
+
+              Column({ space: 6 }) {
+                Text('👨‍⚕️')
+                  .fontSize(24);
+                Text('咨询医生')
+                  .fontSize(11)
+                  .fontColor('#666666');
+              }
+              .layoutWeight(1)
+              .height(70)
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .shadow({ radius: 4, color: '#00000006', offsetX: 0, offsetY: 2 })
+              .onClick(() => {
+                router.push({ url: 'pages/DoctorListPage' });
+              });
+            }
+            .width('85%')
+            .margin({ top: 24 });
           }
-          .width('85%')
+          .width('90%')
           .height('100%')
-          .justifyContent(FlexAlign.Center)
+          .justifyContent(FlexAlign.Start)
           .alignItems(HorizontalAlign.Center);
         }
       }

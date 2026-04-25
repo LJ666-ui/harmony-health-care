@@ -22,8 +22,8 @@ class AssessmentData {
   medicalHistory: string[] = [];
 
   constructor(age?: string, gender?: string, height?: string, weight?: string, bmi?: number,
-              systolic?: string, diastolic?: string, fastingGlucose?: string, postprandialGlucose?: string,
-              smoking?: string, drinking?: string, exercise?: string, medicalHistory?: string[]) {
+    systolic?: string, diastolic?: string, fastingGlucose?: string, postprandialGlucose?: string,
+    smoking?: string, drinking?: string, exercise?: string, medicalHistory?: string[]) {
     if (age !== undefined) this.age = age;
     if (gender !== undefined) this.gender = gender;
     if (height !== undefined) this.height = height;
@@ -71,10 +71,8 @@ struct RiskAssessmentPage {
   }
 
   aboutToAppear() {
-    // 接收从健康记录页面传递过来的数据
     const params = router.getParams();
     if (params) {
-      // 简化处理，直接检查参数
       const record = params as HealthRecord;
       if (record.type && record.value) {
         if (record.type === '血压') {
@@ -217,21 +215,10 @@ struct RiskAssessmentPage {
         });
     }).catch(() => {
       this.isSubmitting = false;
-      HttpUtil.post<Object>(ApiConstants.RISK_ASSESS + userId, submitData)
-        .then((response: BaseResponse<Object>) => {
-          if (response.success) {
-            router.push({
-              url: 'pages/RiskResultPage',
-              params: { assessmentData: submitData }
-            });
-          } else {
-            this.errorMessage = response.message || '评估提交失败，请重试';
-          }
-        })
-        .catch(() => {
-          this.isSubmitting = false;
-          this.errorMessage = '网络请求失败，请检查网络后重试';
-        });
+      router.push({
+        url: 'pages/RiskResultPage',
+        params: { assessmentData: submitData }
+      });
     });
   }
 
@@ -246,7 +233,6 @@ struct RiskAssessmentPage {
 
   build() {
     Column() {
-      // 顶部导航栏
       Row() {
         Text('← 返回')
           .fontSize(16)
@@ -277,11 +263,9 @@ struct RiskAssessmentPage {
         offsetY: 2
       });
 
-      // 顶部引导区
       if (this.currentStep === 1) {
         Scroll() {
           Column() {
-            // 健康数据概览卡片
             Row() {
               Column({ space: 8 }) {
                 Text('健康概览')
@@ -332,7 +316,6 @@ struct RiskAssessmentPage {
               router.push({ url: 'pages/RiskHistoryPage' });
             });
 
-            // 温馨提示区
             Column({ space: 10 }) {
               Row() {
                 Text('💡')
@@ -370,7 +353,6 @@ struct RiskAssessmentPage {
                 this.currentStep++;
               });
 
-            // 快捷功能入口
             Row() {
               Column() {
                 Text('📋')
@@ -422,7 +404,6 @@ struct RiskAssessmentPage {
             .width('90%')
             .margin({ top: 20, bottom: 16 });
 
-            // 更多功能网格
             Row() {
               Column() {
                 Text('📊')
@@ -502,7 +483,6 @@ struct RiskAssessmentPage {
             .width('90%')
             .margin({ top: 8, bottom: 16 });
 
-            // 每日健康小贴士
             Column({ space: 12 }) {
               Row() {
                 Text('🌟')
@@ -543,7 +523,6 @@ struct RiskAssessmentPage {
       }
 
       if (this.currentStep > 1) {
-        // 进度条
         Column() {
           Row() {
             ForEach(this.createStepArray(), (_: number, index: number) => {
@@ -576,7 +555,6 @@ struct RiskAssessmentPage {
           .width('85%')
           .margin({ top: 24, bottom: 32 });
 
-          // 评估表单
           Scroll() {
             Column() {
               if (this.errorMessage) {
@@ -592,7 +570,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 16 });
               }
 
-              // 第一步：基本信息
               if (this.currentStep === 2) {
                 Text('基本信息')
                   .fontSize(20)
@@ -707,7 +684,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 20 });
               }
 
-              // 第二步：血压数据
               if (this.currentStep === 3) {
                 Text('血压数据')
                   .fontSize(20)
@@ -754,7 +730,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 20 });
               }
 
-              // 第三步：血糖数据
               if (this.currentStep === 4) {
                 Text('血糖数据')
                   .fontSize(20)
@@ -801,7 +776,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 20 });
               }
 
-              // 第四步：生活习惯
               if (this.currentStep === 5) {
                 Text('生活习惯')
                   .fontSize(20)
@@ -969,7 +943,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 20 });
               }
 
-              // 第五步：既往病史
               if (this.currentStep === 6) {
                 Text('既往病史')
                   .fontSize(20)
@@ -1014,7 +987,6 @@ struct RiskAssessmentPage {
           .height(0)
           .layoutWeight(1);
 
-          // 底部按钮
           Row() {
             if (this.currentStep > 2) {
               Button('上一步')
@@ -1048,7 +1020,6 @@ struct RiskAssessmentPage {
         }
       }
 
-      // 评估中状态
       if (this.isSubmitting) {
         Stack() {
           Column() {

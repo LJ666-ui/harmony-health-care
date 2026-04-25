@@ -54,7 +54,6 @@ struct KnowledgeGraphPage {
       try {
         clearTimeout(this.searchTimer);
       } catch (e) {
-        // 忽略清理定时器的异常
       }
     }
   }
@@ -65,7 +64,6 @@ struct KnowledgeGraphPage {
       try {
         clearTimeout(this.searchTimer);
       } catch (e) {
-        // 忽略清理定时器的异常
       }
     }
     if (!value.trim()) {
@@ -78,7 +76,6 @@ struct KnowledgeGraphPage {
         this.fuzzySearch(value.trim());
       }, 300);
     } catch (e) {
-      // 忽略启动定时器的异常
     }
   }
 
@@ -432,7 +429,7 @@ struct KnowledgeGraphPage {
         }
         .width('100%')
         .layoutWeight(1);
-      } // ✅ 修复点：补全了这里缺失的 `}`，闭合外层的 `Column({ space: 0 })`
+      }
 
       if (!this.isFullscreen) {
         Footer({ activeIndex: 3 });

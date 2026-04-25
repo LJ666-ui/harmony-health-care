@@ -43,7 +43,7 @@ class RiskItemDisplay {
   value: number = 0;
 
   constructor(id?: string, name?: string, level?: string, levelColor?: string, icon?: string,
-              description?: string, value?: number) {
+    description?: string, value?: number) {
     if (id !== undefined) this.id = id;
     if (name !== undefined) this.name = name;
     if (level !== undefined) this.level = level;
@@ -65,7 +65,6 @@ struct RiskResultPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
   @State riskLevel: RiskLevelInfo = new RiskLevelInfo('低风险', '#52C41A', '🟢', '您的健康状况良好');
-
   @State riskItems: RiskItemDisplay[] = [];
   @State radarData: RadarDataItem[] = [];
   @State aiSuggestions: string[] = [];
@@ -217,7 +216,6 @@ struct RiskResultPage {
     }
 
     this.riskItems = items;
-
     this.radarData = [];
     for (let i: number = 0; i < items.length; i++) {
       const item: RiskItemDisplay = items[i];
@@ -648,7 +646,6 @@ struct RiskResultPage {
       }
       .height(0)
       .layoutWeight(1)
-
     }
     .width('100%')
     .height('100%')

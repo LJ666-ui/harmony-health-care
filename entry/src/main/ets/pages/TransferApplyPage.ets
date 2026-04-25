@@ -4,6 +4,7 @@ import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { Input } from '../components/Input';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
+import { router } from '@kit.ArkUI';
 
 interface Hospital {
   id: string;
@@ -248,6 +249,27 @@ struct TransferApplyPage {
   build() {
     Column() {
       Header({ title: '转院申请', showBack: true });
+
+      Row({ space: 8 }) {
+        Text('\uD83D\uDCBC')
+          .fontSize(14);
+        Text('\u533B\u751F\u8F6C\u9662\u5BA1\u6279')
+          .fontSize(13)
+          .fontColor('#1677FF')
+          .fontWeight(FontWeight.Medium);
+        Blank();
+        Text('\u8FDB\u5165\u5BA1\u6279 >')
+          .fontSize(12)
+          .fontColor('#999999');
+      }
+      .width('85%')
+      .backgroundColor('#E6F7FF')
+      .borderRadius(10)
+      .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+      .margin({ bottom: AccessibilityConfig.getSpacingMD() })
+      .onClick(() => {
+        router.pushUrl({ url: 'pages/TransferApprovalPage' });
+      });
 
       if (this.isLoading) {
         Loading();

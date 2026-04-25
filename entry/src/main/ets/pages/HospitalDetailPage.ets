@@ -58,8 +58,6 @@ struct HospitalDetailPage {
     '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'];
 
   aboutToAppear(): void {
-    console.log('HospitalDetailPage aboutToAppear 开始');
-    
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
@@ -67,33 +65,35 @@ struct HospitalDetailPage {
     }
 
     try {
-      const params = router.getParams() as Record<string, Object>;
-      console.log('接收到的参数:', JSON.stringify(params));
+      const params = router.getParams() as Record<string, Object> | undefined;
       
-      if (params) {
+      if (params && params['hospitalId']) {
         const id = params['hospitalId'];
         const name = params['hospitalName'];
         
         if (id !== undefined && id !== null) {
           this.hospitalId = typeof id === 'number' ? id : Number(id);
-          console.log('设置 hospitalId:', this.hospitalId);
         }
         
-        if (name !== undefined && name !== null) {
+        if (name !== undefined && name !== null && name !== '') {
           this.hospitalName = String(name);
-          console.log('设置 hospitalName:', this.hospitalName);
         }
       }
     } catch (error) {
       console.error('获取路由参数失败:', error);
     }
 
+    if (!this.hospitalId || this.hospitalId <= 0) {
+      this.hasError = true;
+      this.errorMessage = '无效的医院ID';
+      this.isLoading = false;
+      return;
+    }
+
     this.initDates();
+    this.loadAppointments();
     this.loadHospitalDetail();
     this.loadDepartments();
-    this.loadAppointments();
-    
-    console.log('HospitalDetailPage aboutToAppear 完成');
   }
 
   initDates(): void {
@@ -213,8 +213,29 @@ struct HospitalDetailPage {
   }
 
   onDepartmentClick(department: DepartmentInfo): void {
-    this.selectedDepartment = department;
-    this.showAppointmentDialog = true;
+    console.log('开始跳转到预约时间选择页面');
+    console.log('医院名称:', this.hospitalName);
+    console.log('科室名称:', department.deptName);
+    console.log('科室位置:', department.location);
+
+    try {
+      router.pushUrl({
+        url: 'pages/AppointmentTimeSelectPage',
+        params: {
+          hospitalName: this.hospitalName,
+          departmentName: department.deptName,
+          departmentLocation: department.location || `${department.deptName}诊室`
+        }
+      }).then(() => {
+        console.log('成功跳转到预约时间选择页面');
+      }).catch((error: Error) => {
+        console.error('跳转失败:', error.message);
+        ToastUtil.showError('页面跳转失败，请重试', 2000);
+      });
+    } catch (error) {
+      console.error('路由异常:', error);
+      ToastUtil.showError('系统错误，请稍后重试', 2000);
+    }
   }
 
   onBookAppointment(): void {

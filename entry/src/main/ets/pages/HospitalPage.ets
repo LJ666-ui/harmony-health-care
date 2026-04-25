@@ -1,119 +1,85 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { Card } from '../components/Card';
-import { Hospital } from '../models/HealthData';
-import { GlobalTheme } from '../global';
+import { Loading } from '../components/Loading';
+import { EmptyState } from '../components/EmptyState';
+import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { GlobalTheme } from '../global';
+
+class HospitalItem {
+  id: number = 0;
+  name: string = '';
+  address: string = '';
+  phone: string = '';
+  level: string = '';
+  department: string = '';
+  description: string = '';
+}
 
 @Entry
 @Component
 struct HospitalPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State hospitals: Hospital[] = [
-    {
-      id: '1',
-      name: '星云综合医院（三甲）',
-      address: '北京市海淀区中关村大街1号',
-      phone: '010-88888888',
-      departments: ['内科', '外科', '骨科', '康复科', '儿科', '妇科', '眼科'],
-      rating: 4.9,
-      distance: 2.5
-    },
-    {
-      id: '2',
-      name: '协和医疗中心（三甲）',
-      address: '北京市朝阳区建国路88号',
-      phone: '010-66666666',
-      departments: ['内科', '外科', '老年病科', '骨科', '心血管科'],
-      rating: 4.9,
-      distance: 3.2
-    },
-    {
-      id: '3',
-      name: '仁爱专科医院（三甲）',
-      address: '北京市西城区金融街15号',
-      phone: '010-55555555',
-      departments: ['内科', '康复科', '老年病科', '儿科'],
-      rating: 4.7,
-      distance: 1.8
-    },
-    {
-      id: '4',
-      name: '康宁中医医院（三甲）',
-      address: '北京市东城区王府井大街20号',
-      phone: '010-44444444',
-      departments: ['内科', '康复科', '骨科', '针灸推拿科'],
-      rating: 4.8,
-      distance: 4.0
-    },
-    {
-      id: '5',
-      name: '博爱国际医院（三甲）',
-      address: '北京市丰台区科技园路50号',
-      phone: '010-33333333',
-      departments: ['内科', '外科', '骨科', '老年病科', '康复科', '神经科'],
-      rating: 4.6,
-      distance: 5.5
-    },
-    {
-      id: '6',
-      name: '安泰社区医院（社区）',
-      address: '北京市石景山区古城路8号',
-      phone: '010-22222222',
-      departments: ['内科', '康复科', '全科'],
-      rating: 4.4,
-      distance: 0.8
-    },
-    {
-      id: '7',
-      name: '阳光儿童专科医院（专科）',
-      address: '北京市海淀区万柳中路12号',
-      phone: '010-77777777',
-      departments: ['儿科', '新生儿科', '儿童保健科', '眼科'],
-      rating: 4.8,
-      distance: 3.8
-    },
-    {
-      id: '8',
-      name: '仁心骨科专科医院（专科）',
-      address: '北京市朝阳区望京西路30号',
-      phone: '010-99999999',
-      departments: ['骨科', '运动医学科', '康复科', '疼痛科'],
-      rating: 4.7,
-      distance: 6.2
-    },
-    {
-      id: '9',
-      name: '和睦家社区卫生服务中心（社区）',
-      address: '北京市海淀区上地东路18号',
-      phone: '010-11111111',
-      departments: ['全科', '内科', '康复科', '中医科'],
-      rating: 4.3,
-      distance: 1.2
-    },
-    {
-      id: '10',
-      name: '慈铭体检中心（专科）',
-      address: '北京市朝阳区三元桥霄云路32号',
-      phone: '010-88887777',
-      departments: ['体检科', '健康管理科', '内科', '外科'],
-      rating: 4.5,
-      distance: 7.0
+  @State hospitals: HospitalItem[] = [];
+  @State selectedLevel: string = '全部';
+  @State isLoading: boolean = true;
+  @State hasError: boolean = false;
+  @State errorMessage: string = '';
+
+  private levels: string[] = ['全部', '三级甲等', '三级乙等', '二级甲等', '二级乙等', '一级甲等', '一级乙等', '综合医院', '专科医院'];
+
+  async loadHospitalList(filterLevel?: string): Promise<void> {
+    this.isLoading = true;
+    this.hasError = false;
+    this.hospitals = [];
+
+    try {
+      let url: string = ApiConstants.HOSPITAL_LIST;
+      let queryParams: Record<string, string> | undefined = undefined;
+      
+      if (filterLevel && filterLevel !== '全部') {
+        url = ApiConstants.HOSPITAL_PAGE;
+        queryParams = {
+          'level': filterLevel,
+          'page': '1',
+          'size': '500'
+        };
+      }
+
+      const response: BaseResponse<HospitalItem[]> = await HttpUtil.request<HospitalItem[]>(
+        HttpMethod.GET,
+        url,
+        undefined,
+        queryParams as Object,
+        { showLoading: true, loadingText: '加载医院列表...' }
+      );
+
+      if (response.success && response.data) {
+        this.hospitals = response.data;
+        
+        if (this.hospitals.length === 0) {
+          this.errorMessage = '暂无医院数据';
+        }
+      } else {
+        this.hasError = true;
+        this.errorMessage = response.message || '加载医院列表失败';
+        ToastUtil.showError(this.errorMessage, 2000);
+      }
+    } catch (error) {
+      this.hasError = true;
+      this.errorMessage = '网络错误，请检查网络连接';
+      ToastUtil.showError(this.errorMessage, 2000);
+    } finally {
+      this.isLoading = false;
     }
-  ];
+  }
 
-  @State isRefreshing: boolean = false;
-
-  handleRefresh(): void {
-    this.isRefreshing = true;
-
-    setTimeout(() => {
-      this.isRefreshing = false;
-
-      ToastUtil.refreshSuccess();
-    }, 1500);
+  onLevelSelect(level: string): void {
+    this.selectedLevel = level;
+    this.loadHospitalList(level);
   }
 
   aboutToAppear(): void {
@@ -122,6 +88,7 @@ struct HospitalPage {
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
+    this.loadHospitalList();
   }
 
   openARNavigation(): void {
@@ -134,50 +101,141 @@ struct HospitalPage {
     Column() {
       Header({ title: '医院列表', showBack: true });
 
-      Scroll() {
-        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
-          Text('医院列表')
-            .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor(GlobalTheme.THEME_COLOR)
-            .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
+      if (this.isLoading) {
+        Loading({ text: '加载中...' })
+      } else if (this.hasError) {
+        EmptyState({
+          title: '加载失败',
+          description: this.errorMessage,
+          buttonText: '重新加载',
+          onAdd: () => this.loadHospitalList(this.selectedLevel !== '全部' ? this.selectedLevel : undefined)
+        })
+      } else {
+        Scroll() {
+          Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
+            Text('医院列表')
+              .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
+              .fontWeight('bold')
+              .fontColor(GlobalTheme.THEME_COLOR)
+              .margin({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
 
-          Button('🧭 院内AR导航')
-            .width('100%')
-            .height(GlobalTheme.getButtonHeight(this.isElderMode))
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor('#FFFFFF')
-            .backgroundColor(GlobalTheme.THEME_COLOR)
-            .borderRadius(GlobalTheme.RADIUS_LG)
-            .onClick(() => this.openARNavigation());
+            Button('🧭 院内AR导航')
+              .width('100%')
+              .height(GlobalTheme.getButtonHeight(this.isElderMode))
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontWeight('bold')
+              .fontColor('#FFFFFF')
+              .backgroundColor(GlobalTheme.THEME_COLOR)
+              .borderRadius(GlobalTheme.RADIUS_LG)
+              .onClick(() => this.openARNavigation());
 
-          List({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
-            ForEach(this.hospitals, (item: Hospital) => {
-              ListItem() {
-                Card({
-                  title: item.name,
-                  value: item.distance + 'km | ⭐' + item.rating.toFixed(1) + '分',
-                  description: item.address,
-                  status: '查看科室'
-                })
+            Text('按等级筛选')
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontColor(GlobalTheme.TEXT_SECONDARY)
+              .margin({ top: GlobalTheme.getSpacingSM(this.isElderMode), bottom: GlobalTheme.getSpacingXS(this.isElderMode) })
+              .alignSelf(ItemAlign.Start)
+
+            Flex({ wrap: FlexWrap.Wrap }) {
+              ForEach(this.levels, (level: string, index: number) => {
+                Text(level)
+                  .fontSize(this.isElderMode ? 16 : 14)
+                  .fontColor(this.selectedLevel === level ? '#FFFFFF' : GlobalTheme.THEME_COLOR)
+                  .backgroundColor(this.selectedLevel === level ? GlobalTheme.THEME_COLOR : '#F5F5F5')
+                  .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+                  .borderRadius(20)
+                  .margin({ right: 8, bottom: 8 })
                   .onClick(() => {
-                    router.pushUrl({ url: 'pages/DepartmentPage' });
-                  });
+                    this.onLevelSelect(level);
+                  })
+              }, (level: string, index: number) => `${index}_${level}`)
+            }
+            .width('100%')
+
+            Text(`当前显示: ${this.selectedLevel} (${this.hospitals.length}家)`)
+              .fontSize(12)
+              .fontColor('#999')
+              .margin({ top: 4 })
+
+            if (this.hospitals.length === 0) {
+              EmptyState({
+                icon: '🏥',
+                title: '暂无数据',
+                description: this.selectedLevel === '全部' ? '暂无医院数据' : `暂无${this.selectedLevel}医院`
+              })
+                .width('100%')
+                .height(200)
+            } else {
+              List({ space: 10 }) {
+                ForEach(this.hospitals, (item: HospitalItem, index: number) => {
+                  ListItem() {
+                    Button() {
+                      Column() {
+                        Row() {
+                          Text(item.name)
+                            .fontSize(this.isElderMode ? 17 : 14)
+                            .fontWeight(FontWeight.Bold)
+                            .fontColor('#333333')
+                            .textAlign(TextAlign.Start)
+                          Blank()
+                          Text('查看科室 >')
+                            .fontSize(this.isElderMode ? 14 : 12)
+                            .fontColor('#1677FF')
+                        }
+                        .width('100%')
+
+                        if (item.level !== '') {
+                          Text(item.level)
+                            .fontSize(this.isElderMode ? 13 : 11)
+                            .fontColor('#1677FF')
+                            .width('100%')
+                            .textAlign(TextAlign.Start)
+                            .margin({ top: 4 })
+                        }
+
+                        if (item.address !== '') {
+                          Text(item.address)
+                            .fontSize(this.isElderMode ? 13 : 11)
+                            .fontColor('#666666')
+                            .width('100%')
+                            .textAlign(TextAlign.Start)
+                            .margin({ top: 2 })
+                        }
+                      }
+                      .alignItems(HorizontalAlign.Start)
+                    }
+                    .width('100%')
+                    .height('auto')
+                    .backgroundColor('#FFFFFF')
+                    .borderRadius(10)
+                    .padding(14)
+                    .type(ButtonType.Normal)
+                    .onClick(() => {
+                      router.pushUrl({
+                        url: 'pages/HospitalDepartmentPage',
+                        params: {
+                          hospitalId: item.id,
+                          hospitalName: item.name
+                        }
+                      }).catch((err: Error) => {
+                        console.error('[跳转失败]', err.message);
+                      });
+                    })
+                  }
+                }, (item: HospitalItem, index: number) => `${index}`)
               }
-            }, (item: Hospital) => item.id);
+              .width('100%')
+              .layoutWeight(1)
+              .padding({ left: 8, right: 8 })
+            }
           }
-          .width('100%')
-          .layoutWeight(1)
-          .borderRadius(GlobalTheme.RADIUS_MD);
+          .width('85%')
+          .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
         }
-        .width('85%')
-        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
+        .height(0)
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top);
       }
-      .height(0)
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
 
       Footer({ activeIndex: 1 });
     }

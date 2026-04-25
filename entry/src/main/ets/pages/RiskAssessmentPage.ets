@@ -1,25 +1,53 @@
 import { router } from '@kit.ArkUI';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import { RiskAssessmentEngine } from '../ai/RiskAssessmentEngine';
+import { HealthInputData, RiskAssessmentResult, RadarDataItem, getRiskColor, getRiskLabel, RiskLevel } from '../models/AIModels';
+import { RadarChart } from '../components/RadarChart';
+import { getRadarDataFromResult } from '../mock/riskAssessmentMock';
 
-interface AssessmentData {
-  age: string;
-  gender: string;
-  height: string;
-  weight: string;
-  bmi: number;
-  systolic: string;
-  diastolic: string;
-  fastingGlucose: string;
-  postprandialGlucose: string;
-  smoking: string;
-  drinking: string;
-  exercise: string;
-  medicalHistory: string[];
+class AssessmentData {
+  age: string = '';
+  gender: string = '男';
+  height: string = '';
+  weight: string = '';
+  bmi: number = 0;
+  systolic: string = '';
+  diastolic: string = '';
+  fastingGlucose: string = '';
+  postprandialGlucose: string = '';
+  smoking: string = '否';
+  drinking: string = '否';
+  exercise: string = '每周1-2次';
+  medicalHistory: string[] = [];
+
+  constructor(age?: string, gender?: string, height?: string, weight?: string, bmi?: number,
+    systolic?: string, diastolic?: string, fastingGlucose?: string, postprandialGlucose?: string,
+    smoking?: string, drinking?: string, exercise?: string, medicalHistory?: string[]) {
+    if (age !== undefined) this.age = age;
+    if (gender !== undefined) this.gender = gender;
+    if (height !== undefined) this.height = height;
+    if (weight !== undefined) this.weight = weight;
+    if (bmi !== undefined) this.bmi = bmi;
+    if (systolic !== undefined) this.systolic = systolic;
+    if (diastolic !== undefined) this.diastolic = diastolic;
+    if (fastingGlucose !== undefined) this.fastingGlucose = fastingGlucose;
+    if (postprandialGlucose !== undefined) this.postprandialGlucose = postprandialGlucose;
+    if (smoking !== undefined) this.smoking = smoking;
+    if (drinking !== undefined) this.drinking = drinking;
+    if (exercise !== undefined) this.exercise = exercise;
+    if (medicalHistory !== undefined) this.medicalHistory = medicalHistory;
+  }
 }
 
-// 定义健康记录类型
-interface HealthRecord {
-  type: string;
-  value: string;
+class HealthRecord {
+  type: string = '';
+  value: string = '';
+
+  constructor(type?: string, value?: string) {
+    if (type !== undefined) this.type = type;
+    if (value !== undefined) this.value = value;
+  }
 }
 
 @Entry
@@ -31,21 +59,7 @@ struct RiskAssessmentPage {
   @State isSubmitting: boolean = false;
   @State lastAssessment: string = '2026-04-10';
   @State lastResult: string = '低风险';
-  @State assessmentData: AssessmentData = {
-    age: '',
-    gender: '男',
-    height: '',
-    weight: '',
-    bmi: 0,
-    systolic: '',
-    diastolic: '',
-    fastingGlucose: '',
-    postprandialGlucose: '',
-    smoking: '否',
-    drinking: '否',
-    exercise: '每周1-2次',
-    medicalHistory: []
-  };
+  @State assessmentData: AssessmentData = new AssessmentData();
   @State errorMessage: string = '';
 
   private createStepArray(): number[] {
@@ -57,10 +71,8 @@ struct RiskAssessmentPage {
   }
 
   aboutToAppear() {
-    // 接收从健康记录页面传递过来的数据
     const params = router.getParams();
     if (params) {
-      // 简化处理，直接检查参数
       const record = params as HealthRecord;
       if (record.type && record.value) {
         if (record.type === '血压') {
@@ -140,30 +152,74 @@ struct RiskAssessmentPage {
     if (!data.diastolic || data.diastolic.trim() === '') { this.errorMessage = '请完成血压数据填写'; return; }
     if (!data.fastingGlucose || data.fastingGlucose.trim() === '') { this.errorMessage = '请完成血糖数据填写'; return; }
 
-    const submitData: AssessmentData = {
-      age: data.age.trim(),
-      gender: data.gender,
-      height: data.height.trim(),
-      weight: data.weight.trim(),
-      bmi: data.bmi > 0 ? data.bmi : 0,
-      systolic: data.systolic.trim(),
-      diastolic: data.diastolic.trim(),
-      fastingGlucose: data.fastingGlucose.trim(),
-      postprandialGlucose: data.postprandialGlucose.trim() || '',
-      smoking: data.smoking,
-      drinking: data.drinking,
-      exercise: data.exercise,
-      medicalHistory: data.medicalHistory
-    };
+    const submitData: AssessmentData = new AssessmentData(
+      data.age.trim(),
+      data.gender,
+      data.height.trim(),
+      data.weight.trim(),
+      data.bmi > 0 ? data.bmi : 0,
+      data.systolic.trim(),
+      data.diastolic.trim(),
+      data.fastingGlucose.trim(),
+      data.postprandialGlucose.trim() || '',
+      data.smoking,
+      data.drinking,
+      data.exercise,
+      data.medicalHistory
+    );
 
     this.isSubmitting = true;
-    setTimeout(() => {
+    const userId: number = AppStorage.get<number>('userId') || 1;
+
+    const healthInput: HealthInputData = new HealthInputData(
+      parseFloat(submitData.age) || 0,
+      submitData.gender,
+      parseFloat(submitData.height) || 0,
+      parseFloat(submitData.weight) || 0,
+      submitData.bmi > 0 ? submitData.bmi : 0,
+      parseFloat(submitData.systolic) || 0,
+      parseFloat(submitData.diastolic) || 0,
+      parseFloat(submitData.fastingGlucose) || 0,
+      parseFloat(submitData.postprandialGlucose) || 0,
+      72,
+      7,
+      submitData.exercise === '每天' ? 7 : (submitData.exercise === '每周3-5次' ? 4 : 1),
+      submitData.smoking === '是',
+      submitData.drinking === '是',
+      submitData.medicalHistory
+    );
+
+    const engine: RiskAssessmentEngine = RiskAssessmentEngine.getInstance();
+    engine.assessRisk(healthInput).then((aiResult: RiskAssessmentResult) => {
+      HttpUtil.post<Object>(ApiConstants.RISK_ASSESS + userId, submitData)
+        .then((response: BaseResponse<Object>) => {
+          this.isSubmitting = false;
+          if (response.success) {
+            router.push({
+              url: 'pages/RiskResultPage',
+              params: { assessmentData: submitData, aiResult: aiResult }
+            });
+          } else {
+            router.push({
+              url: 'pages/RiskResultPage',
+              params: { assessmentData: submitData, aiResult: aiResult }
+            });
+          }
+        })
+        .catch(() => {
+          this.isSubmitting = false;
+          router.push({
+            url: 'pages/RiskResultPage',
+            params: { assessmentData: submitData, aiResult: aiResult }
+          });
+        });
+    }).catch(() => {
       this.isSubmitting = false;
       router.push({
         url: 'pages/RiskResultPage',
         params: { assessmentData: submitData }
       });
-    }, 3000);
+    });
   }
 
   toggleMedicalHistory(condition: string) {
@@ -177,7 +233,6 @@ struct RiskAssessmentPage {
 
   build() {
     Column() {
-      // 顶部导航栏
       Row() {
         Text('← 返回')
           .fontSize(16)
@@ -208,43 +263,266 @@ struct RiskAssessmentPage {
         offsetY: 2
       });
 
-      // 顶部引导区
       if (this.currentStep === 1) {
-        Column() {
-          Text('温馨提示')
-            .fontSize(18)
-            .fontWeight('bold')
-            .fontColor('#1677FF')
-            .margin({ top: 24, bottom: 12 });
-          Text('请如实填写以下信息，我们将为您提供个性化的健康风险评估报告')
-            .fontSize(14)
-            .fontColor('#666666')
-            .textAlign(TextAlign.Center)
-            .width('85%')
-            .margin({ bottom: 24 });
-          if (this.lastAssessment) {
-            Text('上次评估：' + this.lastAssessment + ' (' + this.lastResult + ')')
-              .fontSize(14)
-              .fontColor('#999999')
-              .margin({ bottom: 24 });
-          }
-          Button('开始评估')
-            .width('85%')
-            .height(48)
-            .fontSize(16)
-            .fontColor('#FFFFFF')
-            .backgroundColor('#1677FF')
-            .borderRadius(24)
+        Scroll() {
+          Column() {
+            Row() {
+              Column({ space: 8 }) {
+                Text('健康概览')
+                  .fontSize(16)
+                  .fontWeight('bold')
+                  .fontColor('#FFFFFF')
+                  .alignSelf(ItemAlign.Start);
+                Row({ space: 24 }) {
+                  Column({ space: 4 }) {
+                    Text(this.lastResult)
+                      .fontSize(24)
+                      .fontWeight('bold')
+                      .fontColor('#FFFFFF');
+                    Text('风险等级')
+                      .fontSize(11)
+                      .fontColor('#FFFFFF99');
+                  }
+                  Line().width(1).height(32).stroke('#FFFFFF33');
+                  Column({ space: 4 }) {
+                    Text(this.lastAssessment)
+                      .fontSize(14)
+                      .fontWeight('bold')
+                      .fontColor('#FFFFFF');
+                    Text('上次评估')
+                      .fontSize(11)
+                      .fontColor('#FFFFFF99');
+                  }
+                }.alignItems(VerticalAlign.Center);
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1);
+              Text('→')
+                .fontSize(20)
+                .fontColor('#FFFFFF')
+                .margin({ right: 8 });
+            }
+            .width('90%')
+            .height(100)
+            .padding({ left: 20, right: 16 })
+            .borderRadius(16)
+            .linearGradient({
+              angle: 135,
+              colors: [['#1677FF', 0], ['#36CFC9', 1]]
+            })
+            .shadow({ radius: 12, color: '#1677FF22', offsetX: 0, offsetY: 6 })
+            .margin({ top: 20, bottom: 20 })
             .onClick(() => {
-              this.currentStep++;
+              router.push({ url: 'pages/RiskHistoryPage' });
             });
+
+            Column({ space: 10 }) {
+              Row() {
+                Text('💡')
+                  .fontSize(18);
+                Text('温馨提示')
+                  .fontSize(16)
+                  .fontWeight('bold')
+                  .fontColor('#1677FF');
+              }
+              .alignItems(VerticalAlign.Center)
+              .alignSelf(ItemAlign.Start)
+              .margin({ bottom: 4 });
+              Text('请如实填写以下信息，我们将为您提供个性化的健康风险评估报告')
+                .fontSize(13)
+                .fontColor('#666666')
+                .textAlign(TextAlign.Center)
+                .width('100%')
+                .lineHeight(20);
+            }
+            .width('90%')
+            .padding(16)
+            .backgroundColor('#F0F7FF')
+            .borderRadius(12)
+            .margin({ bottom: 20 });
+
+            Button('开始评估')
+              .width('90%')
+              .height(50)
+              .fontSize(17)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#1677FF')
+              .borderRadius(25)
+              .shadow({ radius: 8, color: '#1677FF44', offsetX: 0, offsetY: 4 })
+              .onClick(() => {
+                this.currentStep++;
+              });
+
+            Row() {
+              Column() {
+                Text('📋')
+                  .fontSize(28)
+                  .margin({ bottom: 8 });
+                Text('我的历史')
+                  .fontSize(13)
+                  .fontWeight('bold')
+                  .fontColor('#333333')
+                  .margin({ bottom: 4 });
+                Text('查看历史评估记录')
+                  .fontSize(11)
+                  .fontColor('#999999');
+              }
+              .flexGrow(1)
+              .height(95)
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(14)
+              .shadow({ radius: 8, color: '#0000000A', offsetX: 0, offsetY: 3 })
+              .onClick(() => {
+                router.push({ url: 'pages/RiskHistoryPage' });
+              });
+
+              Column() {
+                Text('👨‍⚕️')
+                  .fontSize(28)
+                  .margin({ bottom: 8 });
+                Text('医患对话')
+                  .fontSize(13)
+                  .fontWeight('bold')
+                  .fontColor('#333333')
+                  .margin({ bottom: 4 });
+                Text('与医生在线沟通')
+                  .fontSize(11)
+                  .fontColor('#999999');
+              }
+              .flexGrow(1)
+              .height(95)
+              .margin({ left: 12 })
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(14)
+              .shadow({ radius: 8, color: '#0000000A', offsetX: 0, offsetY: 3 })
+              .onClick(() => {
+                router.push({ url: 'pages/DoctorListPage' });
+              });
+            }
+            .width('90%')
+            .margin({ top: 20, bottom: 16 });
+
+            Row() {
+              Column() {
+                Text('📊')
+                  .fontSize(24)
+                  .margin({ bottom: 6 });
+                Text('健康记录')
+                  .fontSize(12)
+                  .fontColor('#555555');
+              }
+              .flexGrow(1)
+              .height(80)
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
+              .onClick(() => {
+                router.back();
+              });
+
+              Column() {
+                Text('🤖')
+                  .fontSize(24)
+                  .margin({ bottom: 6 });
+                Text('AI 咨询')
+                  .fontSize(12)
+                  .fontColor('#555555');
+              }
+              .flexGrow(1)
+              .height(80)
+              .margin({ left: 10 })
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
+              .onClick(() => {
+                router.push({ url: 'pages/AiChatPage' });
+              });
+
+              Column() {
+                Text('📈')
+                  .fontSize(24)
+                  .margin({ bottom: 6 });
+                Text('趋势分析')
+                  .fontSize(12)
+                  .fontColor('#555555');
+              }
+              .flexGrow(1)
+              .height(80)
+              .margin({ left: 10 })
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
+              .onClick(() => {
+                router.push({ url: 'pages/BrowseHistoryPage' });
+              });
+
+              Column() {
+                Text('⚙️')
+                  .fontSize(24)
+                  .margin({ bottom: 6 });
+                Text('设置')
+                  .fontSize(12)
+                  .fontColor('#555555');
+              }
+              .flexGrow(1)
+              .height(80)
+              .margin({ left: 10 })
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
+              .onClick(() => {
+                router.push({ url: 'pages/Profile' });
+              });
+            }
+            .width('90%')
+            .margin({ top: 8, bottom: 16 });
+
+            Column({ space: 12 }) {
+              Row() {
+                Text('🌟')
+                  .fontSize(18);
+                Text('每日健康小贴士')
+                  .fontSize(15)
+                  .fontWeight('bold')
+                  .fontColor('#333333');
+                Blank();
+                Text('换一条')
+                  .fontSize(12)
+                  .fontColor('#1677FF')
+                  .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+                  .backgroundColor('#E8F0FF')
+                  .borderRadius(12);
+              }
+              .alignItems(VerticalAlign.Center)
+              .width('100%');
+
+              Text('💧 每天至少饮用 2000ml 水，有助于促进新陈代谢和排出体内毒素。建议分多次少量饮用，避免一次性大量饮水。')
+                .fontSize(13)
+                .fontColor('#555555')
+                .lineHeight(22)
+                .textAlign(TextAlign.Start);
+            }
+            .width('90%')
+            .padding(16)
+            .backgroundColor('#FFFBEB')
+            .borderRadius(14)
+            .border({ width: 1, color: '#FFF3CD', style: BorderStyle.Solid })
+            .margin({ bottom: 32 });
+          }
+          .width('100%')
         }
-        .width('100%')
-        .padding({ bottom: 48 });
+        .scrollable(ScrollDirection.Vertical)
+        .scrollBar(BarState.Off)
+        .layoutWeight(1);
       }
 
       if (this.currentStep > 1) {
-        // 进度条
         Column() {
           Row() {
             ForEach(this.createStepArray(), (_: number, index: number) => {
@@ -277,7 +555,6 @@ struct RiskAssessmentPage {
           .width('85%')
           .margin({ top: 24, bottom: 32 });
 
-          // 评估表单
           Scroll() {
             Column() {
               if (this.errorMessage) {
@@ -293,7 +570,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 16 });
               }
 
-              // 第一步：基本信息
               if (this.currentStep === 2) {
                 Text('基本信息')
                   .fontSize(20)
@@ -408,7 +684,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 20 });
               }
 
-              // 第二步：血压数据
               if (this.currentStep === 3) {
                 Text('血压数据')
                   .fontSize(20)
@@ -455,7 +730,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 20 });
               }
 
-              // 第三步：血糖数据
               if (this.currentStep === 4) {
                 Text('血糖数据')
                   .fontSize(20)
@@ -502,7 +776,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 20 });
               }
 
-              // 第四步：生活习惯
               if (this.currentStep === 5) {
                 Text('生活习惯')
                   .fontSize(20)
@@ -670,7 +943,6 @@ struct RiskAssessmentPage {
                 .margin({ bottom: 20 });
               }
 
-              // 第五步：既往病史
               if (this.currentStep === 6) {
                 Text('既往病史')
                   .fontSize(20)
@@ -715,7 +987,6 @@ struct RiskAssessmentPage {
           .height(0)
           .layoutWeight(1);
 
-          // 底部按钮
           Row() {
             if (this.currentStep > 2) {
               Button('上一步')
@@ -733,7 +1004,7 @@ struct RiskAssessmentPage {
               Blank()
                 .width('48%');
             }
-            Button(this.currentStep < this.totalSteps + 1 ? '下一步' : '提交评估')
+            Button(this.currentStep < this.totalSteps ? '下一步' : '提交评估')
               .width('48%')
               .height(48)
               .fontSize(16)
@@ -749,7 +1020,6 @@ struct RiskAssessmentPage {
         }
       }
 
-      // 评估中状态
       if (this.isSubmitting) {
         Stack() {
           Column() {

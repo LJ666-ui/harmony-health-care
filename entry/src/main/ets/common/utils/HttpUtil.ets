@@ -4,11 +4,18 @@ import connection from '@ohos.net.connection';
 import { getBaseUrl } from '../constants/ApiConstants';
 import { SettingsUtil } from '../../utils/SettingsUtil';
 
-export interface BaseResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-  code?: number;
+export class BaseResponse<T> {
+  success: boolean = false;
+  message: string = '';
+  data?: T = undefined;
+  code?: number = undefined;
+
+  constructor(success?: boolean, message?: string, data?: T, code?: number) {
+    if (success !== undefined) this.success = success;
+    if (message !== undefined) this.message = message;
+    if (data !== undefined) this.data = data;
+    if (code !== undefined) this.code = code;
+  }
 }
 
 interface BackendResult {
@@ -117,7 +124,7 @@ export class HttpUtil {
     const isOnline: boolean = await HttpUtil.checkNetwork();
     if (!isOnline) {
       HttpUtil.hideLoading();
-      return { success: false, message: '网络不可用，请检查网络连接', code: -1 };
+      return new BaseResponse<T>(false, '网络不可用，请检查网络连接', undefined, -1);
     }
 
     const retryMax: number = opts.retryCount || 1;
@@ -136,7 +143,7 @@ export class HttpUtil {
     }
 
     HttpUtil.hideLoading();
-    return { success: false, message: '请求失败' };
+    return new BaseResponse<T>(false, '请求失败');
   }
 
   private static async executeRequest<T>(
@@ -324,40 +331,24 @@ export class HttpUtil {
         raw = JSON.parse(raw as string);
       } catch (error) {
         console.error('[HttpUtil] 解析响应JSON失败:', error);
-        return {
-          success: false,
-          message: '服务器响应格式错误',
-          code: response.responseCode
-        };
+        return new BaseResponse<T>(false, '服务器响应格式错误', undefined, response.responseCode);
       }
     }
 
     if (response.responseCode === 401) {
       HttpUtil.clearToken();
       HttpUtil.showToast('登录已过期，请重新登录');
-      return {
-        success: false,
-        message: '登录已过期，请重新登录',
-        code: 401
-      };
+      return new BaseResponse<T>(false, '登录已过期，请重新登录', undefined, 401);
     }
 
     if (response.responseCode >= 500) {
       HttpUtil.showToast('服务器繁忙，请稍后重试');
-      return {
-        success: false,
-        message: '服务器错误(' + response.responseCode + ')',
-        code: response.responseCode
-      };
+      return new BaseResponse<T>(false, '服务器错误(' + response.responseCode + ')', undefined, response.responseCode);
     }
 
     if (response.responseCode !== 200 && response.responseCode !== 201 && response.responseCode !== 204) {
       const br = raw as BackendResult;
-      return {
-        success: false,
-        message: (br && br.msg) ? br.msg : '请求失败',
-        code: response.responseCode
-      };
+      return new BaseResponse<T>(false, (br && br.msg) ? br.msg : '请求失败', undefined, response.responseCode);
     }
 
     const backendResult = raw as BackendResult;
@@ -370,12 +361,8 @@ export class HttpUtil {
       msg = '请求成功';
     }
 
-    return {
-      success: isSuccess,
-      message: msg,
-      data: backendResult ? backendResult.data as T : undefined,
-      code: (backendResult && backendResult.code) ? backendResult.code : response.responseCode
-    };
+    return new BaseResponse<T>(isSuccess, msg, backendResult ? backendResult.data as T : undefined,
+      (backendResult && backendResult.code) ? backendResult.code : response.responseCode);
   }
 
   private static handleError<T>(error: Object): BaseResponse<T> {
@@ -387,10 +374,7 @@ export class HttpUtil {
 
     HttpUtil.showToast(message);
 
-    return {
-      success: false,
-      message: message
-    };
+    return new BaseResponse<T>(false, message);
   }
 
   private static showToast(message: string): void {

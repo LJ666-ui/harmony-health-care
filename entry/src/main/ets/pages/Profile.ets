@@ -84,42 +84,109 @@ struct Profile {
 
         Scroll() {
           Column({ space: AccessibilityConfig.getSpacingLG() }) {
-            Text('我的')
-              .fontSize(AccessibilityConfig.getFontSizeTitle())
-              .fontWeight(FontWeight.Bold)
-              .fontColor(AccessibilityConfig.getThemeColor())
-              .margin({
-                top: AccessibilityConfig.getSpacingLG(),
-                bottom: AccessibilityConfig.getSpacingMD()
-              });
+            // 渐变用户信息卡片
+            Stack({ alignContent: Alignment.BottomStart }) {
+              Column()
+                .width('100%')
+                .height(140)
+                .linearGradient({
+                  angle: 135,
+                  colors: [['#1677FF', 0], ['#36CFC9', 1]]
+                })
+                .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 16, bottomRight: 16 });
 
-            Column({ space: AccessibilityConfig.getSpacingMD() }) {
-              Row({ space: AccessibilityConfig.getSpacingMD() }) {
+              Row({ space: 16 }) {
                 Circle()
-                  .width(80)
-                  .height(80)
-                  .fill('#4a90e220')
-                  .stroke(AccessibilityConfig.getThemeColor());
+                  .width(64)
+                  .height(64)
+                  .fill('#FFFFFF33')
+                  .stroke('#FFFFFF')
+                  .strokeWidth(3);
 
-                Column({ space: 8 }) {
+                Column({ space: 6 }) {
                   Text('星云用户')
-                    .fontSize(AccessibilityConfig.getFontSizeBody())
+                    .fontSize(AccessibilityConfig.getFontSizeTitle())
                     .fontWeight(FontWeight.Bold)
-                    .fontColor(AccessibilityConfig.getTextPrimary());
+                    .fontColor('#FFFFFF');
 
-                  Text('138****1234')
-                    .fontSize(AccessibilityConfig.getFontSizeSmall())
-                    .fontColor(AccessibilityConfig.getTextSecondary());
+                  Row({ space: 8 }) {
+                    Text('138****1234')
+                      .fontSize(AccessibilityConfig.getFontSizeSmall())
+                      .fontColor('#FFFFFFCC');
+                    Text('ID: 10086')
+                      .fontSize(10)
+                      .fontColor('#FFFFFF66')
+                      .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                      .backgroundColor('#FFFFFF22')
+                      .borderRadius(10);
+                  }
                 }
-                .alignItems(HorizontalAlign.Start);
-              }
-              .width('100%')
-              .padding(AccessibilityConfig.getSpacingMD())
-              .backgroundColor(AccessibilityConfig.getCardBgColor())
-              .borderRadius(12)
-              .border({ width: 1, color: AccessibilityConfig.getBorderColor() });
-            }
+                .alignItems(HorizontalAlign.Start)
+                .layoutWeight(1);
 
+                Column() {
+                  Text('编辑')
+                    .fontSize(12)
+                    .fontColor('#FFFFFF');
+                }
+                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                .backgroundColor('#FFFFFF22')
+                .borderRadius(14);
+              }
+              .width('90%')
+              .padding({ left: 20, right: 0, bottom: 20 });
+            }
+            .width('85%')
+            .margin({ top: AccessibilityConfig.getSpacingMD(), bottom: AccessibilityConfig.getSpacingMD() });
+
+            // 统计数据行
+            Row() {
+              Column({ space: 4 }) {
+                Text('128')
+                  .fontSize(22)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#1677FF');
+                Text('健康天数')
+                  .fontSize(11)
+                  .fontColor('#999999');
+              }
+              .layoutWeight(1);
+
+              Line().width(1).height(32).stroke('#EEEEEE');
+
+              Column({ space: 4 }) {
+                Text('12')
+                  .fontSize(22)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#52C41A');
+                Text('评估次数')
+                  .fontSize(11)
+                  .fontColor('#999999');
+              }
+              .layoutWeight(1);
+
+              Line().width(1).height(32).stroke('#EEEEEE');
+
+              Column({ space: 4 }) {
+                Text('5')
+                  .fontSize(22)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FAAD14');
+                Text('收藏文章')
+                  .fontSize(11)
+                  .fontColor('#999999');
+              }
+              .layoutWeight(1);
+            }
+            .width('85%')
+            .height(80)
+            .padding({ left: 24, right: 24 })
+            .backgroundColor('#FFFFFF')
+            .borderRadius(16)
+            .shadow({ radius: 8, color: '#00000006', offsetX: 0, offsetY: 3 })
+            .margin({ bottom: AccessibilityConfig.getSpacingMD() });
+
+            // 功能菜单列表
             Column({ space: 1 }) {
               Row({ space: AccessibilityConfig.getSpacingMD() }) {
                 Text('👴 老年模式')
@@ -131,7 +198,7 @@ struct Profile {
 
                 Text(this.isElderMode ? '已开启' : '已关闭')
                   .fontSize(AccessibilityConfig.getFontSizeSmall())
-                  .fontColor(this.isElderMode ? AccessibilityConfig.getSuccessColor() : AccessibilityConfig.getTextHint())
+                  .fontColor(this.isElderMode ? '#52C41A' : '#999999')
                   .backgroundColor(this.isElderMode ? '#F6FFED' : '#F5F5F5')
                   .padding({ left: 10, right: 10, top: 4, bottom: 4 })
                   .borderRadius(10);
@@ -139,7 +206,7 @@ struct Profile {
               .width('100%')
               .padding(AccessibilityConfig.getSpacingMD())
               .backgroundColor(AccessibilityConfig.getCardBgColor())
-              .borderRadius({ topLeft: 12, topRight: 12 })
+              .borderRadius({ topLeft: 16, topRight: 16 })
               .border({ width: 1, color: AccessibilityConfig.getBorderColor() })
               .accessibilityText('老年模式，当前' + (this.isElderMode ? '已开启' : '已关闭'))
               .onClick(() => this.toggleElderMode());
@@ -147,18 +214,20 @@ struct Profile {
               ForEach(this.menuItems, (item: MenuItem) => {
                 Row({ space: AccessibilityConfig.getSpacingMD() }) {
                   Text(item.icon)
-                    .fontSize(AccessibilityConfig.getFontSizeBody());
+                    .fontSize(18)
+                    .width(28)
+                    .textAlign(TextAlign.Center);
 
                   Text(item.title)
                     .fontSize(AccessibilityConfig.getFontSizeBody())
-                    .fontColor(item.color)
-                    .fontWeight(item.color === '#1677FF' || item.color === '#722ED1' ? FontWeight.Bold : FontWeight.Normal);
+                    .fontColor(item.color === '#333333' ? AccessibilityConfig.getTextPrimary() : item.color)
+                    .fontWeight(item.color === '#1677FF' || item.color === '#722ED1' || item.color === '#52C41A' || item.color === '#FAAD14' || item.color === '#FF4757' ? FontWeight.Bold : FontWeight.Normal);
 
                   Blank();
 
                   Text('›')
-                    .fontSize(28)
-                    .fontColor(AccessibilityConfig.getTextHint());
+                    .fontSize(20)
+                    .fontColor('#CCCCCC');
                 }
                 .width('100%')
                 .padding(AccessibilityConfig.getSpacingMD())
@@ -167,23 +236,18 @@ struct Profile {
                 .onClick(() => this.handleMenuClick(item));
               }, (item: MenuItem) => item.title);
             }
-            .borderRadius(12)
+            .borderRadius(16)
             .border({ width: 1, color: AccessibilityConfig.getBorderColor() });
 
             Button('退出登录')
-              .width('100%')
+              .width('85%')
               .height(AccessibilityConfig.getButtonHeight())
               .fontSize(AccessibilityConfig.getFontSizeButton())
               .fontWeight(FontWeight.Medium)
-              .fontColor('#FFFFFF')
-              .backgroundColor(AccessibilityConfig.getThemeColor())
+              .fontColor('#FF4D4F')
+              .backgroundColor('#FFF1F0')
               .borderRadius(AccessibilityConfig.getButtonHeight() / 2)
-              .shadow({
-                radius: 8,
-                color: '#1677FF30',
-                offsetX: 0,
-                offsetY: 4
-              })
+              .border({ width: 1, color: '#FFCCC7', style: BorderStyle.Solid })
               .margin({
                 top: AccessibilityConfig.getSpacingLG(),
                 bottom: AccessibilityConfig.getSpacingLG()
@@ -202,7 +266,7 @@ struct Profile {
           }
           .width('85%')
           .padding({
-            top: AccessibilityConfig.getSpacingLG(),
+            top: AccessibilityConfig.getSpacingMD(),
             bottom: AccessibilityConfig.getSpacingLG()
           });
         }

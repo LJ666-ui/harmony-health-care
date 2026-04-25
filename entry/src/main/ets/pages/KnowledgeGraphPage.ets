@@ -1,7 +1,6 @@
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { GraphCanvas } from '../components/GraphCanvas';
-import { GlobalTheme } from '../global';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import BrowseTracker from '../utils/BrowseTracker';
@@ -11,6 +10,12 @@ interface SearchNode {
   name: string;
   nodeType: string;
   description: string;
+}
+
+interface SidebarNode {
+  id: number;
+  name: string;
+  nodeType: string;
 }
 
 interface SearchRequestParams {
@@ -28,12 +33,17 @@ struct KnowledgeGraphPage {
   @State isFullscreen: boolean = false;
   @State searchTimer: number = -1;
   @State navigateNodeId: number = -1;
-  private graphCanvas: GraphCanvas | null = null;
+  @State sidebarNodes: SidebarNode[] = [];
+  @State allSidebarNodes: SidebarNode[] = [];
+  @State showSidebar: boolean = true;
+  @State activeCenterId: number = 1;
+  @State filterType: string = '';
 
   aboutToAppear(): void {
     BrowseTracker.recordStart('KNOWLEDGE_GRAPH', 'PAGE', 5, '中医知识图谱').then(id => {
       this.recordId = id;
     });
+    this.fetchAllNodes();
   }
 
   aboutToDisappear(): void {
@@ -44,7 +54,6 @@ struct KnowledgeGraphPage {
       try {
         clearTimeout(this.searchTimer);
       } catch (e) {
-        // 忽略清理定时器的异常
       }
     }
   }
@@ -55,7 +64,6 @@ struct KnowledgeGraphPage {
       try {
         clearTimeout(this.searchTimer);
       } catch (e) {
-        // 忽略清理定时器的异常
       }
     }
     if (!value.trim()) {
@@ -68,7 +76,6 @@ struct KnowledgeGraphPage {
         this.fuzzySearch(value.trim());
       }, 300);
     } catch (e) {
-      // 忽略启动定时器的异常
     }
   }
 
@@ -97,6 +104,47 @@ struct KnowledgeGraphPage {
     this.showDropdown = false;
     this.searchText = node.name;
     this.navigateNodeId = node.id;
+  }
+
+  fetchAllNodes(): void {
+    HttpUtil.get<SidebarNode[]>(ApiConstants.KNOWLEDGE_NODES)
+      .then((response: BaseResponse<SidebarNode[]>) => {
+        if (response.success && response.data) {
+          this.allSidebarNodes = response.data;
+          this.applyFilter();
+        }
+      })
+      .catch(() => {});
+  }
+
+  applyFilter(): void {
+    if (!this.filterType) {
+      this.sidebarNodes = this.allSidebarNodes;
+    } else {
+      const filtered: SidebarNode[] = [];
+      for (let i: number = 0; i < this.allSidebarNodes.length; i++) {
+        if (this.allSidebarNodes[i].nodeType === this.filterType) {
+          filtered.push(this.allSidebarNodes[i]);
+        }
+      }
+      this.sidebarNodes = filtered;
+    }
+  }
+
+  handleFilterClick(type: string): void {
+    if (this.filterType === type) {
+      this.filterType = '';
+    } else {
+      this.filterType = type;
+    }
+    this.applyFilter();
+  }
+
+  handleSidebarNodeClick(nodeId: number): void {
+    if (this.activeCenterId === nodeId) {
+      return;
+    }
+    this.activeCenterId = nodeId;
   }
 
   getNodeIcon(nodeType: string): string {
@@ -147,106 +195,241 @@ struct KnowledgeGraphPage {
       }
 
       Column({ space: 0 }) {
-        Row({ space: 8 }) {
-          Stack() {
-            TextInput({ placeholder: '搜索疾病、症状、药材...', text: this.searchText })
-              .layoutWeight(1)
-              .height(40)
-              .fontSize(14)
-              .backgroundColor('#FFFFFF')
-              .borderRadius(20)
-              .padding({ left: 16, right: 36 })
-              .onChange((value: string) => {
-                this.handleSearchInput(value);
-              })
-              .onSubmit(() => {
-                if (this.searchText.trim()) {
-                  this.fuzzySearch(this.searchText.trim());
-                }
-              });
-
-            if (this.searchText.length > 0) {
-              Text('✕')
-                .fontSize(14)
-                .fontColor('#999999')
-                .position({ x: '100%', y: '50%' })
-                .translate({ x: -36, y: -7 })
-                .onClick(() => {
-                  this.searchText = '';
-                  this.showDropdown = false;
-                  this.searchResults = [];
-                });
-            }
-          }
-          .layoutWeight(1);
-
-          Text(this.isFullscreen ? '退出' : '全屏')
-            .fontSize(13)
-            .fontColor('#1677FF')
-            .backgroundColor('#E6F4FF')
-            .padding({ left: 10, right: 10, top: 8, bottom: 8 })
-            .borderRadius(16)
-            .onClick(() => {
-              this.isFullscreen = !this.isFullscreen;
-            });
-        }
-        .width('100%')
-        .padding({ left: 12, right: 12, top: 8, bottom: 4 });
-
-        if (this.showDropdown && this.searchResults.length > 0) {
-          Column({ space: 0 }) {
-            ForEach(this.searchResults, (node: SearchNode, index: number) => {
-              Row() {
-                Text(this.getNodeIcon(node.nodeType))
-                  .fontSize(18)
-                  .margin({ right: 10 });
-                Column({ space: 2 }) {
-                  Text(node.name)
-                    .fontSize(14)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#333333');
-                  if (node.description) {
-                    Text(node.description)
-                      .fontSize(11)
-                      .fontColor('#999999')
-                      .maxLines(1);
-                  }
-                }
-                .layoutWeight(1)
-                .alignItems(HorizontalAlign.Start);
-                Text(this.getTypeName(node.nodeType))
-                  .fontSize(10)
-                  .fontColor('#1677FF')
-                  .backgroundColor('#E6F4FF')
-                  .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                  .borderRadius(8);
+        Row({ space: 0 }) {
+          if (this.showSidebar) {
+            Column() {
+              Column() {
+                Text('📋 节点列表')
+                  .fontSize(11)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FFFFFF')
+                  .margin({ bottom: 4 });
+                Text(this.sidebarNodes.length + '个')
+                  .fontSize(9)
+                  .fontColor('#FFFFFF99');
               }
               .width('100%')
-              .padding({ left: 16, right: 16, top: 10, bottom: 10 })
-              .onClick(() => {
-                this.handleSelectSearchResult(node);
-              });
+              .padding({ top: 8, bottom: 6 })
+              .linearGradient({
+                angle: 135,
+                colors: [['#1677FF', 0], ['#36CFC9', 1]]
+              })
+              .alignItems(HorizontalAlign.Center);
 
-              if (index < this.searchResults.length - 1) {
-                Divider()
-                  .width('90%')
-                  .color('#F0F0F0');
+              Scroll() {
+                Column({ space: 0 }) {
+                  ForEach(this.sidebarNodes, (node: SidebarNode) => {
+                    Column() {
+                      Text(this.getNodeIcon(node.nodeType))
+                        .fontSize(14);
+                      Text(node.name.length > 3 ? node.name.substring(0, 3) + '..' : node.name)
+                        .fontSize(9)
+                        .fontColor('#333333')
+                        .maxLines(1);
+                    }
+                    .width('100%')
+                    .height(40)
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
+                    .backgroundColor(this.activeCenterId === node.id ? '#E6F4FF' : '#FAFBFC')
+                    .border({
+                      width: { left: 3, right: 0, top: 0, bottom: 0 },
+                      color: this.activeCenterId === node.id ? '#1677FF' : 'transparent'
+                    })
+                    .gesture(
+                      TapGesture()
+                        .onAction(() => {
+                          this.handleSidebarNodeClick(node.id);
+                        })
+                    );
+                  }, (node: SidebarNode) => 'sidebar-' + node.id);
+                }
+                .width('100%');
               }
-            }, (node: SearchNode) => 'search-' + node.id);
-          }
-          .width('92%')
-          .margin({ left: '4%', right: '4%' })
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12)
-          .shadow({ radius: 8, color: '#00000012', offsetX: 0, offsetY: 2 });
-        }
+              .width('100%')
+              .layoutWeight(1)
+              .scrollBar(BarState.Off)
+              .backgroundColor('#F5F7FA');
 
-        GraphCanvas({ startCenterId: 1 })
-          .width('100%')
+              Column() {
+                Text('▶')
+                  .fontSize(12)
+                  .fontColor('#666666')
+                  .padding(6)
+                  .onClick(() => {
+                    this.showSidebar = false;
+                  });
+              }
+              .width('100%')
+              .height(28)
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#F0F0F0');
+            }
+            .width(52)
+            .height('100%')
+            .backgroundColor('#FFFFFF')
+            .shadow({ radius: 4, color: '#00000010', offsetX: 2, offsetY: 0 })
+            .clip(true);
+          } else {
+            Column() {
+              Text('◀')
+                .fontSize(12)
+                .fontColor('#1677FF')
+                .padding(8)
+                .backgroundColor('#E6F4FF')
+                .borderRadius({ topLeft: 0, topRight: 8, bottomRight: 8, bottomLeft: 0 })
+                .onClick(() => {
+                  this.showSidebar = true;
+                });
+            }
+            .width(24)
+            .height('100%')
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Start)
+            .padding({ top: 20 });
+          }
+
+          Column({ space: 0 }) {
+            Row({ space: 8 }) {
+              Stack() {
+                TextInput({ placeholder: '搜索疾病、症状、药材...', text: this.searchText })
+                  .layoutWeight(1)
+                  .height(36)
+                  .fontSize(13)
+                  .backgroundColor('#FFFFFF')
+                  .borderRadius(18)
+                  .padding({ left: 14, right: 34 })
+                  .onChange((value: string) => {
+                    this.handleSearchInput(value);
+                  })
+                  .onSubmit(() => {
+                    if (this.searchText.trim()) {
+                      this.fuzzySearch(this.searchText.trim());
+                    }
+                  });
+
+                if (this.searchText.length > 0) {
+                  Text('✕')
+                    .fontSize(13)
+                    .fontColor('#999999')
+                    .position({ x: '100%', y: '50%' })
+                    .translate({ x: -32, y: -6 })
+                    .onClick(() => {
+                      this.searchText = '';
+                      this.showDropdown = false;
+                      this.searchResults = [];
+                    });
+                }
+              }
+              .layoutWeight(1);
+
+              Text(this.isFullscreen ? '退出' : '全屏')
+                .fontSize(12)
+                .fontColor('#1677FF')
+                .backgroundColor('#E6F4FF')
+                .padding({ left: 9, right: 9, top: 7, bottom: 7 })
+                .borderRadius(14)
+                .onClick(() => {
+                  this.isFullscreen = !this.isFullscreen;
+                });
+            }
+            .width('100%')
+            .padding({ left: 10, right: 8, top: 6, bottom: 2 });
+
+            Row({ space: 6 }) {
+              Text('🏥 疾病')
+                .fontSize(11)
+                .fontColor(this.filterType === 'DISEASE' ? '#FFFFFF' : '#FF4D4F')
+                .backgroundColor(this.filterType === 'DISEASE' ? '#FF4D4F' : '#FFF1F0')
+                .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                .borderRadius(12)
+                .onClick(() => { this.handleFilterClick('DISEASE'); });
+              Text('🩺 症状')
+                .fontSize(11)
+                .fontColor(this.filterType === 'SYMPTOM' ? '#FFFFFF' : '#FA8C16')
+                .backgroundColor(this.filterType === 'SYMPTOM' ? '#FA8C16' : '#FFF7E6')
+                .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                .borderRadius(12)
+                .onClick(() => { this.handleFilterClick('SYMPTOM'); });
+              Text('🌿 药材')
+                .fontSize(11)
+                .fontColor(this.filterType === 'HERBAL' ? '#FFFFFF' : '#52C41A')
+                .backgroundColor(this.filterType === 'HERBAL' ? '#52C41A' : '#F6FFED')
+                .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+                .borderRadius(12)
+                .onClick(() => { this.handleFilterClick('HERBAL'); });
+              if (this.filterType) {
+                Text('✕ 清除')
+                  .fontSize(10)
+                  .fontColor('#999999')
+                  .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+                  .onClick(() => {
+                    this.filterType = '';
+                    this.applyFilter();
+                  });
+              }
+            }
+            .width('100%')
+            .padding({ left: 10, right: 8, top: 2, bottom: 2 });
+
+            if (this.showDropdown && this.searchResults.length > 0) {
+              Column({ space: 0 }) {
+                ForEach(this.searchResults, (node: SearchNode, index: number) => {
+                  Row() {
+                    Text(this.getNodeIcon(node.nodeType))
+                      .fontSize(18)
+                      .margin({ right: 10 });
+                    Column({ space: 2 }) {
+                      Text(node.name)
+                        .fontSize(14)
+                        .fontWeight(FontWeight.Bold)
+                        .fontColor('#333333');
+                      if (node.description) {
+                        Text(node.description)
+                          .fontSize(11)
+                          .fontColor('#999999')
+                          .maxLines(1);
+                      }
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start);
+                    Text(this.getTypeName(node.nodeType))
+                      .fontSize(10)
+                      .fontColor('#1677FF')
+                      .backgroundColor('#E6F4FF')
+                      .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                      .borderRadius(8);
+                  }
+                  .width('100%')
+                  .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+                  .onClick(() => {
+                    this.handleSelectSearchResult(node);
+                  });
+
+                  if (index < this.searchResults.length - 1) {
+                    Divider()
+                      .width('90%')
+                      .color('#F0F0F0');
+                  }
+                }, (node: SearchNode) => 'search-' + node.id);
+              }
+              .width('92%')
+              .margin({ left: '4%', right: '4%' })
+              .backgroundColor('#FFFFFF')
+              .borderRadius(12)
+              .shadow({ radius: 8, color: '#00000012', offsetX: 0, offsetY: 2 });
+            }
+
+            GraphCanvas({ startCenterId: this.activeCenterId })
+              .key('graph-' + this.activeCenterId)
+              .width('100%')
+              .layoutWeight(1);
+          }
           .layoutWeight(1);
+        }
+        .width('100%')
+        .layoutWeight(1);
       }
-      .width('100%')
-      .layoutWeight(1);
 
       if (!this.isFullscreen) {
         Footer({ activeIndex: 3 });
@@ -254,6 +437,6 @@ struct KnowledgeGraphPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F7FA');
+    .backgroundColor('#EEF1F6');
   }
 }

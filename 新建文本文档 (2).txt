@@ -1,144 +1,725 @@
+"D:\Huawei\DevEco Studio\tools\node\node.exe" "D:\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.js" --mode module -p module=entry@default -p product=default -p requiredDeviceType=phone assembleHap --analyze=normal --parallel --incremental --daemon
+> hvigor hvigor client: Starting hvigor daemon.
+> hvigor Hvigor Daemon started in 557 ms
+> hvigor UP-TO-DATE :entry:default@PreBuild...  
+> hvigor Finished :entry:default@CreateModuleInfo... after 2 ms 
+> hvigor UP-TO-DATE :entry:default@GenerateMetadata...  
+> hvigor Finished :entry:default@ConfigureCmake... after 1 ms 
+> hvigor UP-TO-DATE :entry:default@MergeProfile...  
+> hvigor UP-TO-DATE :entry:default@CreateBuildProfile...  
+> hvigor Finished :entry:default@PreCheckSyscap... after 1 ms 
+> hvigor UP-TO-DATE :entry:default@GeneratePkgContextInfo...  
+> hvigor Finished :entry:default@ProcessIntegratedHsp... after 1 ms 
+> hvigor Finished :entry:default@BuildNativeWithCmake... after 1 ms 
+> hvigor UP-TO-DATE :entry:default@MakePackInfo...  
+> hvigor Finished :entry:default@SyscapTransform... after 28 ms 
+> hvigor UP-TO-DATE :entry:default@ProcessProfile...  
+> hvigor UP-TO-DATE :entry:default@ProcessRouterMap...  
+> hvigor UP-TO-DATE :entry:default@ProcessShareConfig...  
+> hvigor Finished :entry:default@ProcessStartupConfig... after 2 ms 
+> hvigor Finished :entry:default@BuildNativeWithNinja... after 1 ms 
+> hvigor UP-TO-DATE :entry:default@ProcessResource...  
+> hvigor UP-TO-DATE :entry:default@GenerateLoaderJson...  
+> hvigor UP-TO-DATE :entry:default@ProcessLibs...  
+> hvigor UP-TO-DATE :entry:default@CompileResource...  
+> hvigor UP-TO-DATE :entry:default@DoNativeStrip...  
+> hvigor Finished :entry:default@BuildJS... after 2 ms 
+> hvigor UP-TO-DATE :entry:default@CacheNativeLibs...  
+> hvigor ERROR: Failed :entry:default@CompileArkTS... 
+> hvigor WARN: 
+1 WARN: ArkTS:WARN: For details about ArkTS syntax errors, see FAQs
+2 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Index.ets:20:16
+ 'replaceUrl' has been deprecated.
+
+3 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/Header.ets:28:20
+ 'back' has been deprecated.
+
+4 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/Footer.ets:42:18
+ 'pushUrl' has been deprecated.
+
+5 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:17:20
+ 'showToast' has been deprecated.
+
+6 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:30:20
+ 'showToast' has been deprecated.
+
+7 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:43:20
+ 'showToast' has been deprecated.
+
+8 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:56:20
+ 'showToast' has been deprecated.
+
+9 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/ToastUtil.ets:185:20
+ 'showToast' has been deprecated.
+
+10 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:397:5
+ Function may throw exceptions. Special handling is required.
+
+11 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:397:18
+ 'showToast' has been deprecated.
+
+12 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:406:7
+ Function may throw exceptions. Special handling is required.
+
+13 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:406:20
+ 'showToast' has been deprecated.
+
+14 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Login.ets:62:18
+ 'replaceUrl' has been deprecated.
+
+15 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Login.ets:142:20
+ 'replaceUrl' has been deprecated.
+
+16 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Login.ets:235:26
+ 'pushUrl' has been deprecated.
+
+17 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Register.ets:91:20
+ 'back' has been deprecated.
+
+18 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Register.ets:187:26
+ 'back' has been deprecated.
+
+19 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HomePage.ets:208:16
+ 'pushUrl' has been deprecated.
+
+20 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalPage.ets:99:22
+ 'pushUrl' has been deprecated.
+
+21 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RehabPage.ets:97:22
+ 'pushUrl' has been deprecated.
+
+22 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:475:24
+ 'pushUrl' has been deprecated.
+
+23 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:562:32
+ 'pushUrl' has been deprecated.
+
+24 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/SciencePage.ets:689:30
+ 'pushUrl' has been deprecated.
+
+25 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HospitalPage.ets:95:12
+ 'pushUrl' has been deprecated.
+
+26 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HospitalPage.ets:213:30
+ 'pushUrl' has been deprecated.
+
+27 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DepartmentPage.ets:73:22
+ 'pushUrl' has been deprecated.
+
+28 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:288:18
+ 'back' has been deprecated.
+
+29 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:533:26
+ 'push' has been deprecated.
+
+30 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:581:18
+ 'push' has been deprecated.
+
+31 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:587:68
+ 'push' has been deprecated.
+
+32 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:589:68
+ 'push' has been deprecated.
+
+33 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:590:68
+ 'push' has been deprecated.
+
+34 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecords.ets:591:68
+ 'push' has been deprecated.
+
+35 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AddHealthRecord.ets:117:18
+ 'back' has been deprecated.
+
+36 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AddHealthRecord.ets:136:18
+ 'back' has been deprecated.
+
+37 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:92:12
+ 'push' has been deprecated.
+
+38 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:101:12
+ 'back' has been deprecated.
+
+39 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:130:18
+ 'back' has been deprecated.
+
+40 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HealthRecordDetail.ets:276:24
+ 'push' has been deprecated.
+
+41 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Appointments.ets:316:26
+ 'pushUrl' has been deprecated.
+
+42 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AppointmentManagementPage.ets:85:14
+ 'pushUrl' has been deprecated.
+
+43 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AppointmentManagementPage.ets:208:24
+ 'pushUrl' has been deprecated.
+
+44 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HospitalDetailPage.ets:68:29
+ 'getParams' has been deprecated.
+
+45 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HospitalDepartmentPage.ets:31:29
+ 'getParams' has been deprecated.
+
+46 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DepartmentListPage.ets:49:56
+ 'getParams' has been deprecated.
+
+47 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Medications.ets:157:12
+ 'pushUrl' has been deprecated.
+
+48 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Medications.ets:220:16
+ 'pushUrl' has been deprecated.
+
+49 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Profile.ets:63:16
+ 'pushUrl' has been deprecated.
+
+50 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Profile.ets:197:26
+ 'replaceUrl' has been deprecated.
+
+51 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AddAppointmentPage.ets:114:14
+ 'back' has been deprecated.
+
+52 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AddAppointmentPage.ets:278:39
+ 'back' has been deprecated.
+
+53 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RehabListPage.ets:204:26
+ 'pushUrl' has been deprecated.
+
+54 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:152:27
+ 'getParams' has been deprecated.
+
+55 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:297:9
+ 'animateTo' has been deprecated.
+
+56 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:317:5
+ 'animateTo' has been deprecated.
+
+57 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/Rehab3DPage.ets:331:5
+ 'animateTo' has been deprecated.
+
+58 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceListPage.ets:257:20
+ 'back' has been deprecated.
+
+59 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceListPage.ets:430:26
+ 'pushUrl' has been deprecated.
+
+60 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceDetailPage.ets:76:27
+ 'getParams' has been deprecated.
+
+61 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ScienceDetailPage.ets:313:20
+ 'back' has been deprecated.
+
+62 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DeviceDiscoveryPage.ets:121:16
+ 'back' has been deprecated.
+
+63 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DeviceDiscoveryPage.ets:197:20
+ 'back' has been deprecated.
+
+64 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DeviceManagePage.ets:273:20
+ 'back' has been deprecated.
+
+65 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DeviceManagePage.ets:291:20
+ 'pushUrl' has been deprecated.
+
+66 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:61:27
+ 'getParams' has been deprecated.
+
+67 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:162:14
+ 'push' has been deprecated.
+
+68 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:187:20
+ 'back' has been deprecated.
+
+69 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskAssessmentPage.ets:199:20
+ 'push' has been deprecated.
+
+70 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:72:27
+ 'getParams' has been deprecated.
+
+71 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:95:12
+ 'push' has been deprecated.
+
+72 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:102:12
+ 'push' has been deprecated.
+
+73 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:106:12
+ 'push' has been deprecated.
+
+74 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:230:20
+ 'back' has been deprecated.
+
+75 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:242:20
+ 'push' has been deprecated.
+
+76 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskResultPage.ets:434:24
+ 'push' has been deprecated.
+
+77 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskHistoryPage.ets:71:20
+ 'back' has been deprecated.
+
+78 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskHistoryPage.ets:193:22
+ 'push' has been deprecated.
+
+79 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskDetailPage.ets:46:27
+ 'getParams' has been deprecated.
+
+80 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/RiskDetailPage.ets:117:20
+ 'back' has been deprecated.
+
+81 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:156:5
+ Function may throw exceptions. Special handling is required.
+
+82 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:156:12
+ 'pushUrl' has been deprecated.
+
+83 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:160:5
+ Function may throw exceptions. Special handling is required.
+
+84 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:160:18
+ 'showDialog' has been deprecated.
+
+85 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:172:5
+ Function may throw exceptions. Special handling is required.
+
+86 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:172:18
+ 'showDialog' has been deprecated.
+
+87 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacySettingPage.ets:182:18
+ 'replaceUrl' has been deprecated.
+
+88 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacyPolicyPage.ets:20:12
+ 'back' has been deprecated.
+
+89 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacyPage.ets:90:5
+ Function may throw exceptions. Special handling is required.
+
+90 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PrivacyPage.ets:90:12
+ 'pushUrl' has been deprecated.
+
+91 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/ARNavigationPage.ets:33:12
+ 'back' has been deprecated.
+
+92 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/VoiceAssistantPage.ets:278:20
+ 'pushUrl' has been deprecated.
+
+93 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/VoiceAssistantPage.ets:454:20
+ 'back' has been deprecated.
+
+94 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/VoiceAssistantPage.ets:469:25
+ 'show' has been deprecated.
+
+95 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AiChatPage.ets:895:20
+ 'back' has been deprecated.
+
+96 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AiChatPage.ets:917:27
+ 'show' has been deprecated.
+
+97 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalListPage.ets:295:12
+ 'pushUrl' has been deprecated.
+
+98 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalDetailPage.ets:74:63
+ 'getParams' has been deprecated.
+
+99 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalDetailPage.ets:181:26
+ 'back' has been deprecated.
+
+100 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DataAuthPage.ets:100:18
+ 'showDialog' has been deprecated.
+
+101 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:242:18
+ 'showDialog' has been deprecated.
+
+102 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:262:5
+ Function may throw exceptions. Special handling is required.
+
+103 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/AncientMedicalImgPage.ets:262:18
+ 'showDialog' has been deprecated.
+
+104 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:484:28
+ 'push' has been deprecated.
+
+105 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MyCollectPage.ets:84:20
+ 'back' has been deprecated.
+
+106 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MyCollectPage.ets:188:24
+ 'pushUrl' has been deprecated.
+
+107 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:204:5
+ Function may throw exceptions. Special handling is required.
+
+108 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:204:12
+ 'pushUrl' has been deprecated.
+
+109 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodEncyclopediaPage.ets:222:20
+ 'back' has been deprecated.
+
+110 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodDetailPage.ets:56:27
+ 'getParams' has been deprecated.
+
+111 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/FoodDetailPage.ets:247:20
+ 'back' has been deprecated.
+
+112 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationDetailPage.ets:32:29
+ 'getParams' has been deprecated.
+
+113 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationDetailPage.ets:64:20
+ 'back' has been deprecated.
+
+114 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/components/GraphCanvas.ets:248:16
+ 'pushUrl' has been deprecated.
+
+115 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/KnowledgeExplorePage.ets:205:12
+ 'key' can only be used for testing directories 
+
+116 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DoctorListPage.ets:73:20
+ 'back' has been deprecated.
+
+117 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DoctorListPage.ets:203:30
+ 'push' has been deprecated.
+
+118 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DoctorChatPage.ets:47:27
+ 'getParams' has been deprecated.
+
+119 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DoctorChatPage.ets:146:33
+ 'back' has been deprecated.
+
+120 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationReminderListPage.ets:45:12
+ 'pushUrl' has been deprecated.
+
+121 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationReminderListPage.ets:53:12
+ 'pushUrl' has been deprecated.
+
+122 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationReminderEditPage.ets:32:27
+ 'getParams' has been deprecated.
+
+123 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationReminderEditPage.ets:130:16
+ 'back' has been deprecated.
+
+124 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/MedicationReminderEditPage.ets:148:20
+ 'back' has been deprecated.
+
+125 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DigitalTwinViewer.ets:421:20
+ 'pushUrl' has been deprecated.
+
+126 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/DigitalTwinViewer.ets:551:22
+ 'pushUrl' has been deprecated.
+
+127 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/OrganDetailPage.ets:179:29
+ 'getParams' has been deprecated.
+
+128 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/OrganDetailPage.ets:452:26
+ 'back' has been deprecated.
+
+129 WARN: ArkTS:WARN File: E:/harmony-health-care/entry/src/main/ets/pages/PredictionReportPage.ets:52:29
+ 'getParams' has been deprecated.
+
 > hvigor ERROR: ArkTS Compiler Error
 1 ERROR: 10605008 ArkTS Compiler Error
-Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:239:13
+Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/HumanBodyModel.ets:237:75
 
 
-2 ERROR: 10605008 ArkTS Compiler Error
-Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:240:13
+2 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:9:13
 
 
-3 ERROR: 10605008 ArkTS Compiler Error
-Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:260:13
+3 ERROR: 10605043 ArkTS Compiler Error
+Error Message: Array literals must contain elements of only inferrable types (arkts-no-noninferrable-arr-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:37:43
 
 
-4 ERROR: 10605008 ArkTS Compiler Error
-Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:280:13
+4 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:38:5
 
 
 5 ERROR: 10605038 ArkTS Compiler Error
-Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/pages/HomePage.ets:144:73
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:44:17
 
 
 6 ERROR: 10605038 ArkTS Compiler Error
-Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/pages/HomePage.ets:149:72
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:49:5
 
 
 7 ERROR: 10605038 ArkTS Compiler Error
-Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/pages/HomePage.ets:153:71
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:55:17
 
 
 8 ERROR: 10605038 ArkTS Compiler Error
-Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/pages/HomePage.ets:157:77
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:60:5
 
 
 9 ERROR: 10605038 ArkTS Compiler Error
-Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalListPage.ets:79:65
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:66:17
 
 
 10 ERROR: 10605038 ArkTS Compiler Error
-Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/pages/HerbalListPage.ets:85:73
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:71:5
 
 
-11 ERROR: 10605999 ArkTS Compiler Error
-Error Message: Cannot invoke an object which is possibly 'undefined'. At File: E:/harmony-health-care/entry/src/main/ets/pages/TransferApplyPage.ets:264:13
+11 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:77:17
 
 
-12 ERROR: 10605999 ArkTS Compiler Error
-Error Message: Cannot invoke an object which is possibly 'undefined'. At File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:167:15
+12 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:82:5
 
 
-13 ERROR: 10605999 ArkTS Compiler Error
-Error Message: Cannot invoke an object which is possibly 'undefined'. At File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:183:15
+13 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:88:17
 
 
-14 ERROR: 10505001 ArkTS Compiler Error
-Error Message: '"@kit.AbilityKit"' has no exported member named 'context'. Did you mean 'Context'? At File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:4:10
+14 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:93:5
 
 
-15 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Cannot find name 'dataStorage'. At File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:239:23
+15 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:99:17
 
 
-16 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Cannot find name 'dataStorage'. At File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:260:23
+16 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:40:39
 
 
-17 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Cannot find name 'dataStorage'. At File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:280:23
+17 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:42:14
 
 
-18 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Property 'onChange' is private and only accessible within class 'Input'. At File: E:/harmony-health-care/entry/src/main/ets/pages/TransferApplyPage.ets:269:16
+18 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:44:14
 
 
-19 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Argument of type '(value: string) => void' is not assignable to parameter of type 'string'. At File: E:/harmony-health-care/entry/src/main/ets/pages/TransferApplyPage.ets:269:25
+19 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:46:14
 
 
-20 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Property 'onChange' is private and only accessible within class 'Input'. At File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:172:18
+20 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:48:14
 
 
-21 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Argument of type '(value: string) => void' is not assignable to parameter of type 'string'. At File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:172:27
+21 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:93:25
 
 
-22 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Property 'onChange' is private and only accessible within class 'Input'. At File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:188:18
+22 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:109:31
 
 
-23 ERROR: 10505001 ArkTS Compiler Error
-Error Message: Argument of type '(value: string) => void' is not assignable to parameter of type 'string'. At File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:188:27
+23 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:136:24
 
 
-24 ERROR: ArkTS:ERROR File: E:/harmony-health-care/entry/src/main/ets/pages/TransferApplyPage.ets:264:13
- 'Input({
-              placeholder: '搜索医院名称或地址',
-              inputType: 'text',
-              text: $searchKeyword
-            })
-              .onChange((value: string) => {
-                this.searchKeyword = value;
-                this.handleSearch();
-              })' does not meet UI component syntax.
-
-25 ERROR: ArkTS:ERROR File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:167:15
- 'Input({
-                placeholder: '请输入医院名称',
-                inputType: 'text',
-                text: $hospitalFilter
-              })
-                .onChange((value: string) => {
-                  this.hospitalFilter = value;
-                  this.handleFilter();
-                })' does not meet UI component syntax.
-
-26 ERROR: ArkTS:ERROR File: E:/harmony-health-care/entry/src/main/ets/pages/MedicalRecord.ets:183:15
- 'Input({
-                placeholder: '请输入诊断名称',
-                inputType: 'text',
-                text: $diagnosisFilter
-              })
-                .onChange((value: string) => {
-                  this.diagnosisFilter = value;
-                  this.handleFilter();
-                })' does not meet UI component syntax.
-
-27 ERROR: ArkTS:ERROR File: E:/harmony-health-care/entry/src/main/ets/common/utils/HttpUtil.ets:4:10
- ERROR Code: 10311006 ArkTS: ERROR
-Error Message: 'context' is not exported from Kit '@kit.AbilityKit'.
-
-* Try the following: 
-  > Please make sure the Kit apis are consistent with SDK and there's no local modification on Kit apis.
-  > For more details on Kit apis, please refer to https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V5/development-intro-api-V5.
+24 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:154:25
 
 
-COMPILE RESULT:FAIL {ERROR:28 WARN:105}
+25 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:181:31
+
+
+26 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:206:24
+
+
+27 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:223:25
+
+
+28 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:246:31
+
+
+29 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:269:24
+
+
+30 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:311:31
+
+
+31 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:335:24
+
+
+32 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:341:7
+
+
+33 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:342:7
+
+
+34 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:343:7
+
+
+35 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:344:7
+
+
+36 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:88:25
+
+
+37 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:91:25
+
+
+38 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:94:25
+
+
+39 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:97:25
+
+
+40 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:100:25
+
+
+41 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:103:25
+
+
+42 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:106:25
+
+
+43 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:136:61
+
+
+44 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:152:32
+
+
+45 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:157:40
+
+
+46 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:164:35
+
+
+47 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:172:44
+
+
+48 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:214:32
+
+
+49 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:218:39
+
+
+50 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:221:36
+
+
+51 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:224:46
+
+
+52 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:265:32
+
+
+53 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:269:40
+
+
+54 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:277:36
+
+
+55 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:285:45
+
+
+56 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:322:32
+
+
+57 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:326:41
+
+
+58 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:334:42
+
+
+59 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:366:32
+
+
+60 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:372:40
+
+
+61 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:424:32
+
+
+62 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:481:32
+
+
+63 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:484:44
+
+
+64 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:485:41
+
+
+65 ERROR: 10605093 ArkTS Compiler Error
+Error Message: Using "this" inside stand-alone functions is not supported (arkts-no-standalone-this) At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/TreatmentSimulator.ets:486:39
+
+
+66 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'scale' in type 'HumanBodyModel' is not assignable to the same property in base type 'CustomComponent'.
+  Type 'number' is not assignable to type '{ (value: ScaleOptions): CommonAttribute; (options: ScaleOptions): CommonAttribute; }'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/HumanBodyModel.ets:29:10
+
+
+67 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Cannot find name 'DOMRectReadOnly'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/HumanBodyModel.ets:237:17
+
+
+68 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'getBoundingClientRect' does not exist on type 'EventTarget'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/HumanBodyModel.ets:237:48
+
+
+69 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Cannot find name 'DOMRectReadOnly'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/HumanBodyModel.ets:237:86
+
+
+70 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Argument of type '(context: CanvasRenderingContext2D) => void' is not assignable to parameter of type 'CanvasRenderingContext2D | DrawingRenderingContext'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/HumanBodyModel.ets:278:16
+
+
+71 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type 'string' is not assignable to type '"moderate" | "low" | "high" | "very_high"'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:133:7
+
+
+72 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type 'string' is not assignable to type '"moderate" | "low" | "high" | "very_high"'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:203:7
+
+
+73 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type 'string' is not assignable to type '"moderate" | "low" | "high" | "very_high"'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:266:7
+
+
+74 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type 'string' is not assignable to type '"moderate" | "low" | "high" | "very_high"'. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/DiseasePredictor.ets:332:7
+
+
+75 ERROR: 10905209 ArkTS Compiler Error
+Error Message: Only UI component syntax can be written here. At File: E:/harmony-health-care/entry/src/main/ets/digitaltwin/OrganVisualizer.ets:247:5
+
+
+COMPILE RESULT:FAIL {ERROR:76 WARN:129}
 
 * Try:
 > Run with --stacktrace option to get the stack trace.
 > Run with --debug option to get more log output.
 
-> hvigor ERROR: BUILD FAILED in 8 s 563 ms 
+> hvigor ERROR: BUILD FAILED in 9 s 575 ms 
 
 Process finished with exit code -1

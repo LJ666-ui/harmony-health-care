@@ -121,30 +121,29 @@ struct DepartmentListPage {
   }
 
   onBookAppointment(department: DepartmentInfo): void {
-    const newAppointment: Appointment = {
-      id: Date.now().toString(),
-      doctor: '待分配',
-      specialty: department.deptName,
-      hospital: this.hospitalName,
-      date: new Date().toISOString().split('T')[0],
-      time: '09:00',
-      status: 'pending',
-      location: department.location || `${department.deptName}诊室`,
-      notes: '',
-      avatarColor: '#1677FF',
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
+    console.log('开始跳转到预约时间选择页面');
+    console.log('医院名称:', this.hospitalName);
+    console.log('科室名称:', department.deptName);
+    console.log('科室位置:', department.location);
 
-    this.appointments.push(newAppointment);
-    AppStorage.setOrCreate<Appointment[]>('appointments', this.appointments);
-
-    if (!this.bookedDepartments.includes(department.id)) {
-      this.bookedDepartments.push(department.id);
+    try {
+      router.pushUrl({
+        url: 'pages/AppointmentTimeSelectPage',
+        params: {
+          hospitalName: this.hospitalName,
+          departmentName: department.deptName,
+          departmentLocation: department.location || `${department.deptName}诊室`
+        }
+      }).then(() => {
+        console.log('成功跳转到预约时间选择页面');
+      }).catch((error: Error) => {
+        console.error('跳转失败:', error.message);
+        ToastUtil.showError('页面跳转失败，请重试', 2000);
+      });
+    } catch (error) {
+      console.error('路由异常:', error);
+      ToastUtil.showError('系统错误，请稍后重试', 2000);
     }
-
-    ToastUtil.showSuccess(`预约 ${department.deptName} 成功！`, 2000);
-    console.log('新增预约成功，总预约数:', this.appointments.length);
   }
 
   onCancelAppointment(department: DepartmentInfo): void {

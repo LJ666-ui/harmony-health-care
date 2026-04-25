@@ -9,8 +9,6 @@ export struct Card {
   @Prop status: string = '';
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
-  @State isPressed: boolean = false;
-
   build() {
     Column() {
       Row() {
@@ -40,23 +38,5 @@ export struct Card {
     .backgroundColor('#FFFFFF')
     .borderRadius(GlobalTheme.RADIUS_MD)
     .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
-    .scale({ x: this.isPressed ? 0.97 : 1, y: this.isPressed ? 0.97 : 1 })
-    .shadow({
-      radius: this.isPressed ? 12 : 8,
-      color: this.isPressed ? '#1677FF30' : GlobalTheme.SHADOW_COLOR,
-      offsetX: 0,
-      offsetY: this.isPressed ? 4 : 2
-    })
-    .animation({
-      duration: 150,
-      curve: 4
-    })
-    .onTouch((event) => {
-      if (event.type === 0) {
-        this.isPressed = true;
-      } else if (event.type === 1 || event.type === 2) {
-        this.isPressed = false;
-      }
-    });
   }
 }

@@ -83,7 +83,12 @@ struct HomePage {
     { id: 11, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
     { id: 12, icon: '✅', title: '转院审批', description: '审批转院申请并同步病历', url: 'pages/TransferApprovalPage' },
     { id: 13, icon: '🔗', title: '病历同步', description: '跨院数据安全同步', url: 'pages/MedicalRecordSyncPage' },
-    { id: 14, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
+    { id: 14, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' },
+    // 智慧病房系统功能（简化版）
+    { id: 15, icon: '🏥', title: '护士站监控', description: '智慧病房实时监控大屏', url: 'pages/NurseStationDashboardSimple' },
+    { id: 16, icon: '🔧', title: '病房设备', description: '智能病房设备控制管理', url: 'pages/SmartWardDevicesSimple' },
+    { id: 17, icon: '🚨', title: '告警中心', description: '实时告警与处理', url: 'pages/SmartWardAlertsSimple' },
+    { id: 18, icon: '📊', title: '护理计划', description: '护理任务时间线管理', url: 'pages/SmartWardCarePlanSimple' }
   ];
 
   private recordId: number | undefined = undefined;

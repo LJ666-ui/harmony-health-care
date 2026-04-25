@@ -1,0 +1,218 @@
+/**
+ * 智能病床控制器
+ * 控制病床的升降、翻身和按铃功能
+ */
+
+import { IDeviceController } from '../interfaces/IDeviceController';
+import { DeviceStatus, DeviceCommand, DeviceProperty, DeviceType } from '../../../models/SmartWardDeviceModels';
+
+/**
+ * 智能病床控制器类
+ */
+export class HospitalBedController implements IDeviceController {
+  // 设备状态缓存
+  private statusCache: Map<string, DeviceStatus> = new Map();
+
+  // 订阅者回调集合
+  private subscribers: Map<string, Array<(status: DeviceStatus) => void>> = new Map();
+
+  constructor() {
+    console.log('HospitalBedController initialized');
+  }
+
+  /**
+   * 发送控制命令到病床设备
+   */
+  public async sendCommand(deviceId: string, command: DeviceCommand): Promise<void> {
+    console.log(`HospitalBedController: Sending command to ${deviceId}`, command);
+
+    // 解析命令参数
+    const params = command.params;
+    let headAngle: number = 0;
+    let footAngle: number = 0;
+    let turnOver: boolean = false;
+    let callBell: boolean = false;
+
+    if ('headAngle' in params) {
+      headAngle = params.headAngle as number;
+    }
+    if ('footAngle' in params) {
+      footAngle = params.footAngle as number;
+    }
+    if ('turnOver' in params) {
+      turnOver = params.turnOver as boolean;
+    }
+    if ('callBell' in params) {
+      callBell = params.callBell as boolean;
+    }
+
+    // 更新设备状态
+    const currentStatus = this.statusCache.get(deviceId);
+    const properties: Map<string, DeviceProperty> = currentStatus?.properties || new Map();
+
+    properties.set('headAngle', {
+      key: 'headAngle',
+      value: headAngle,
+      unit: '度',
+      min: 0,
+      max: 90,
+      readOnly: false,
+      updatedAt: Date.now()
+    });
+
+    properties.set('footAngle', {
+      key: 'footAngle',
+      value: footAngle,
+      unit: '度',
+      min: 0,
+      max: 45,
+      readOnly: false,
+      updatedAt: Date.now()
+    });
+
+    properties.set('isTurnedOver', {
+      key: 'isTurnedOver',
+      value: turnOver,
+      readOnly: false,
+      updatedAt: Date.now()
+    });
+
+    properties.set('isCalling', {
+      key: 'isCalling',
+      value: callBell,
+      readOnly: false,
+      updatedAt: Date.now()
+    });
+
+    const newStatus: DeviceStatus = {
+      deviceId: deviceId,
+      deviceType: DeviceType.HOSPITAL_BED,
+      deviceName: currentStatus?.deviceName || '智能病床',
+      isOnline: true,
+      properties: properties,
+      lastHeartbeat: Date.now()
+    };
+
+    this.statusCache.set(deviceId, newStatus);
+
+    // 通知订阅者
+    this.notifySubscribers(deviceId, newStatus);
+
+    console.log(`HospitalBedController: Bed ${deviceId} updated - headAngle: ${headAngle}°, footAngle: ${footAngle}°, turnOver: ${turnOver}, callBell: ${callBell}`);
+  }
+
+  /**
+   * 获取病床设备状态
+   */
+  public async getDeviceStatus(deviceId: string): Promise<DeviceStatus> {
+    let status = this.statusCache.get(deviceId);
+
+    // 如果没有缓存状态，创建默认状态
+    if (!status) {
+      const properties: Map<string, DeviceProperty> = new Map();
+      properties.set('headAngle', {
+        key: 'headAngle',
+        value: 0,
+        unit: '度',
+        min: 0,
+        max: 90,
+        readOnly: false,
+        updatedAt: Date.now()
+      });
+      properties.set('footAngle', {
+        key: 'footAngle',
+        value: 0,
+        unit: '度',
+        min: 0,
+        max: 45,
+        readOnly: false,
+        updatedAt: Date.now()
+      });
+      properties.set('isTurnedOver', {
+        key: 'isTurnedOver',
+        value: false,
+        readOnly: false,
+        updatedAt: Date.now()
+      });
+      properties.set('isCalling', {
+        key: 'isCalling',
+        value: false,
+        readOnly: false,
+        updatedAt: Date.now()
+      });
+
+      status = {
+        deviceId: deviceId,
+        deviceType: DeviceType.HOSPITAL_BED,
+        deviceName: '智能病床',
+        isOnline: true,
+        properties: properties,
+        lastHeartbeat: Date.now()
+      };
+
+      this.statusCache.set(deviceId, status);
+    }
+
+    return status;
+  }
+
+  /**
+   * 订阅设备状态变化
+   */
+  public subscribeStatusChange(deviceId: string, callback: (status: DeviceStatus) => void): string {
+    const callbacks = this.subscribers.get(deviceId) || [];
+    callbacks.push(callback);
+    this.subscribers.set(deviceId, callbacks);
+
+    const subscriptionId = `bed_${deviceId}_${Date.now()}`;
+    console.log(`HospitalBedController: Subscribed to ${deviceId}, subscriptionId: ${subscriptionId}`);
+    return subscriptionId;
+  }
+
+  /**
+   * 取消订阅设备状态变化
+   */
+  public unsubscribeStatusChange(subscriptionId: string): boolean {
+    // 解析设备ID
+    const parts = subscriptionId.split('_');
+    if (parts.length < 2) {
+      return false;
+    }
+
+    const deviceId = parts[1];
+    const callbacks = this.subscribers.get(deviceId);
+
+    if (callbacks && callbacks.length > 0) {
+      callbacks.pop();
+      console.log(`HospitalBedController: Unsubscribed from ${subscriptionId}`);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * 通知订阅者状态变化
+   */
+  private notifySubscribers(deviceId: string, status: DeviceStatus): void {
+    const callbacks = this.subscribers.get(deviceId);
+    if (callbacks) {
+      callbacks.forEach(callback => {
+        try {
+          callback(status);
+        } catch (error) {
+          console.error(`HospitalBedController: Error in subscriber callback for ${deviceId}`, error);
+        }
+      });
+    }
+  }
+
+  /**
+   * 清空缓存
+   */
+  public clear(): void {
+    this.statusCache.clear();
+    this.subscribers.clear();
+    console.log('HospitalBedController cleared');
+  }
+}

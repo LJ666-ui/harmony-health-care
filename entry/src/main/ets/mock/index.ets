@@ -1,5 +1,7 @@
 import { BaseResponse } from '../common/utils/HttpUtil';
 
+export * from './parkingMock';
+
 export const USE_MOCK: boolean = true;
 
 let mockEnabled: boolean = true;

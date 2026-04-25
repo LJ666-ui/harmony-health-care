@@ -54,6 +54,16 @@ export interface SmartWardRoom {
 }
 
 /**
+ * 患者生命体征接口
+ */
+export interface PatientVitalSigns {
+  heartRate: number;
+  oxygenSaturation: number;
+  systolicBP: number;
+  diastolicBP: number;
+}
+
+/**
  * 病房概览信息接口
  * 用于护士站大屏展示的简化病房信息
  */
@@ -65,12 +75,7 @@ export interface WardOverviewInfo {
   patientAge: number;
   patientGender: 'male' | 'female' | 'other';
   riskLevel: PatientRiskLevel;
-  vitalSigns: {
-    heartRate: number;
-    oxygenSaturation: number;
-    systolicBP: number;
-    diastolicBP: number;
-  };
+  vitalSigns: PatientVitalSigns;
   deviceOnlineCount: number;           // 在线设备数量
   deviceTotalCount: number;            // 设备总数
   lastAlertMessage?: string;           // 最近告警消息

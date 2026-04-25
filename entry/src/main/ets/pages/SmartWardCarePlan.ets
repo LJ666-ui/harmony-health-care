@@ -116,7 +116,7 @@ struct SmartWardCarePlan {
 
   build() {
     Column() {
-      Header({ title: '护理计划', showBack: true, onBack: () => this.handleBack() });
+      Header({ title: '护理计划', showBack: true });
 
       if (this.isLoading) {
         Column() {

@@ -63,17 +63,32 @@ export interface DeviceCommand {
 }
 
 /**
+ * 灯光控制参数接口
+ */
+export interface LightControlParams {
+  brightness?: number;               // 亮度（0-100）
+  colorTemp?: number;                // 色温（2700-6500K）
+  isOn?: boolean;                    // 开关状态
+}
+
+/**
  * 灯光控制命令接口
  * 继承自DeviceCommand，专门用于灯光控制
  */
 export interface LightCommand extends DeviceCommand {
   deviceType: DeviceType.SMART_LIGHT;
   action: 'setBrightness' | 'setColorTemp' | 'toggle';
-  params: {
-    brightness?: number;               // 亮度（0-100）
-    colorTemp?: number;                // 色温（2700-6500K）
-    isOn?: boolean;                    // 开关状态
-  };
+  params: LightControlParams;
+}
+
+/**
+ * 病床控制参数接口
+ */
+export interface BedControlParams {
+  headAngle?: number;                // 头侧角度（0-90度）
+  footAngle?: number;                // 脚侧角度（0-45度）
+  turnOver?: boolean;                // 是否翻身
+  callBell?: boolean;                // 是否按铃
 }
 
 /**
@@ -83,12 +98,7 @@ export interface LightCommand extends DeviceCommand {
 export interface BedCommand extends DeviceCommand {
   deviceType: DeviceType.HOSPITAL_BED;
   action: 'adjustHeadAngle' | 'adjustFootAngle' | 'turnOver' | 'callBell';
-  params: {
-    headAngle?: number;                // 头侧角度（0-90度）
-    footAngle?: number;                // 脚侧角度（0-45度）
-    turnOver?: boolean;                // 是否翻身
-    callBell?: boolean;                // 是否按铃
-  };
+  params: BedControlParams;
 }
 
 /**
@@ -106,15 +116,30 @@ export interface MonitorData {
 }
 
 /**
+ * 窗帘控制参数接口
+ */
+export interface CurtainControlParams {
+  openPercentage?: number;           // 开合度（0-100）
+  isOn?: boolean;                    // 开关状态
+}
+
+/**
  * 窗帘控制命令接口
  */
 export interface CurtainCommand extends DeviceCommand {
   deviceType: DeviceType.SMART_CURTAIN;
   action: 'setOpenPercentage' | 'toggle';
-  params: {
-    openPercentage?: number;           // 开合度（0-100）
-    isOn?: boolean;                    // 开关状态
-  };
+  params: CurtainControlParams;
+}
+
+/**
+ * 电视控制参数接口
+ */
+export interface TVControlParams {
+  volume?: number;                   // 音量（0-100）
+  channel?: number;                  // 频道
+  isOn?: boolean;                    // 开关状态
+  isMuted?: boolean;                 // 是否静音
 }
 
 /**
@@ -123,12 +148,16 @@ export interface CurtainCommand extends DeviceCommand {
 export interface TVCommand extends DeviceCommand {
   deviceType: DeviceType.SMART_TV;
   action: 'setVolume' | 'setChannel' | 'toggle' | 'mute';
-  params: {
-    volume?: number;                   // 音量（0-100）
-    channel?: number;                  // 频道
-    isOn?: boolean;                    // 开关状态
-    isMuted?: boolean;                 // 是否静音
-  };
+  params: TVControlParams;
+}
+
+/**
+ * 空调控制参数接口
+ */
+export interface ACControlParams {
+  temperature?: number;              // 温度（16-30℃）
+  mode?: 'cool' | 'heat' | 'auto' | 'fan';  // 模式
+  isOn?: boolean;                    // 开关状态
 }
 
 /**
@@ -137,11 +166,14 @@ export interface TVCommand extends DeviceCommand {
 export interface ACCommand extends DeviceCommand {
   deviceType: DeviceType.AIR_CONDITIONER;
   action: 'setTemperature' | 'setMode' | 'toggle';
-  params: {
-    temperature?: number;              // 温度（16-30℃）
-    mode?: 'cool' | 'heat' | 'auto' | 'fan';  // 模式
-    isOn?: boolean;                    // 开关状态
-  };
+  params: ACControlParams;
+}
+
+/**
+ * 呼叫按钮控制参数接口
+ */
+export interface CallButtonControlParams {
+  isPressed?: boolean;               // 是否按下
 }
 
 /**
@@ -150,9 +182,15 @@ export interface ACCommand extends DeviceCommand {
 export interface CallButtonCommand extends DeviceCommand {
   deviceType: DeviceType.CALL_BUTTON;
   action: 'press' | 'reset';
-  params: {
-    isPressed?: boolean;               // 是否按下
-  };
+  params: CallButtonControlParams;
+}
+
+/**
+ * 输液泵控制参数接口
+ */
+export interface InfusionPumpControlParams {
+  flowRate?: number;                 // 滴速（ml/h）
+  isPaused?: boolean;                // 是否暂停
 }
 
 /**
@@ -161,8 +199,5 @@ export interface CallButtonCommand extends DeviceCommand {
 export interface InfusionPumpCommand extends DeviceCommand {
   deviceType: DeviceType.INFUSION_PUMP;
   action: 'setFlowRate' | 'pause' | 'resume';
-  params: {
-    flowRate?: number;                 // 滴速（ml/h）
-    isPaused?: boolean;                // 是否暂停
-  };
+  params: InfusionPumpControlParams;
 }

@@ -3,9 +3,9 @@
  * 包含病房概览、告警中心、护理计划三个区域
  */
 
-import { SmartWardRoom, WardOverviewInfo } from '../models/SmartWardModels';
+import { SmartWardRoom, WardOverviewInfo, PatientVitalSigns } from '../models/SmartWardModels';
 import { WardAlert } from '../models/SmartWardAlertModels';
-import { CareTask } from '../models/SmartWardTaskModels';
+import { CareTask, TaskStatus } from '../models/SmartWardTaskModels';
 import { PatientRiskLevel } from '../models/SmartWardEnums';
 import { DeviceManager } from '../core/DeviceManager';
 import { AlertManager } from '../core/AlertManager';
@@ -110,7 +110,7 @@ struct NurseStationDashboard {
           oxygenSaturation: 98,
           systolicBP: 120,
           diastolicBP: 80
-        },
+        } as PatientVitalSigns,
         deviceOnlineCount: 4,
         deviceTotalCount: 4,
         lastAlertMessage: '心率异常',
@@ -129,7 +129,7 @@ struct NurseStationDashboard {
           oxygenSaturation: 94,
           systolicBP: 135,
           diastolicBP: 88
-        },
+        } as PatientVitalSigns,
         deviceOnlineCount: 4,
         deviceTotalCount: 4
       }
@@ -152,7 +152,7 @@ struct NurseStationDashboard {
         roomNumber: '301',
         patientId: 'P001',
         patientName: '张**',
-        status: 'pending' as any,
+        status: 'pending' as TaskStatus,
         isRecurring: true,
         priority: 8
       }

@@ -7,7 +7,7 @@ import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { DeviceManager } from '../core/DeviceManager';
 import { DeviceType } from '../models/SmartWardEnums';
-import { DeviceInfo } from '../models/SmartWardDeviceModels';
+import { DeviceInfo, DeviceStatus } from '../models/SmartWardDeviceModels';
 
 @Entry
 @Component
@@ -68,7 +68,7 @@ struct SmartWardDevices {
 
   build() {
     Column() {
-      Header({ title: '病房设备', showBack: true, onBack: () => this.handleBack() });
+      Header({ title: '病房设备', showBack: true });
 
       if (this.isLoading) {
         Column() {

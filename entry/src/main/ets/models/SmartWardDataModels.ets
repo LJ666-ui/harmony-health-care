@@ -10,10 +10,7 @@
 export interface VitalSigns {
   heartRate: number;                   // 心率（bpm）
   oxygenSaturation: number;            // 血氧饱和度（%）
-  bloodPressure: {                     // 血压
-    systolic: number;                  // 收缩压（mmHg）
-    diastolic: number;                 // 舒张压（mmHg）
-  };
+  bloodPressure: BloodPressure;        // 血压
   temperature: number;                 // 体温（℃）
   respiratoryRate: number;             // 呼吸频率（次/分钟）
   timestamp: number;                   // 记录时间戳
@@ -41,7 +38,7 @@ export const EventType = {
   DEVICE_OFFLINE: 'DEVICE_OFFLINE',                      // 设备离线
   TIME_ARRIVED: 'TIME_ARRIVED',                          // 定时到达
   FALL_DETECTED: 'FALL_DETECTED'                         // 跌倒检测
-} as const;
+};
 
 /**
  * 数据采集记录接口
@@ -52,7 +49,7 @@ export interface DataCollectionRecord {
   deviceId: string;                 // 设备ID
   deviceType: string;               // 设备类型
   collectedAt: number;              // 采集时间戳
-  data: any;                        // 采集的数据
+  data: object;                     // 采集的数据
   collectionDuration: number;       // 采集耗时（毫秒）
   status: 'success' | 'failed';     // 采集状态
   errorMessage?: string;            // 错误消息

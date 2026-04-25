@@ -6,7 +6,8 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { AlertManager } from '../core/AlertManager';
-import { WardAlert, AlertLevel } from '../models/SmartWardAlertModels';
+import { WardAlert } from '../models/SmartWardAlertModels';
+import { AlertLevel } from '../models/SmartWardEnums';
 
 @Entry
 @Component
@@ -41,38 +42,53 @@ struct SmartWardAlerts {
   }
 
   getAlertColor(level: AlertLevel): string {
-    const colorMap: Record<AlertLevel, string> = {
-      [AlertLevel.EMERGENCY]: '#FF0000',
-      [AlertLevel.URGENT]: '#FF6600',
-      [AlertLevel.WARNING]: '#FFAA00',
-      [AlertLevel.INFO]: '#1890FF'
-    };
-    return colorMap[level] || '#999999';
+    switch (level) {
+      case AlertLevel.EMERGENCY:
+        return '#FF0000';
+      case AlertLevel.URGENT:
+        return '#FF6600';
+      case AlertLevel.WARNING:
+        return '#FFAA00';
+      case AlertLevel.INFO:
+        return '#1890FF';
+      default:
+        return '#999999';
+    }
   }
 
   getAlertBgColor(level: AlertLevel): string {
-    const colorMap: Record<AlertLevel, string> = {
-      [AlertLevel.EMERGENCY]: '#FFEBEE',
-      [AlertLevel.URGENT]: '#FFF3E0',
-      [AlertLevel.WARNING]: '#FFF8E1',
-      [AlertLevel.INFO]: '#E3F2FD'
-    };
-    return colorMap[level] || '#F5F5F5';
+    switch (level) {
+      case AlertLevel.EMERGENCY:
+        return '#FFEBEE';
+      case AlertLevel.URGENT:
+        return '#FFF3E0';
+      case AlertLevel.WARNING:
+        return '#FFF8E1';
+      case AlertLevel.INFO:
+        return '#E3F2FD';
+      default:
+        return '#F5F5F5';
+    }
   }
 
   getAlertLevelText(level: AlertLevel): string {
-    const textMap: Record<AlertLevel, string> = {
-      [AlertLevel.EMERGENCY]: '急救',
-      [AlertLevel.URGENT]: '紧急',
-      [AlertLevel.WARNING]: '警告',
-      [AlertLevel.INFO]: '信息'
-    };
-    return textMap[level] || '未知';
+    switch (level) {
+      case AlertLevel.EMERGENCY:
+        return '急救';
+      case AlertLevel.URGENT:
+        return '紧急';
+      case AlertLevel.WARNING:
+        return '警告';
+      case AlertLevel.INFO:
+        return '信息';
+      default:
+        return '未知';
+    }
   }
 
   build() {
     Column() {
-      Header({ title: '告警中心', showBack: true, onBack: () => this.handleBack() });
+      Header({ title: '告警中心', showBack: true });
 
       if (this.isLoading) {
         Column() {

@@ -9,7 +9,11 @@
 		"SELECT_BUILD_PRODUCT":"default",
 		"BUNDLE_NAME":"com.example.harmonyhealthcare",
 		"BUILD_PATH":{
+<<<<<<< HEAD
 			"OUTPUT_PATH":"D:\\harmony-health-care\\build\\outputs\\default"
+=======
+			"OUTPUT_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\build\\outputs\\default"
+>>>>>>> be2e94180e922d2dd2370b7cce99c77ea7f8eaba
 		},
 		"SELECT_BUILD_MODE":""
 	}

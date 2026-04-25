@@ -5,6 +5,7 @@
 	"BuildOptions":{
 		"SELECT_BUILD_TARGET":"default",
 		"BUILD_PATH":{
+<<<<<<< HEAD
 			"OUTPUT_METADATA_JSON":"D:\\harmony-health-care\\entry\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
 			"OUTPUT_PATH":"D:\\harmony-health-care\\entry\\build\\default\\outputs\\default",
 			"RES_PATH":"D:\\harmony-health-care\\entry\\build\\default\\intermediates\\res\\default",
@@ -17,6 +18,20 @@
 			"MANIFEST_JSON":"D:\\harmony-health-care\\entry\\build\\default\\intermediates\\manifest\\default",
 			"JS_LITE_ASSETS_PATH":"D:\\harmony-health-care\\entry\\build\\default\\intermediates\\loader_out_lite\\default",
 			"JS_SUPER_VISUAL_PATH":"D:\\harmony-health-care\\entry\\build\\default\\cache\\default\\default@CompileJS\\jsbundle"
+=======
+			"OUTPUT_METADATA_JSON":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
+			"OUTPUT_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\outputs\\default",
+			"RES_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\res\\default",
+			"ETS_SUPER_VISUAL_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\cache\\default\\default@CompileArkTS\\esmodule",
+			"JS_ASSETS_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\loader_out\\default",
+			"SOURCE_MAP_DIR":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\source_map\\default",
+			"INTERMEDIA_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates",
+			"RES_PROFILE_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\res\\default\\resources\\base\\profile",
+			"WORKER_LOADER":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\loader\\default\\loader.json",
+			"MANIFEST_JSON":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\manifest\\default",
+			"JS_LITE_ASSETS_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\loader_out_lite\\default",
+			"JS_SUPER_VISUAL_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\cache\\default\\default@CompileJS\\jsbundle"
+>>>>>>> be2e94180e922d2dd2370b7cce99c77ea7f8eaba
 		}
 	}
 }

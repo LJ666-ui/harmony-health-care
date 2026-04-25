@@ -21,7 +21,9 @@ struct MedicalPage {
     { id: 2, icon: '📅', title: '预约挂号', description: '在线预约医生门诊', url: 'pages/Appointments' },
     { id: 3, icon: '🗺️', title: '院内导航', description: 'AR智能导航到诊室', url: 'pages/ARNavigationPage' },
     { id: 4, icon: '💊', title: '用药管理', description: '设置用药提醒', url: 'pages/Medications' },
-    { id: 5, icon: '🔄', title: '转院申请', description: '在线申请转院', url: 'pages/TransferApplyPage' }
+    { id: 5, icon: '🔄', title: '转院申请', description: '在线申请转院', url: 'pages/TransferApplyPage' },
+    { id: 6, icon: '✅', title: '转院审批', description: '医生审批转院申请并同步病历', url: 'pages/TransferApprovalPage' },
+    { id: 7, icon: '🔗', title: '病历同步', description: '跨院病历数据安全同步', url: 'pages/MedicalRecordSyncPage' }
   ];
 
   aboutToAppear(): void {

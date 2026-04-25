@@ -7,6 +7,7 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
+
 interface UserInfo {
   userId?: number;
   username: string;
@@ -15,6 +16,7 @@ interface UserInfo {
   age?: number;
   gender?: string;
 }
+
 interface LoginResponseData {
   token: string;
   userId?: number;
@@ -115,7 +117,7 @@ struct Login {
         if (response.data) {
           try {
             const settings: SettingsUtil = SettingsUtil.getInstance();
-            const userInfo: PersistedUserInfo = response.data.userInfo as PersistedUserInfo || {
+            const userInfo: PersistedUserInfo = response.data.userInfo || {
               userId: response.data.userId,
               username: response.data.username || '',
               userType: response.data.userType,

@@ -11,6 +11,14 @@
     {
       "name": "EntryAbility_label",
       "value": "label"
+    },
+    {
+      "name": "read_media_reason",
+      "value": "需要读取相册中的图片用于古医图AI复原处理"
+    },
+    {
+      "name": "write_media_reason",
+      "value": "需要保存复原后的图片到相册"
     }
   ]
 }

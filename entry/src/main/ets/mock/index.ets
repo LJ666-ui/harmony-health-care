@@ -12,19 +12,30 @@ export function isMockEnabled(): boolean {
   return mockEnabled;
 }
 
-export interface MockHandler<T> {
-  (url: string, data?: object, params?: Object): Promise<BaseResponse<T>>;
+export class MockHandler<T> {
+  handle: (url: string, data?: object, params?: Object) => Promise<BaseResponse<T>>;
+
+  constructor(handleFn: (url: string, data?: object, params?: Object) => Promise<BaseResponse<T>>) {
+    this.handle = handleFn;
+  }
 }
 
-interface HandlerEntry {
-  pattern: string;
-  handler: MockHandler<Object>;
+class HandlerEntry {
+  pattern: string = '';
+  handler: MockHandler<Object> = new MockHandler<Object>(async () => {
+    return new BaseResponse<Object>(true, '', undefined, 200);
+  });
+
+  constructor(pattern?: string, handler?: MockHandler<Object>) {
+    if (pattern !== undefined) this.pattern = pattern;
+    if (handler !== undefined) this.handler = handler;
+  }
 }
 
 const mockHandlers: HandlerEntry[] = [];
 
 export function registerMockHandler<T>(urlPattern: string, handler: MockHandler<T>): void {
-  mockHandlers.push({ pattern: urlPattern, handler: handler as MockHandler<Object> });
+  mockHandlers.push(new HandlerEntry(urlPattern, handler as MockHandler<Object>));
 }
 
 export function unregisterMockHandler(urlPattern: string): void {
@@ -37,7 +48,7 @@ export function unregisterMockHandler(urlPattern: string): void {
 
 export async function resolveMockResponse<T>(
   url: string,
-  method: string,
+  _method: string,
   data?: object,
   params?: Object
 ): Promise<BaseResponse<T> | null> {
@@ -51,7 +62,7 @@ export async function resolveMockResponse<T>(
     if (url.indexOf(entry.pattern) >= 0) {
       console.log('[MockManager] 匹配Mock: ' + entry.pattern + ' -> ' + url);
       try {
-        const result = await entry.handler(url, data, params);
+        const result = await entry.handler.handle(url, data, params);
         return result as BaseResponse<T>;
       } catch (error) {
         console.error('[MockManager] Mock处理失败(' + entry.pattern + '):', error);

@@ -7,6 +7,7 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
+
 interface UserInfo {
   userId?: number;
   username: string;
@@ -15,6 +16,7 @@ interface UserInfo {
   age?: number;
   gender?: string;
 }
+
 interface LoginResponseData {
   token: string;
   userId?: number;
@@ -165,16 +167,28 @@ struct Login {
 
       Scroll() {
         Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
-          Text('星云医疗助手')
-            .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor(GlobalTheme.THEME_COLOR)
-            .margin({ top: this.isElderMode ? 36 : 24, bottom: GlobalTheme.getSpacingMD(this.isElderMode) });
-
-          Text('欢迎回来，请登录您的账号')
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontColor(GlobalTheme.TEXT_SECONDARY)
-            .margin({ bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
+          // 渐变头部区域
+          Column() {
+            Text('🏥')
+              .fontSize(48)
+              .margin({ bottom: 16 });
+            Text('星云医疗助手')
+              .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
+              .fontWeight('bold')
+              .fontColor('#FFFFFF')
+              .margin({ bottom: 8 });
+            Text('欢迎回来，请登录您的账号')
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontColor('#FFFFFFCC')
+          }
+          .width('100%')
+          .padding({ top: 40, bottom: 36 })
+          .linearGradient({
+            angle: 135,
+            colors: [['#1677FF', 0], ['#36CFC9', 1]]
+          })
+          .borderRadius({ bottomLeft: 32, bottomRight: 32 })
+          .margin({ top: -GlobalTheme.getSpacingLG(this.isElderMode), left: -GlobalTheme.getSpacingMD(this.isElderMode), right: -GlobalTheme.getSpacingMD(this.isElderMode) });
 
           Input({
             placeholder: '请输入手机号/账号',
@@ -189,20 +203,25 @@ struct Login {
           })
 
           if (this.errorMessage) {
-            Text(this.errorMessage)
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor(GlobalTheme.ERROR_COLOR)
-              .width('100%')
-              .padding(8)
-              .backgroundColor('#FFF2F0')
-              .borderRadius(8)
-              .textAlign(TextAlign.Center);
+            Row() {
+              Text('⚠️ ')
+                .fontSize(14)
+                .fontColor(GlobalTheme.ERROR_COLOR);
+              Text(this.errorMessage)
+                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                .fontColor(GlobalTheme.ERROR_COLOR);
+            }
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#FFF2F0')
+            .borderRadius(10)
+            .border({ width: 1, color: '#FFCCC7', style: BorderStyle.Solid });
           }
 
           if (this.isLoading) {
             Loading();
           } else {
-            Button('登录')
+            Button('登 录')
               .width('100%')
               .height(GlobalTheme.getButtonHeight(this.isElderMode))
               .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
@@ -211,10 +230,10 @@ struct Login {
               .backgroundColor(GlobalTheme.THEME_COLOR)
               .borderRadius(GlobalTheme.RADIUS_MD)
               .shadow({
-                radius: 8,
-                color: '#1677FF30',
+                radius: 12,
+                color: '#1677FF44',
                 offsetX: 0,
-                offsetY: 4
+                offsetY: 6
               })
               .onClick(async () => await this.handleLogin());
           }
@@ -240,12 +259,67 @@ struct Login {
           }
           .width('100%');
 
-          Text('演示账号：138****1234 / 密码：123456')
-            .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-            .fontColor('#999999')
-            .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-            .backgroundColor('#F5F5F5')
-            .borderRadius(8);
+          // 演示账号提示卡片
+          Row({ space: 8 }) {
+            Text('💡')
+              .fontSize(16);
+            Column({ space: 2 }) {
+              Text('演示账号')
+                .fontSize(12)
+                .fontWeight('bold')
+                .fontColor('#666666');
+              Text('138****1234 / 密码：123456')
+                .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                .fontColor('#999999');
+            }
+            .alignItems(HorizontalAlign.Start);
+          }
+          .width('100%')
+          .padding(14)
+          .backgroundColor('#FAFBFF')
+          .borderRadius(10)
+          .border({ width: 1, color: '#E8ECF2', style: BorderStyle.Solid });
+
+          // 功能亮点
+          Row({ space: 0 }) {
+            Column({ space: 6 }) {
+              Text('🔒')
+                .fontSize(24);
+              Text('安全加密')
+                .fontSize(11)
+                .fontColor('#666666');
+            }
+            .layoutWeight(1);
+
+            Column({ space: 6 }) {
+              Text('🤖')
+                .fontSize(24);
+              Text('AI智能')
+                .fontSize(11)
+                .fontColor('#666666');
+            }
+            .layoutWeight(1);
+
+            Column({ space: 6 }) {
+              Text('👨‍⚕️')
+                .fontSize(24);
+              Text('专业医生')
+                .fontSize(11)
+                .fontColor('#666666');
+            }
+            .layoutWeight(1);
+
+            Column({ space: 6 }) {
+              Text('📊')
+                .fontSize(24);
+              Text('健康追踪')
+                .fontSize(11)
+                .fontColor('#666666');
+            }
+            .layoutWeight(1);
+          }
+          .width('100%')
+          .padding({ top: 20, bottom: 8 })
         }
         .width('85%')
         .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });

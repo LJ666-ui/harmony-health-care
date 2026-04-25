@@ -1,23 +1,33 @@
+/**
+ * 测试页面 - 验证路由是否正常工作
+ */
+
+import { router } from '@kit.ArkUI';
+
 @Entry
 @Component
 struct TestPage {
+  @State message: string = '测试页面';
+
+  aboutToAppear(): void {
+    console.log('TestPage: aboutToAppear');
+  }
+
   build() {
     Column() {
-      Text('测试页面')
-        .fontSize(30)
-        .fontWeight('bold')
-        .fontColor('#333333')
+      Text(this.message)
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .margin({ bottom: 20 })
 
-      Text('如果你能看到这个文字，说明 Preview 正常工作！')
-        .fontSize(18)
-        .fontColor('#666666')
+      Text('路由测试成功！')
+        .fontSize(16)
+        .fontColor('#4CAF50')
+
+      Button('返回首页')
         .margin({ top: 20 })
-
-      Button('点击测试')
-        .fontSize(18)
-        .margin({ top: 30 })
         .onClick(() => {
-          console.log('按钮点击成功！');
+          router.back();
         })
     }
     .width('100%')

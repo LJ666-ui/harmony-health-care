@@ -69,15 +69,26 @@ struct HomePage {
   @State latestHealthRecord: Object | null = null;
 
   @State featureCards: FeatureCard[] = [
-    { id: 0, icon: '📋', title: '健康记录', description: '查看和管理您的健康数据', url: 'pages/HealthRecords' },
-    { id: 1, icon: '📅', title: '预约管理', description: '选择医院和科室进行预约', url: 'pages/AppointmentManagementPage' },
-    { id: 2, icon: '💊', title: '用药管理', description: '跟踪您的用药情况', url: 'pages/Medications' },
-    { id: 3, icon: '🍎', title: '饮食食谱', description: '食材百科和营养知识', url: 'pages/FoodEncyclopediaPage' },
-    { id: 4, icon: '🤖', title: 'AI健康顾问', description: '智能健康问答助手', url: 'pages/AiChatPage' },
-    { id: 5, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
-    { id: 6, icon: '🌿', title: '药材百科', description: '中药材知识库查询', url: 'pages/HerbalListPage' },
-    { id: 7, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
-    { id: 8, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' }
+    { id: 0, icon: '❤️', title: '实时监控', description: '健康数据实时监测与预警', url: 'pages/MonitoringDashboard' },
+    { id: 1, icon: '📋', title: '健康记录', description: '查看和管理您的健康数据', url: 'pages/HealthRecords' },
+    { id: 2, icon: '📅', title: '预约管理', description: '选择医院和科室进行预约', url: 'pages/AppointmentManagementPage' },
+    { id: 3, icon: '💊', title: '用药管理', description: '跟踪您的用药情况', url: 'pages/Medications' },
+    { id: 4, icon: '🍎', title: '饮食食谱', description: '食材百科和营养知识', url: 'pages/FoodEncyclopediaPage' },
+    { id: 5, icon: '🤖', title: 'AI健康顾问', description: '智能健康问答助手', url: 'pages/AiChatPage' },
+    { id: 6, icon: '🏥', title: 'AI智能问诊', description: '多智能体会诊服务', url: 'pages/AiConsultationPage' },
+    { id: 7, icon: '📷', title: '医学影像AI分析', description: 'AI病灶识别与分析系统', url: 'pages/ImageAnalysisPage' },
+    { id: 8, icon: '🖼️', title: '古医图AI复原', description: '古籍图像智能修复增强', url: 'pages/ImageRestorationPage' },
+    { id: 9, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
+    { id: 10, icon: '🌿', title: '药材百科', description: '中药材知识库查询', url: 'pages/HerbalListPage' },
+    { id: 11, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
+    { id: 12, icon: '✅', title: '转院审批', description: '审批转院申请并同步病历', url: 'pages/TransferApprovalPage' },
+    { id: 13, icon: '🔗', title: '病历同步', description: '跨院数据安全同步', url: 'pages/MedicalRecordSyncPage' },
+    { id: 14, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' },
+    // 智慧病房系统功能（简化版）
+    { id: 15, icon: '🏥', title: '护士站监控', description: '智慧病房实时监控大屏', url: 'pages/NurseStationDashboardSimple' },
+    { id: 16, icon: '🔧', title: '病房设备', description: '智能病房设备控制管理', url: 'pages/SmartWardDevicesSimple' },
+    { id: 17, icon: '🚨', title: '告警中心', description: '实时告警与处理', url: 'pages/SmartWardAlertsSimple' },
+    { id: 18, icon: '📊', title: '护理计划', description: '护理任务时间线管理', url: 'pages/SmartWardCarePlanSimple' }
   ];
 
   private recordId: number | undefined = undefined;

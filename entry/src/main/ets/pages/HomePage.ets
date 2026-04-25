@@ -88,7 +88,10 @@ struct HomePage {
     { id: 15, icon: '🏥', title: '护士站监控', description: '智慧病房实时监控大屏', url: 'pages/NurseStationDashboardSimple' },
     { id: 16, icon: '🔧', title: '病房设备', description: '智能病房设备控制管理', url: 'pages/SmartWardDevicesSimple' },
     { id: 17, icon: '🚨', title: '告警中心', description: '实时告警与处理', url: 'pages/SmartWardAlertsSimple' },
-    { id: 18, icon: '📊', title: '护理计划', description: '护理任务时间线管理', url: 'pages/SmartWardCarePlanSimple' }
+    { id: 18, icon: '📊', title: '护理计划', description: '护理任务时间线管理', url: 'pages/SmartWardCarePlanSimple' },
+    // 智慧停车+反向寻车系统
+    { id: 19, icon: '🅿️', title: '智慧停车', description: '停车场发现、车位预约、反向寻车', url: 'pages/ParkingListPage' },
+    { id: 20, icon: '🚗', title: '反向寻车', description: 'AR实景导航快速找到爱车', url: 'pages/FindCarPage' }
   ];
 
   private recordId: number | undefined = undefined;

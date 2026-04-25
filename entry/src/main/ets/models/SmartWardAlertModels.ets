@@ -6,15 +6,20 @@
 import { AlertLevel, AlertCategory } from './SmartWardEnums';
 
 /**
+ * 血压数据接口
+ */
+export interface BloodPressure {
+  systolic: number;                  // 收缩压（mmHg）
+  diastolic: number;                 // 舒张压（mmHg）
+}
+
+/**
  * 生命体征快照接口
  * 描述告警触发时的生命体征数据
  */
 export interface VitalSignSnapshot {
   heartRate: number;                   // 心率（bpm）
-  bloodPressure: {                     // 血压
-    systolic: number;                  // 收缩压（mmHg）
-    diastolic: number;                 // 舒张压（mmHg）
-  };
+  bloodPressure: BloodPressure;        // 血压
   bloodOxygen: number;                 // 血氧饱和度（%）
   temperature: number;                 // 体温（℃）
   respiratoryRate: number;             // 呼吸频率（次/分钟）

@@ -1,395 +1,181 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { Loading } from '../components/Loading';
-import { EmptyState } from '../components/EmptyState';
+import { GlobalTheme } from '../global';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
-import BrowseTracker from '../utils/BrowseTracker';
-import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
-
-interface UserInfo {
-  username: string;
-  avatar: string;
-  age: number;
-  gender: string;
-}
-
-interface FeatureCard {
-  id: number;
-  icon: string;
-  title: string;
-  description: string;
-  url: string;
-}
-
-interface HomeStats {
-  todaySteps: number;
-  weekAppointments: number;
-  healthScore: number;
-  heartRate: number;
-  bloodPressure: string;
-}
-
-interface HospitalInfo {
-  id: number;
-  name: string;
-  distance?: string;
-  level?: string;
-  address?: string;
-}
-
-interface ArticleInfo {
-  id: number;
-  title: string;
-  coverImage?: string;
-  categoryName?: string;
-}
-
-interface HerbalInfoSimple {
-  id: number;
-  name: string;
-}
 
 @Entry
 @Component
-struct HomePage {
+export struct HomePage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @StorageLink('fontSizeLevel') currentFontSizeLevel: string = 'medium';
-  @StorageLink('colorMode') currentColorMode: string = 'normal';
+  @State currentIndex: number = 0;
+  private theme: AccessibilityConfig = new AccessibilityConfig();
 
-  @State clickedCard: number = -1;
-  @State isLoading: boolean = true;
-  @State hasError: boolean = false;
-  @State userInfo: UserInfo | null = null;
-  @State homeStats: HomeStats | null = null;
-
-  @State nearbyHospitals: HospitalInfo[] = [];
-  @State articles: ArticleInfo[] = [];
-  @State hotHerbals: HerbalInfoSimple[] = [];
-  @State latestHealthRecord: Object | null = null;
-
-  @State featureCards: FeatureCard[] = [
-    { id: 0, icon: '❤️', title: '实时监控', description: '健康数据实时监测与预警', url: 'pages/MonitoringDashboard' },
-    { id: 1, icon: '📋', title: '健康记录', description: '查看和管理您的健康数据', url: 'pages/HealthRecords' },
-    { id: 2, icon: '📅', title: '预约管理', description: '选择医院和科室进行预约', url: 'pages/AppointmentManagementPage' },
-    { id: 3, icon: '💊', title: '用药管理', description: '跟踪您的用药情况', url: 'pages/Medications' },
-    { id: 4, icon: '🍎', title: '饮食食谱', description: '食材百科和营养知识', url: 'pages/FoodEncyclopediaPage' },
-    { id: 5, icon: '🤖', title: 'AI健康顾问', description: '智能健康问答助手', url: 'pages/AiChatPage' },
-    { id: 6, icon: '🏥', title: 'AI智能问诊', description: '多智能体会诊服务', url: 'pages/AiConsultationPage' },
-    { id: 7, icon: '📷', title: '医学影像AI分析', description: 'AI病灶识别与分析系统', url: 'pages/ImageAnalysisPage' },
-    { id: 8, icon: '🖼️', title: '古医图AI复原', description: '古籍图像智能修复增强', url: 'pages/ImageRestorationPage' },
-    { id: 9, icon: '🎤', title: '语音助手', description: '智能语音交互服务', url: 'pages/VoiceAssistantPage' },
-    { id: 10, icon: '🌿', title: '药材百科', description: '中药材知识库查询', url: 'pages/HerbalListPage' },
-    { id: 11, icon: '📱', title: '设备管理', description: '鸿蒙多设备协同管理', url: 'pages/DeviceManagePage' },
-    { id: 12, icon: '✅', title: '转院审批', description: '审批转院申请并同步病历', url: 'pages/TransferApprovalPage' },
-    { id: 13, icon: '🔗', title: '病历同步', description: '跨院数据安全同步', url: 'pages/MedicalRecordSyncPage' },
-    { id: 14, icon: '🔒', title: '隐私设置', description: '管理隐私和权限', url: 'pages/PrivacyPage' },
-    // 智慧病房系统功能（简化版）
-    { id: 15, icon: '🏥', title: '护士站监控', description: '智慧病房实时监控大屏', url: 'pages/NurseStationDashboardSimple' },
-    { id: 16, icon: '🔧', title: '病房设备', description: '智能病房设备控制管理', url: 'pages/SmartWardDevicesSimple' },
-    { id: 17, icon: '🚨', title: '告警中心', description: '实时告警与处理', url: 'pages/SmartWardAlertsSimple' },
-    { id: 18, icon: '📊', title: '护理计划', description: '护理任务时间线管理', url: 'pages/SmartWardCarePlanSimple' },
-    // 智慧停车+反向寻车系统
-    { id: 19, icon: '🅿️', title: '智慧停车', description: '停车场发现、车位预约、反向寻车', url: 'pages/ParkingListPage' },
-    { id: 20, icon: '🚗', title: '反向寻车', description: 'AR实景导航快速找到爱车', url: 'pages/FindCarPage' }
+  private quickActions: QuickAction[] = [
+    { id: 'appointment', icon: '📅', title: '预约挂号', color: '#3498DB', route: 'pages/AppointmentPage' },
+    { id: 'medical_record', icon: '📋', title: '病历档案', color: '#9B59B6', route: 'pages/MedicalRecordPage' },
+    { id: 'health_report', icon: '📊', title: '体检报告', color: '#2ECC71', route: 'pages/ReportPage' },
+    { id: 'medication', icon: '💊', title: '用药提醒', color: '#E74C3C', route: 'pages/MedicationPage' },
+    { id: 'consultation', icon: '👨‍⚕️', title: '在线问诊', color: '#F39C12', route: 'pages/ConsultationPage' },
+    { id: 'emergency', icon: '🚑', title: '急救指南', color: '#E67E22', route: 'pages/EmergencyPage' },
+    { id: 'health_edu', icon: '📚', title: '健康科普', color: '#1ABC9C', route: 'pages/HealthEducationPage' },
+    { id: 'family_doctor', icon: '🏥', title: '家庭医生', color: '#34495E', route: 'pages/FamilyDoctorPage' },
+    { id: 'insurance', icon: '🛡️', title: '医保服务', color: '#8E44AD', route: 'pages/InsurancePage' },
+    { id: 'rehabilitation', icon: '🧘', title: '康复训练', color: '#16A085', route: 'pages/RehabilitationPage' },
+    { id: 'ai_assistant', icon: '🤖', title: 'AI助手', color: '#2980B9', route: 'pages/AIAssistantPage' },
+    { id: 'distributed', icon: '🔗', title: '跨院协同', color: '#D35400', route: 'pages/DistributedCollaborationPage' },
+    { id: 'digital_twin', icon: '🫀', title: '数字孪生', color: '#C0392B', route: 'pages/DigitalTwinPage' }
   ];
 
-  private recordId: number | undefined = undefined;
-
   aboutToAppear(): void {
-    try {
-      BrowseTracker.recordStart('HOME', 'PAGE', 1, '首页').then(id => {
-        this.recordId = id;
-      }).catch((err: Error) => {
-        console.warn('浏览记录启动失败:', err.message);
-      });
-    } catch (trackerError) {
-      console.warn('BrowseTracker 初始化失败:', trackerError);
-    }
-
-    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
-      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
-    } else {
-      const elderMode = AppStorage.get<boolean>('isOldModeEnabled');
-      this.isElderMode = elderMode ? elderMode : false;
-    }
-
-    if (AppStorage.get<string>('fontSizeLevel') === undefined) {
-      AppStorage.setOrCreate<string>('fontSizeLevel', 'medium');
-    }
-    const fontSizeLevel = AppStorage.get<string>('fontSizeLevel');
-    this.currentFontSizeLevel = fontSizeLevel ? fontSizeLevel : 'medium';
-
-    if (AppStorage.get<string>('colorMode') === undefined) {
-      AppStorage.setOrCreate<string>('colorMode', 'normal');
-    }
-    const colorMode = AppStorage.get<string>('colorMode');
-    this.currentColorMode = colorMode ? colorMode : 'normal';
-
-    this.loadHomeData();
-  }
-
-  aboutToDisappear(): void {
-    // 记录浏览结束
-    if (this.recordId) {
-      BrowseTracker.recordEnd(this.recordId);
-    }
-  }
-
-  async loadHomeData(): Promise<void> {
-    this.isLoading = true;
-    this.hasError = false;
-
-    try {
-      const storedUserInfo: UserInfo | undefined = AppStorage.get<UserInfo>('userInfo');
-      if (storedUserInfo) {
-        this.userInfo = storedUserInfo;
-      } else {
-        this.userInfo = {
-          username: '张三',
-          avatar: '',
-          age: 65,
-          gender: '男'
-        } as UserInfo;
-      }
-
-      this.homeStats = {
-        todaySteps: 6852,
-        weekAppointments: 3,
-        healthScore: 85,
-        heartRate: 72,
-        bloodPressure: '120/80'
-      } as HomeStats;
-
-      this.isLoading = false;
-
-      const userId: number = AppStorage.get<number>('userId') || 1;
-
-      setTimeout(async () => {
-        try {
-          const hospitalParams: Record<string, string | number | boolean> = {};
-          hospitalParams['longitude'] = 116.404;
-          hospitalParams['latitude'] = 39.915;
-
-          const articleParams: Record<string, string | number | boolean> = {};
-          articleParams['pageSize'] = 5;
-
-          const herbalParams: Record<string, string | number | boolean> = {};
-          herbalParams['limit'] = 10;
-
-          const healthRecordParams: Record<string, string | number | boolean> = {};
-          healthRecordParams['userId'] = userId;
-
-          const hospitalsRes: BaseResponse<HospitalInfo[]> = await HttpUtil.get<HospitalInfo[]>('/hospital/nearby', hospitalParams);
-          if (hospitalsRes.success && hospitalsRes.data) {
-            this.nearbyHospitals = hospitalsRes.data as HospitalInfo[];
-          }
-
-          const articlesRes: BaseResponse<ArticleInfo[]> = await HttpUtil.get<ArticleInfo[]>('/healthArticle/list', articleParams);
-          if (articlesRes.success && articlesRes.data) {
-            this.articles = articlesRes.data as ArticleInfo[];
-          }
-
-          const herbalsRes: BaseResponse<HerbalInfoSimple[]> = await HttpUtil.get<HerbalInfoSimple[]>('/herbal/hot', herbalParams);
-          if (herbalsRes.success && herbalsRes.data) {
-            this.hotHerbals = herbalsRes.data as HerbalInfoSimple[];
-          }
-
-          const healthRes: BaseResponse<Object> = await HttpUtil.get<Object>('/health-record/latest', healthRecordParams);
-          if (healthRes.success && healthRes.data) {
-            this.latestHealthRecord = healthRes.data;
-          }
-        } catch (apiError) {
-          console.warn('API 加载失败，使用默认数据:', apiError);
-        }
-      }, 100);
-    } catch (error) {
-      console.error('加载首页数据失败:', error);
-      this.isLoading = false;
-      this.hasError = false;
-    }
-  }
-
-  handleRetry(): void {
-    this.loadHomeData();
-  }
-
-  handleCardClick(card: FeatureCard): void {
-    this.clickedCard = card.id;
-    console.log('准备跳转到:', card.url);
-    setTimeout(() => {
-      try {
-        router.pushUrl({
-          url: card.url,
-          params: { from: 'HomePage' }
-        }).then(() => {
-          console.log('跳转成功:', card.url);
-        }).catch((err: Error) => {
-          console.error('跳转失败:', err.message, card.url);
-        });
-      } catch (e) {
-        console.error('路由跳转异常:', e);
-      }
-    }, 150);
+    this.theme = AccessibilityConfig.getInstance();
   }
 
   build() {
     Column() {
-      Header({ title: '首页', showBack: true });
+      Header({ title: '智慧医疗健康平台' })
 
       Scroll() {
-        Column({ space: AccessibilityConfig.getSpacingLG() }) {
-          if (this.isLoading) {
-            Loading();
-          } else if (this.hasError) {
-            EmptyState({
-              icon: '❌',
-              title: '加载失败',
-              description: '数据加载出现问题，请重试',
-              buttonText: '重新加载',
-              onAdd: () => this.handleRetry()
-            });
-          } else {
-            Text('星云医疗助手')
-              .fontSize(AccessibilityConfig.getFontSizeTitle())
-              .fontWeight('bold')
-              .fontColor(AccessibilityConfig.getThemeColor())
-              .margin({ top: AccessibilityConfig.getSpacingLG(), bottom: AccessibilityConfig.getSpacingMD() });
-
-            if (this.userInfo) {
-              Row({ space: AccessibilityConfig.getSpacingMD() }) {
-                Column() {
-                  Text('👤')
-                    .fontSize(40)
-                }
-                .width(64)
-                .height(64)
-                .backgroundColor('#F0F0F0')
-                .borderRadius(32)
-                .justifyContent(FlexAlign.Center);
-
-                Column({ space: 4 }) {
-                  Text('您好，' + this.userInfo.username)
-                    .fontSize(AccessibilityConfig.getFontSizeBody())
-                    .fontWeight('bold')
-                    .fontColor(AccessibilityConfig.getTextPrimary());
-
-                  Text('' + this.userInfo.age + '岁 | ' + this.userInfo.gender)
-                    .fontSize(AccessibilityConfig.getFontSizeSmall())
-                    .fontColor(AccessibilityConfig.getTextSecondary());
-                }
-                .layoutWeight(1)
-                .alignItems(HorizontalAlign.Start);
-              }
-              .width('100%')
-              .padding(AccessibilityConfig.getSpacingMD())
-              .backgroundColor(AccessibilityConfig.getCardBgColor())
-              .borderRadius(12)
-              .margin({ bottom: AccessibilityConfig.getSpacingMD() });
-            }
-
-            if (this.homeStats) {
-              Row({ space: AccessibilityConfig.getSpacingSM() }) {
-                this.buildStatCard('👟', '今日步数', this.homeStats.todaySteps.toLocaleString() + '步', '#52C41A');
-                this.buildStatCard('📅', '本周预约', this.homeStats.weekAppointments + '个', '#1677FF');
-                this.buildStatCard('⭐', '健康评分', this.homeStats.healthScore + '分', '#FAAD14');
-              }
-              .width('100%');
-            }
-
-            Text('为您提供全方位的智慧医疗服务')
-              .fontSize(AccessibilityConfig.getFontSizeBody())
-              .fontColor(AccessibilityConfig.getTextSecondary())
-              .margin({ top: AccessibilityConfig.getSpacingMD(), bottom: AccessibilityConfig.getSpacingMD() });
-
-            Column({ space: AccessibilityConfig.getSpacingMD() }) {
-              ForEach(this.featureCards, (card: FeatureCard) => {
-                Row({ space: AccessibilityConfig.getSpacingMD() }) {
-                  Column() {
-                    Text(card.icon)
-                      .fontSize(32)
-                      .fontColor(this.clickedCard === card.id ? '#FFFFFF' : AccessibilityConfig.getThemeColor());
-                  }
-                  .width(64)
-                  .height(64)
-                  .backgroundColor(this.clickedCard === card.id ? AccessibilityConfig.getThemeColor() : AccessibilityConfig.getActiveBgColor())
-                  .borderRadius(32)
-                  .justifyContent(FlexAlign.Center)
-                  .alignItems(HorizontalAlign.Center);
-
-                  Column({ space: 8 }) {
-                    Text(card.title)
-                      .fontSize(AccessibilityConfig.getFontSizeBody())
-                      .fontWeight('bold')
-                      .fontColor(AccessibilityConfig.getTextPrimary());
-
-                    Text(this.clickedCard === card.id ? '正在跳转...' : card.description)
-                      .fontSize(AccessibilityConfig.getFontSizeSmall())
-                      .fontColor(this.clickedCard === card.id ? AccessibilityConfig.getThemeColor() : AccessibilityConfig.getTextSecondary());
-                  }
-                  .layoutWeight(1)
-                  .alignItems(HorizontalAlign.Start)
-                  .margin({ left: AccessibilityConfig.getSpacingMD() });
-                }
-                .width('100%')
-                .padding(AccessibilityConfig.getSpacingMD())
-                .backgroundColor(this.clickedCard === card.id ? '#E6F4FF' : AccessibilityConfig.getCardBgColor())
-                .borderRadius(12)
-                .border({
-                  width: this.clickedCard === card.id ? 2 : 1,
-                  color: this.clickedCard === card.id ? AccessibilityConfig.getThemeColor() : AccessibilityConfig.getBorderColor()
-                })
-                .shadow(this.clickedCard === card.id ? {
-                  radius: 12,
-                  color: '#1677FF30',
-                  offsetX: 0,
-                  offsetY: 4
-                } : {
-                  radius: 8,
-                  color: AccessibilityConfig.getShadowColor(),
-                  offsetX: 0,
-                  offsetY: 2
-                })
-                .onClick(() => this.handleCardClick(card));
-              }, (card: FeatureCard) => card.id.toString());
-            }
-            .width('100%');
-          }
+        Column({ space: this.isElderMode ? 16 : 12 }) {
+          this.buildWelcomeCard()
+          this.buildQuickActions()
+          this.buildHealthTips()
         }
-        .width('100%')
-        .padding({ top: AccessibilityConfig.getSpacingLG(), bottom: AccessibilityConfig.getSpacingLG() });
+        .padding({ left: 16, right: 16 })
       }
       .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
+      .scrollBar(BarState.Auto)
 
-      Footer({ activeIndex: 0 });
+      Footer({ activeIndex: this.currentIndex })
+    }
+    .height('100%')
+    .backgroundColor(AccessibilityConfig.getBackgroundColor())
+  }
+
+  @Builder buildWelcomeCard(): void {
+    Row() {
+      Column({ space: 8 }) {
+        Text('欢迎使用')
+          .fontSize(this.isElderMode ? 24 : 20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+
+        Text('为您提供全方位的智慧医疗服务')
+          .fontSize(this.isElderMode ? 16 : 14)
+          .fontColor('#666666')
+      }
+      .alignItems(HorizontalAlign.Start)
+
+      Blank()
+
+      Text('👨‍⚕️')
+        .fontSize(60)
     }
     .width('100%')
-    .height('100%')
-    .backgroundColor(AccessibilityConfig.getBgColor());
-  }
-
-  @Builder
-  buildStatCard(icon: string, label: string, value: string, color: string) {
-    Column({ space: 8 }) {
-      Text(icon)
-        .fontSize(28);
-
-      Text(value)
-        .fontSize(AccessibilityConfig.getFontSizeBody())
-        .fontWeight('bold')
-        .fontColor(color);
-
-      Text(label)
-        .fontSize(AccessibilityConfig.getFontSizeTiny())
-        .fontColor(AccessibilityConfig.getTextSecondary());
-    }
-    .layoutWeight(1)
-    .padding(AccessibilityConfig.getSpacingMD())
-    .backgroundColor(AccessibilityConfig.getCardBgColor())
+    .padding(20)
+    .backgroundColor('#FFFFFF')
     .borderRadius(12)
-    .justifyContent(FlexAlign.Center)
-    .alignItems(HorizontalAlign.Center);
+    .border({ width: 1, color: '#F0F0F0' })
   }
+
+  @Builder buildQuickActions(): void {
+    Column({ space: 12 }) {
+      Text('快捷服务')
+        .fontSize(this.isElderMode ? 18 : 16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333')
+        .width('100%')
+
+      Grid() {
+        ForEach(this.quickActions, (action: QuickAction) => {
+          GridItem() {
+            Column({ space: 8 }) {
+              Text(action.icon)
+                .fontSize(this.isElderMode ? 36 : 28)
+
+              Text(action.title)
+                .fontSize(this.isElderMode ? 14 : 12)
+                .fontColor('#333333')
+                .textAlign(TextAlign.Center)
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#FFFFFF')
+            .borderRadius(8)
+            .onClick(() => {
+              try {
+                router.pushUrl({ url: action.route });
+              } catch (error) {
+                console.error('导航失败:', error);
+              }
+            })
+          }
+        }, (action: QuickAction) => action.id)
+      }
+      .columnsTemplate('1fr 1fr 1fr 1fr')
+      .rowsGap(12)
+      .columnsGap(12)
+      .width('100%')
+    }
+  }
+
+  @Builder buildHealthTips(): void {
+    Column({ space: 12 }) {
+      Text('健康提示')
+        .fontSize(this.isElderMode ? 18 : 16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333')
+        .width('100%')
+
+      ForEach([
+        { icon: '💧', title: '记得多喝水', desc: '每天至少喝8杯水', color: '#3498DB' },
+        { icon: '🚶', title: '适量运动', desc: '每天步行30分钟', color: '#2ECC71' },
+        { icon: '😴', title: '充足睡眠', desc: '保证7-8小时睡眠', color: '#9B59B6' }
+      ], (tip: HealthTip) => {
+        Row({ space: 12 }) {
+          Text(tip.icon)
+            .fontSize(32)
+
+          Column({ space: 4 }) {
+            Text(tip.title)
+              .fontSize(16)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#333333')
+
+            Text(tip.desc)
+              .fontSize(13)
+              .fontColor('#666666')
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+
+          Text('>')
+            .fontSize(18)
+            .fontColor('#CCCCCC')
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(8)
+        .border({ width: 1, color: '#F0F0F0' })
+      }, (tip: HealthTip) => tip.title)
+    }
+  }
+}
+
+interface QuickAction {
+  id: string;
+  icon: string;
+  title: string;
+  color: string;
+  route: string;
+}
+
+interface HealthTip {
+  icon: string;
+  title: string;
+  desc: string;
+  color: string;
 }

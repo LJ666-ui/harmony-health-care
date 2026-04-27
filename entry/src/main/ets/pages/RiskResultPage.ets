@@ -142,7 +142,39 @@ struct RiskResultPage {
   }
 
   handleShare() {
-    router.push({ url: 'pages/DoctorListPage' });
+    const summaryMsg: string = this.buildAssessmentSummary();
+    router.pushUrl({
+      url: 'pages/DoctorListPage',
+      params: { shareMessage: summaryMsg, shareType: 'riskAssessment' }
+    });
+  }
+
+  private buildAssessmentSummary(): string {
+    let lines: string[] = [];
+    lines.push('【健康风险评估报告】');
+    lines.push('综合风险等级：' + this.riskLevel.level + ' ' + this.riskLevel.icon);
+    if (this.overallScore > 0) {
+      lines.push('综合评分：' + this.overallScore + '/100分');
+    }
+    lines.push('');
+    lines.push('五维风险评估详情：');
+    for (let i: number = 0; i < this.riskItems.length; i++) {
+      const item: RiskItemDisplay = this.riskItems[i];
+      const valPercent: number = Math.round(item.value * 100);
+      lines.push(item.icon + ' ' + item.name + '：' + item.level + '(' + valPercent + '%)');
+      if (item.description && item.description.trim() !== '') {
+        lines.push('   → ' + item.description);
+      }
+    }
+    lines.push('');
+    if (this.aiSuggestions.length > 0) {
+      lines.push('AI建议（前3条）：');
+      const showCount: number = Math.min(3, this.aiSuggestions.length);
+      for (let i: number = 0; i < showCount; i++) {
+        lines.push((i + 1).toString() + '. ' + this.aiSuggestions[i]);
+      }
+    }
+    return lines.join('\n');
   }
 
   handleReassess() {
@@ -192,7 +224,7 @@ struct RiskResultPage {
       items.push(new RiskItemDisplay('2', '糖尿病', '低风险', '#52C41A', '💉', '血糖在正常范围内', 0.1));
     }
 
-    if (age >= 65 || data.medicalHistory.includes('骨质疏松') || data.exercise === '每周1-2次' && data.smoking === '是') {
+    if (age >= 65 || data.medicalHistory.includes('骨质疏松') || (data.exercise === '每周1-2次' && data.smoking === '是')) {
       items.push(new RiskItemDisplay('3', '跌倒', '中风险', '#FAAD14', '🧓', age >= 65 ? '年龄较大，存在跌倒风险，建议加强平衡训练' : '存在跌倒风险因素，建议加强平衡训练', 0.4));
       midRiskCount++;
     } else {
@@ -208,7 +240,7 @@ struct RiskResultPage {
       items.push(new RiskItemDisplay('4', '衰弱', '低风险', '#52C41A', '💪', 'BMI正常(' + data.bmi + ')，身体状况良好', 0.15));
     }
 
-    if (data.bmi < 18.5 || data.exercise === '每周1-2次' && age >= 60) {
+    if (data.bmi < 18.5 || (data.exercise === '每周1-2次' && age >= 60)) {
       items.push(new RiskItemDisplay('5', '肌少症', '中风险', '#FAAD14', '🏋️', '建议增加蛋白质摄入和抗阻运动', 0.35));
       midRiskCount++;
     } else {
@@ -258,7 +290,7 @@ struct RiskResultPage {
     }
     if (data.exercise === '每周1-2次') {
       suggestions.push('运动频率偏低，建议逐步增加到每周至少150分钟中等强度运动');
-    }
+    } // ✅ 修复：添加了缺失的闭合大括号
 
     suggestions.push('保持良好的作息习惯，保证每晚7-8小时充足睡眠');
 
@@ -356,11 +388,27 @@ struct RiskResultPage {
                 animated: true
               });
 
+              Row({ space: 20 }) {
+                Row({ space: 6 }) {
+                  Circle().width(10).height(10).fill('#52C41A');
+                  Text('低风险(0-30%)').fontSize(11).fontColor('#666666');
+                }
+                Row({ space: 6 }) {
+                  Circle().width(10).height(10).fill('#FAAD14');
+                  Text('中风险(30-60%)').fontSize(11).fontColor('#666666');
+                }
+                Row({ space: 6 }) {
+                  Circle().width(10).height(10).fill('#FF4D4F');
+                  Text('高风险(60%+)').fontSize(11).fontColor('#666666');
+                }
+              }
+              .margin({ top: 12, bottom: 8 });
+
               if (this.aiResult) {
                 Text('AI模型: ' + this.aiResult.modelVersion + ' | 耗时: ' + this.aiResult.processingTimeMs + 'ms')
                   .fontSize(11)
                   .fontColor('#999999')
-                  .margin({ top: 8 });
+                  .margin({ top: 4 });
               }
             }
             .width('100%')

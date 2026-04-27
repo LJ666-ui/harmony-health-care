@@ -4,9 +4,15 @@ import { Footer } from '../components/Footer';
 import { AccessibilitySettingsPanel, FirstTimeGuide } from '../components/GuideComponents';
 import { NetworkStatusBanner } from '../components/ErrorComponents';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
-import { HttpUtil } from '../common/utils/HttpUtil';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
+import { UserInfoCard } from '../components/UserInfoCard';
+import { HealthStatsCard } from '../components/HealthStatsCard';
+import { ServiceList } from '../components/ServiceList';
+import { SettingsList } from '../components/SettingsList';
+import { CarouselBanner } from '../components/CarouselBanner';
+import { BannerItem } from '../components/CarouselBanner';
 
 interface UserInfo {
   username: string;
@@ -22,22 +28,39 @@ interface MenuItem {
   url: string;
 }
 
+interface HealthStats {
+  healthRecordCount: number;
+  collectCount: number;
+  browseHistoryCount: number;
+}
+
 @Entry
 @Component
 struct Profile {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
   @State showAccessibilityPanel: boolean = false;
+  @State banners: BannerItem[] = [];
+  @State healthStats: HealthStats = {
+    healthRecordCount: 0,
+    collectCount: 0,
+    browseHistoryCount: 0
+  };
 
   @State menuItems: MenuItem[] = [
     { icon: '📱', title: '设备绑定', color: '#1677FF', url: 'pages/DeviceDiscoveryPage' },
     { icon: '🎤', title: '语音助手', color: '#1677FF', url: 'pages/VoiceAssistantPage' },
-    { icon: '📊', title: '健康统计', color: '#52C41A', url: 'pages/StatisticsPage' },
+    { icon: '📊', title: '健康统计报告', color: '#52C41A', url: 'pages/StatisticsPage' },
     { icon: '🏆', title: '社区排行榜', color: '#FAAD14', url: 'pages/RankingPage' },
     { icon: '📋', title: '我的病历', color: '#1677FF', url: 'pages/MedicalRecord' },
-    { icon: '❤️', title: '我的收藏', color: '#FF4757', url: 'pages/MyCollectPage' },
-    { icon: '♿', title: '无障碍设置', color: '#722ED1', url: '' },
-    { icon: '⚙️', title: '账号设置', color: '#333333', url: '' },
+    { icon: '❤️', title: '我的收藏', color: '#FF4757', url: 'pages/MyCollectPage' }
+  ];
+
+  @State settingsItems: MenuItem[] = [
+    { icon: '♿', title: '无障碍/老年模式', color: '#722ED1', url: '' },
+    { icon: '🔔', title: '通知设置', color: '#1677FF', url: '' },
+    { icon: '👥', title: '紧急联系人', color: '#1677FF', url: '' },
+    { icon: '💊', title: '提醒设置', color: '#52C41A', url: '' },
     { icon: '🔒', title: '隐私与安全', color: '#1677FF', url: 'pages/PrivacySettingPage' },
     { icon: 'ℹ️', title: '关于我们', color: '#333333', url: '' }
   ];
@@ -46,6 +69,37 @@ struct Profile {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+
+    this.loadAllData();
+  }
+
+  loadAllData() {
+    this.loadBanners();
+    this.loadHealthStats();
+  }
+
+  loadBanners() {
+    HttpUtil.get<BannerItem[]>('api/profile/banner/list').then((res: BaseResponse<BannerItem[]>) => {
+      if (res.code === 200 && res.data) {
+        this.banners = res.data;
+      } else {
+        ToastUtil.showInfo(res.message);
+      }
+    }).catch((err: Error) => {
+      ToastUtil.showInfo(err.message);
+    });
+  }
+
+  loadHealthStats() {
+    HttpUtil.get<HealthStats>('api/profile/healthStats').then((res: BaseResponse<HealthStats>) => {
+      if (res.code === 200 && res.data) {
+        this.healthStats = res.data;
+      } else {
+        ToastUtil.showInfo(res.message);
+      }
+    }).catch((err: Error) => {
+      ToastUtil.showInfo(err.message);
+    });
   }
 
   toggleElderMode(): void {
@@ -54,7 +108,7 @@ struct Profile {
   }
 
   handleMenuClick(item: MenuItem): void {
-    if (item.title === '无障碍设置') {
+    if (item.title === '无障碍/老年模式') {
       this.showAccessibilityPanel = true;
       return;
     }
@@ -83,174 +137,43 @@ struct Profile {
         });
 
         Scroll() {
-          Column({ space: AccessibilityConfig.getSpacingLG() }) {
-            // 渐变用户信息卡片
-            Stack({ alignContent: Alignment.BottomStart }) {
-              Column()
-                .width('100%')
-                .height(140)
-                .linearGradient({
-                  angle: 135,
-                  colors: [['#1677FF', 0], ['#36CFC9', 1]]
-                })
-                .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 16, bottomRight: 16 });
+          Column() {
+            UserInfoCard({ username: '星云用户', phone: '138****1234', userId: 10086 });
 
-              Row({ space: 16 }) {
-                Circle()
-                  .width(64)
-                  .height(64)
-                  .fill('#FFFFFF33')
-                  .stroke('#FFFFFF')
-                  .strokeWidth(3);
+            CarouselBanner({ banners: this.banners })
+              .margin({ top: 16 });
 
-                Column({ space: 6 }) {
-                  Text('星云用户')
-                    .fontSize(AccessibilityConfig.getFontSizeTitle())
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#FFFFFF');
+            HealthStatsCard({
+              healthRecordCount: this.healthStats.healthRecordCount,
+              collectCount: this.healthStats.collectCount,
+              browseHistoryCount: this.healthStats.browseHistoryCount
+            });
 
-                  Row({ space: 8 }) {
-                    Text('138****1234')
-                      .fontSize(AccessibilityConfig.getFontSizeSmall())
-                      .fontColor('#FFFFFFCC');
-                    Text('ID: 10086')
-                      .fontSize(10)
-                      .fontColor('#FFFFFF66')
-                      .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-                      .backgroundColor('#FFFFFF22')
-                      .borderRadius(10);
-                  }
-                }
-                .alignItems(HorizontalAlign.Start)
-                .layoutWeight(1);
-
-                Column() {
-                  Text('编辑')
-                    .fontSize(12)
-                    .fontColor('#FFFFFF');
-                }
-                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                .backgroundColor('#FFFFFF22')
-                .borderRadius(14);
+            ServiceList({
+              menuItems: this.menuItems,
+              onMenuClick: (item: MenuItem) => {
+                this.handleMenuClick(item);
               }
-              .width('90%')
-              .padding({ left: 20, right: 0, bottom: 20 });
-            }
-            .width('85%')
-            .margin({ top: AccessibilityConfig.getSpacingMD(), bottom: AccessibilityConfig.getSpacingMD() });
+            });
 
-            // 统计数据行
-            Row() {
-              Column({ space: 4 }) {
-                Text('128')
-                  .fontSize(22)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor('#1677FF');
-                Text('健康天数')
-                  .fontSize(11)
-                  .fontColor('#999999');
+            SettingsList({
+              settingsItems: this.settingsItems,
+              onMenuClick: (item: MenuItem) => {
+                this.handleMenuClick(item);
               }
-              .layoutWeight(1);
-
-              Line().width(1).height(32).stroke('#EEEEEE');
-
-              Column({ space: 4 }) {
-                Text('12')
-                  .fontSize(22)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor('#52C41A');
-                Text('评估次数')
-                  .fontSize(11)
-                  .fontColor('#999999');
-              }
-              .layoutWeight(1);
-
-              Line().width(1).height(32).stroke('#EEEEEE');
-
-              Column({ space: 4 }) {
-                Text('5')
-                  .fontSize(22)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor('#FAAD14');
-                Text('收藏文章')
-                  .fontSize(11)
-                  .fontColor('#999999');
-              }
-              .layoutWeight(1);
-            }
-            .width('85%')
-            .height(80)
-            .padding({ left: 24, right: 24 })
-            .backgroundColor('#FFFFFF')
-            .borderRadius(16)
-            .shadow({ radius: 8, color: '#00000006', offsetX: 0, offsetY: 3 })
-            .margin({ bottom: AccessibilityConfig.getSpacingMD() });
-
-            // 功能菜单列表
-            Column({ space: 1 }) {
-              Row({ space: AccessibilityConfig.getSpacingMD() }) {
-                Text('👴 老年模式')
-                  .fontSize(AccessibilityConfig.getFontSizeBody())
-                  .fontColor(AccessibilityConfig.getTextPrimary())
-                  .fontWeight(FontWeight.Bold);
-
-                Blank();
-
-                Text(this.isElderMode ? '已开启' : '已关闭')
-                  .fontSize(AccessibilityConfig.getFontSizeSmall())
-                  .fontColor(this.isElderMode ? '#52C41A' : '#999999')
-                  .backgroundColor(this.isElderMode ? '#F6FFED' : '#F5F5F5')
-                  .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-                  .borderRadius(10);
-              }
-              .width('100%')
-              .padding(AccessibilityConfig.getSpacingMD())
-              .backgroundColor(AccessibilityConfig.getCardBgColor())
-              .borderRadius({ topLeft: 16, topRight: 16 })
-              .border({ width: 1, color: AccessibilityConfig.getBorderColor() })
-              .accessibilityText('老年模式，当前' + (this.isElderMode ? '已开启' : '已关闭'))
-              .onClick(() => this.toggleElderMode());
-
-              ForEach(this.menuItems, (item: MenuItem) => {
-                Row({ space: AccessibilityConfig.getSpacingMD() }) {
-                  Text(item.icon)
-                    .fontSize(18)
-                    .width(28)
-                    .textAlign(TextAlign.Center);
-
-                  Text(item.title)
-                    .fontSize(AccessibilityConfig.getFontSizeBody())
-                    .fontColor(item.color === '#333333' ? AccessibilityConfig.getTextPrimary() : item.color)
-                    .fontWeight(item.color === '#1677FF' || item.color === '#722ED1' || item.color === '#52C41A' || item.color === '#FAAD14' || item.color === '#FF4757' ? FontWeight.Bold : FontWeight.Normal);
-
-                  Blank();
-
-                  Text('›')
-                    .fontSize(20)
-                    .fontColor('#CCCCCC');
-                }
-                .width('100%')
-                .padding(AccessibilityConfig.getSpacingMD())
-                .backgroundColor(AccessibilityConfig.getCardBgColor())
-                .accessibilityText('' + item.title)
-                .onClick(() => this.handleMenuClick(item));
-              }, (item: MenuItem) => item.title);
-            }
-            .borderRadius(16)
-            .border({ width: 1, color: AccessibilityConfig.getBorderColor() });
+            });
 
             Button('退出登录')
               .width('85%')
-              .height(AccessibilityConfig.getButtonHeight())
-              .fontSize(AccessibilityConfig.getFontSizeButton())
+              .height(44)
+              .fontSize(16)
               .fontWeight(FontWeight.Medium)
               .fontColor('#FF4D4F')
               .backgroundColor('#FFF1F0')
-              .borderRadius(AccessibilityConfig.getButtonHeight() / 2)
-              .border({ width: 1, color: '#FFCCC7', style: BorderStyle.Solid })
+              .borderRadius(22)
               .margin({
-                top: AccessibilityConfig.getSpacingLG(),
-                bottom: AccessibilityConfig.getSpacingLG()
+                top: 16,
+                bottom: 16
               })
               .accessibilityText('退出登录按钮')
               .onClick(async () => {
@@ -264,10 +187,10 @@ struct Profile {
                 }
               });
           }
-          .width('85%')
+          .width('100%')
           .padding({
-            top: AccessibilityConfig.getSpacingMD(),
-            bottom: AccessibilityConfig.getSpacingLG()
+            top: 16,
+            bottom: 16
           });
         }
         .height(0)

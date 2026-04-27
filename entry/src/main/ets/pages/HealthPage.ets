@@ -1,705 +1,573 @@
 import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { GlobalTheme } from '../global';
-import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
-import { ApiConstants } from '../common/constants/ApiConstants';
+import { CarouselBanner, BannerItem, GradientColorStop } from '../components/CarouselBanner';
+import { HealthOverviewCard, HealthOverviewData } from '../components/HealthOverviewCard';
+import { AccessibilityConfig } from '../utils/AccessibilityConfig';
 
-interface BackendHealthRecord {
+interface ServiceCard {
   id: number;
-  userId: number;
-  bloodPressure: string | null;
-  bloodSugar: string | null;
-  heartRate: number | null;
-  weight: string | null;
-  height: string | null;
-  stepCount: number | null;
-  sleepDuration: string | null;
-  recordTime: string;
-  createTime: string;
-}
-
-interface HealthMetricStatus {
-  text: string;
-  color: string;
   icon: string;
+  title: string;
+  description: string;
+  url: string;
 }
 
-interface HealthRecordInput {
-  userId: number;
-  bloodPressure: string | null;
-  bloodSugar: string | null;
-  heartRate: number | null;
-  weight: string | null;
-  stepCount: number | null;
-  sleepDuration: string | null;
+interface WhatIfItem {
+  label: string;
+  impact: string;
+  color: string;
+}
+
+interface VitalSignItem {
+  name: string;
+  value: string;
+  unit: string;
+  color: string;
+}
+
+interface OrganStatusItem {
+  name: string;
+  status: string;
+  color: string;
+  percent: number;
 }
 
 @Entry
 @Component
 struct HealthPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @State currentTab: number = 0;
 
-  @State bloodPressureSystolic: string = '';
-  @State bloodPressureDiastolic: string = '';
-  @State heartRate: string = '';
-  @State weight: string = '';
-  @State bloodSugar: string = '';
-  @State stepCount: string = '';
-  @State sleepDuration: string = '';
+  healthBanners: BannerItem[] = [
+    {
+      id: 'ai_risk',
+      icon: '🧠⚡',
+      title: '端侧AI风险评估',
+      subtitle: 'MindSpore推理 · 本地隐私保护 · SHAP可解释',
+      ctaText: '开始评估',
+      targetUrl: 'pages/RiskAssessmentPage',
+      gradientColors: [{ color: '#9B59B6', offset: 0 }, { color: '#8E44AD', offset: 1 }]
+    },
+    {
+      id: 'monitoring',
+      icon: '📊📡',
+      title: '患者实时健康监控',
+      subtitle: '心率/血压/血糖/血氧 · 异常自动告警',
+      ctaText: '查看监控',
+      targetUrl: 'pages/MonitoringDashboard',
+      gradientColors: [{ color: '#E74C3C', offset: 0 }, { color: '#C0392B', offset: 1 }]
+    },
+    {
+      id: 'digital_twin',
+      icon: '👤🔄',
+      title: '您的数字孪生分身',
+      subtitle: '3D人体模型 · 器官健康可视化 · 预测模拟',
+      ctaText: '查看我的孪生',
+      targetUrl: 'pages/DigitalTwinPage',
+      gradientColors: [{ color: '#3498DB', offset: 0 }, { color: '#2980B9', offset: 1 }]
+    },
+    {
+      id: 'rehab_plan',
+      icon: '🏃💪',
+      title: '今日康复任务',
+      subtitle: '上肢训练×3组 · 平衡练习×10min',
+      ctaText: '开始训练',
+      targetUrl: 'pages/RehabListPage',
+      gradientColors: [{ color: '#2ECC71', offset: 0 }, { color: '#27AE60', offset: 1 }]
+    }
+  ];
 
-  @State isLoadingLatest: boolean = true;
-  @State isSaving: boolean = false;
-  @State saveMessage: string = '';
-
-  @State latestRecord: BackendHealthRecord = {
-    id: 0,
-    userId: 0,
-    bloodPressure: null,
-    bloodSugar: null,
-    heartRate: null,
-    weight: null,
-    height: null,
-    stepCount: null,
-    sleepDuration: null,
-    recordTime: '',
-    createTime: ''
+  healthOverviewData: HealthOverviewData = {
+    healthScore: 85,
+    riskLevel: '低风险',
+    riskColor: '#4CAF50',
+    rehabProgress: 67,
+    lastAssessmentDate: '2026-04-15'
   };
-  @State hasRecord: boolean = false;
+
+  rehabServices: ServiceCard[] = [
+    { id: 1, icon: '🏃', title: '康复课程', description: '专业康复训练指导', url: 'pages/RehabListPage' },
+    { id: 2, icon: '🎮', title: '3D康复训练', description: '沉浸式3D康复体验', url: 'pages/Rehab3DPage' }
+  ];
+
+  whatIfItems: WhatIfItem[] = [
+    { label: '如果我戒烟...', impact: '-15%', color: '#4CAF50' },
+    { label: '如果每天运动30分钟...', impact: '-20%', color: '#4CAF50' },
+    { label: '如果控制饮食...', impact: '-10%', color: '#4CAF50' }
+  ];
+
+  vitalSigns: VitalSignItem[] = [
+    { name: '心率', value: '72 bpm', unit: '正常范围: 60-100', color: '#E74C3C' },
+    { name: '血压', value: '120/80 mmHg', unit: '正常范围: 90-140/60-90', color: '#3498DB' },
+    { name: '血糖', value: '5.6 mmol/L', unit: '正常范围: 3.9-6.1', color: '#9B59B6' },
+    { name: '血氧', value: '98 %', unit: '正常范围: 95-100', color: '#27AE60' }
+  ];
+
+  organStatuses: OrganStatusItem[] = [
+    { name: '心脏', status: '正常', color: '#E74C3C', percent: 95 },
+    { name: '肺部', status: '良好', color: '#3498DB', percent: 88 },
+    { name: '肝脏', status: '正常', color: '#9B59B6', percent: 92 },
+    { name: '肾脏', status: '良好', color: '#27AE60', percent: 90 }
+  ];
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
-    this.loadLatestRecord();
   }
 
-  loadLatestRecord(): void {
-    this.isLoadingLatest = true;
-    HttpUtil.get<BackendHealthRecord[]>(ApiConstants.HEALTH_RECORD_MY, {
-      "userId": 1
-    })
-      .then((response: BaseResponse<BackendHealthRecord[]>) => {
-        this.isLoadingLatest = false;
-        if (response.success && response.data && response.data.length > 0) {
-          const records: BackendHealthRecord[] = response.data;
-          records.sort((a: BackendHealthRecord, b: BackendHealthRecord) => {
-            return new Date(b.createTime).getTime() - new Date(a.createTime).getTime();
-          });
-          this.latestRecord = records[0];
-          this.hasRecord = true;
-        } else {
-          this.hasRecord = false;
-        }
-      })
-      .catch(() => {
-        this.isLoadingLatest = false;
-        this.hasRecord = false;
-      });
-  }
-
-  validateInput(): boolean {
-    if (!this.bloodPressureSystolic && !this.bloodPressureDiastolic &&
-      !this.heartRate && !this.weight && !this.bloodSugar &&
-      !this.stepCount && !this.sleepDuration) {
-      this.saveMessage = '请至少填写一项健康数据';
-      return false;
-    }
-
-    if ((this.bloodPressureSystolic && !this.bloodPressureDiastolic) ||
-      (!this.bloodPressureSystolic && this.bloodPressureDiastolic)) {
-      this.saveMessage = '血压请填写收缩压和舒张压两项';
-      return false;
-    }
-
-    if (this.bloodPressureSystolic) {
-      const val = Number(this.bloodPressureSystolic);
-      if (isNaN(val) || val < 60 || val > 260) {
-        this.saveMessage = '收缩压应在 60-260 范围内';
-        return false;
-      }
-    }
-
-    if (this.bloodPressureDiastolic) {
-      const val = Number(this.bloodPressureDiastolic);
-      if (isNaN(val) || val < 40 || val > 160) {
-        this.saveMessage = '舒张压应在 40-160 范围内';
-        return false;
-      }
-    }
-
-    if (this.heartRate) {
-      const val = Number(this.heartRate);
-      if (isNaN(val) || val < 30 || val < 220) {
-        this.saveMessage = '心率应在 30-220 范围内';
-        return false;
-      }
-    }
-
-    if (this.weight) {
-      const val = Number(this.weight);
-      if (isNaN(val) || val < 10 || val > 300) {
-        this.saveMessage = '体重应在 10-300 kg 范围内';
-        return false;
-      }
-    }
-
-    if (this.bloodSugar) {
-      const val = Number(this.bloodSugar);
-      if (isNaN(val) || val < 1 || val > 40) {
-        this.saveMessage = '血糖应在 1-40 mmol/L 范围内';
-        return false;
-      }
-    }
-
-    if (this.stepCount) {
-      const val = Number(this.stepCount);
-      if (isNaN(val) || val < 0 || val > 100000) {
-        this.saveMessage = '步数应在合理范围内';
-        return false;
-      }
-    }
-
-    if (this.sleepDuration) {
-      const val = Number(this.sleepDuration);
-      if (isNaN(val) || val < 0 || val > 24) {
-        this.saveMessage = '睡眠时长应在 0-24 小时范围内';
-        return false;
-      }
-    }
-
-    this.saveMessage = '';
-    return true;
-  }
-
-  saveHealthData(): void {
-    if (!this.validateInput()) {
-      return;
-    }
-
-    this.isSaving = true;
-    this.saveMessage = '';
-
-    let bpValue: string | null = null;
-    if (this.bloodPressureSystolic && this.bloodPressureDiastolic) {
-      bpValue = '' + this.bloodPressureSystolic + '/' + this.bloodPressureDiastolic;
-    }
-
-    const recordData: HealthRecordInput = {
-      "userId": 1,
-      "bloodPressure": bpValue,
-      "bloodSugar": this.bloodSugar ? this.bloodSugar : null,
-      "heartRate": this.heartRate ? Number(this.heartRate) : null,
-      "weight": this.weight ? this.weight : null,
-      "stepCount": this.stepCount ? Number(this.stepCount) : null,
-      "sleepDuration": this.sleepDuration ? this.sleepDuration : null
-    };
-
-    HttpUtil.post<string>(ApiConstants.HEALTH_RECORD_ADD, recordData)
-      .then((response: BaseResponse<string>) => {
-        this.isSaving = false;
-        if (response.success) {
-          this.saveMessage = '保存成功！';
-          this.resetForm();
-          this.loadLatestRecord();
-        } else {
-          this.saveMessage = response.message || '保存失败';
-        }
-      })
-      .catch(() => {
-        this.isSaving = false;
-        this.saveMessage = '网络请求失败，请重试';
-      });
-  }
-
-  resetForm(): void {
-    this.bloodPressureSystolic = '';
-    this.bloodPressureDiastolic = '';
-    this.heartRate = '';
-    this.weight = '';
-    this.bloodSugar = '';
-    this.stepCount = '';
-    this.sleepDuration = '';
-  }
-
-  formatTime(timeStr: string): string {
-    if (!timeStr) {
-      return '--';
-    }
-    try {
-      const date = new Date(timeStr);
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hour = String(date.getHours()).padStart(2, '0');
-      const minute = String(date.getMinutes()).padStart(2, '0');
-      return '' + month + '-' + day + ' ' + hour + ':' + minute;
-    } catch (e) {
-      return timeStr.substring(0, 16);
-    }
-  }
-
-  getBpStatus(bp: string | null): HealthMetricStatus {
-    if (!bp) {
-      const result: HealthMetricStatus = { text: '--', color: '#999999', icon: '' };
-      return result;
-    }
-    const parts = bp.split('/');
-    if (parts.length < 2) {
-      const result2: HealthMetricStatus = { text: bp, color: '#999999', icon: '' };
-      return result2;
-    }
-    const sys = Number(parts[0]);
-    const dia = Number(parts[1]);
-    if (sys >= 140 || dia >= 90) {
-      const result3: HealthMetricStatus = { text: bp, color: '#FF4444', icon: '⚠️' };
-      return result3;
-    }
-    if (sys <= 90 || dia <= 60) {
-      const result4: HealthMetricStatus = { text: bp, color: '#FFA940', icon: '⚠️' };
-      return result4;
-    }
-    const result5: HealthMetricStatus = { text: bp, color: '#52C41A', icon: '✅' };
-    return result5;
-  }
-
-  getHeartRateStatus(hr: number | null): HealthMetricStatus {
-    if (hr == null) {
-      const result: HealthMetricStatus = { text: '--', color: '#999999', icon: '' };
-      return result;
-    }
-    if (hr >= 100 || hr < 60) {
-      const result2: HealthMetricStatus = { text: '' + hr, color: '#FF4444', icon: '⚠️' };
-      return result2;
-    }
-    const result3: HealthMetricStatus = { text: '' + hr, color: '#52C41A', icon: '✅' };
-    return result3;
-  }
-
-  build() {
+  build(): void {
     Column() {
-      Header({ title: '我的健康', showBack: true })
+      Header({
+        title: '健康中心',
+        showBack: false
+      });
 
       Scroll() {
-        Column({ space: 16 }) {
-
-          Text('手动录入')
-            .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor('#1677FF')
-            .margin({ top: 12, bottom: 8 });
-
-          Column({ space: 14 }) {
-            Row() {
-              Text('📊 血压')
-                .fontSize(15)
-                .fontWeight('bold')
-                .fontColor('#333333');
-              Blank();
-              TextInput({
-                placeholder: '收缩压'
-              })
-                .width('25%')
-                .height(36)
-                .fontSize(13)
-                .textAlign(TextAlign.Center)
-                .backgroundColor('#F5F5F5')
-                .borderRadius(8)
-                .type(InputType.Number)
-                .onChange((value: string) => {
-                  this.bloodPressureSystolic = value;
-                });
-              Text('/')
-                .fontSize(16)
-                .fontColor('#666666')
-                .margin({ left: 2, right: 2 });
-              TextInput({
-                placeholder: '舒张压'
-              })
-                .width('25%')
-                .height(36)
-                .fontSize(13)
-                .textAlign(TextAlign.Center)
-                .backgroundColor('#F5F5F5')
-                .borderRadius(8)
-                .type(InputType.Number)
-                .onChange((value: string) => {
-                  this.bloodPressureDiastolic = value;
-                });
-              Text('mmHg')
-                .fontSize(12)
-                .fontColor('#999999')
-                .margin({ left: 4 });
-            }
-            .width('100%');
-
-            Row() {
-              Text('❤️ 心率')
-                .fontSize(15)
-                .fontWeight('bold')
-                .fontColor('#333333');
-              Blank();
-              TextInput({
-                placeholder: '如 75'
-              })
-                .width('35%')
-                .height(36)
-                .fontSize(13)
-                .textAlign(TextAlign.Center)
-                .backgroundColor('#F5F5F5')
-                .borderRadius(8)
-                .type(InputType.Number)
-                .onChange((value: string) => {
-                  this.heartRate = value;
-                });
-              Text('bpm')
-                .fontSize(12)
-                .fontColor('#999999')
-                .margin({ left: 6 });
-            }
-            .width('100%');
-
-            Row() {
-              Text('🍬 血糖')
-                .fontSize(15)
-                .fontWeight('bold')
-                .fontColor('#333333');
-              Blank();
-              TextInput({
-                placeholder: '如 5.6'
-              })
-                .width('35%')
-                .height(36)
-                .fontSize(13)
-                .textAlign(TextAlign.Center)
-                .backgroundColor('#F5F5F5')
-                .borderRadius(8)
-                .type(InputType.Number)
-                .onChange((value: string) => {
-                  this.bloodSugar = value;
-                });
-              Text('mmol/L')
-                .fontSize(12)
-                .fontColor('#999999')
-                .margin({ left: 6 });
-            }
-            .width('100%');
-
-            Row() {
-              Text('⚖️ 体重')
-                .fontSize(15)
-                .fontWeight('bold')
-                .fontColor('#333333');
-              Blank();
-              TextInput({
-                placeholder: '如 65.5'
-              })
-                .width('35%')
-                .height(36)
-                .fontSize(13)
-                .textAlign(TextAlign.Center)
-                .backgroundColor('#F5F5F5')
-                .borderRadius(8)
-                .type(InputType.Number)
-                .onChange((value: string) => {
-                  this.weight = value;
-                });
-              Text('kg')
-                .fontSize(12)
-                .fontColor('#999999')
-                .margin({ left: 6 });
-            }
-            .width('100%');
-
-            Row() {
-              Text('👟 步数')
-                .fontSize(15)
-                .fontWeight('bold')
-                .fontColor('#333333');
-              Blank();
-              TextInput({
-                placeholder: '如 8000'
-              })
-                .width('35%')
-                .height(36)
-                .fontSize(13)
-                .textAlign(TextAlign.Center)
-                .backgroundColor('#F5F5F5')
-                .borderRadius(8)
-                .type(InputType.Number)
-                .onChange((value: string) => {
-                  this.stepCount = value;
-                });
-              Text('步')
-                .fontSize(12)
-                .fontColor('#999999')
-                .margin({ left: 6 });
-            }
-            .width('100%');
-
-            Row() {
-              Text('😴 睡眠')
-                .fontSize(15)
-                .fontWeight('bold')
-                .fontColor('#333333');
-              Blank();
-              TextInput({
-                placeholder: '如 7.5'
-              })
-                .width('35%')
-                .height(36)
-                .fontSize(13)
-                .textAlign(TextAlign.Center)
-                .backgroundColor('#F5F5F5')
-                .borderRadius(8)
-                .type(InputType.Number)
-                .onChange((value: string) => {
-                  this.sleepDuration = value;
-                });
-              Text('小时')
-                .fontSize(12)
-                .fontColor('#999999')
-                .margin({ left: 6 });
-            }
-            .width('100%');
-
-            if (this.saveMessage) {
-              Text(this.saveMessage)
-                .fontSize(13)
-                .fontColor(this.saveMessage.includes('成功') ? '#52C41A' : '#FF4444')
-                .padding(8)
-                .width('100%')
-                .textAlign(TextAlign.Center)
-                .backgroundColor(this.saveMessage.includes('成功') ? '#F6FFED' : '#FFF2F0')
-                .borderRadius(8);
-            }
-
-            Button(this.isSaving ? '保存中...' : '保存数据')
-              .width('100%')
-              .height(44)
-              .fontSize(16)
-              .fontColor('#FFFFFF')
-              .backgroundColor(this.isSaving ? '#CCCCCC' : '#1677FF')
-              .borderRadius(22)
-              .enabled(!this.isSaving)
-              .onClick(() => this.saveHealthData());
-          }
-          .width('88%')
-          .padding(16)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12);
-
-          Text('最新记录')
-            .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor('#1677FF')
-            .margin({ top: 8, bottom: 8 });
-
-          if (this.isLoadingLatest) {
-            Column() {
-              LoadingProgress()
-                .width(32)
-                .height(32)
-                .color('#1677FF');
-              Text('加载中...')
-                .fontSize(13)
-                .fontColor('#999999')
-                .margin({ top: 8 });
-            }
-            .width('88%')
-            .height(140)
-            .justifyContent(FlexAlign.Center)
-            .alignItems(HorizontalAlign.Center)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12);
-          } else if (!this.hasRecord) {
-            Column() {
-              Text('📭')
-                .fontSize(36)
-                .margin({ bottom: 8 });
-              Text('暂无健康记录，请录入您的第一条数据')
-                .fontSize(13)
-                .fontColor('#999999')
-                .textAlign(TextAlign.Center);
-            }
-            .width('88%')
-            .height(120)
-            .justifyContent(FlexAlign.Center)
-            .alignItems(HorizontalAlign.Center)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12);
-          } else {
-            Column({ space: 12 }) {
-              Row() {
-                Text('更新时间: ' + this.formatTime(this.latestRecord.createTime))
-                  .fontSize(12)
-                  .fontColor('#999999');
-                Blank();
-                Text('查看详情 ›')
-                  .fontSize(12)
-                  .fontColor('#1677FF')
-                  .onClick(() => {
-                    router.pushUrl({ url: 'pages/HealthRecords' });
-                  });
-              }
-              .width('100%');
-
-              Row({ space: 8 }) {
-                this.buildMetricCard(
-                  '📊', '血压',
-                  this.getBpStatus(this.latestRecord.bloodPressure),
-                  'mmHg'
-                );
-                this.buildMetricCard(
-                  '❤️', '心率',
-                  this.getHeartRateStatus(this.latestRecord.heartRate),
-                  'bpm'
-                );
-              }
-              .width('100%');
-
-              Row({ space: 8 }) {
-                this.buildSimpleCard(
-                  '🍬', '血糖',
-                  this.latestRecord.bloodSugar != null ? '' + this.latestRecord.bloodSugar : '--',
-                  'mmol/L'
-                );
-                this.buildSimpleCard(
-                  '⚖️', '体重',
-                  this.latestRecord.weight != null ? '' + this.latestRecord.weight : '--',
-                  'kg'
-                );
-              }
-              .width('100%');
-
-              Row({ space: 8 }) {
-                this.buildSimpleCard(
-                  '👟', '步数',
-                  this.latestRecord.stepCount != null ? '' + this.latestRecord.stepCount : '--',
-                  '步'
-                );
-                this.buildSimpleCard(
-                  '😴', '睡眠',
-                  this.latestRecord.sleepDuration != null ? '' + this.latestRecord.sleepDuration : '--',
-                  'h'
-                );
-              }
-              .width('100%');
-            }
-            .width('88%')
-            .padding(16)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12);
-
-            Row() {
-              Column() {
-                Text('用药提醒')
-                  .fontSize(14)
-                  .fontWeight('bold')
-                  .fontColor('#333333')
-                  .margin({ bottom: 4 });
-                Text('管理您的用药计划和提醒')
-                  .fontSize(11)
-                  .fontColor('#999999');
-              }
-              .layoutWeight(1)
-              .alignItems(HorizontalAlign.Start);
-              Text('›')
-                .fontSize(18)
-                .fontColor('#999999');
-            }
-            .width('88%')
-            .padding(14)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(10)
-            .margin({ top: 4 })
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/Medications' });
-            });
-
-            Row() {
-              Column() {
-                Text('健康风险评估')
-                  .fontSize(14)
-                  .fontWeight('bold')
-                  .fontColor('#333333')
-                  .margin({ bottom: 4 });
-                Text('评估您的健康风险状况')
-                  .fontSize(11)
-                  .fontColor('#999999');
-              }
-              .layoutWeight(1)
-              .alignItems(HorizontalAlign.Start);
-              Text('›')
-                .fontSize(18)
-                .fontColor('#999999');
-            }
-            .width('88%')
-            .padding(14)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(10)
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/RiskAssessmentPage' });
-            });
-          }
+        Column({ space: AccessibilityConfig.getSpacingMD() }) {
+          this.buildBannerSection()
+          this.buildOverviewSection()
+          this.buildTabSection()
         }
-        .width('100%')
-        .alignItems(HorizontalAlign.Center)
-        .padding({ bottom: 80 });
+        .width('85%')
+        .padding({
+          top: AccessibilityConfig.getSpacingLG(),
+          bottom: AccessibilityConfig.getSpacingLG()
+        })
       }
-      .layoutWeight(1);
+      .height(0)
+      .layoutWeight(1)
+      .scrollBar(BarState.Off)
+      .align(Alignment.Top);
 
-      Footer({ activeIndex: 4 });
+      Footer({ activeIndex: 2 });
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F7FA');
+    .backgroundColor(AccessibilityConfig.getBgColor())
   }
 
-  @Builder
-  buildMetricCard(icon: string, label: string, status: HealthMetricStatus, unit: string) {
-    Column({ space: 4 }) {
-      Row({ space: 3 }) {
-        Text(status.icon)
-          .fontSize(11);
-        Text(status.text)
-          .fontSize(18)
-          .fontWeight('bold')
-          .fontColor(status.color);
-        Text(unit)
-          .fontSize(10)
-          .fontColor('#999999');
-      }
-      Text(label)
-        .fontSize(11)
-        .fontColor('#666666');
-    }
-    .layoutWeight(1)
-    .padding(10)
-    .backgroundColor('#F8F9FA')
-    .borderRadius(10)
-    .alignItems(HorizontalAlign.Center);
+  @Builder buildBannerSection() {
+    CarouselBanner({ banners: this.healthBanners })
   }
 
-  @Builder
-  buildSimpleCard(icon: string, label: string, value: string, unit: string) {
-    Column({ space: 4 }) {
-      Row({ space: 3 }) {
-        Text(value)
-          .fontSize(18)
-          .fontWeight('bold')
-          .fontColor(value === '--' ? '#999999' : '#333333');
-        Text(unit)
-          .fontSize(10)
-          .fontColor('#999999');
+  @Builder buildOverviewSection() {
+    HealthOverviewCard({ overviewData: this.healthOverviewData })
+  }
+
+  @Builder buildTabSection() {
+    Column({ space: 12 }) {
+      Tabs({ index: this.currentTab }) {
+        TabContent() {
+          this.buildRehabContent()
+        }.tabBar(this.buildTabBar('康复训练', '🏃'))
+
+        TabContent() {
+          this.buildAiAssessContent()
+        }.tabBar(this.buildTabBar('AI评估', '🧠'))
+
+        TabContent() {
+          this.buildMonitoringContent()
+        }.tabBar(this.buildTabBar('实时监控', '📊'))
+
+        TabContent() {
+          this.buildDigitalTwinContent()
+        }.tabBar(this.buildTabBar('数字孪生', '👤'))
       }
-      Text(label)
-        .fontSize(11)
-        .fontColor('#666666');
+      .barPosition(BarPosition.Start)
+      .barHeight(this.isElderMode ? 48 : 40)
+      .animationDuration(200)
+      .onChange((index: number) => {
+        this.currentTab = index;
+      })
     }
-    .layoutWeight(1)
-    .padding(10)
-    .backgroundColor('#F8F9FA')
-    .borderRadius(10)
-    .alignItems(HorizontalAlign.Center);
+    .width('100%')
+    .backgroundColor('#FFFFFF')
+    .borderRadius(12)
+    .border({ width: 1, color: '#F0F0F0' })
+  }
+
+  @Builder buildTabBar(label: string, icon: string) {
+    Row({ space: 6 }) {
+      Text(icon)
+        .fontSize(this.isElderMode ? 18 : 14)
+
+      Text(label)
+        .fontSize(this.isElderMode ? 14 : 12)
+        .fontWeight(FontWeight.Medium)
+    }
+    .padding({ left: 16, right: 16, top: 10, bottom: 10 })
+  }
+
+  @Builder buildRehabContent() {
+    Scroll() {
+      Column({ space: AccessibilityConfig.getSpacingMD() }) {
+        ForEach(this.rehabServices, (service: ServiceCard) => {
+          Row({ space: AccessibilityConfig.getSpacingMD() }) {
+            Column() {
+              Text(service.icon)
+                .fontSize(this.isElderMode ? 28 : 22)
+                .fontColor(AccessibilityConfig.getThemeColor());
+            }
+            .width(64)
+            .height(64)
+            .backgroundColor(AccessibilityConfig.getThemeColor() + '20')
+            .borderRadius(32)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center);
+
+            Column({ space: 4 }) {
+              Text(service.title)
+                .fontSize(this.isElderMode ? 16 : 14)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#333333');
+
+              Text(service.description)
+                .fontSize(this.isElderMode ? 13 : 11)
+                .fontColor('#666666');
+            }
+            .layoutWeight(1)
+            .alignItems(HorizontalAlign.Start)
+            .margin({ left: AccessibilityConfig.getSpacingMD() });
+
+            Text('›')
+              .fontSize(this.isElderMode ? 18 : 14)
+              .fontColor('#CCCCCC');
+          }
+          .width('100%')
+          .padding(AccessibilityConfig.getSpacingMD())
+          .backgroundColor('#FAFAFA')
+          .borderRadius(10)
+          .onClick(() => {
+            router.pushUrl({ url: service.url });
+          });
+        }, (service: ServiceCard) => service.id.toString())
+
+        Column({ space: 12 }) {
+          Text('推荐康复计划')
+            .fontSize(this.isElderMode ? 16 : 14)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#333333')
+
+          Row({ space: 12 }) {
+            ForEach(['上肢训练', '平衡练习', '呼吸训练'], (rehabItem: string) => {
+              Column({ space: 8 }) {
+                Text(rehabItem === '上肢训练' ? '💪' : rehabItem === '平衡练习' ? '🚶' : '🫁')
+                  .fontSize(28)
+
+                Text(rehabItem)
+                  .fontSize(12)
+                  .fontColor('#666666')
+
+                Text('30分钟')
+                  .fontSize(10)
+                  .fontColor('#999999')
+              }
+              .flexGrow(1)
+              .height(100)
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#F5F5F5')
+              .borderRadius(10)
+            }, (rehabItem: string) => rehabItem)
+          }
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(10)
+        .border({ width: 1, color: '#F0F0F0' })
+      }
+      .padding(16)
+    }
+    .scrollBar(BarState.Off)
+    .height(300)
+  }
+
+  @Builder buildAiAssessContent() {
+    Scroll() {
+      Column({ space: 16 }) {
+        Column({ space: 12 }) {
+          Row({ space: 8 }) {
+            Text('🧠')
+              .fontSize(24)
+
+            Text('端侧AI风险评估引擎')
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333333')
+          }
+
+          Row({ space: 8 }) {
+            Text('上次评估:')
+              .fontSize(13)
+              .fontColor('#666666')
+
+            Text('2026-04-15')
+              .fontSize(13)
+              .fontColor(AccessibilityConfig.getThemeColor())
+
+            Text('结果: 低风险')
+              .fontSize(13)
+              .fontColor('#4CAF50')
+              .backgroundColor('#4CAF5020')
+              .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+              .borderRadius(10)
+          }
+
+          Row({ space: 12 }) {
+            Button('立即重新评估')
+              .height(36)
+              .fontSize(13)
+              .backgroundColor(AccessibilityConfig.getThemeColor())
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/RiskAssessmentPage' });
+              })
+
+            Button('查看历史报告')
+              .height(36)
+              .fontSize(13)
+              .backgroundColor('#F5F5F5')
+              .fontColor('#666666')
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/RiskHistoryPage' });
+              })
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(10)
+        .border({ width: 1, color: '#F0F0F0' })
+
+        Column({ space: 12 }) {
+          Text('⚡ What-if 模拟')
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#333333')
+
+          Column({ space: 8 }) {
+            ForEach(this.whatIfItems, (item: WhatIfItem) => {
+              Row() {
+                Text(item.label)
+                  .fontSize(13)
+                  .fontColor('#666666')
+                  .layoutWeight(1)
+
+                Text(item.impact)
+                  .fontSize(13)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(item.color)
+              }
+              .width('100%')
+              .padding(12)
+              .backgroundColor('#FAFAFA')
+              .borderRadius(8)
+            }, (item: WhatIfItem) => item.label)
+          }
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(10)
+        .border({ width: 1, color: '#F0F0F0' })
+      }
+      .padding(16)
+    }
+    .scrollBar(BarState.Off)
+    .height(300)
+  }
+
+  @Builder buildMonitoringContent() {
+    Scroll() {
+      Column({ space: 16 }) {
+        Column({ space: 12 }) {
+          Row({ space: 8 }) {
+            Text('📊')
+              .fontSize(24)
+
+            Text('患者实时监控系统')
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333333')
+          }
+
+          Row({ space: 8 }) {
+            Text('● 正常')
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#4CAF50')
+
+            Text('(最后更新: 刚刚)')
+              .fontSize(12)
+              .fontColor('#999999')
+              .layoutWeight(1)
+          }
+
+          Column({ space: 10 }) {
+            ForEach(this.vitalSigns, (vital: VitalSignItem) => {
+              Row({ space: 12 }) {
+                Column({ space: 4 }) {
+                  Text(vital.name)
+                    .fontSize(12)
+                    .fontColor('#666666')
+
+                  Text(vital.value)
+                    .fontSize(18)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor(vital.color)
+
+                  Text(vital.unit)
+                    .fontSize(10)
+                    .fontColor('#999999')
+                }
+                .layoutWeight(1)
+                .alignItems(HorizontalAlign.Start)
+
+                Column()
+                  .width(40)
+                  .height(40)
+                  .backgroundColor(vital.color + '20')
+                  .borderRadius(20)
+                  .justifyContent(FlexAlign.Center)
+              }
+              .width('100%')
+              .padding(12)
+              .backgroundColor('#FAFAFA')
+              .borderRadius(8)
+            }, (vital: VitalSignItem) => vital.name)
+          }
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(10)
+        .border({ width: 1, color: '#F0F0F0' })
+
+        Row({ space: 12 }) {
+          Button('进入监控面板 →')
+            .flexGrow(1)
+            .height(38)
+            .fontSize(13)
+            .backgroundColor(AccessibilityConfig.getThemeColor())
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/MonitoringDashboard' });
+            })
+
+          Button('告警历史 →')
+            .flexGrow(1)
+            .height(38)
+            .fontSize(13)
+            .backgroundColor('#F5F5F5')
+            .fontColor('#666666')
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/AlertHistoryPage' });
+            })
+        }
+        .width('100%')
+      }
+      .padding(16)
+    }
+    .scrollBar(BarState.Off)
+    .height(300)
+  }
+
+  @Builder buildDigitalTwinContent() {
+    Scroll() {
+      Column({ space: 16 }) {
+        Column({ space: 12 }) {
+          Row({ space: 8 }) {
+            Text('👤')
+              .fontSize(24)
+
+            Text('患者数字孪生系统')
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333333')
+          }
+
+          Column() {
+            Text('🔄')
+              .fontSize(64)
+              .fontColor(AccessibilityConfig.getThemeColor())
+
+            Text('3D人体模型预览')
+              .fontSize(14)
+              .fontColor('#666666')
+
+            Text('点击进入完整数字孪生系统，查看器官健康状态可视化')
+              .fontSize(12)
+              .fontColor('#999999')
+              .textAlign(TextAlign.Center)
+              .maxLines(2)
+          }
+          .width('100%')
+          .height(160)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor('#F8F9FF')
+          .borderRadius(10)
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/DigitalTwinPage' });
+          })
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(10)
+        .border({ width: 1, color: '#F0F0F0' })
+
+        Column({ space: 12 }) {
+          Text('器官健康状态')
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#333333')
+
+          Row({ space: 10 }) {
+            ForEach(this.organStatuses, (organ: OrganStatusItem) => {
+              Column({ space: 6 }) {
+                Text(organ.name)
+                  .fontSize(12)
+                  .fontColor('#666666')
+
+                Text(`${organ.percent}%`)
+                  .fontSize(18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(organ.color)
+
+                Text(organ.status)
+                  .fontSize(10)
+                  .fontColor(organ.color)
+                  .backgroundColor(organ.color + '20')
+                  .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                  .borderRadius(8)
+              }
+              .flexGrow(1)
+              .height(90)
+              .justifyContent(FlexAlign.Center)
+              .backgroundColor('#FAFAFA')
+              .borderRadius(8)
+            }, (organ: OrganStatusItem) => organ.name)
+          }
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(10)
+        .border({ width: 1, color: '#F0F0F0' })
+
+        Button('进入数字孪生 →')
+          .width('100%')
+          .height(42)
+          .fontSize(14)
+          .backgroundColor(AccessibilityConfig.getThemeColor())
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/DigitalTwinPage' });
+          })
+      }
+      .padding(16)
+    }
+    .scrollBar(BarState.Off)
+    .height(300)
   }
 }

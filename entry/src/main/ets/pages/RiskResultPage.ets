@@ -135,18 +135,18 @@ struct RiskResultPage {
   }
 
   handleViewReport() {
-    router.push({
+    router.pushUrl({
       url: 'pages/RiskDetailPage',
       params: { assessmentData: this.assessmentData, aiResult: this.aiResult }
     });
   }
 
   handleShare() {
-    router.push({ url: 'pages/DoctorListPage' });
+    router.pushUrl({ url: 'pages/DoctorListPage' });
   }
 
   handleReassess() {
-    router.push({ url: 'pages/RiskAssessmentPage' });
+    router.pushUrl({ url: 'pages/RiskAssessmentPage' });
   }
 
   handleRehabPlan() {
@@ -597,7 +597,7 @@ struct RiskResultPage {
               .borderRadius(25)
               .shadow({ radius: 10, color: '#1677FF44', offsetX: 0, offsetY: 4 })
               .onClick(() => {
-                router.push({ url: 'pages/RiskAssessmentPage' });
+                router.pushUrl({ url: 'pages/RiskAssessmentPage' });
               });
 
             Row({ space: 12 }) {
@@ -615,7 +615,7 @@ struct RiskResultPage {
               .borderRadius(12)
               .shadow({ radius: 4, color: '#00000006', offsetX: 0, offsetY: 2 })
               .onClick(() => {
-                router.push({ url: 'pages/RiskHistoryPage' });
+                router.pushUrl({ url: 'pages/RiskHistoryPage' });
               });
 
               Column({ space: 6 }) {
@@ -632,7 +632,7 @@ struct RiskResultPage {
               .borderRadius(12)
               .shadow({ radius: 4, color: '#00000006', offsetX: 0, offsetY: 2 })
               .onClick(() => {
-                router.push({ url: 'pages/DoctorListPage' });
+                router.pushUrl({ url: 'pages/DoctorListPage' });
               });
             }
             .width('85%')

@@ -195,12 +195,12 @@ struct RiskAssessmentPage {
         .then((response: BaseResponse<Object>) => {
           this.isSubmitting = false;
           if (response.success) {
-            router.push({
+            router.pushUrl({
               url: 'pages/RiskResultPage',
               params: { assessmentData: submitData, aiResult: aiResult }
             });
           } else {
-            router.push({
+            router.pushUrl({
               url: 'pages/RiskResultPage',
               params: { assessmentData: submitData, aiResult: aiResult }
             });
@@ -208,14 +208,14 @@ struct RiskAssessmentPage {
         })
         .catch(() => {
           this.isSubmitting = false;
-          router.push({
+          router.pushUrl({
             url: 'pages/RiskResultPage',
             params: { assessmentData: submitData, aiResult: aiResult }
           });
         });
     }).catch(() => {
       this.isSubmitting = false;
-      router.push({
+      router.pushUrl({
         url: 'pages/RiskResultPage',
         params: { assessmentData: submitData }
       });
@@ -374,7 +374,7 @@ struct RiskAssessmentPage {
               .borderRadius(14)
               .shadow({ radius: 8, color: '#0000000A', offsetX: 0, offsetY: 3 })
               .onClick(() => {
-                router.push({ url: 'pages/RiskHistoryPage' });
+                router.pushUrl({ url: 'pages/RiskHistoryPage' });
               });
 
               Column() {
@@ -477,7 +477,7 @@ struct RiskAssessmentPage {
               .borderRadius(12)
               .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
               .onClick(() => {
-                router.push({ url: 'pages/Profile' });
+                router.pushUrl({ url: 'pages/Profile' });
               });
             }
             .width('90%')

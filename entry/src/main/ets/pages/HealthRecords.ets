@@ -530,7 +530,7 @@ struct HealthRecords {
                 .borderRadius(10)
                 .margin({ top: 8 })
                 .onClick(() => {
-                  router.push({
+                  router.pushUrl({
                     url: 'pages/HealthRecordDetail',
                     params: { record: record }
                   });

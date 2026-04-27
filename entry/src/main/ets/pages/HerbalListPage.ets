@@ -181,32 +181,19 @@ struct HerbalListPage {
           console.log('[药材百科] 搜索失败或无数据, success:', searchRes.success, 'message:', searchRes.message);
         }
       } else {
-        console.log('[药材百科] 使用分页接口');
-        const params: Record<string, string | number | boolean> = {};
-        params['page'] = this.currentPage;
-        params['size'] = 20;
-
-        const response: BaseResponse<Object> = await HttpUtil.get<Object>('/herbal/page', params);
-        console.log('[药材百科] 分页响应:', JSON.stringify(response));
-        if (response.success && response.data) {
-          const pageData: Record<string, Object> = response.data as Record<string, Object>;
-          console.log('[药材百科] 分页数据:', JSON.stringify(pageData));
-          if (pageData['records'] && Array.isArray(pageData['records'])) {
-            const records: BackendHerbalItem[] = pageData['records'] as BackendHerbalItem[];
-            console.log('[药材百科] 记录数量:', records.length);
-            const tempList: HerbalInfo[] = [];
-            for (let i: number = 0; i < records.length; i++) {
-              tempList.push(this.convertBackendItem(records[i]));
-            }
-            this.allHerbalList = tempList;
-            const pagesValue: Object | undefined = pageData['pages'];
-            this.totalPages = typeof pagesValue === 'number' ? pagesValue : 1;
-            console.log('[药材百科] 总页数:', this.totalPages);
-          } else {
-            console.log('[药材百科] 分页数据中没有records字段');
+        console.log('[药材百科] 使用全量接口获取所有药材');
+        const allRes: BaseResponse<BackendHerbalItem[]> = await HttpUtil.get<BackendHerbalItem[]>('/herbal/list/all', {} as Record<string, string | number | boolean>);
+        console.log('[药材百科] 全量接口响应:', JSON.stringify(allRes));
+        if (allRes.success && allRes.data && Array.isArray(allRes.data)) {
+          console.log('[药材百科] 全量数据数量:', allRes.data.length);
+          const tempList: HerbalInfo[] = [];
+          for (let i: number = 0; i < allRes.data.length; i++) {
+            tempList.push(this.convertBackendItem(allRes.data[i]));
           }
+          this.allHerbalList = tempList;
+          this.totalPages = 1;
         } else {
-          console.log('[药材百科] 分页请求失败或无数据, success:', response.success, 'message:', response.message);
+          console.log('[药材百科] 全量请求失败或无数据, success:', allRes.success, 'message:', allRes.message);
         }
       }
 

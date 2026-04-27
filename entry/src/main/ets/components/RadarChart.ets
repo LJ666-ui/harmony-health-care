@@ -25,10 +25,7 @@ export struct RadarChart {
 
   private clearAnimationTimer(): void {
     if (this.animationTimer !== -1) {
-      try {
-        clearInterval(this.animationTimer);
-      } catch (e) {
-      }
+      try { clearInterval(this.animationTimer); } catch (e) {}
       this.animationTimer = -1;
     }
   }
@@ -37,10 +34,7 @@ export struct RadarChart {
     let progress: number = 0;
     this.animationTimer = setInterval(() => {
       progress += 0.04;
-      if (progress >= 1) {
-        progress = 1;
-        this.clearAnimationTimer();
-      }
+      if (progress >= 1) { progress = 1; this.clearAnimationTimer(); }
       this.animationProgress = this.easeOutCubic(progress);
     }, 25);
   }
@@ -49,33 +43,12 @@ export struct RadarChart {
     return 1 - Math.pow(1 - t, 3);
   }
 
-  private getOverallColor(): string {
-    if (this.data.length === 0) {
-      return '#52C41A';
-    }
-    let maxVal: number = 0;
-    for (let i: number = 0; i < this.data.length; i++) {
-      if (this.data[i].value > maxVal) {
-        maxVal = this.data[i].value;
-      }
-    }
-    if (maxVal >= 0.6) {
-      return '#FF4D4F';
-    }
-    if (maxVal >= 0.3) {
-      return '#FAAD14';
-    }
-    return '#52C41A';
-  }
-
   build() {
     Column() {
       Canvas(this.context)
         .width(this.sizeValue)
         .height(this.sizeValue)
-        .onReady(() => {
-          this.drawRadar();
-        });
+        .onReady(() => { this.drawRadar(); });
     }
   }
 
@@ -83,7 +56,7 @@ export struct RadarChart {
     const ctx: CanvasRenderingContext2D = this.context;
     const cx: number = this.sizeValue / 2;
     const cy: number = this.sizeValue / 2;
-    const maxRadius: number = this.sizeValue * 0.38;
+    const maxRadius: number = this.sizeValue * 0.36;
     const sides: number = this.data.length > 0 ? this.data.length : 5;
     const angleStep: number = (2 * Math.PI) / sides;
     const startAngle: number = -Math.PI / 2;
@@ -98,15 +71,21 @@ export struct RadarChart {
         const angle: number = startAngle + i * angleStep;
         const x: number = cx + r * Math.cos(angle);
         const y: number = cy + r * Math.sin(angle);
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
+        if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
       }
       ctx.closePath();
-      ctx.strokeStyle = '#E8E8E8';
-      ctx.lineWidth = 1;
+      if (level <= 2) {
+        ctx.fillStyle = '#F6FFED22';
+        ctx.fill();
+      } else if (level === 3) {
+        ctx.fillStyle = '#FFFBE615';
+        ctx.fill();
+      } else if (level >= 4) {
+        ctx.fillStyle = '#FFF1F010';
+        ctx.fill();
+      }
+      ctx.strokeStyle = level === gridLevels ? '#CCCCCC' : '#E8E8E8';
+      ctx.lineWidth = level === gridLevels ? 1.5 : 0.8;
       ctx.stroke();
     }
 
@@ -115,9 +94,11 @@ export struct RadarChart {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + maxRadius * Math.cos(angle), cy + maxRadius * Math.sin(angle));
-      ctx.strokeStyle = '#E0E0E0';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#EEEEEE';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([4, 4]);
       ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     if (this.data.length > 0) {
@@ -127,70 +108,120 @@ export struct RadarChart {
         const idx: number = i % sides;
         const angle: number = startAngle + idx * angleStep;
         const value: number = this.data[idx].value * this.animationProgress;
-        const r: number = maxRadius * Math.max(0.05, value);
+        const r: number = maxRadius * Math.max(0.06, value);
         const x: number = cx + r * Math.cos(angle);
         const y: number = cy + r * Math.sin(angle);
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
+        if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); }
       }
       ctx.closePath();
-      ctx.fillStyle = overallColor + '30';
+      ctx.fillStyle = overallColor + '28';
       ctx.fill();
-      ctx.strokeStyle = overallColor + 'CC';
+      ctx.strokeStyle = overallColor;
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
       for (let i: number = 0; i < sides; i++) {
         const angle: number = startAngle + i * angleStep;
         const value: number = this.data[i].value * this.animationProgress;
-        const r: number = maxRadius * Math.max(0.05, value);
+        const r: number = maxRadius * Math.max(0.06, value);
         const x: number = cx + r * Math.cos(angle);
         const y: number = cy + r * Math.sin(angle);
+        const itemColor: string = this.data[i].color;
 
         ctx.beginPath();
-        ctx.arc(x, y, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = this.data[i].color;
+        ctx.arc(x, y, 7, 0, 2 * Math.PI);
+        ctx.fillStyle = itemColor;
         ctx.fill();
         ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, 2 * Math.PI);
+        ctx.strokeStyle = itemColor + '40';
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
+
+      const avgVal: number = this.getAverageValue() * this.animationProgress;
+      const centerR: number = maxRadius * Math.max(0.04, avgVal);
+      ctx.beginPath();
+      ctx.arc(cx, cy, centerR, 0, 2 * Math.PI);
+      const centerGradient: CanvasGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, centerR);
+      centerGradient.addColorStop(0, overallColor + '60');
+      centerGradient.addColorStop(1, overallColor + '08');
+      ctx.fillStyle = centerGradient;
+      ctx.fill();
     }
 
     for (let i: number = 0; i < sides; i++) {
       const angle: number = startAngle + i * angleStep;
-      const labelR: number = maxRadius + 28;
+      const labelR: number = maxRadius + 32;
       const lx: number = cx + labelR * Math.cos(angle);
       const ly: number = cy + labelR * Math.sin(angle);
 
+      const textW: number = ctx.measureText(this.data[i].label).width;
+      const bgPadding: number = 5;
+      ctx.fillStyle = '#FFFFFFEE';
+      ctx.beginPath();
+      ctx.roundRect(lx - textW / 2 - bgPadding, ly - 18, textW + bgPadding * 2, 18, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#EEEEEE';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
       ctx.fillStyle = '#333333';
-      ctx.font = '13px sans-serif';
+      ctx.font = 'bold 13px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(this.data[i].label, lx, ly - 8);
+      ctx.fillText(this.data[i].label, lx, ly - 9);
 
       if (this.showValue) {
-        const percent: number = Math.round(this.data[i].value * 100);
-        ctx.fillStyle = this.data[i].color;
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText(percent + '%', lx, ly + 8);
+        const percent: number = Math.round(this.data[i].value * 100 * this.animationProgress);
+        const valStr: string = percent.toString() + '%';
+        const valColor: string = this.data[i].color;
+
+        const valTextW: number = ctx.measureText(valStr).width;
+        ctx.fillStyle = valColor + '12';
+        ctx.beginPath();
+        ctx.roundRect(lx - valTextW / 2 - 4, ly + 1, valTextW + 8, 18, 9);
+        ctx.fill();
+
+        ctx.fillStyle = valColor;
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(valStr, lx, ly + 11);
       }
     }
 
     const gridLabels: string[] = ['20%', '40%', '60%', '80%', '100%'];
     for (let level: number = 1; level <= gridLevels; level++) {
       const r: number = maxRadius * (level / gridLevels);
-      const labelAngle: number = startAngle + 0.15;
+      const labelAngle: number = startAngle + 0.18;
       const lx: number = cx + r * Math.cos(labelAngle) + 4;
-      const ly: number = cy + r * Math.sin(labelAngle) - 4;
-      ctx.fillStyle = '#BBBBBB';
+      const ly: number = cy + r * Math.sin(labelAngle) - 3;
+      ctx.fillStyle = '#AAAAAA';
       ctx.font = '9px sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'bottom';
       ctx.fillText(gridLabels[level - 1], lx, ly);
     }
+  }
+
+  private getOverallColor(): string {
+    if (this.data.length === 0) { return '#52C41A'; }
+    let maxVal: number = 0;
+    for (let i: number = 0; i < this.data.length; i++) {
+      if (this.data[i].value > maxVal) { maxVal = this.data[i].value; }
+    }
+    if (maxVal >= 0.6) { return '#FF4D4F'; }
+    if (maxVal >= 0.3) { return '#FAAD14'; }
+    return '#52C41A';
+  }
+
+  private getAverageValue(): number {
+    if (this.data.length === 0) { return 0; }
+    let sum: number = 0;
+    for (let i: number = 0; i < this.data.length; i++) { sum += this.data[i].value; }
+    return sum / this.data.length;
   }
 }

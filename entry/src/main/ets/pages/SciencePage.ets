@@ -1,747 +1,378 @@
 import { router } from '@kit.ArkUI';
+import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { GlobalTheme } from '../global';
-import { ToastUtil } from '../common/utils/ToastUtil';
-import BrowseTracker from '../utils/BrowseTracker';
-import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
-import { ApiConstants } from '../common/constants/ApiConstants';
 
-export interface ArticleCategory {
-  id: number;
-  categoryName: string;
-  categoryCode: string;
-}
-
-export interface ArticleItem {
-  id: number;
-  title: string;
-  content: string;
-  coverImage: string;
-  publishTime: string;
-  categoryId: number;
-  author: string;
-  viewCount: number;
-}
-
-interface PageResultData<T> {
-  records: T[];
-  total: number;
-}
-
-export interface ScienceArticle {
-  id: number;
-  title: string;
-  coverImage: string;
-  summary: string;
-  publishTime: string;
-  category: string;
-  readCount: number;
-  author: string;
-  categoryId: number;
+interface NavigationParams {
+  searchKeyword?: string;
+  articleId?: number | string;
+  articleTitle?: string;
 }
 
 @Entry
 @Component
 struct SciencePage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-
-  @State articles: ScienceArticle[] = [];
-  @State hotArticles: ScienceArticle[] = [];
-  @State categories: ArticleCategory[] = [];
-  @State categoryNames: string[] = ['全部'];
-  @State selectedCategoryIndex: number = 0;
-  @State isRefreshing: boolean = false;
-  @State isLoading: boolean = true;
-  @State searchText: string = '';
-  @State searchHistory: string[] = ['高血压', '糖尿病', '颈椎病', '跌倒预防'];
-  @State showSearchHistory: boolean = false;
-  @State searchResults: ScienceArticle[] = [];
-  @State currentPage: number = 1;
-  @State pageSize: number = 20;
-  @State hasMore: boolean = true;
   @State currentBannerIndex: number = 0;
 
-  private recordId: number | undefined = undefined;
-
   aboutToAppear(): void {
-    BrowseTracker.recordStart('SCIENCE_HOME', 'PAGE', 2, '健康科普首页').then(id => {
-      this.recordId = id;
-    });
-
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+  }
 
-    this.loadAllData();
-
+  private navigateTo(url: string, params?: NavigationParams): void {
     try {
-      setInterval(() => {
-        if (this.hotArticles.length > 0) {
-          this.currentBannerIndex = (this.currentBannerIndex + 1) % Math.min(this.hotArticles.length, 5);
-        }
-      }, 3000);
-    } catch (e) {
-      console.error('轮播定时器设置失败', e);
-    }
-  }
-
-  aboutToDisappear(): void {
-    if (this.recordId) {
-      BrowseTracker.recordEnd(this.recordId);
-    }
-  }
-
-  async loadAllData(): Promise<void> {
-    this.isLoading = true;
-    try {
-      await Promise.all([
-        this.loadCategories(),
-        this.loadHotArticles(),
-        this.loadArticles()
-      ]);
-    } catch (e) {
-      console.error('加载数据失败:', e);
-    } finally {
-      this.isLoading = false;
-    }
-  }
-
-  async loadCategories(): Promise<void> {
-    try {
-      const response: BaseResponse<ArticleCategory[]> = await HttpUtil.get<ArticleCategory[]>(ApiConstants.ARTICLE_CATEGORIES_PARENT);
-      if (response.success && response.data) {
-        const mappedCategories: ArticleCategory[] = [];
-        for (let i = 0; i < response.data.length; i++) {
-          const item = response.data[i];
-          const cat: ArticleCategory = {
-            id: item.id,
-            categoryName: item.categoryName ? item.categoryName : item.categoryCode,
-            categoryCode: item.categoryCode
-          };
-          mappedCategories.push(cat);
-        }
-        this.categories = mappedCategories;
-
-        const names: string[] = ['全部'];
-        for (let j = 0; j < this.categories.length; j++) {
-          names.push(this.categories[j].categoryName);
-        }
-        this.categoryNames = names;
+      if (params) {
+        router.pushUrl({ url: url, params: params });
+      } else {
+        router.pushUrl({ url: url });
       }
-    } catch (e) {
-      console.error('加载分类失败:', e);
+    } catch (error) {
+      console.error('导航失败:', error);
     }
   }
 
-  async loadHotArticles(): Promise<void> {
-    try {
-      const params: Record<string, number> = {};
-      params['pageSize'] = 5;
-      const response: BaseResponse<ArticleItem[]> = await HttpUtil.get<ArticleItem[]>(ApiConstants.ARTICLE_LIST, params);
-
-      if (response.success && response.data) {
-        const list: ArticleItem[] = response.data;
-        const mappedArticles: ScienceArticle[] = [];
-
-        for (let k = 0; k < list.length; k++) {
-          const item: ArticleItem = list[k];
-          const article: ScienceArticle = {
-            id: item.id,
-            title: item.title ? item.title : '',
-            coverImage: item.coverImage ? item.coverImage : '',
-            summary: this.extractSummary(item.content),
-            publishTime: this.formatDate(item.publishTime),
-            category: this.getCategoryName(item.categoryId),
-            readCount: item.viewCount ? item.viewCount : 0,
-            author: item.author ? item.author : '健康专家',
-            categoryId: item.categoryId
-          };
-          mappedArticles.push(article);
-        }
-
-        this.hotArticles = mappedArticles;
-      }
-    } catch (e) {
-      console.error('加载热门文章失败:', e);
-    }
-  }
-
-  async loadArticles(isRefresh: boolean = false): Promise<void> {
-    if (isRefresh) {
-      this.currentPage = 1;
-      this.hasMore = true;
-    }
-
-    try {
-      let url: string = ApiConstants.ARTICLE_PAGE + '?page=' + this.currentPage + '&size=' + this.pageSize;
-
-      if (this.selectedCategoryIndex > 0 && this.categories.length > 0) {
-        const selectedCategory: ArticleCategory = this.categories[this.selectedCategoryIndex - 1];
-        url = url + '&parentCategoryName=' + encodeURIComponent(selectedCategory.categoryName);
-      }
-
-      if (this.searchText.trim()) {
-        url = url + '&title=' + encodeURIComponent(this.searchText.trim());
-      }
-
-      const response: BaseResponse<PageResultData<ArticleItem>> = await HttpUtil.get<PageResultData<ArticleItem>>(url);
-
-      if (response.success && response.data) {
-        const data: PageResultData<ArticleItem> = response.data;
-        const list: ArticleItem[] = data.records || [];
-
-        const mappedArticles: ScienceArticle[] = [];
-        for (let k = 0; k < list.length; k++) {
-          const item: ArticleItem = list[k];
-          const article: ScienceArticle = {
-            id: item.id,
-            title: item.title ? item.title : '',
-            coverImage: item.coverImage ? item.coverImage : '',
-            summary: this.extractSummary(item.content),
-            publishTime: this.formatDate(item.publishTime),
-            category: this.getCategoryName(item.categoryId),
-            readCount: item.viewCount ? item.viewCount : 0,
-            author: item.author ? item.author : '健康专家',
-            categoryId: item.categoryId
-          };
-          mappedArticles.push(article);
-        }
-
-        if (isRefresh) {
-          this.articles = mappedArticles;
-        } else {
-          this.articles = this.articles.concat(mappedArticles);
-        }
-
-        const total: number = data.total ? data.total : 0;
-        this.hasMore = this.articles.length < total;
-      }
-    } catch (e) {
-      console.error('加载文章失败:', e);
-      ToastUtil.showSuccess('加载失败，请重试');
-    }
-  }
-
-  extractSummary(content: string): string {
-    if (!content) return '暂无摘要...';
-    let plainText: string = content;
-    plainText = plainText.replace(/#/g, '');
-    plainText = plainText.replace(/\*/g, '');
-    plainText = plainText.replace(/\[/g, '');
-    plainText = plainText.replace(/\]/g, '');
-    plainText = plainText.replace(/\(/g, '');
-    plainText = plainText.replace(/\)/g, '');
-    while (plainText.indexOf('\n') >= 0) {
-      plainText = plainText.replace('\n', ' ');
-    }
-    plainText = plainText.trim();
-    return plainText.length > 80 ? plainText.substring(0, 80) + '...' : plainText;
-  }
-
-  formatDate(dateStr: string | Date): string {
-    if (!dateStr) return '';
-    const date: Date = new Date(dateStr);
-    const year: number = date.getFullYear();
-    const month: string = String(date.getMonth() + 1).padStart(2, '0');
-    const day: string = String(date.getDate()).padStart(2, '0');
-    return year + '-' + month + '-' + day;
-  }
-
-  getCategoryName(categoryId: number): string {
-    for (let i = 0; i < this.categories.length; i++) {
-      const cat: ArticleCategory = this.categories[i];
-      if (cat.id === categoryId) {
-        return cat.categoryName;
-      }
-    }
-    return '健康科普';
-  }
-
-  handleRefresh(): void {
-    this.isRefreshing = true;
-    this.loadAllData().then(() => {
-      this.isRefreshing = false;
-      ToastUtil.refreshSuccess();
-    });
-  }
-
-  handleSearch(): void {
-    if (!this.searchText.trim()) {
-      this.searchResults = [];
-      this.showSearchHistory = false;
-      this.loadArticles(true);
-      return;
-    }
-
-    this.showSearchHistory = false;
-    this.currentPage = 1;
-    this.hasMore = true;
-    this.articles = [];
-    this.loadArticles();
-  }
-
-  handleClearSearch(): void {
-    this.searchText = '';
-    this.searchResults = [];
-    this.showSearchHistory = false;
-    this.loadArticles(true);
-  }
-
-  addToSearchHistory(keyword: string): void {
-    try {
-      let newHistory: string[] = [];
-      for (let i = 0; i < this.searchHistory.length; i++) {
-        if (this.searchHistory[i] !== keyword) {
-          newHistory.push(this.searchHistory[i]);
-        }
-      }
-      newHistory.unshift(keyword);
-      if (newHistory.length > 10) {
-        newHistory = newHistory.slice(0, 10);
-      }
-      this.searchHistory = newHistory;
-    } catch (e) {
-      console.error('添加搜索历史失败', e);
-    }
-  }
-
-  clearSearchHistory(): void {
-    try {
-      this.searchHistory = [];
-    } catch (e) {
-      console.error('清空搜索历史失败', e);
-    }
-  }
-
-  selectSearchHistory(keyword: string): void {
-    this.searchText = keyword;
-    this.handleSearch();
-  }
-
-  onCategoryChange(index: number): void {
-    this.selectedCategoryIndex = index;
-    this.searchText = '';
-    this.searchResults = [];
-    this.loadArticles(true);
-  }
-
-  getDisplayedArticles(): ScienceArticle[] {
-    if (this.searchText.trim()) {
-      return this.articles;
-    }
-    return this.articles;
-  }
-
-  loadMore(): void {
-    if (!this.hasMore || this.isLoading) return;
-    this.currentPage++;
-    this.loadArticles();
-  }
-
-  build(): void {
+  build() {
     Column() {
-      Text('健康科普')
-        .width('100%')
-        .height(56)
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#333333')
-        .backgroundColor('#FFFFFF')
-        .textAlign(TextAlign.Center)
+      Header({ title: '发现' })
 
       Scroll() {
-        Column() {
-          Row() {
-            Row() {
-              Text('🔍')
-                .fontSize(16)
-                .margin({ left: 12 })
-              TextInput({
-                placeholder: '搜索健康知识...',
-                text: this.searchText
-              })
-                .fontSize(this.isElderMode ? 16 : 14)
-                .width('100%')
-                .height(40)
-                .padding({ left: 8, right: 12 })
-                .backgroundColor('transparent')
-                .onChange((value: string) => {
-                  this.searchText = value;
-                  this.showSearchHistory = true;
-                })
-                .onSubmit(() => {
-                  this.handleSearch();
-                  this.addToSearchHistory(this.searchText.trim());
-                })
-            }
-            .width('90%')
-            .height(48)
-            .backgroundColor('#F5F7FA')
-            .borderRadius(24)
-            .alignItems(VerticalAlign.Center)
+        Column({ space: this.isElderMode ? 16 : 12 }) {
+          this.buildSearchBar()
 
-            Button('搜索')
-              .height(36)
-              .fontSize(14)
-              .fontColor('#FFFFFF')
-              .backgroundColor('#1677FF')
-              .borderRadius(18)
-              .onClick(() => {
-                this.handleSearch();
-                if (this.searchText.trim()) {
-                  this.addToSearchHistory(this.searchText.trim());
-                }
-              });
-          }
-          .width('100%')
-          .padding({ top: 16, bottom: 8, left: 16, right: 16 })
+          this.buildCarouselBanner()
 
-          if (this.showSearchHistory && this.searchHistory.length > 0 && !this.searchText.trim()) {
-            Column() {
-              Row() {
-                Text('搜索历史')
-                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                  .fontColor('#333333')
-                  .fontWeight(FontWeight.Bold)
-                Button('清空')
-                  .fontSize(12)
-                  .fontColor('#999999')
-                  .backgroundColor('transparent')
-                  .border({ width: 0 })
-                  .onClick(() => this.clearSearchHistory());
-              }
-              .width('90%')
-              .margin({ left: '5%', right: '5%' })
-              .justifyContent(FlexAlign.SpaceBetween)
+          this.buildCategoryGrid()
 
-              Row() {
-                ForEach(this.searchHistory, (keyword: string) => {
-                  Text(keyword)
-                    .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-                    .fontSize(this.isElderMode ? 14 : 12)
-                    .fontColor('#666666')
-                    .backgroundColor('#F0F5FF')
-                    .borderRadius(16)
-                    .margin({ right: 8, bottom: 8 })
-                    .onClick(() => this.selectSearchHistory(keyword));
-                }, (keyword: string) => keyword);
-              }
-              .width('90%')
-              .margin({ left: '5%', right: '5%', top: 8, bottom: 16 })
-            }
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12)
-            .margin({ left: '5%', right: '5%' })
-            .padding({ top: 16, bottom: 16 })
-            .shadow({
-              radius: 4,
-              color: '#00000008',
-              offsetX: 0,
-              offsetY: 2
-            });
-          }
+          this.buildArticleSection()
 
-          Column() {
-            Row() {
-              Text('🕸️')
-                .fontSize(32)
-                .margin({ right: 16 });
-              Column({ space: 6 }) {
-                Text('知识图谱')
-                  .fontSize(18)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor('#1677FF');
-                Text('探索疾病、症状、药材、方剂之间的关联关系')
-                  .fontSize(this.isElderMode ? 14 : 12)
-                  .fontColor('#666666')
-                  .maxLines(2);
-              }
-              .layoutWeight(1)
-              .alignItems(HorizontalAlign.Start);
+          this.buildAIToolBox()
 
-              Text('>')
-                .fontSize(20)
-                .fontColor('#1677FF')
-                .fontWeight(FontWeight.Bold);
-            }
-            .width('90%')
-            .padding(20)
-            .backgroundColor('#E6F4FF')
-            .borderRadius(12)
-            .margin({ top: 8, bottom: 16, left: '5%', right: '5%' })
-            .border({ width: 2, color: '#1677FF33' })
-            .onClick(() => {
-              try {
-                router.pushUrl({
-                  url: 'pages/KnowledgeGraphPage'
-                });
-              } catch (error) {
-                console.error('Failed to navigate to KnowledgeGraphPage:', error);
-              }
-            });
-          }
-
-          Scroll() {
-            Row({
-              space: 12
-            }) {
-              ForEach(this.categoryNames, (category: string, index: number) => {
-                Text(category)
-                  .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-                  .fontSize(this.isElderMode ? 16 : 14)
-                  .fontColor(this.selectedCategoryIndex === index ? '#1677FF' : '#666666')
-                  .backgroundColor(this.selectedCategoryIndex === index ? '#E6F4FF' : '#F5F7FA')
-                  .borderRadius(20)
-                  .onClick(() => {
-                    this.onCategoryChange(index);
-                  });
-              }, (category: string, index: number) => '' + category + '_' + index);
-            }
-            .width('100%')
-            .padding({ left: 16, right: 16, top: 16, bottom: 8 })
-          }
-          .scrollBar(BarState.Off)
-          .scrollable(ScrollDirection.Horizontal)
-
-          Column() {
-            Text('热门推荐')
-              .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#333333')
-              .margin({ left: 16, top: 16, bottom: 8 })
-              .width('100%')
-              .textAlign(TextAlign.Start);
-
-            if (this.hotArticles.length === 0) {
-              Text('暂无热门推荐')
-                .fontSize(14)
-                .fontColor('#999999')
-                .width('100%')
-                .textAlign(TextAlign.Center)
-                .padding(20);
-            } else {
-              Scroll() {
-                Row({
-                  space: 12
-                }) {
-                  ForEach(this.hotArticles.slice(0, 5), (article: ScienceArticle, index: number) => {
-                    Column() {
-                      if (article.coverImage && article.coverImage.indexOf('http') === 0) {
-                        Image(article.coverImage)
-                          .width('100%')
-                          .height(140)
-                          .objectFit(ImageFit.Cover)
-                          .borderRadius(8)
-                      } else {
-                        Text('📰')
-                          .fontSize(48)
-                          .margin({ bottom: 8 });
-                      }
-                      Text(article.title)
-                        .fontSize(this.isElderMode ? 16 : 14)
-                        .fontWeight(FontWeight.Bold)
-                        .fontColor('#333333')
-                        .maxLines(2)
-                        .textAlign(TextAlign.Center)
-                        .margin({ top: 8 });
-                      Text(article.summary)
-                        .fontSize(this.isElderMode ? 14 : 12)
-                        .fontColor('#999999')
-                        .maxLines(2)
-                        .textAlign(TextAlign.Center)
-                        .margin({ top: 4 });
-                    }
-                    .width(200)
-                    .height(240)
-                    .padding(16)
-                    .backgroundColor('#FFFFFF')
-                    .borderRadius(12)
-                    .border({ width: 1, color: '#F0F0F0' })
-                    .onClick(() => {
-                      try {
-                        router.pushUrl({
-                          url: 'pages/ScienceDetailPage',
-                          params: { articleId: article.id.toString(), articleTitle: article.title }
-                        });
-                      } catch (error) {
-                        console.error('Failed to navigate to ScienceDetailPage:', error);
-                      }
-                    });
-                  }, (article: ScienceArticle, index: number) => article.id.toString() + '_' + index);
-                }
-                .width('100%')
-                .padding({ left: 16, right: 16, bottom: 16 })
-              }
-              .scrollBar(BarState.Off)
-              .scrollable(ScrollDirection.Horizontal)
-              .width('100%')
-              .height(280)
-              .edgeEffect(EdgeEffect.Spring)
-            }
-          }
-
-          Column() {
-            Text('文章列表')
-              .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#333333')
-              .margin({ left: 16, top: 16, bottom: 8 })
-              .width('100%')
-              .textAlign(TextAlign.Start);
-
-            if (this.isLoading && this.articles.length === 0) {
-              Column() {
-                LoadingProgress()
-                  .width(40)
-                  .height(40)
-                  .color('#1677FF');
-                Text('正在加载...')
-                  .fontSize(14)
-                  .fontColor('#666666')
-                  .margin({ top: 12 });
-              }
-              .width('100%')
-              .height(300)
-              .justifyContent(FlexAlign.Center);
-            } else if (this.getDisplayedArticles().length === 0) {
-              Column() {
-                Text('📚')
-                  .fontSize(48)
-                  .margin({ bottom: 16 });
-                Text(this.searchText.trim() ? '未找到相关文章' : '暂无文章内容')
-                  .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                  .fontColor('#999999');
-              }
-              .width('100%')
-              .height(300)
-              .justifyContent(FlexAlign.Center)
-              .alignItems(HorizontalAlign.Center);
-            } else {
-              List() {
-                ForEach(this.getDisplayedArticles(), (article: ScienceArticle, index: number) => {
-                  ListItem() {
-                    Row() {
-                      if (article.coverImage && article.coverImage.indexOf('http') === 0) {
-                        Image(article.coverImage)
-                          .width(64)
-                          .height(64)
-                          .objectFit(ImageFit.Cover)
-                          .borderRadius(12)
-                          .alt('📰')
-                      } else {
-                        Column() {
-                          Text('📰').fontSize(28)
-                        }
-                        .width(64)
-                        .height(64)
-                        .backgroundColor('#F0F5FF')
-                        .borderRadius(12)
-                        .justifyContent(FlexAlign.Center)
-                        .alignItems(HorizontalAlign.Center)
-                      }
-
-                      Column() {
-                        Text(article.title)
-                          .fontSize(this.isElderMode ? 20 : 16)
-                          .fontWeight(FontWeight.Bold)
-                          .fontColor('#333333')
-                          .maxLines(2)
-
-                        Text(article.summary)
-                          .fontSize(this.isElderMode ? 16 : 13)
-                          .fontColor('#999999')
-                          .maxLines(2)
-                          .margin({ top: 6 })
-
-                        Row() {
-                          Text(article.category)
-                            .fontSize(11)
-                            .fontColor('#1677FF')
-                            .backgroundColor('#E6F4FF')
-                            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-                            .borderRadius(4)
-
-                          Text('👁 ' + (article.readCount >= 1000 ? (article.readCount / 1000).toFixed(1) + 'k' : article.readCount.toString()))
-                            .fontSize(11)
-                            .fontColor('#999999')
-                            .margin({ left: 12 })
-
-                          Text(article.publishTime)
-                            .fontSize(11)
-                            .fontColor('#BBBBBB')
-                        }
-                        .width('100%')
-                        .margin({ top: 8 })
-                      }
-                      .layoutWeight(1)
-                      .alignItems(HorizontalAlign.Start)
-                      .margin({ left: 12 })
-                    }
-                  }
-                  .width('90%')
-                  .margin({ bottom: 10, left: '5%', right: '5%' })
-                  .padding(14)
-                  .backgroundColor('#FFFFFF')
-                  .borderRadius(12)
-                  .border({ width: 1, color: '#F0F0F0' })
-                  .onClick(() => {
-                    try {
-                      router.pushUrl({
-                        url: 'pages/ScienceDetailPage',
-                        params: { articleId: article.id.toString(), articleTitle: article.title }
-                      });
-                    } catch (error) {
-                      console.error('Failed to navigate to ScienceDetailPage:', error);
-                    }
-                  });
-                }, (article: ScienceArticle, index: number) => article.id.toString() + '_' + article.title);
-
-                if (this.hasMore && this.articles.length > 0) {
-                  ListItem() {
-                    Row() {
-                      if (this.isLoading) {
-                        LoadingProgress()
-                          .width(20)
-                          .height(20)
-                          .color('#1677FF');
-                        Text('加载中...')
-                          .fontSize(13)
-                          .fontColor('#666666')
-                          .margin({ left: 8 });
-                      } else {
-                        Text('- 上拉加载更多 -')
-                          .fontSize(13)
-                          .fontColor('#999999')
-                          .onClick(() => {
-                            this.loadMore();
-                          });
-                      }
-                    }
-                    .width('100%')
-                    .height(50)
-                    .justifyContent(FlexAlign.Center);
-                  }
-                }
-              }
-              .width('100%')
-              .layoutWeight(1)
-              .onReachEnd(() => {
-                this.loadMore();
-              });
-            }
-          }
-          .width('100%')
-          .padding({ top: 8, bottom: 100 });
+          Footer({ activeIndex: 3 })
         }
+        .padding({ left: 16, right: 16, bottom: 80 })
       }
       .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
+      .scrollBar(BarState.Auto)
+    }
+    .height('100%')
+    .backgroundColor('#F5F7FA')
+  }
 
-      Footer({ activeIndex: 3 });
+  @Builder buildSearchBar(): void {
+    Row({ space: 10 }) {
+      Row({ space: 8 }) {
+        Text('🔍')
+          .fontSize(18)
+
+        TextInput({
+          placeholder: '搜索健康知识、药材、食材...'
+        })
+          .fontSize(this.isElderMode ? 16 : 14)
+          .layoutWeight(1)
+          .height(40)
+          .padding({ left: 8, right: 8 })
+          .backgroundColor('transparent')
+          .onChange((value: string) => {
+            if (value && value.trim().length > 0) {
+              console.log('搜索内容:', value);
+            }
+          })
+          .onSubmit((enterKey: EnterKeyType) => {
+            this.navigateTo('pages/ScienceDetailPage', { 'searchKeyword': 'search' });
+          })
+      }
+      .layoutWeight(1)
+      .height(48)
+      .padding({ left: 16, right: 12 })
+      .backgroundColor('#FFFFFF')
+      .borderRadius(24)
+      .border({ width: 1, color: '#E0E0E0' })
+
+      Text('🎤')
+        .fontSize(22)
+        .width(40)
+        .height(40)
+        .textAlign(TextAlign.Center)
+        .backgroundColor('#1677FF')
+        .borderRadius(20)
+        .onClick(() => {
+          this.navigateTo('pages/AiChatPage');
+        })
+    }
+    .width('100%')
+    .margin({ top: 12 })
+  }
+
+  @Builder buildCarouselBanner(): void {
+    Swiper() {
+      this.buildBannerItem('#27AE60', '#229954', '📰🔥', '本周热门: 高血压防治全攻略', '阅读12.5k · 收藏3.2k', '立即阅读 →', 'pages/ScienceDetailPage')
+      this.buildBannerItem('#9B59B6', '#8E44AD', '🔬🏥', 'X光/CT/MRI AI智能诊断', '秒级识别 · 多种病灶 · 可视化标注', '上传影像 →', 'pages/ImageAnalysisPage')
+      this.buildBannerItem('#F39C12', '#E67E22', '🌿🍎', '[当季]养生食材推荐', '枸杞·银耳·百合 · 润肺养颜', '查看详情 →', 'pages/FoodEncyclopediaPage')
+      this.buildBannerItem('#3498DB', '#2980B9', '🔗🌐', '医学知识图谱', '疾病-症状-药物关联 · 智能推理', '探索图谱 →', 'pages/KnowledgeGraphPage')
+      this.buildBannerItem('#1ABC9C', '#16A085', '📜✨', '古医古籍数字化展览', '高清复原 · OCR识别 · 文化传承', '走进历史 →', 'pages/AncientMedicalImgPage')
+    }
+    .autoPlay(true)
+    .interval(4000)
+    .loop(true)
+    .indicator(new DotIndicator()
+      .itemWidth(6)
+      .itemHeight(6)
+      .selectedItemWidth(18)
+      .selectedItemHeight(6)
+      .color('#FFFFFF80')
+      .selectedColor('#FFFFFF'))
+    .width('100%')
+    .height(this.isElderMode ? 180 : 160)
+    .margin({ top: 12 })
+  }
+
+  @Builder buildBannerItem(color1: string, color2: string, icon: string, title: string, subtitle: string, ctaText: string, targetUrl: string): void {
+    Column({ space: 12 }) {
+      Row({ space: 8 }) {
+        Text(icon)
+          .fontSize(this.isElderMode ? 28 : 22)
+
+        Text(title)
+          .fontSize(this.isElderMode ? 20 : 16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FFFFFF')
+          .layoutWeight(1)
+      }
+      .alignItems(VerticalAlign.Center)
+
+      Text(subtitle)
+        .fontSize(this.isElderMode ? 14 : 12)
+        .fontColor('#FFFFFFCC')
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+      Row() {
+        Text(ctaText)
+          .fontSize(this.isElderMode ? 14 : 12)
+          .fontColor('#FFFFFF')
+          .fontWeight(FontWeight.Medium)
+
+        Text(' →')
+          .fontSize(this.isElderMode ? 14 : 12)
+          .fontColor('#FFFFFF')
+      }
+      .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+      .backgroundColor('#FFFFFF30')
+      .borderRadius(20)
+      .justifyContent(FlexAlign.Center)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(GlobalTheme.BG_COLOR);
+    .padding(16)
+    .linearGradient({
+      angle: 135,
+      colors: [[color1, 0], [color2, 1]]
+    })
+    .borderRadius(12)
+    .onClick(() => {
+      this.navigateTo(targetUrl);
+    })
+  }
+
+  @Builder buildCategoryGrid(): void {
+    Column({ space: 16 }) {
+      Text('内容分类')
+        .fontSize(this.isElderMode ? 18 : 16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333')
+        .width('100%')
+
+      Grid() {
+        ForEach([
+          { id: 'science', icon: '📰', title: '健康科普', route: 'pages/SciencePage' },
+          { id: 'herbal', icon: '🌿', title: '中药材', route: 'pages/HerbalListPage' },
+          { id: 'food', icon: '🍎', title: '食材百科', route: 'pages/FoodEncyclopediaPage' },
+          { id: 'knowledge', icon: '🔗', title: '知识图谱', route: 'pages/KnowledgeGraphPage' },
+          { id: 'imaging_ai', icon: '🔬', title: '影像AI', route: 'pages/ImageAnalysisPage' },
+          { id: 'ancient', icon: '📜', title: '古籍医学', route: 'pages/AncientMedicalImgPage' },
+          { id: 'stats', icon: '📊', title: '数据统计', route: 'pages/StatisticsPage' },
+          { id: 'collect', icon: '❤️', title: '我的收藏', route: 'pages/MyCollectPage' },
+          { id: 'history', icon: '⏱️', title: '浏览历史', route: 'pages/BrowseHistoryPage' }
+        ], (item: Record<string, string>) => {
+          GridItem() {
+            Column({ space: 8 }) {
+              Text(item['icon'] as string)
+                .fontSize(this.isElderMode ? 36 : 28)
+
+              Text(item['title'] as string)
+                .fontSize(this.isElderMode ? 14 : 12)
+                .fontColor('#333333')
+                .fontWeight(FontWeight.Medium)
+                .textAlign(TextAlign.Center)
+            }
+            .width('100%')
+            .padding({ top: 16, bottom: 12 })
+            .backgroundColor('#FFFFFF')
+            .borderRadius(12)
+            .border({ width: 1, color: '#F0F0F0' })
+            .onClick(() => {
+              const route: string = item['route'] as string;
+              if (route === 'pages/SciencePage') {
+                console.log('当前页面，无需跳转');
+              } else {
+                this.navigateTo(route);
+              }
+            })
+          }
+        }, (item: Record<string, string>) => item['id'] as string)
+      }
+      .columnsTemplate('1fr 1fr 1fr')
+      .rowsGap(12)
+      .columnsGap(12)
+      .width('100%')
+    }
+    .margin({ top: 16 })
+  }
+
+  @Builder buildArticleSection(): void {
+    Column({ space: 12 }) {
+      Row() {
+        Text('精选文章')
+          .fontSize(this.isElderMode ? 18 : 16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+
+        Blank()
+
+        Text('查看更多 >')
+          .fontSize(this.isElderMode ? 14 : 12)
+          .fontColor('#1677FF')
+          .onClick(() => {
+            this.navigateTo('pages/SciencePage');
+          })
+      }
+      .width('100%')
+
+      ForEach([
+        { id: 1, title: '高血压预防指南', readCount: '1.2k', author: '张医生', time: '2026-04-20' },
+        { id: 2, title: '糖尿病饮食注意事项', readCount: '890', author: '李医生', time: '2026-04-18' }
+      ], (article: Record<string, string | number>) => {
+        Row({ space: 12 }) {
+          Column()
+            .width(100)
+            .height(80)
+            .backgroundColor('#F0F5FF')
+            .borderRadius(8)
+            .justifyContent(FlexAlign.Center) {
+            Text('📰')
+              .fontSize(32)
+          }
+
+          Column({ space: 6 }) {
+            Text(article['title'] as string)
+              .fontSize(this.isElderMode ? 16 : 14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#333333')
+              .maxLines(2)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+
+            Row({ space: 12 }) {
+              Text('阅读' + (article['readCount'] as string))
+                .fontSize(this.isElderMode ? 12 : 11)
+                .fontColor('#999999')
+
+              Text(article['author'] as string)
+                .fontSize(this.isElderMode ? 12 : 11)
+                .fontColor('#999999')
+
+              Text(article['time'] as string)
+                .fontSize(this.isElderMode ? 12 : 11)
+                .fontColor('#999999')
+            }
+            .width('100%')
+          }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start)
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(12)
+        .border({ width: 1, color: '#F0F0F0' })
+        .onClick(() => {
+          const idValue: number = article['id'] as number;
+          this.navigateTo('pages/ScienceDetailPage', {
+            articleId: idValue,
+            articleTitle: article['title'] as string
+          });
+        })
+      }, (article: Record<string, string | number>) => (article['id'] as number).toString())
+    }
+    .margin({ top: 16 })
+  }
+
+  @Builder buildAIToolBox(): void {
+    Column({ space: 16 }) {
+      Row() {
+        Text('AI工具箱')
+          .fontSize(this.isElderMode ? 18 : 16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+
+        Blank()
+
+        Text('查看全部 >')
+          .fontSize(this.isElderMode ? 14 : 12)
+          .fontColor('#1677FF')
+          .onClick(() => {
+            this.navigateTo('pages/AIAssistantPage');
+          })
+      }
+      .width('100%')
+
+      Grid() {
+        ForEach([
+          { id: 'imaging_ai', icon: '🔬🏥', title: '影像AI病灶识别分析', subtitle: 'X光/CT/MRI智能诊断', colors: ['#9B59B6', '#8E44AD'], route: 'pages/ImageAnalysisPage' },
+          { id: 'risk_assessment', icon: '🧠⚡', title: '智能风险评估工具', subtitle: '端侧AI·本地隐私保护', colors: ['#E74C3C', '#C0392B'], route: 'pages/RiskAssessmentPage' },
+          { id: 'ancient_restore', icon: '📜✨', title: '古医图复原增强工具', subtitle: '高清复原·OCR识别', colors: ['#1ABC9C', '#16A085'], route: 'pages/ImageRestorationPage' },
+          { id: 'ai_chat', icon: '🤖💬', title: 'AI智能问答助手', subtitle: '健康咨询·用药指导', colors: ['#3498DB', '#2980B9'], route: 'pages/AiChatPage' }
+        ], (tool: Record<string, string | string[]>) => {
+          GridItem() {
+            Column({ space: 10 }) {
+              Text(tool['icon'] as string)
+                .fontSize(36)
+
+              Text(tool['title'] as string)
+                .fontSize(this.isElderMode ? 15 : 13)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#FFFFFF')
+                .textAlign(TextAlign.Center)
+                .maxLines(1)
+
+              Text(tool['subtitle'] as string)
+                .fontSize(this.isElderMode ? 11 : 10)
+                .fontColor('#FFFFFF99')
+                .textAlign(TextAlign.Center)
+                .maxLines(1)
+            }
+            .width('100%')
+            .height(100)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+            .linearGradient({
+              angle: 135,
+              colors: [[(tool['colors'] as string[])[0], 0], [(tool['colors'] as string[])[1], 1]]
+            })
+            .borderRadius(12)
+            .onClick(() => {
+              const route: string = tool['route'] as string;
+              this.navigateTo(route);
+            })
+          }
+        }, (tool: Record<string, string | string[]>) => tool['id'] as string)
+      }
+      .columnsTemplate('1fr 1fr')
+      .rowsGap(12)
+      .columnsGap(12)
+      .width('100%')
+    }
+    .margin({ top: 16 })
   }
 }

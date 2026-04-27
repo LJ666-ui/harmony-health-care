@@ -115,7 +115,18 @@ export struct MedicalPage {
             .border({ width: 1, color: '#F0F0F0' })
             .onClick(() => {
               try {
-                router.pushUrl({ url: `pages/${service.id}Page` });
+                // 统一项目有效路由，匹配main_pages.json配置
+                if (service.id === 'appointment') {
+                  router.pushUrl({ url: 'pages/HospitalPage' });
+                } else if (service.id === 'prescription') {
+                  router.pushUrl({ url: 'pages/Medications' });
+                } else if (service.id === 'hospital_nav') {
+                  router.pushUrl({ url: 'pages/ARNavigationPage' });
+                } else if (service.id === 'report') {
+                  router.pushUrl({ url: 'pages/HealthRecords' });
+                } else {
+                  console.log(`服务 ${service.title} 暂未开放`);
+                }
               } catch (error) {
                 console.error('导航失败:', error);
               }
@@ -197,7 +208,11 @@ export struct MedicalPage {
             .border({ width: 1, color: '#F0F0F0' })
             .onClick(() => {
               try {
-                router.pushUrl({ url: `pages/DepartmentDetailPage?name=${dept.name}` });
+                // 跳转医院页面并传递科室参数
+                router.pushUrl({
+                  url: 'pages/HospitalPage',
+                  params: { targetDepartment: dept.name }
+                });
               } catch (error) {
                 console.error('导航失败:', error);
               }
@@ -221,10 +236,10 @@ export struct MedicalPage {
 
       Row({ space: 10 }) {
         ForEach([
-          { title: '我的挂号', icon: '📝', route: 'pages/MyAppointmentsPage' },
-          { title: '就诊记录', icon: '📖', route: 'pages/MedicalHistoryPage' },
-          { title: '费用明细', icon: '💰', route: 'pages/CostDetailPage' },
-          { title: '满意度评价', icon: '⭐', route: 'pages/EvaluationPage' }
+          { title: '我的挂号', icon: '📝', route: 'pages/Appointments' },
+          { title: '就诊记录', icon: '📖', route: 'pages/MedicalRecord' },
+          { title: '费用明细', icon: '💰', route: 'pages/MedicalRecord' },
+          { title: '满意度评价', icon: '⭐', route: 'pages/Profile' }
         ], (link: QuickLink) => {
           Column({ space: 6 }) {
             Text(link.icon)
@@ -254,6 +269,7 @@ export struct MedicalPage {
   }
 }
 
+// 类型接口定义
 interface MedicalService {
   id: string;
   icon: string;

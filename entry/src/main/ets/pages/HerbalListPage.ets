@@ -76,6 +76,8 @@ struct HerbalListPage {
   @State showBackToTop: boolean = false;
   @State currentPage: number = 1;
   @State totalPages: number = 1;
+  @State isCompareMode: boolean = false;
+  @State selectedHerbalIds: string[] = [];
   private scroller: Scroller = new Scroller();
 
   private recordId: number | undefined = undefined;
@@ -179,32 +181,19 @@ struct HerbalListPage {
           console.log('[药材百科] 搜索失败或无数据, success:', searchRes.success, 'message:', searchRes.message);
         }
       } else {
-        console.log('[药材百科] 使用分页接口');
-        const params: Record<string, string | number | boolean> = {};
-        params['page'] = this.currentPage;
-        params['size'] = 20;
-
-        const response: BaseResponse<Object> = await HttpUtil.get<Object>('/herbal/page', params);
-        console.log('[药材百科] 分页响应:', JSON.stringify(response));
-        if (response.success && response.data) {
-          const pageData: Record<string, Object> = response.data as Record<string, Object>;
-          console.log('[药材百科] 分页数据:', JSON.stringify(pageData));
-          if (pageData['records'] && Array.isArray(pageData['records'])) {
-            const records: BackendHerbalItem[] = pageData['records'] as BackendHerbalItem[];
-            console.log('[药材百科] 记录数量:', records.length);
-            const tempList: HerbalInfo[] = [];
-            for (let i: number = 0; i < records.length; i++) {
-              tempList.push(this.convertBackendItem(records[i]));
-            }
-            this.allHerbalList = tempList;
-            const pagesValue: Object | undefined = pageData['pages'];
-            this.totalPages = typeof pagesValue === 'number' ? pagesValue : 1;
-            console.log('[药材百科] 总页数:', this.totalPages);
-          } else {
-            console.log('[药材百科] 分页数据中没有records字段');
+        console.log('[药材百科] 使用全量接口获取所有药材');
+        const allRes: BaseResponse<BackendHerbalItem[]> = await HttpUtil.get<BackendHerbalItem[]>('/herbal/list/all', {} as Record<string, string | number | boolean>);
+        console.log('[药材百科] 全量接口响应:', JSON.stringify(allRes));
+        if (allRes.success && allRes.data && Array.isArray(allRes.data)) {
+          console.log('[药材百科] 全量数据数量:', allRes.data.length);
+          const tempList: HerbalInfo[] = [];
+          for (let i: number = 0; i < allRes.data.length; i++) {
+            tempList.push(this.convertBackendItem(allRes.data[i]));
           }
+          this.allHerbalList = tempList;
+          this.totalPages = 1;
         } else {
-          console.log('[药材百科] 分页请求失败或无数据, success:', response.success, 'message:', response.message);
+          console.log('[药材百科] 全量请求失败或无数据, success:', allRes.success, 'message:', allRes.message);
         }
       }
 
@@ -322,6 +311,44 @@ struct HerbalListPage {
     this.loadData();
   }
 
+  toggleCompareMode(): void {
+    this.isCompareMode = !this.isCompareMode;
+    if (!this.isCompareMode) {
+      this.selectedHerbalIds = [];
+    }
+  }
+
+  toggleHerbalSelection(herbalId: string): void {
+    const index: number = this.selectedHerbalIds.indexOf(herbalId);
+    if (index >= 0) {
+      this.selectedHerbalIds.splice(index, 1);
+    } else {
+      if (this.selectedHerbalIds.length < 3) {
+        this.selectedHerbalIds.push(herbalId);
+      } else {
+        console.log('最多只能选择3个药材进行对比');
+      }
+    }
+  }
+
+  isSelected(herbalId: string): boolean {
+    return this.selectedHerbalIds.indexOf(herbalId) >= 0;
+  }
+
+  goToCompare(): void {
+    if (this.selectedHerbalIds.length < 2) {
+      console.log('请至少选择2个药材进行对比');
+      return;
+    }
+
+    router.pushUrl({
+      url: 'pages/HerbalComparePage',
+      params: { herbalIds: this.selectedHerbalIds.join(',') }
+    }).catch((err: Error) => {
+      console.error('跳转药材对比页面失败:', err.message);
+    });
+  }
+
   build() {
     Stack() {
       Column() {
@@ -356,6 +383,43 @@ struct HerbalListPage {
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 8, bottom: 8 });
+
+        Row({ space: 12 }) {
+          Button(this.isCompareMode ? '取消对比' : '📊 药材对比')
+            .layoutWeight(1)
+            .height(40)
+            .fontSize(this.isElderMode ? 15 : 13)
+            .fontColor('#FFFFFF')
+            .backgroundColor(this.isCompareMode ? '#FF4D4F' : '#52C41A')
+            .borderRadius(20)
+            .onClick(() => this.toggleCompareMode());
+
+          if (this.isCompareMode && this.selectedHerbalIds.length >= 2) {
+            Button('开始对比 (' + this.selectedHerbalIds.length + ')')
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(this.isElderMode ? 14 : 12)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#1677FF')
+              .borderRadius(20)
+              .onClick(() => this.goToCompare());
+          } else {
+            Button('💊 用法用量计算器')
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(this.isElderMode ? 14 : 12)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#722ED1')
+              .borderRadius(20)
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/DosageCalc' }).catch((err: Error) => {
+                  console.error('跳转用法用量页面失败:', err.message);
+                });
+              });
+          }
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, bottom: 8 });
 
         Scroll(this.scroller) {
           if (this.isLoading) {
@@ -404,12 +468,46 @@ struct HerbalListPage {
           } else {
             Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
               ForEach(this.filteredList, (herbal: HerbalInfo, index: number) => {
-                HerbalCard({
-                  herbal: herbal,
-                  onCardClick: (herb: HerbalInfo) => this.handleCardClick(herb)
-                })
-                  .width('48%')
-                  .margin({ bottom: index % 2 === 0 ? 8 : 0 });
+                Stack() {
+                  HerbalCard({
+                    herbal: herbal,
+                    onCardClick: (herb: HerbalInfo) => this.handleCardClick(herb)
+                  })
+                    .width('100%');
+
+                  if (this.isCompareMode) {
+                    Row() {
+                      if (this.isSelected(herbal.id)) {
+                        Text('✓')
+                          .fontSize(16)
+                          .fontColor('#FFFFFF');
+                      } else {
+                        Text('')
+                          .fontSize(16);
+                      }
+                    }
+                    .width(28)
+                    .height(28)
+                    .borderRadius(14)
+                    .backgroundColor(this.isSelected(herbal.id) ? '#1677FF' : '#FFFFFF')
+                    .border({ width: 2, color: this.isSelected(herbal.id) ? '#1677FF' : '#CCCCCC' })
+                    .position({ x: '85%', y: 8 })
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(VerticalAlign.Center)
+                    .onClick(() => {
+                      this.toggleHerbalSelection(herbal.id);
+                    });
+                  }
+                }
+                .width('48%')
+                .margin({ bottom: index % 2 === 0 ? 8 : 0 })
+                .onClick(() => {
+                  if (this.isCompareMode) {
+                    this.toggleHerbalSelection(herbal.id);
+                  } else {
+                    this.handleCardClick(herbal);
+                  }
+                });
               }, (herbal: HerbalInfo) => herbal.id);
             }
             .width('100%')

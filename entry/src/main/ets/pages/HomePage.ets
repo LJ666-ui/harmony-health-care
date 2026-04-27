@@ -11,14 +11,15 @@ export struct HomePage {
   @State currentIndex: number = 0;
   private theme: AccessibilityConfig = new AccessibilityConfig();
 
+  // 清理冲突，统一路由（匹配项目已配置页面）
   private quickActions: QuickAction[] = [
-    { id: 'appointment', icon: '📅', title: '预约挂号', color: '#3498DB', route: 'pages/AppointmentPage' },
-    { id: 'medical_record', icon: '📋', title: '病历档案', color: '#9B59B6', route: 'pages/MedicalRecordPage' },
+    { id: 'appointment', icon: '📅', title: '预约挂号', color: '#3498DB', route: 'pages/HospitalPage' },
+    { id: 'medical_record', icon: '📋', title: '病历档案', color: '#9B59B6', route: 'pages/MedicalRecord' },
     { id: 'health_report', icon: '📊', title: '体检报告', color: '#2ECC71', route: 'pages/ReportPage' },
     { id: 'medication', icon: '💊', title: '用药提醒', color: '#E74C3C', route: 'pages/MedicationPage' },
     { id: 'consultation', icon: '👨‍⚕️', title: '在线问诊', color: '#F39C12', route: 'pages/ConsultationPage' },
     { id: 'emergency', icon: '🚑', title: '急救指南', color: '#E67E22', route: 'pages/EmergencyPage' },
-    { id: 'health_edu', icon: '📚', title: '健康科普', color: '#1ABC9C', route: 'pages/HealthEducationPage' },
+    { id: 'health_edu', icon: '📚', title: '健康科普', color: '#1ABC9C', route: 'pages/SciencePage' },
     { id: 'family_doctor', icon: '🏥', title: '家庭医生', color: '#34495E', route: 'pages/FamilyDoctorPage' },
     { id: 'insurance', icon: '🛡️', title: '医保服务', color: '#8E44AD', route: 'pages/InsurancePage' },
     { id: 'rehabilitation', icon: '🧘', title: '康复训练', color: '#16A085', route: 'pages/RehabilitationPage' },
@@ -165,6 +166,7 @@ export struct HomePage {
   }
 }
 
+// 类型接口定义
 interface QuickAction {
   id: string;
   icon: string;

@@ -1,6 +1,7 @@
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
-import BrowseTracker from '../utils/BrowseTracker';
+import { BrowseTracker } from '../utils/BrowseTracker';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ToastUtil } from '../common/utils/ToastUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { router } from '@kit.ArkUI';
 import { SearchBar } from '../components/SearchBar';
@@ -11,171 +12,141 @@ import { ArticleList, ScienceArticle } from '../components/ArticleList';
 import { AIToolBox } from '../components/AIToolBox';
 import { Footer } from '../components/Footer';
 
-class ArticlePageResult {
-  records: ScienceArticle[] = [];
-  total: number = 0;
-}
-
 @Entry
 @Component
 export struct DiscoverPage {
+  // 搜索相关
   @State searchText: string = '';
   @State searchHistory: string[] = [];
   @State showSearchHistory: boolean = false;
+
+  // 页面数据
   @State banners: BannerItem[] = [];
   @State categories: CategoryItem[] = [];
   @State articles: ScienceArticle[] = [];
+
+  // 分页
   @State currentPage: number = 1;
   @State pageSize: number = 20;
   @State hasMore: boolean = true;
   @State isLoading: boolean = false;
+
+  // 全局状态
+  @State recordId: number | undefined = undefined;
   @StorageLink('isOldModeEnabled') isOldModeEnabled: boolean = false;
 
-  private recordId: number | undefined = undefined;
+  // 组件引用
+  private articleListRef?: ArticleList;
 
+  // 生命周期
   aboutToAppear(): void {
     this.loadAllData();
-    BrowseTracker.trackPageView('DiscoverPage').then((id: number) => {
-      this.recordId = id;
-    }).catch(() => {});
+    this.recordId = BrowseTracker.recordStart('DiscoverPage', '发现页');
   }
 
   aboutToDisappear(): void {
-    if (this.recordId !== undefined) {
-      BrowseTracker.recordEnd(this.recordId).catch(() => {});
-    }
+    BrowseTracker.recordEnd(this.recordId);
   }
 
-  loadAllData(): void {
+  // 统一加载数据
+  loadAllData() {
     this.loadBanners();
     this.loadCategories();
     this.loadArticles();
   }
 
-  loadBanners(): void {
+  // 加载轮播图
+  loadBanners() {
     HttpUtil.get<BannerItem[]>(ApiConstants.DISCOVER_BANNER_LIST)
       .then((res: BaseResponse<BannerItem[]>) => {
-        if (res.success && res.data !== undefined && res.data !== null) {
-          const rawData: Object[] = res.data as Object[];
-          const list: BannerItem[] = [];
-          for (let i: number = 0; i < rawData.length; i++) {
-            const raw: Record<string, Object> = rawData[i] as Record<string, Object>;
-            const item: BannerItem = {} as BannerItem;
-            if (raw['id'] !== undefined) { item.id = String(raw['id']); }
-            if (raw['title'] !== undefined) { item.title = raw['title'] as string; }
-            if (raw['icon'] !== undefined) { item.icon = raw['icon'] as string; }
-            if (raw['subtitle'] !== undefined) { item.subtitle = raw['subtitle'] as string; }
-            if (raw['ctaText'] !== undefined) { item.ctaText = raw['ctaText'] as string; }
-            if (raw['targetUrl'] !== undefined) { item.targetUrl = raw['targetUrl'] as string; }
-            if (raw['gradientColors'] !== undefined) {
-              const stopsArr: GradientColorStop[] = [];
-              const stopsRaw: Object[] = raw['gradientColors'] as Object[];
-              for (let j: number = 0; j < stopsRaw.length; j++) {
-                const sRaw: Record<string, Object> = stopsRaw[j] as Record<string, Object>;
-                const stop: GradientColorStop = {} as GradientColorStop;
-                if (sRaw['offset'] !== undefined) { stop.offset = sRaw['offset'] as number; }
-                if (sRaw['color'] !== undefined) { stop.color = sRaw['color'] as string; }
-                stopsArr.push(stop);
-              }
-              item.gradientColors = stopsArr;
-            }
-            list.push(item);
-          }
-          this.banners = list;
+        if (res.success || res.code === 200) {
+          this.banners = res.data ?? [];
+        } else {
+          ToastUtil.showInfo(res.msg);
         }
       })
       .catch((err: Error) => {
         console.error('[DiscoverPage] 加载轮播图失败:', err.message);
+        ToastUtil.showInfo('轮播图加载失败');
       });
   }
 
-  loadCategories(): void {
+  // 加载分类
+  loadCategories() {
     HttpUtil.get<CategoryItem[]>(ApiConstants.DISCOVER_CATEGORY_LIST)
       .then((res: BaseResponse<CategoryItem[]>) => {
-        if (res.success && res.data !== undefined && res.data !== null) {
-          const rawData: Object[] = res.data as Object[];
-          const list: CategoryItem[] = [];
-          for (let i: number = 0; i < rawData.length; i++) {
-            const raw: Record<string, Object> = rawData[i] as Record<string, Object>;
-            const item: CategoryItem = {} as CategoryItem;
-            if (raw['id'] !== undefined) { item.id = String(raw['id']); }
-            if (raw['title'] !== undefined) { item.title = raw['title'] as string; }
-            if (raw['icon'] !== undefined) { item.icon = raw['icon'] as string; }
-            if (raw['color'] !== undefined) { item.color = raw['color'] as string; }
-            if (raw['route'] !== undefined) { item.route = raw['route'] as string; }
-            list.push(item);
-          }
-          this.categories = list;
+        if (res.success || res.code === 200) {
+          this.categories = res.data ?? [];
+        } else {
+          ToastUtil.showInfo(res.msg);
         }
       })
       .catch((err: Error) => {
         console.error('[DiscoverPage] 加载分类失败:', err.message);
+        ToastUtil.showInfo('分类加载失败');
       });
   }
 
-  loadArticles(): void {
-    if (this.isLoading) {
-      return;
-    }
+  // 加载文章列表
+  loadArticles() {
+    if (this.isLoading) return;
     this.isLoading = true;
 
-    const params: Record<string, string> = {};
-    params['pageNo'] = this.currentPage.toString();
-    params['pageSize'] = this.pageSize.toString();
-    if (this.searchText.trim() !== '') {
-      params['title'] = this.searchText.trim();
-    }
+    const params = {
+      pageNo: this.currentPage,
+      pageSize: this.pageSize,
+      title: this.searchText.trim()
+    };
 
-    HttpUtil.get<ArticlePageResult>(ApiConstants.DISCOVER_ARTICLE_LIST, params as Object)
-      .then((res: BaseResponse<ArticlePageResult>) => {
-        if (res.success && res.data !== undefined && res.data !== null) {
-          const data: ArticlePageResult = res.data as ArticlePageResult;
-          const records: ScienceArticle[] = data.records || [];
-
+    HttpUtil.get<{ records: ScienceArticle[]; total: number }>(ApiConstants.DISCOVER_ARTICLE_LIST, params)
+      .then((res) => {
+        if (res.success || res.code === 200) {
+          const data = res.data;
           if (this.currentPage === 1) {
-            this.articles = records;
+            this.articles = data.records;
           } else {
-            this.articles = this.articles.concat(records);
+            this.articles = this.articles.concat(data.records);
           }
+          this.articleListRef?.updateData?.(data.records, data.total);
           this.hasMore = this.articles.length < data.total;
+        } else {
+          ToastUtil.showInfo(res.msg);
         }
       })
       .catch((err: Error) => {
         console.error('[DiscoverPage] 加载文章失败:', err.message);
+        ToastUtil.showInfo('文章加载失败');
       })
       .finally(() => {
         this.isLoading = false;
       });
   }
 
-  handleSearch(text?: string): void {
-    const query: string = text || this.searchText;
-    if (!query || query.trim() === '') {
-      return;
-    }
+  // 搜索处理
+  handleSearch() {
+    if (!this.searchText.trim()) return;
     this.showSearchHistory = false;
     this.currentPage = 1;
     this.hasMore = true;
-    this.addToSearchHistory(query);
+    this.addToSearchHistory();
     this.loadArticles();
   }
 
-  addToSearchHistory(query: string): void {
-    const index: number = this.searchHistory.indexOf(query);
-    if (index !== -1) {
-      this.searchHistory.splice(index, 1);
-    }
-    this.searchHistory.unshift(query);
-    if (this.searchHistory.length > 10) {
-      this.searchHistory.pop();
-    }
+  // 添加搜索历史
+  addToSearchHistory() {
+    const index = this.searchHistory.indexOf(this.searchText);
+    if (index !== -1) this.searchHistory.splice(index, 1);
+    this.searchHistory.unshift(this.searchText);
+    if (this.searchHistory.length > 10) this.searchHistory.pop();
   }
 
-  clearSearchHistory(): void {
+  // 清空搜索历史
+  clearSearchHistory() {
     this.searchHistory = [];
   }
 
-  selectSearchHistory(keyword: string): void {
+  // 选择搜索历史
+  selectSearchHistory(keyword: string) {
     this.searchText = keyword;
     this.showSearchHistory = false;
     this.currentPage = 1;
@@ -183,7 +154,28 @@ export struct DiscoverPage {
     this.loadArticles();
   }
 
-  loadMore(): void {
+  // 文本摘要提取
+  extractSummary(content: string): string {
+    let cleanedContent = content.replace(/\*\*/g, '');
+    cleanedContent = cleanedContent.replace(/```arkts[\s\S]*?```/g, '');
+    cleanedContent = cleanedContent.replace(/```[\s\S]*?```/g, '');
+    cleanedContent = cleanedContent.replace(/^```arkts$/gm, '');
+    cleanedContent = cleanedContent.replace(/^```$/gm, '');
+    cleanedContent = cleanedContent.replace(/\n/g, '');
+    return cleanedContent.slice(0, 80);
+  }
+
+  // 日期格式化
+  formatDate(publishTime: string): string {
+    const date = new Date(publishTime);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // 加载更多
+  loadMore() {
     if (this.hasMore && !this.isLoading) {
       this.currentPage++;
       this.loadArticles();
@@ -192,6 +184,7 @@ export struct DiscoverPage {
 
   build() {
     Column() {
+      // 顶部标题
       Row() {
         Text('发现')
           .fontColor('#333333')
@@ -205,33 +198,33 @@ export struct DiscoverPage {
       .alignItems(VerticalAlign.Center)
       .backgroundColor('#FFFFFF');
 
+      // 搜索栏
       SearchBar({
-        placeholder: '搜索健康知识、药材、食材...',
-        onSearch: (text: string) => {
-          this.handleSearch(text);
-        }
+        searchText: $searchText,
+        onSearch: () => this.handleSearch(),
+        onFocus: () => this.showSearchHistory = true
       });
 
-      if (this.searchHistory.length > 0 && !this.searchText) {
+      // 搜索历史
+      if (this.showSearchHistory) {
         SearchHistory({
           history: $searchHistory,
-          onClear: () => {
-            this.clearSearchHistory();
-          },
-          onSelect: (keyword: string) => {
-            this.selectSearchHistory(keyword);
-          }
+          onClear: () => this.clearSearchHistory(),
+          onSelect: (keyword) => this.selectSearchHistory(keyword)
         })
           .margin({ top: 8 })
           .zIndex(1);
       }
 
+      // 轮播图
       CarouselBanner({ banners: this.banners })
         .margin({ top: 8 });
 
       Column() {
+        // 分类网格
         CategoryGrid({ categories: this.categories });
 
+        // 文章列表模块
         Column() {
           Row() {
             Text('精选文章')
@@ -243,34 +236,31 @@ export struct DiscoverPage {
             Text('查看全部')
               .fontSize(12)
               .fontColor('#999999')
-              .onClick(() => {
-                router.pushUrl({
-                  url: 'pages/SciencePage'
-                });
-              });
+              .onClick(() => router.pushUrl({ url: 'pages/SciencePage' }));
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 12, bottom: 12 });
 
+          // 文章列表组件
           ArticleList({
             articles: this.articles,
             isLoading: this.isLoading,
             hasMore: this.hasMore,
-            onLoadMore: () => {
-              this.loadMore();
-            }
+            onLoadMore: () => this.loadMore()
           });
         }
         .width('95%')
         .alignItems(HorizontalAlign.Start)
         .margin({ top: 16 });
 
+        // AI工具箱
         AIToolBox();
       }
       .alignItems(HorizontalAlign.Start)
       .padding({ bottom: 16 })
       .layoutWeight(1);
 
+      // 底部导航
       Footer({ activeIndex: 3 });
     }
     .height('100%')

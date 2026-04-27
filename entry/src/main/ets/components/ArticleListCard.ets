@@ -26,6 +26,7 @@ export struct ArticleListCard {
           .objectFit(ImageFit.Cover)
           .borderRadius(8)
       } else {
+        // 统一规范的ArkTS组件写法，清理冲突标记
         Column() {
           Text('📰')
             .fontSize(32)

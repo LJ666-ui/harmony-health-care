@@ -48,6 +48,7 @@ struct Profile {
     collectCount: 0,
     browseHistoryCount: 0
   };
+  // 保留动态用户信息展示
   @State displayUsername: string = '星云用户';
   @State displayPhone: string = '';
 
@@ -73,10 +74,12 @@ struct Profile {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+    // 初始化用户信息 + 加载数据
     this.initUserInfo();
     this.loadAllData();
   }
 
+  // 初始化用户信息（动态读取存储数据）
   initUserInfo(): void {
     if (this.storedUsername && this.storedUsername.trim() !== '') {
       this.displayUsername = this.storedUsername;
@@ -161,6 +164,7 @@ struct Profile {
 
         Scroll() {
           Column() {
+            // 动态用户信息卡片
             UserInfoCard({
               username: this.displayUsername,
               phone: this.displayPhone || '未绑定手机',
@@ -193,6 +197,7 @@ struct Profile {
               }
             });
 
+            // 退出登录按钮（统一样式）
             Button('退出登录')
               .width('85%')
               .height(44)
@@ -227,6 +232,7 @@ struct Profile {
       .height('100%')
       .backgroundColor(AccessibilityConfig.getBgColor());
 
+      // 无障碍设置弹窗
       if (this.showAccessibilityPanel) {
         AccessibilitySettingsPanel({
           onDismiss: () => {

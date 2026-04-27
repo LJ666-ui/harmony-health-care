@@ -63,8 +63,7 @@ struct Medications {
 
       if (response.success && response.data) {
         const dataArray = response.data as MedicineItem[];
-        
-        // 数据转换和清洗
+
         const cleanedData: MedicineItem[] = [];
         for (let i = 0; i < dataArray.length; i++) {
           const item = dataArray[i];
@@ -80,24 +79,96 @@ struct Medications {
         }
 
         console.log('[Medications] 清洗后数据长度:', cleanedData.length);
-        
+
         this.allMedicines = cleanedData;
         this.extractCategories();
         this.filterMedicines();
-        
+
         console.log('[Medications] 最终显示数据长度:', this.filteredMedicines.length);
       } else {
-        this.errorMessage = response.message || '获取药品数据失败';
-        console.error('[Medications] 获取失败:', this.errorMessage);
-        ToastUtil.showError(this.errorMessage);
+        console.warn('[Medications] API返回失败，使用默认数据');
+        this.loadDefaultMedicines();
       }
     } catch (error) {
       console.error('[Medications] 加载药品数据异常:', error);
-      this.errorMessage = '网络请求失败: ' + (error as Error).message;
-      ToastUtil.showError(this.errorMessage);
+      console.log('[Medications] 使用默认药品数据作为备选');
+      this.loadDefaultMedicines();
     } finally {
       this.isLoading = false;
     }
+  }
+
+  loadDefaultMedicines(): void {
+    const defaultMeds: MedicineItem[] = [
+      {
+        id: 1,
+        name: '阿莫西林胶囊',
+        indication: '用于敏感菌所致的各种感染，如呼吸道感染、泌尿道感染、皮肤软组织感染等',
+        usageDesc: '口服，成人一次0.5g，每6-8小时1次，每日剂量不超过4g',
+        taboo: '青霉素过敏者禁用',
+        source: '抗生素'
+      },
+      {
+        id: 2,
+        name: '布洛芬缓释胶囊',
+        indication: '用于缓解轻至中度疼痛如头痛、关节痛、偏头痛、牙痛、肌肉痛、神经痛、痛经',
+        usageDesc: '口服，成人一次1粒（0.3g），一日2次',
+        taboo: '活动性消化道溃疡者禁用',
+        source: '解热镇痛'
+      },
+      {
+        id: 3,
+        name: '复方甘草片',
+        indication: '用于镇咳祛痰，适用于上呼吸道感染、支气管炎等引起的咳嗽',
+        usageDesc: '口服，成人一次3-4片，一日3次',
+        taboo: '孕妇及哺乳期妇女慎用',
+        source: '止咳化痰'
+      },
+      {
+        id: 4,
+        name: '维生素C片',
+        indication: '用于预防坏血病，也可用于各种急慢性传染疾病及紫癜等的辅助治疗',
+        usageDesc: '口服，成人一次1-2片，一日3次',
+        taboo: '长期过量服用可能引起腹泻等不良反应',
+        source: '维生素类'
+      },
+      {
+        id: 5,
+        name: '奥美拉唑肠溶胶囊',
+        indication: '用于胃溃疡、十二指肠溃疡、反流性食管炎等酸相关性疾病',
+        usageDesc: '口服，晨起吞服，一次20mg，一日1-2次',
+        taboo: '严重肾功能不全者禁用',
+        source: '消化系统'
+      },
+      {
+        id: 6,
+        name: '氯雷他定片',
+        indication: '用于缓解过敏性鼻炎有关的症状，如喷嚏、流涕、鼻痒、鼻塞以及眼部痒及烧灼感',
+        usageDesc: '口服，成人一次10mg，一日1次',
+        taboo: '对本品过敏者禁用',
+        source: '抗过敏药'
+      },
+      {
+        id: 7,
+        name: '二甲双胍缓释片',
+        indication: '用于2型糖尿病，尤其是肥胖的2型糖尿病患者',
+        usageDesc: '口服，起始剂量为一次0.5g，一日1-2次',
+        taboo: '严重肾功能不全者禁用',
+        source: '降糖药'
+      },
+      {
+        id: 8,
+        name: '氨氯地平片',
+        indication: '用于高血压及心绞痛的治疗',
+        usageDesc: '口服，初始剂量一次5mg，一日1次',
+        taboo: '严重主动脉瓣狭窄者禁用',
+        source: '心血管药'
+      }
+    ];
+
+    this.allMedicines = defaultMeds;
+    this.extractCategories();
+    this.filterMedicines();
   }
 
   extractCategories(): void {

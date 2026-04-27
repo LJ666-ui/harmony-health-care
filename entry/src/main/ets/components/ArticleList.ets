@@ -3,11 +3,21 @@ import { router } from '@kit.ArkUI';
 
 @Component
 export struct ArticleList {
+  // 父组件传递数据（子组件标准用法）
   @Prop articles: ScienceArticle[] = [];
   @Prop isLoading: boolean = false;
   @Prop hasMore: boolean = true;
+
+  // 回调函数
   onLoadMore: () => void = () => {};
+
+  // 老人模式
   @StorageLink('isOldModeEnabled') isOldModeEnabled: boolean = false;
+
+  // 分页状态（保留远程分支的实用参数）
+  @State pageNo: number = 1;
+  @State pageSize: number = 20;
+  @State total: number = 0;
 
   build() {
     Column() {
@@ -85,6 +95,7 @@ export struct ArticleList {
           }
         }, (item: ScienceArticle) => item.id.toString());
 
+        // 加载中状态
         if (this.isLoading) {
           ListItem() {
             Row() {
@@ -104,6 +115,7 @@ export struct ArticleList {
           }
         }
 
+        // 无更多数据
         if (!this.hasMore && this.articles.length > 0) {
           ListItem() {
             Row() {
@@ -117,6 +129,7 @@ export struct ArticleList {
           }
         }
 
+        // 空数据
         if (!this.isLoading && this.articles.length === 0) {
           ListItem() {
             Row() {

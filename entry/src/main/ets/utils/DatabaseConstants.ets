@@ -7,6 +7,8 @@ export const TABLE_SYNC_QUEUE = 'sync_queue';
 export const TABLE_BROWSE_HISTORY = 'local_browse_history';
 export const TABLE_SEARCH_HISTORY = 'local_search_history';
 export const TABLE_COLLECTION_CACHE = 'local_collection_cache';
+export const TABLE_COMMENT_CACHE = 'local_comment_cache';
+export const TABLE_ARTICLE_DRAFT = 'local_article_draft';
 
 // 字段名常量
 // local_user_cache
@@ -75,6 +77,24 @@ export const COLUMN_TARGET_IMAGE = 'target_image';
 export const COLUMN_COLLECT_TIME = 'collect_time';
 export const COLUMN_NOTE = 'note';
 export const COLUMN_IS_SYNCED = 'is_synced';
+
+// local_comment_cache
+export const COLUMN_COMMENT_ID = 'comment_id';
+export const COLUMN_ARTICLE_ID_FK = 'article_id';
+export const COLUMN_USER_NAME = 'user_name';
+export const COLUMN_USER_AVATAR = 'user_avatar';
+export const COLUMN_COMMENT_CONTENT = 'comment_content';
+export const COLUMN_LIKE_COUNT = 'like_count';
+export const COLUMN_PARENT_ID = 'parent_id';
+export const COLUMN_COMMENT_TIME = 'comment_time';
+export const COLUMN_IS_DELETED = 'is_deleted';
+
+// local_article_draft
+export const COLUMN_DRAFT_TITLE = 'draft_title';
+export const COLUMN_DRAFT_CONTENT = 'draft_content';
+export const COLUMN_DRAFT_CATEGORY_ID = 'draft_category_id';
+export const COLUMN_DRAFT_COVER_IMAGE = 'draft_cover_image';
+export const COLUMN_DRAFT_LAST_EDIT_TIME = 'draft_last_edit_time';
 
 // SQL语句常量
 // 创建表语句
@@ -199,4 +219,30 @@ export const DELETE_SHORT_BROWSE_HISTORY = `
 
 export const DELETE_OLD_BROWSE_HISTORY = `
   DELETE FROM ${TABLE_BROWSE_HISTORY} WHERE ${COLUMN_CREATE_TIME} < ?
+`;
+
+export const CREATE_TABLE_COMMENT_CACHE = `
+  CREATE TABLE IF NOT EXISTS ${TABLE_COMMENT_CACHE} (
+    ${COLUMN_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
+    ${COLUMN_COMMENT_ID} INTEGER UNIQUE,
+    ${COLUMN_ARTICLE_ID_FK} INTEGER NOT NULL,
+    ${COLUMN_USER_NAME} TEXT NOT NULL,
+    ${COLUMN_USER_AVATAR} TEXT,
+    ${COLUMN_COMMENT_CONTENT} TEXT NOT NULL,
+    ${COLUMN_LIKE_COUNT} INTEGER DEFAULT 0,
+    ${COLUMN_PARENT_ID} INTEGER DEFAULT 0,
+    ${COLUMN_COMMENT_TIME} INTEGER NOT NULL,
+    ${COLUMN_IS_DELETED} INTEGER DEFAULT 0
+  )
+`;
+
+export const CREATE_TABLE_ARTICLE_DRAFT = `
+  CREATE TABLE IF NOT EXISTS ${TABLE_ARTICLE_DRAFT} (
+    ${COLUMN_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
+    ${COLUMN_DRAFT_TITLE} TEXT,
+    ${COLUMN_DRAFT_CONTENT} TEXT,
+    ${COLUMN_DRAFT_CATEGORY_ID} INTEGER DEFAULT 1,
+    ${COLUMN_DRAFT_COVER_IMAGE} TEXT,
+    ${COLUMN_DRAFT_LAST_EDIT_TIME} INTEGER NOT NULL
+  )
 `;

@@ -8,26 +8,35 @@ import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
 
-interface UserInfo {
-  userId?: number;
-  username: string;
-  userType?: number;
-  avatar?: string;
-  age?: number;
-  gender?: string;
-}
-
 interface LoginResponseData {
   token: string;
   userId?: number;
   username?: string;
   userType?: number;
-  userInfo?: UserInfo;
+  userInfo?: PersistedUserInfo;
 }
 
 interface LoginRequestData {
   username: string;
   password: string;
+}
+
+function createPersistedUserInfo(
+  userId?: number,
+  username: string = '',
+  userType?: number,
+  avatar: string = '',
+  age?: number,
+  gender?: string
+): PersistedUserInfo {
+  return {
+    userId: userId,
+    username: username,
+    userType: userType,
+    avatar: avatar,
+    age: age,
+    gender: gender
+  };
 }
 
 @Entry
@@ -117,14 +126,19 @@ struct Login {
         if (response.data) {
           try {
             const settings: SettingsUtil = SettingsUtil.getInstance();
-            const userInfo: PersistedUserInfo = response.data.userInfo || {
-              userId: response.data.userId,
-              username: response.data.username || '',
-              userType: response.data.userType,
-              avatar: '',
-              age: undefined,
-              gender: undefined
-            } as PersistedUserInfo;
+            let userInfo: PersistedUserInfo;
+            if (response.data.userInfo) {
+              userInfo = response.data.userInfo;
+            } else {
+              userInfo = createPersistedUserInfo(
+                response.data.userId,
+                response.data.username || '',
+                response.data.userType,
+                '',
+                undefined,
+                undefined
+              );
+            }
             await settings.saveUserInfo(userInfo);
           } catch (error) {
             console.error('保存用户信息失败:', error);

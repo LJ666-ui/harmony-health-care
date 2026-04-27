@@ -10,8 +10,8 @@ interface TabItem {
 const TAB_ITEMS: TabItem[] = [
   { icon: '🏠', label: '首页', pageUrl: 'pages/HomePage' },
   { icon: '🏥', label: '就医', pageUrl: 'pages/MedicalPage' },
-  { icon: '🧘', label: '康复', pageUrl: 'pages/RehabPage' },
-  { icon: '📚', label: '科普', pageUrl: 'pages/SciencePage' },
+  { icon: '❤️', label: '健康', pageUrl: 'pages/HealthPage' },
+  { icon: '🔍', label: '发现', pageUrl: 'pages/SciencePage' },
   { icon: '👤', label: '我的', pageUrl: 'pages/Profile' }
 ];
 

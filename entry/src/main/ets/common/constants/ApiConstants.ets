@@ -132,6 +132,11 @@ interface ApiConstantsInterface {
   ARTICLE_UNCOLLECT: string;
   ARTICLE_MY_COLLECTS: string;
 
+  COMMENT_LIST: string;
+  COMMENT_ADD: string;
+  COMMENT_DELETE: string;
+  COMMENT_LIKE: string;
+
   AI_CHAT: string;
   AI_CONSULT: string;
   AI_RISK_ANALYSIS: string;
@@ -311,6 +316,11 @@ export const ApiConstants: ApiConstantsInterface = {
   ARTICLE_COLLECT: '/api/article/',
   ARTICLE_UNCOLLECT: '/api/article/',
   ARTICLE_MY_COLLECTS: '/api/article/my-collects',
+
+  COMMENT_LIST: '/comment/list/',
+  COMMENT_ADD: '/comment/add',
+  COMMENT_DELETE: '/comment/delete/',
+  COMMENT_LIKE: '/comment/like/',
 
   AI_CHAT: '/ai/chat',
   AI_CONSULT: '/ai/health-consult',

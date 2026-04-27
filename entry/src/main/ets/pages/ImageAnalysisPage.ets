@@ -446,7 +446,7 @@ struct ImageAnalysisPage {
             .backgroundColor('#4A90E2')
             .onClick(() => {
               router.pushUrl({
-                url: 'pages/AnalysisReportPage',
+                url: 'pages/TestPage',
                 params: { result: this.analysisResult }
               });
             })

@@ -58,11 +58,11 @@ struct Profile {
 
   @State settingsItems: MenuItem[] = [
     { icon: '♿', title: '无障碍/老年模式', color: '#722ED1', url: '' },
-    { icon: '🔔', title: '通知设置', color: '#1677FF', url: '' },
-    { icon: '👥', title: '紧急联系人', color: '#1677FF', url: '' },
-    { icon: '💊', title: '提醒设置', color: '#52C41A', url: '' },
+    { icon: '🔔', title: '通知设置', color: '#1677FF', url: 'pages/ReminderSettingsPage' },
+    { icon: '👥', title: '紧急联系人', color: '#1677FF', url: 'pages/EmergencyContactsPage' },
+    { icon: '💊', title: '提醒设置', color: '#52C41A', url: 'pages/ReminderSettingsPage' },
     { icon: '🔒', title: '隐私与安全', color: '#1677FF', url: 'pages/PrivacySettingPage' },
-    { icon: 'ℹ️', title: '关于我们', color: '#333333', url: '' }
+    { icon: 'ℹ️', title: '关于我们', color: '#333333', url: 'pages/TestPage' }
   ];
 
   aboutToAppear(): void {

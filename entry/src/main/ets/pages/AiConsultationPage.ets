@@ -3,6 +3,8 @@
  * 提供基础的AI问诊功能
  */
 
+import { router } from '@kit.ArkUI';
+
 @Entry
 @Component
 struct AiConsultationPage {
@@ -105,10 +107,31 @@ struct AiConsultationPage {
   @Builder
   TitleBar() {
     Row() {
+      // 返回按钮
+      Text('←')
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333')
+        .width(40)
+        .height(40)
+        .textAlign(TextAlign.Center)
+        .onClick(() => {
+          try {
+            router.back();
+          } catch (error) {
+            console.error('返回失败:', error);
+          }
+        });
+
       Text('AI智能问诊')
         .fontSize(20)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#333333');
+        .fontColor('#333333')
+        .layoutWeight(1)
+        .textAlign(TextAlign.Center);
+
+      // 占位，保持标题居中
+      Blank().width(40);
     }
     .width('100%')
     .height(56)

@@ -38,6 +38,7 @@ struct KnowledgeGraphPage {
   @State showSidebar: boolean = true;
   @State activeCenterId: number = 1;
   @State filterType: string = '';
+  @State expandCenterId: number = -1;
 
   aboutToAppear(): void {
     BrowseTracker.recordStart('KNOWLEDGE_GRAPH', 'PAGE', 5, '中医知识图谱').then(id => {
@@ -145,6 +146,7 @@ struct KnowledgeGraphPage {
       return;
     }
     this.activeCenterId = nodeId;
+    this.expandCenterId = nodeId;
   }
 
   getNodeIcon(nodeType: string): string {
@@ -420,8 +422,7 @@ struct KnowledgeGraphPage {
               .shadow({ radius: 8, color: '#00000012', offsetX: 0, offsetY: 2 });
             }
 
-            GraphCanvas({ startCenterId: this.activeCenterId })
-              .key('graph-' + this.activeCenterId)
+            GraphCanvas({ startCenterId: this.activeCenterId, expandCenterId: this.expandCenterId })
               .width('100%')
               .layoutWeight(1);
           }

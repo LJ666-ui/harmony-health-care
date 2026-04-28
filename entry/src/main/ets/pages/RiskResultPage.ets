@@ -249,10 +249,95 @@ struct RiskResultPage {
 
     this.riskItems = items;
     this.radarData = [];
-    for (let i: number = 0; i < items.length; i++) {
-      const item: RiskItemDisplay = items[i];
-      this.radarData.push(new RadarDataItem(item.name, item.value, item.levelColor));
+
+    let bpActual: number = systolic;
+    let bpUnit: string = 'mmHg';
+    let bpL1: number = 119;
+    let bpL2Min: number = 120;
+    let bpL2Max: number = 139;
+    let bpL3Min: number = 140;
+    let bpL3Max: number = 180;
+
+    if (systolic <= 0) {
+      bpActual = 115; bpL1 = 119; bpL2Min = 120; bpL2Max = 139; bpL3Min = 140; bpL3Max = 180;
+    } else if (systolic >= 140 || diastolic >= 90) {
+      bpL1 = 119; bpL2Min = 120; bpL2Max = 139; bpL3Min = 140; bpL3Max = 180;
+    } else if (systolic >= 120 || diastolic >= 80) {
+      bpL1 = 119; bpL2Min = 120; bpL2Max = 139; bpL3Min = 140; bpL3Max = 180;
     }
+
+    const bpItem: RadarDataItem = new RadarDataItem();
+    bpItem.label = '高血压';
+    bpItem.value = items[0].value;
+    bpItem.color = items[0].levelColor;
+    bpItem.actualValue = bpActual;
+    bpItem.unit = bpUnit;
+    bpItem.level1Max = bpL1;
+    bpItem.level2Min = bpL2Min;
+    bpItem.level2Max = bpL2Max;
+    bpItem.level3Min = bpL3Min;
+    bpItem.level3Max = bpL3Max;
+    this.radarData.push(bpItem);
+
+    let gluActual: number = fastingGlucose;
+    if (fastingGlucose <= 0) { gluActual = 5.2; }
+    const gluItem: RadarDataItem = new RadarDataItem();
+    gluItem.label = '糖尿病';
+    gluItem.value = items[1].value;
+    gluItem.color = items[1].levelColor;
+    gluItem.actualValue = gluActual;
+    gluItem.unit = 'mmol/L';
+    gluItem.level1Max = 6.09;
+    gluItem.level2Min = 6.10;
+    gluItem.level2Max = 6.99;
+    gluItem.level3Min = 7.00;
+    gluItem.level3Max = 12.0;
+    this.radarData.push(gluItem);
+
+    let fallActual: number = age;
+    if (age <= 0) { fallActual = 45; }
+    const fallItem: RadarDataItem = new RadarDataItem();
+    fallItem.label = '跌倒风险';
+    fallItem.value = items[2].value;
+    fallItem.color = items[2].levelColor;
+    fallItem.actualValue = fallActual;
+    fallItem.unit = '岁';
+    fallItem.level1Max = 64.9;
+    fallItem.level2Min = 65.0;
+    fallItem.level2Max = 75.0;
+    fallItem.level3Min = 76.0;
+    fallItem.level3Max = 100;
+    this.radarData.push(fallItem);
+
+    let bmiVal: number = data.bmi > 0 ? data.bmi : 22;
+    if (bmiVal <= 0) { bmiVal = 22; }
+    const bmiItem: RadarDataItem = new RadarDataItem();
+    bmiItem.label = '衰弱';
+    bmiItem.value = items[3].value;
+    bmiItem.color = items[3].levelColor;
+    bmiItem.actualValue = bmiVal;
+    bmiItem.unit = 'kg/m²';
+    bmiItem.level1Max = 25.0;
+    bmiItem.level2Min = 17.5;
+    bmiItem.level2Max = 27.0;
+    bmiItem.level3Min = 28.0;
+    bmiItem.level3Max = 35.0;
+    this.radarData.push(bmiItem);
+
+    let stepsVal: number = data.exercise === '每周3次以上' ? 8000 :
+      data.exercise === '每周1-2次' ? 3000 : 6000;
+    const stepItem: RadarDataItem = new RadarDataItem();
+    stepItem.label = '肌少症';
+    stepItem.value = items[4].value;
+    stepItem.color = items[4].levelColor;
+    stepItem.actualValue = stepsVal;
+    stepItem.unit = '步';
+    stepItem.level1Max = 5000;
+    stepItem.level2Min = 3000;
+    stepItem.level2Max = 4999;
+    stepItem.level3Min = 1500;
+    stepItem.level3Max = 2999;
+    this.radarData.push(stepItem);
 
     if (highRiskCount > 0) {
       this.riskLevel = new RiskLevelInfo('高风险', '#FF4D4F', '🔴', '发现' + highRiskCount + '项高风险指标，建议尽早就医');

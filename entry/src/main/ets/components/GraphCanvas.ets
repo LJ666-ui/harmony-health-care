@@ -40,12 +40,13 @@ export struct GraphCanvas {
   @State scaleValue: number = 1;
   @State panOffsetX: number = 0;
   @State panOffsetY: number = 0;
-  @State canvasWidth: number = 360;
-  @State canvasHeight: number = 500;
+  @State canvasWidth: number = 400;
+  @State canvasHeight: number = 600;
   @State autoScale: number = 1;
   @State baseOffsetX: number = 0;
   @State baseOffsetY: number = 0;
   @Prop startCenterId: number = 1;
+  @Prop @Watch('onExpandCenterChange') expandCenterId: number = -1;
   @State selectedNode: GraphNode | null = null;
   @State showNodePanel: boolean = false;
   private currentRenderKey: number = 0;
@@ -56,6 +57,7 @@ export struct GraphCanvas {
   private lastPanY: number = 0;
   private layoutTimer: number = -1;
   private simulationSteps: number = 0;
+  private centerAnimTimer: number = -1;
 
   aboutToAppear(): void {
     this.currentRenderKey = this.startCenterId;
@@ -64,13 +66,17 @@ export struct GraphCanvas {
   }
 
   aboutToDisappear(): void {
-    this.clearTimer();
+    this.clearTimers();
   }
 
-  private clearTimer(): void {
+  private clearTimers(): void {
     if (this.layoutTimer !== -1) {
       try { clearInterval(this.layoutTimer); } catch (e) {}
       this.layoutTimer = -1;
+    }
+    if (this.centerAnimTimer !== -1) {
+      try { clearInterval(this.centerAnimTimer); } catch (e) {}
+      this.centerAnimTimer = -1;
     }
   }
 
@@ -80,7 +86,7 @@ export struct GraphCanvas {
     this.panOffsetX = 0;
     this.panOffsetY = 0;
     this.scaleValue = 1;
-    this.clearTimer();
+    this.clearTimers();
 
     const graphParams: GraphRequestParams = new GraphRequestParams();
     graphParams.centerId = this.centerId;
@@ -106,15 +112,50 @@ export struct GraphCanvas {
       });
   }
 
+  onExpandCenterChange(): void {
+    if (this.expandCenterId > 0) {
+      this.navigateToCenter(this.expandCenterId);
+    }
+  }
+
+  animateToNode(nodeId: number): void {
+    const target: GraphNode | null = this.findNode(nodeId);
+    if (!target) { return; }
+    this.clearTimers();
+
+    const targetScreenX: number = this.mapX(target.x);
+    const targetScreenY: number = this.mapY(target.y);
+    const destPanX: number = this.canvasWidth / 2 - targetScreenX + this.panOffsetX;
+    const destPanY: number = this.canvasHeight / 2 - targetScreenY + this.panOffsetY;
+    const startPanX: number = this.panOffsetX;
+    const startPanY: number = this.panOffsetY;
+    const startScale: number = this.scaleValue;
+    const destScale: number = Math.min(1.5, Math.max(1.0, startScale));
+    let progress: number = 0;
+    const totalFrames: number = 25;
+
+    try {
+      this.centerAnimTimer = setInterval(() => {
+        progress++;
+        const t: number = progress / totalFrames;
+        const ease: number = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        this.panOffsetX = startPanX + (destPanX - startPanX) * ease;
+        this.panOffsetY = startPanY + (destPanY - startPanY) * ease;
+        this.scaleValue = startScale + (destScale - startScale) * ease;
+        if (progress >= totalFrames) {
+          this.clearTimers();
+        }
+      }, 18);
+    } catch (e) {}
+  }
+
   navigateToCenter(nodeId: number): void {
     this.centerId = nodeId;
     this.fetchGraph();
   }
 
   private calculateAutoFit(): void {
-    if (this.graphNodes.length === 0) {
-      return;
-    }
+    if (this.graphNodes.length === 0) { return; }
     let minX: number = Infinity;
     let maxX: number = -Infinity;
     let minY: number = Infinity;
@@ -126,12 +167,12 @@ export struct GraphCanvas {
       if (n.y < minY) { minY = n.y; }
       if (n.y > maxY) { maxY = n.y; }
     }
-    const padding: number = 50;
+    const padding: number = 60;
     const gw: number = maxX - minX + padding * 2;
     const gh: number = maxY - minY + padding * 2;
     const sx: number = this.canvasWidth / gw;
     const sy: number = this.canvasHeight / gh;
-    this.autoScale = Math.min(sx, sy, 1.0);
+    this.autoScale = Math.min(sx, sy, 1.3);
     const cx: number = (minX + maxX) / 2;
     const cy: number = (minY + maxY) / 2;
     this.baseOffsetX = this.canvasWidth / 2 - cx * this.autoScale;
@@ -139,13 +180,13 @@ export struct GraphCanvas {
   }
 
   private startForceSimulation(): void {
-    this.clearTimer();
+    this.clearTimers();
     this.simulationSteps = 0;
     const maxSteps: number = 60;
     const cx: number = this.canvasWidth / 2;
     const cy: number = this.canvasHeight / 2;
     const minDim: number = Math.min(this.canvasWidth, this.canvasHeight);
-    const maxRadius: number = minDim * 0.38;
+    const maxRadius: number = minDim * 0.40;
     const levelGroups: GraphNode[][] = [];
     let maxDepth: number = 0;
     for (let i: number = 0; i < this.graphNodes.length; i++) {
@@ -163,7 +204,7 @@ export struct GraphCanvas {
         group[0].y = cy;
       } else {
         const ringRadius: number = maxRadius * (lv / Math.max(maxDepth, 1));
-        const actualR: number = Math.max(ringRadius, minDim * 0.12);
+        const actualR: number = Math.max(ringRadius, minDim * 0.14);
         for (let j: number = 0; j < count; j++) {
           const angle: number = (2 * Math.PI * j) / count - Math.PI / 2 + (Math.random() * 0.3 - 0.15);
           group[j].x = cx + actualR * Math.cos(angle);
@@ -175,23 +216,21 @@ export struct GraphCanvas {
       this.layoutTimer = setInterval(() => {
         this.simulationSteps++;
         if (this.simulationSteps > maxSteps) {
-          this.clearTimer();
+          this.clearTimers();
           this.calculateAutoFit();
           return;
         }
         const alpha: number = Math.max(0.01, 1 - this.simulationSteps / maxSteps);
         const nodes: GraphNode[] = this.graphNodes;
-        const minDist: number = 80;
+        const minDist: number = 85;
         for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i].id === this.centerId || nodes[i].id === this.draggingNodeId) {
-            continue;
-          }
+          if (nodes[i].id === this.centerId || nodes[i].id === this.draggingNodeId) { continue; }
           let fx: number = 0;
           let fy: number = 0;
           const dx: number = nodes[i].x - cx;
           const dy: number = nodes[i].y - cy;
           const dist: number = Math.sqrt(dx * dx + dy * dy);
-          const idealDist: number = 80 + nodes[i].depthLevel * 80;
+          const idealDist: number = 90 + nodes[i].depthLevel * 75;
           if (dist > 0) {
             fx -= (dist - idealDist) * 0.006 * alpha * dx / dist;
             fy -= (dist - idealDist) * 0.006 * alpha * dy / dist;
@@ -219,7 +258,7 @@ export struct GraphCanvas {
               const ex: number = other.x - nodes[i].x;
               const ey: number = other.y - nodes[i].y;
               const ed: number = Math.sqrt(ex * ex + ey * ey);
-              const springLen: number = minDist + (nodes[i].depthLevel + other.depthLevel) * 20;
+              const springLen: number = minDist + (nodes[i].depthLevel + other.depthLevel) * 22;
               if (ed > 0) {
                 const spring: number = (ed - springLen) * 0.003 * alpha;
                 fx += spring * ex / ed;
@@ -310,8 +349,9 @@ export struct GraphCanvas {
     const dy: number = offsetY - this.lastDragY;
     this.lastDragX = offsetX;
     this.lastDragY = offsetY;
-    node.x += dx / (this.autoScale * this.scaleValue);
-    node.y += dy / (this.autoScale * this.scaleValue);
+    const invScale: number = 1 / (this.autoScale * this.scaleValue);
+    node.x += dx * invScale;
+    node.y += dy * invScale;
     const idx: number = this.graphNodes.findIndex((n: GraphNode) => n.id === node.id);
     if (idx >= 0) {
       const newNode: GraphNode = this.createCopyNode(node);
@@ -343,30 +383,12 @@ export struct GraphCanvas {
     this.draggingNodeId = -1;
     this.lastDragX = 0;
     this.lastDragY = 0;
-    const cx: number = this.canvasWidth / 2;
-    const cy: number = this.canvasHeight / 2;
-    let closestNode: GraphNode | null = null;
-    let closestDist: number = Infinity;
-    for (let i: number = 0; i < this.graphNodes.length; i++) {
-      const n: GraphNode = this.graphNodes[i];
-      const dx: number = n.x - cx;
-      const dy: number = n.y - cy;
-      const dist: number = Math.sqrt(dx * dx + dy * dy);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestNode = n;
-      }
-    }
-    if (closestNode != null && closestNode.id !== this.centerId) {
-      this.centerId = closestNode.id;
-      this.fetchGraph();
-    }
   }
 
   getNodeRadius(node: GraphNode): number {
-    if (node.depthLevel === 0) { return 30; }
-    if (node.depthLevel === 1) { return 24; }
-    return 20;
+    if (node.depthLevel === 0) { return 32; }
+    if (node.depthLevel === 1) { return 26; }
+    return 21;
   }
 
   getNodeOpacity(node: GraphNode): number {
@@ -587,10 +609,12 @@ export struct GraphCanvas {
         .gesture(
           PanGesture({ fingers: 1, distance: 5 })
             .onActionStart(() => {
+              if (this.draggingNodeId > 0) { return; }
               this.lastPanX = 0;
               this.lastPanY = 0;
             })
             .onActionUpdate((event: GestureEvent) => {
+              if (this.draggingNodeId > 0) { return; }
               this.panOffsetX += event.offsetX - this.lastPanX;
               this.panOffsetY += event.offsetY - this.lastPanY;
               this.lastPanX = event.offsetX;
@@ -613,17 +637,17 @@ export struct GraphCanvas {
           Text('  ○ ' + this.graphEdges.length + ' 关系')
             .fontSize(10).fontColor('#888888');
           Row({ space: 6 }) {
-            Text('＋')
-              .fontSize(15).fontColor('#1677FF').fontWeight(FontWeight.Bold)
-              .padding({ left: 4, right: 4 })
-              .onClick(() => { this.scaleValue = Math.min(this.scaleValue + 0.12, 2.0); });
-            Text('－')
+            Text('+')
               .fontSize(16).fontColor('#1677FF').fontWeight(FontWeight.Bold)
-              .padding({ left: 4, right: 4 })
-              .onClick(() => { this.scaleValue = Math.max(this.scaleValue - 0.12, 0.5); });
-            Text('⟲')
+              .padding({ left: 5, right: 5 })
+              .onClick(() => { this.scaleValue = Math.min(this.scaleValue + 0.15, 2.5); });
+            Text('-')
+              .fontSize(17).fontColor('#1677FF').fontWeight(FontWeight.Bold)
+              .padding({ left: 5, right: 5 })
+              .onClick(() => { this.scaleValue = Math.max(this.scaleValue - 0.15, 0.4); });
+            Text('\u21BB')
               .fontSize(14).fontColor('#52C41A')
-              .padding({ left: 4, right: 4 })
+              .padding({ left: 5, right: 5 })
               .onClick(() => {
                 this.panOffsetX = 0;
                 this.panOffsetY = 0;
@@ -663,7 +687,7 @@ export struct GraphCanvas {
                 .alignItems(HorizontalAlign.Start)
                 .layoutWeight(1);
 
-                Text('✕')
+                Text('\u2715')
                   .fontSize(18)
                   .fontColor('#999999')
                   .padding(8)
@@ -690,7 +714,7 @@ export struct GraphCanvas {
 
               Row({ space: 12 }) {
                 Column({ space: 4 }) {
-                  Text('📄')
+                  Text('\uD83D\uDCC4')
                     .fontSize(22);
                   Text('显示详情')
                     .fontSize(11)
@@ -706,7 +730,7 @@ export struct GraphCanvas {
                 });
 
                 Column({ space: 4 }) {
-                  Text('🔍')
+                  Text('\uD83D\uDD0D')
                     .fontSize(22);
                   Text('以该节点为中心展开')
                     .fontSize(11)

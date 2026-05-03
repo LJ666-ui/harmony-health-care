@@ -81,17 +81,50 @@ export class RadarDataItem {
   label: string = '';
   value: number = 0;
   color: string = '';
+  actualValue: number = 0;
+  unit: string = '';
+  level1Max: number = 0;
+  level2Min: number = 0;
+  level2Max: number = 0;
+  level3Min: number = 0;
+  level3Max: number = 0;
 
-  constructor(label?: string, value?: number, color?: string) {
-    if (label !== undefined) {
-      this.label = label;
+  constructor(label?: string, value?: number, color?: string, actualValue?: number, unit?: string,
+    level1Max?: number, level2Min?: number, level2Max?: number, level3Min?: number, level3Max?: number) {
+    if (label !== undefined) { this.label = label; }
+    if (value !== undefined) { this.value = value; }
+    if (color !== undefined) { this.color = color; }
+    if (actualValue !== undefined) { this.actualValue = actualValue; }
+    if (unit !== undefined) { this.unit = unit; }
+    if (level1Max !== undefined) { this.level1Max = level1Max; }
+    if (level2Min !== undefined) { this.level2Min = level2Min; }
+    if (level2Max !== undefined) { this.level2Max = level2Max; }
+    if (level3Min !== undefined) { this.level3Min = level3Min; }
+    if (level3Max !== undefined) { this.level3Max = level3Max; }
+  }
+
+  getNormalizedPosition(): number {
+    const v: number = this.actualValue;
+    const l1: number = this.level1Max;
+    const l2min: number = this.level2Min;
+    const l2max: number = this.level2Max;
+    const l3min: number = this.level3Min;
+    const l3max: number = this.level3Max;
+
+    if (l1 <= 0 || v <= 0) {
+      return Math.max(0.15, this.value);
     }
-    if (value !== undefined) {
-      this.value = value;
+
+    if (v <= l1) {
+      return Math.max(0.08, (v / l1) * 0.4);
+    } else if (l2max > l2min && v <= l2max) {
+      return 0.4 + ((v - l2min) / (l2max - l2min)) * 0.2;
+    } else if (l3max > l3min && v <= l3max) {
+      return 0.6 + ((v - l3min) / (l3max - l3min)) * 0.2;
+    } else if (l3min > 0) {
+      return Math.min(0.8 + (v - l3min) / l3min * 0.2, 1.0);
     }
-    if (color !== undefined) {
-      this.color = color;
-    }
+    return Math.max(0.15, this.value);
   }
 }
 

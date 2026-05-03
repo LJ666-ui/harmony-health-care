@@ -115,6 +115,7 @@ export struct MedicalPage {
             .border({ width: 1, color: '#F0F0F0' })
             .onClick(() => {
               try {
+                // 统一项目有效路由，匹配main_pages.json配置
                 if (service.id === 'appointment') {
                   router.pushUrl({ url: 'pages/HospitalPage' });
                 } else if (service.id === 'queue') {
@@ -213,6 +214,7 @@ export struct MedicalPage {
             .border({ width: 1, color: '#F0F0F0' })
             .onClick(() => {
               try {
+                // 跳转医院页面并传递科室参数
                 router.pushUrl({
                   url: 'pages/HospitalPage',
                   params: { targetDepartment: dept.name }
@@ -273,6 +275,7 @@ export struct MedicalPage {
   }
 }
 
+// 类型接口定义
 interface MedicalService {
   id: string;
   icon: string;

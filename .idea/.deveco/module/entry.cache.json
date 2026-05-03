@@ -5,6 +5,7 @@
 	"BuildOptions":{
 		"SELECT_BUILD_TARGET":"default",
 		"BUILD_PATH":{
+
 			"OUTPUT_METADATA_JSON":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\hap_metadata\\default\\output_metadata.json",
 			"OUTPUT_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\outputs\\default",
 			"RES_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\res\\default",
@@ -17,6 +18,7 @@
 			"MANIFEST_JSON":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\manifest\\default",
 			"JS_LITE_ASSETS_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\intermediates\\loader_out_lite\\default",
 			"JS_SUPER_VISUAL_PATH":"E:\\HMOS6.0\\Github\\harmony-health-care\\entry\\build\\default\\cache\\default\\default@CompileJS\\jsbundle"
+
 		}
 	}
 }

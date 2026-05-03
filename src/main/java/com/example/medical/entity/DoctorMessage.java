@@ -17,4 +17,5 @@ public class DoctorMessage {
     private String content;
     private Integer isRead;
     private Date createTime;
+    private Date expireTime;
 }

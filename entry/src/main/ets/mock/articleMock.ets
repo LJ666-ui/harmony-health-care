@@ -21,6 +21,17 @@ export interface ArticleCategory {
   count: number;
 }
 
+export interface CommentItem {
+  id: number;
+  articleId: number;
+  userName: string;
+  userAvatar: string;
+  content: string;
+  likeCount: number;
+  parentId: number;
+  createTime: string;
+}
+
 const mockArticles: ArticleItem[] = [
   {
     id: 1,
@@ -128,6 +139,69 @@ const mockCategories: ArticleCategory[] = [
   { id: 5, name: '老年健康', icon: '\ud83d\udc74', count: 9 }
 ];
 
+const mockComments: CommentItem[] = [
+  {
+    id: 1,
+    articleId: 1,
+    userName: '健康达人',
+    userAvatar: '',
+    content: '这篇文章写得太好了！四季调养的理念非常实用，特别是春季养肝的部分，我按照文中方法坚持了一个月，感觉精神状态明显改善。',
+    likeCount: 23,
+    parentId: 0,
+    createTime: '2026-04-20 14:30:00'
+  },
+  {
+    id: 2,
+    articleId: 1,
+    userName: '养生小白',
+    userAvatar: '',
+    content: '请问夏季养心有什么具体的食疗推荐吗？',
+    likeCount: 8,
+    parentId: 0,
+    createTime: '2026-04-20 15:10:00'
+  },
+  {
+    id: 3,
+    articleId: 1,
+    userName: '张医师',
+    userAvatar: '',
+    content: '@养生小白 夏季可以多吃苦瓜、绿豆、莲子等清热食物，同时注意午休，避免过度劳累。',
+    likeCount: 45,
+    parentId: 2,
+    createTime: '2026-04-20 16:00:00'
+  },
+  {
+    id: 4,
+    articleId: 2,
+    userName: '高血压患者家属',
+    userAvatar: '',
+    content: '家里老人有高血压，这些饮食建议非常有帮助。已经收藏了！',
+    likeCount: 15,
+    parentId: 0,
+    createTime: '2026-04-19 09:20:00'
+  },
+  {
+    id: 5,
+    articleId: 2,
+    userName: '李营养师',
+    userAvatar: '',
+    content: '控制盐摄入确实是最关键的一步，建议可以使用香草和柠檬汁来替代部分盐分调味。',
+    likeCount: 31,
+    parentId: 0,
+    createTime: '2026-04-18 11:15:00'
+  },
+  {
+    id: 6,
+    articleId: 4,
+    userName: '糖友互助群主',
+    userAvatar: '',
+    content: '作为糖尿病患者，这五个原则我都深有体会。特别推荐第三条选择低GI食物，对血糖控制真的很有帮助。',
+    likeCount: 56,
+    parentId: 0,
+    createTime: '2026-04-17 08:45:00'
+  }
+];
+
 function findArticleById(id: number): ArticleItem | undefined {
   for (let i = 0; i < mockArticles.length; i++) {
     if (mockArticles[i].id === id) {
@@ -218,6 +292,80 @@ if (USE_MOCK) {
       data: collected
     };
   });
+
+  registerMockHandler('/comment/list/', async (url) => {
+    const parts = url.split('/');
+    const lastPart = parts[parts.length - 1];
+    const articleId = parseInt(lastPart);
+    const comments = mockComments.filter(c => c.articleId === articleId);
+    return {
+      success: true,
+      message: '查询成功',
+      code: 200,
+      data: comments
+    };
+  });
+
+  registerMockHandler('/comment/add', async (url, data) => {
+    const newComment: CommentItem = {
+      id: mockComments.length + 1,
+      articleId: data?.articleId || 0,
+      userName: data?.userName || '当前用户',
+      userAvatar: '',
+      content: data?.content || '',
+      likeCount: 0,
+      parentId: data?.parentId || 0,
+      createTime: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    };
+    mockComments.push(newComment);
+    return {
+      success: true,
+      message: '评论发布成功',
+      code: 200,
+      data: newComment
+    };
+  });
+
+  registerMockHandler('/comment/delete/', async (url) => {
+    const parts = url.split('/');
+    const lastPart = parts[parts.length - 1];
+    const id = parseInt(lastPart);
+    const index = mockComments.findIndex(c => c.id === id);
+    if (index >= 0) {
+      mockComments.splice(index, 1);
+      return {
+        success: true,
+        message: '删除成功',
+        code: 200
+      };
+    }
+    return {
+      success: false,
+      message: '评论不存在',
+      code: 404
+    };
+  });
+
+  registerMockHandler('/comment/like/', async (url) => {
+    const parts = url.split('/');
+    const lastPart = parts[parts.length - 1];
+    const id = parseInt(lastPart);
+    const comment = mockComments.find(c => c.id === id);
+    if (comment) {
+      comment.likeCount += 1;
+      return {
+        success: true,
+        message: '点赞成功',
+        code: 200,
+        data: { likeCount: comment.likeCount }
+      };
+    }
+    return {
+      success: false,
+      message: '评论不存在',
+      code: 404
+    };
+  });
 }
 
 export function getMockArticles(): ArticleItem[] {
@@ -226,4 +374,11 @@ export function getMockArticles(): ArticleItem[] {
 
 export function getMockCategories(): ArticleCategory[] {
   return mockCategories;
+}
+
+export function getMockComments(articleId?: number): CommentItem[] {
+  if (articleId) {
+    return mockComments.filter(c => c.articleId === articleId);
+  }
+  return mockComments;
 }

@@ -132,6 +132,11 @@ interface ApiConstantsInterface {
   ARTICLE_UNCOLLECT: string;
   ARTICLE_MY_COLLECTS: string;
 
+  COMMENT_LIST: string;
+  COMMENT_ADD: string;
+  COMMENT_DELETE: string;
+  COMMENT_LIKE: string;
+
   AI_CHAT: string;
   AI_CONSULT: string;
   AI_RISK_ANALYSIS: string;
@@ -157,6 +162,10 @@ interface ApiConstantsInterface {
   DEVICE_BIND: string;
   DEVICE_UNBIND: string;
   DEVICE_LIST: string;
+
+  DISCOVER_BANNER_LIST: string;
+  DISCOVER_CATEGORY_LIST: string;
+  DISCOVER_ARTICLE_LIST: string;
   DEVICE_ONLINE: string;
   DEVICE_SYNC: string;
   DEVICE_STATUS: string;
@@ -212,6 +221,11 @@ interface ApiConstantsInterface {
 
   MESSAGE_SEND: string;
   MESSAGE_HISTORY: string;
+  MESSAGE_CONVERSATIONS: string;
+  MESSAGE_DELETE: string;
+  MESSAGE_CAN_SEND: string;
+  DOCTOR_PATIENTS: string;
+  MESSAGE_CLEANUP: string;
 
   UPLOAD_3D: string;
 }
@@ -312,6 +326,11 @@ export const ApiConstants: ApiConstantsInterface = {
   ARTICLE_UNCOLLECT: '/api/article/',
   ARTICLE_MY_COLLECTS: '/api/article/my-collects',
 
+  COMMENT_LIST: '/comment/list/',
+  COMMENT_ADD: '/comment/add',
+  COMMENT_DELETE: '/comment/delete/',
+  COMMENT_LIKE: '/comment/like/',
+
   AI_CHAT: '/ai/chat',
   AI_CONSULT: '/ai/health-consult',
   AI_RISK_ANALYSIS: '/ai/risk-analysis',
@@ -337,6 +356,10 @@ export const ApiConstants: ApiConstantsInterface = {
   DEVICE_BIND: '/device/bind',
   DEVICE_UNBIND: '/device/unbind',
   DEVICE_LIST: '/device/list',
+
+  DISCOVER_BANNER_LIST: '/discover/banners',
+  DISCOVER_CATEGORY_LIST: '/discover/categories',
+  DISCOVER_ARTICLE_LIST: '/healthArticle/page',
   DEVICE_ONLINE: '/device/online',
   DEVICE_SYNC: '/device/sync',
   DEVICE_STATUS: '/device/status',
@@ -392,6 +415,11 @@ export const ApiConstants: ApiConstantsInterface = {
 
   MESSAGE_SEND: '/user/message/send',
   MESSAGE_HISTORY: '/user/message/history',
+  MESSAGE_CONVERSATIONS: '/user/message/conversations',
+  MESSAGE_DELETE: '/user/message/delete',
+  MESSAGE_CAN_SEND: '/user/message/can-send',
+  DOCTOR_PATIENTS: '/user/doctor/patients',
+  MESSAGE_CLEANUP: '/user/message/cleanup',
 
   UPLOAD_3D: '/api/upload/3d'
 };

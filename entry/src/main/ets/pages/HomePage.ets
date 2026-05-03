@@ -11,6 +11,7 @@ export struct HomePage {
   @State currentIndex: number = 0;
   private theme: AccessibilityConfig = new AccessibilityConfig();
 
+  // 清理冲突，统一路由（匹配项目已配置页面）
   private quickActions: QuickAction[] = [
     { id: 'appointment', icon: '📅', title: '预约挂号', color: '#3498DB', route: 'pages/HospitalPage' },
     { id: 'medical_record', icon: '📋', title: '病历档案', color: '#9B59B6', route: 'pages/MedicalRecord' },
@@ -165,6 +166,7 @@ export struct HomePage {
   }
 }
 
+// 类型接口定义
 interface QuickAction {
   id: string;
   icon: string;

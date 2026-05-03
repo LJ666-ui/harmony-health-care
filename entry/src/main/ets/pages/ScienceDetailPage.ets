@@ -48,6 +48,28 @@ export interface RelatedArticle {
   readCount: number;
 }
 
+export interface CommentData {
+  id: number;
+  articleId: number;
+  userName: string;
+  userAvatar: string;
+  content: string;
+  likeCount: number;
+  parentId: number;
+  createTime: string;
+}
+
+interface CommentPostData {
+  articleId: number;
+  content: string;
+  userName: string;
+  parentId: number;
+}
+
+interface LikeResponseData {
+  likeCount: number;
+}
+
 @Entry
 @Component
 struct ScienceDetailPage {
@@ -63,6 +85,13 @@ struct ScienceDetailPage {
   @State isLoading: boolean = true;
   @State contentSections: string[] = [];
   @State isCollecting: boolean = false;
+
+  @State comments: CommentData[] = [];
+  @State commentInputText: string = '';
+  @State isSubmittingComment: boolean = false;
+  @State replyToCommentId: number = 0;
+  @State replyToUserName: string = '';
+  @State showCommentInput: boolean = false;
 
   private browseRecordId: number | undefined = undefined;
 
@@ -85,6 +114,7 @@ struct ScienceDetailPage {
 
     this.loadArticleDetail();
     this.checkCollectionStatus();
+    this.loadComments();
   }
 
   aboutToDisappear(): void {
@@ -280,6 +310,103 @@ struct ScienceDetailPage {
     }
   }
 
+  async loadComments(): Promise<void> {
+    if (!this.articleId) return;
+    try {
+      const url: string = ApiConstants.COMMENT_LIST + this.articleId;
+      const response: BaseResponse<CommentData[]> = await HttpUtil.get<CommentData[]>(url);
+      if (response.success && response.data) {
+        this.comments = response.data;
+      }
+    } catch (e) {
+      console.error('加载评论失败:', e);
+    }
+  }
+
+  async postComment(): Promise<void> {
+    if (!this.commentInputText.trim() || this.isSubmittingComment) return;
+
+    this.isSubmittingComment = true;
+    try {
+      const postData: CommentPostData = {
+        articleId: Number(this.articleId),
+        content: this.commentInputText.trim(),
+        userName: '当前用户',
+        parentId: this.replyToCommentId
+      };
+      const response: BaseResponse<CommentData> = await HttpUtil.post<CommentData>(ApiConstants.COMMENT_ADD, postData);
+      if (response.success && response.data) {
+        this.comments.unshift(response.data);
+        this.commentInputText = '';
+        this.replyToCommentId = 0;
+        this.replyToUserName = '';
+        this.showCommentInput = false;
+        ToastUtil.showSuccess('评论发布成功');
+      } else {
+        ToastUtil.showSuccess('评论发布失败');
+      }
+    } catch (e) {
+      console.error('发布评论失败:', e);
+      ToastUtil.showSuccess('发布失败，请检查网络');
+    } finally {
+      this.isSubmittingComment = false;
+    }
+  }
+
+  async deleteComment(commentId: number): Promise<void> {
+    try {
+      const url: string = ApiConstants.COMMENT_DELETE + commentId;
+      const response: BaseResponse<Object> = await HttpUtil.delete<Object>(url);
+      if (response.success) {
+        this.comments = this.comments.filter(c => c.id !== commentId);
+        ToastUtil.showSuccess('删除成功');
+      } else {
+        ToastUtil.showSuccess('删除失败');
+      }
+    } catch (e) {
+      console.error('删除评论失败:', e);
+      ToastUtil.showSuccess('操作失败');
+    }
+  }
+
+  async likeComment(commentId: number): Promise<void> {
+    try {
+      const url: string = ApiConstants.COMMENT_LIKE + commentId;
+      const response: BaseResponse<LikeResponseData> = await HttpUtil.post<LikeResponseData>(url);
+      if (response.success && response.data) {
+        const idx = this.comments.findIndex(c => c.id === commentId);
+        if (idx >= 0) {
+          this.comments[idx].likeCount = response.data.likeCount;
+        }
+      }
+    } catch (e) {
+      console.error('点赞失败:', e);
+    }
+  }
+
+  startReply(comment: CommentData): void {
+    this.replyToCommentId = comment.id;
+    this.replyToUserName = comment.userName;
+    this.commentInputText = '';
+    this.showCommentInput = true;
+  }
+
+  cancelReply(): void {
+    this.replyToCommentId = 0;
+    this.replyToUserName = '';
+    this.commentInputText = '';
+    this.showCommentInput = false;
+  }
+
+  getParentUserName(parentId: number): string {
+    for (let i = 0; i < this.comments.length; i++) {
+      if (this.comments[i].id === parentId) {
+        return this.comments[i].userName;
+      }
+    }
+    return '';
+  }
+
   formatDate(dateStr: string | Date): string {
     if (!dateStr) return '';
     const date: Date = new Date(dateStr);
@@ -296,6 +423,198 @@ struct ScienceDetailPage {
       return (count / 1000).toFixed(1) + 'k';
     }
     return count.toString();
+  }
+
+  @Builder buildCommentSection(): void {
+    Column({ space: 12 }) {
+      Row() {
+        Text('💬 评论 (' + this.comments.length + ')')
+          .fontSize(this.isElderMode ? 18 : 16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+        Blank()
+        Button('写评论')
+          .fontSize(13)
+          .fontColor('#1677FF')
+          .backgroundColor('#E6F4FF')
+          .borderRadius(16)
+          .height(32)
+          .onClick(() => {
+            this.showCommentInput = true;
+            this.replyToCommentId = 0;
+            this.replyToUserName = '';
+            this.commentInputText = '';
+          })
+      }
+      .width('100%')
+
+      if (this.showCommentInput) {
+        Column({ space: 10 }) {
+          if (this.replyToUserName && this.replyToUserName.length > 0) {
+            Row({ space: 8 }) {
+              Text('回复 @' + this.replyToUserName)
+                .fontSize(13)
+                .fontColor('#1677FF')
+              Text('取消')
+                .fontSize(13)
+                .fontColor('#999999')
+                .onClick(() => this.cancelReply())
+            }
+            .width('100%')
+          }
+
+          Row({ space: 8 }) {
+            TextInput({
+              placeholder: this.replyToUserName ? '回复 @' + this.replyToUserName + '...' : '写下你的看法...',
+              text: this.commentInputText
+            })
+              .layoutWeight(1)
+              .height(40)
+              .fontSize(14)
+              .backgroundColor('#F5F7FA')
+              .borderRadius(20)
+              .padding({ left: 16, right: 12 })
+              .onChange((value: string) => {
+                this.commentInputText = value;
+              })
+
+            Button('发送')
+              .height(40)
+              .fontSize(14)
+              .fontColor('#FFFFFF')
+              .backgroundColor(this.commentInputText.trim().length > 0 ? '#1677FF' : '#CCCCCC')
+              .borderRadius(20)
+              .enabled(!this.isSubmittingComment && this.commentInputText.trim().length > 0)
+              .onClick(() => this.postComment())
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .padding(14)
+        .backgroundColor('#FAFAFA')
+        .borderRadius(12)
+        .border({ width: 1, color: '#EEEEEE' })
+      }
+
+      if (this.comments.length === 0) {
+        Column({ space: 8 }) {
+          Text('💭')
+            .fontSize(36)
+          Text('暂无评论，快来发表第一条吧~')
+            .fontSize(14)
+            .fontColor('#999999')
+        }
+        .width('100%')
+        .height(120)
+        .justifyContent(FlexAlign.Center)
+      } else {
+        ForEach(this.comments, (comment: CommentData) => {
+          Column({ space: 10 }) {
+            Row({ space: 10 }) {
+              if (comment.userAvatar && comment.userAvatar.indexOf('http') === 0) {
+                Image(comment.userAvatar)
+                  .width(36)
+                  .height(36)
+                  .borderRadius(18)
+                  .objectFit(ImageFit.Cover)
+              } else {
+                Text(comment.userName.charAt(0))
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FFFFFF')
+                  .width(36)
+                  .height(36)
+                  .borderRadius(18)
+                  .backgroundColor('#1677FF')
+                  .textAlign(TextAlign.Center)
+              }
+
+              Column({ space: 6 }) {
+                Row({ space: 8 }) {
+                  Text(comment.userName)
+                    .fontSize(this.isElderMode ? 15 : 13)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor('#333333')
+
+                  if (comment.parentId > 0) {
+                    Text('回复 @' + this.getParentUserName(comment.parentId))
+                      .fontSize(11)
+                      .fontColor('#1677FF')
+                  }
+
+                  Blank()
+
+                  Text(this.formatTimeAgo(comment.createTime))
+                    .fontSize(11)
+                    .fontColor('#BBBBBB')
+                }
+                .width('100%')
+
+                Text(comment.content)
+                  .fontSize(this.isElderMode ? 15 : 13)
+                  .fontColor('#444444')
+                  .lineHeight(20)
+                  .maxLines(5)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .width('100%')
+
+                Row({ space: 16 }) {
+                  Row({ space: 4 }) {
+                    Text('👍')
+                      .fontSize(14)
+                    Text(comment.likeCount.toString())
+                      .fontSize(12)
+                      .fontColor('#999999')
+                  }
+                  .onClick(() => this.likeComment(comment.id))
+
+                  Text('回复')
+                    .fontSize(12)
+                    .fontColor('#666666')
+                    .onClick(() => this.startReply(comment))
+
+                  if (comment.userName === '当前用户') {
+                    Text('删除')
+                      .fontSize(12)
+                      .fontColor('#E74C3C')
+                      .onClick(() => this.deleteComment(comment.id))
+                  }
+                }
+                .width('100%')
+              }
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
+            }
+            .width('100%')
+          }
+          .width('100%')
+          .padding(14)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(10)
+          .border({ width: 1, color: '#F0F0F0' })
+        }, (comment: CommentData) => comment.id.toString());
+      }
+    }
+    .width('100%')
+    .padding(GlobalTheme.getSpacingLG(this.isElderMode))
+    .backgroundColor('#FFFFFF')
+    .borderRadius(12)
+    .border({ width: 1, color: '#F0F0F0' })
+  }
+
+  formatTimeAgo(dateStr: string): string {
+    if (!dateStr) return '';
+    const date: Date = new Date(dateStr);
+    const now: number = Date.now();
+    const diff: number = now - date.getTime();
+    const minutes: number = Math.floor(diff / 60000);
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return minutes + '分钟前';
+    const hours: number = Math.floor(minutes / 60);
+    if (hours < 24) return hours + '小时前';
+    const days: number = Math.floor(hours / 24);
+    if (days < 30) return days + '天前';
+    return this.formatDate(dateStr);
   }
 
   build() {
@@ -411,10 +730,12 @@ struct ScienceDetailPage {
             .borderRadius(12)
             .border({ width: 1, color: '#F0F0F0' })
             .alignItems(HorizontalAlign.Start);
+
+            this.buildCommentSection();
           }
         }
         .width('85%')
-        .padding({ top: GlobalTheme.getSpacingMD(this.isElderMode), bottom: 120 });
+        .padding({ top: GlobalTheme.getSpacingMD(this.isElderMode), bottom: 140 });
       }
       .height(0)
       .layoutWeight(1)
@@ -440,6 +761,24 @@ struct ScienceDetailPage {
             .backgroundColor('transparent')
             .border({ width: 0 })
             .onClick(() => this.handleLike());
+
+          Row({ space: 4 }) {
+            Text('💬')
+              .fontSize(20)
+            Text(this.comments.length.toString())
+              .fontSize(12)
+              .fontColor('#666666')
+          }
+          .padding({ left: 12, right: 8, top: 8, bottom: 8 })
+          .backgroundColor('#F5F7FA')
+          .borderRadius(20)
+          .onClick(() => {
+            this.showCommentInput = !this.showCommentInput;
+            if (this.showCommentInput) {
+              this.replyToCommentId = 0;
+              this.replyToUserName = '';
+            }
+          })
 
           Row() {
             Button('A-')

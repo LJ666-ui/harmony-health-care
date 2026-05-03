@@ -104,7 +104,7 @@ export struct KnowledgeNode {
               this.onNodeClick(this.node);
             }
           }),
-        PanGesture({ fingers: 1, distance: 5 })
+        PanGesture({ fingers: 1, distance: 2 })
           .onActionStart(() => {
             if (this.onNodeDragStart) {
               this.onNodeDragStart(this.node);

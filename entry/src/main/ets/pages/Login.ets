@@ -69,8 +69,14 @@ struct Login {
             if (userInfo.userId) {
               AppStorage.setOrCreate<number>('userId', userInfo.userId);
             }
+            if (userInfo.userType === 1) {
+              router.replaceUrl({ url: 'pages/DoctorHomePage' });
+            } else {
+              router.replaceUrl({ url: 'pages/HomePage' });
+            }
+          } else {
+            router.replaceUrl({ url: 'pages/HomePage' });
           }
-          router.replaceUrl({ url: 'pages/HomePage' });
         }
       }
     } catch (error) {
@@ -155,7 +161,12 @@ struct Login {
 
         setTimeout(() => {
           try {
-            router.replaceUrl({ url: 'pages/HomePage' });
+            const userType: number | undefined = response.data?.userType;
+            if (userType === 1) {
+              router.replaceUrl({ url: 'pages/DoctorHomePage' });
+            } else {
+              router.replaceUrl({ url: 'pages/HomePage' });
+            }
           } catch (error) {
             console.error('跳转首页失败:', error);
           }

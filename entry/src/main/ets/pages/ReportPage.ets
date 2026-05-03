@@ -11,6 +11,10 @@ interface ReportItem {
   date: string;
   type: string;
   status: string;
+  abnormalCount?: number; // 异常项数量
+  totalCount?: number; // 总检查项数
+  doctor?: string; // 主检医生
+  conclusion?: string; // 检查结论
 }
 
 @Entry
@@ -40,11 +44,66 @@ struct ReportPage {
       
       // 默认数据
       this.reportList = [
-        { id: 1, title: '2024年度体检报告', hospital: '北京协和医院', date: '2024-12-15', type: '年度体检', status: '已完成' },
-        { id: 2, title: '入职体检报告', hospital: '北京大学第一医院', date: '2024-10-20', type: '入职体检', status: '已完成' },
-        { id: 3, title: '专项检查报告', hospital: '北京同仁医院', date: '2024-08-10', type: '专项检查', status: '已完成' },
-        { id: 4, title: '2023年度体检报告', hospital: '北京协和医院', date: '2023-12-18', type: '年度体检', status: '已完成' },
-        { id: 5, title: '婚前体检报告', hospital: '北京妇幼保健院', date: '2023-06-05', type: '婚前体检', status: '已完成' }
+        { 
+          id: 1, 
+          title: '2024年度体检报告', 
+          hospital: '北京协和医院', 
+          date: '2024-12-15', 
+          type: '年度体检', 
+          status: '已完成',
+          abnormalCount: 2,
+          totalCount: 35,
+          doctor: '张医生',
+          conclusion: '总体良好，建议关注血脂指标'
+        },
+        { 
+          id: 2, 
+          title: '入职体检报告', 
+          hospital: '北京大学第一医院', 
+          date: '2024-10-20', 
+          type: '入职体检', 
+          status: '已完成',
+          abnormalCount: 0,
+          totalCount: 20,
+          doctor: '李医生',
+          conclusion: '各项指标正常'
+        },
+        { 
+          id: 3, 
+          title: '专项检查报告', 
+          hospital: '北京同仁医院', 
+          date: '2024-08-10', 
+          type: '专项检查', 
+          status: '已完成',
+          abnormalCount: 1,
+          totalCount: 8,
+          doctor: '王医生',
+          conclusion: '视力需注意，建议定期复查'
+        },
+        { 
+          id: 4, 
+          title: '2023年度体检报告', 
+          hospital: '北京协和医院', 
+          date: '2023-12-18', 
+          type: '年度体检', 
+          status: '已完成',
+          abnormalCount: 3,
+          totalCount: 35,
+          doctor: '张医生',
+          conclusion: '需关注血压和血糖'
+        },
+        { 
+          id: 5, 
+          title: '婚前体检报告', 
+          hospital: '北京妇幼保健院', 
+          date: '2023-06-05', 
+          type: '婚前体检', 
+          status: '已完成',
+          abnormalCount: 0,
+          totalCount: 15,
+          doctor: '赵医生',
+          conclusion: '各项指标正常'
+        }
       ];
       
       this.filterReports();
@@ -167,10 +226,30 @@ struct ReportPage {
                   }
                   .width('100%')
 
-                  Text('类型：' + report.type)
-                    .fontSize(this.isElderMode ? 14 : 12)
-                    .fontColor('#666')
-                    .margin({ top: 6 })
+                  Row() {
+                    Text('类型：' + report.type)
+                      .fontSize(this.isElderMode ? 14 : 12)
+                      .fontColor('#666')
+                      .layoutWeight(1)
+                    
+                    if (report.abnormalCount !== undefined && report.totalCount !== undefined) {
+                      Text('异常项：' + report.abnormalCount + '/' + report.totalCount)
+                        .fontSize(this.isElderMode ? 14 : 12)
+                        .fontColor(report.abnormalCount > 0 ? '#E74C3C' : '#2ECC71')
+                        .fontWeight(FontWeight.Medium)
+                    }
+                  }
+                  .width('100%')
+                  .margin({ top: 6 })
+
+                  if (report.conclusion) {
+                    Text('结论：' + report.conclusion)
+                      .fontSize(this.isElderMode ? 14 : 12)
+                      .fontColor('#666')
+                      .margin({ top: 6 })
+                      .maxLines(2)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  }
                 }
                 .width('100%')
                 .padding(15)

@@ -1,12 +1,13 @@
 /**
  * 专科智能体实现
- * 包含内科、外科、中医、营养、康复五个专科智能体
+ * 包含内科、外科、中医、营养、康复、神经内科六个专科智能体
  */
 
 import { MedicalAgent } from './MedicalAgent';
 import { LLMClient } from './infrastructure/LLMClient';
 import { RAGRetriever } from './RAGRetriever';
 import { AgentConfig, MedicalSpecialty, AgentCapability } from './types/AgentTypes';
+import { NeurologyAgent } from './NeurologyAgent';
 
 /**
  * 内科智能体
@@ -271,6 +272,7 @@ export function createSpecialistAgents(
     new SurgeryAgent(llmClient, ragRetriever),
     new TCMAgent(llmClient, ragRetriever),
     new NutritionAgent(llmClient, ragRetriever),
-    new RehabAgent(llmClient, ragRetriever)
+    new RehabAgent(llmClient, ragRetriever),
+    new NeurologyAgent(llmClient, ragRetriever) // 新增神经内科Agent
   ];
 }

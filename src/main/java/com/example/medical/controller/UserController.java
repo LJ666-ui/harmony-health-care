@@ -38,11 +38,32 @@ public class UserController {
         if (user.getUserType() == null) {
             user.setUserType(0);
         }
+        if (user.getUserType() == 1) {
+            if (user.getRealName() == null || user.getRealName().trim().isEmpty()) {
+                return Result.error("请填写真实姓名");
+            }
+            if (user.getHospital() == null || user.getHospital().trim().isEmpty()) {
+                return Result.error("请填写所属医院");
+            }
+            if (user.getDepartment() == null || user.getDepartment().trim().isEmpty()) {
+                return Result.error("请填写科室");
+            }
+            if (user.getLicenseNumber() == null || user.getLicenseNumber().trim().isEmpty()) {
+                return Result.error("请填写执业证号");
+            }
+            if (user.getPhone() == null || user.getPhone().trim().isEmpty()) {
+                return Result.error("请填写手机号");
+            }
+        }
         user.setPassword(BCryptUtil.encrypt(user.getPassword()));
         user.setCreateTime(new Date());
         user.setIsDeleted(0);
         if (userService.save(user)) {
-            return Result.success("注册成功");
+            Map<String, Object> result = new HashMap<>();
+            result.put("userId", user.getId());
+            result.put("message", "注册成功");
+            result.put("userType", user.getUserType());
+            return Result.success(result);
         } else {
             return Result.error("注册失败");
         }
@@ -110,20 +131,25 @@ public class UserController {
     }
 
     @PostMapping("/message/send")
-    public Result<?> sendMessage(@RequestParam Long senderId, @RequestParam Long receiverId,
-                                  @RequestParam String content) {
+    public Result<?> sendMessage(@RequestBody Map<String, Object> body) {
         try {
-            DoctorMessage message = new DoctorMessage();
-            message.setSenderId(senderId);
-            message.setReceiverId(receiverId);
-            message.setContent(content);
-            message.setIsRead(0);
-            message.setCreateTime(new Date());
-            if (doctorMessageService.save(message)) {
-                return Result.success(message);
-            } else {
-                return Result.error("发送失败");
+            long senderId = Long.parseLong(body.get("senderId").toString());
+            long receiverId = Long.parseLong(body.get("receiverId").toString());
+            String content = body.get("content") != null ? body.get("content").toString() : "";
+
+            User sender = userService.getById(senderId);
+            if (sender == null) {
+                return Result.error("发送者不存在");
             }
+
+            if (sender.getUserType() != null && sender.getUserType() == 1) {
+                if (!doctorMessageService.canDoctorSendMessage(senderId, receiverId)) {
+                    return Result.error("该患者尚未联系您，您无法主动发起对话");
+                }
+            }
+
+            DoctorMessage message = doctorMessageService.sendMessageWithExpiry(senderId, receiverId, content);
+            return Result.success(message);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("发送消息失败：" + e.getMessage());
@@ -133,7 +159,16 @@ public class UserController {
     @GetMapping("/message/history")
     public Result<?> getMessageHistory(@RequestParam Long userA, @RequestParam Long userB) {
         try {
+            System.out.println("[getMessageHistory] userA=" + userA + " userB=" + userB);
             List<DoctorMessage> messages = doctorMessageService.getConversation(userA, userB);
+            System.out.println("[getMessageHistory] 查询结果条数=" + (messages != null ? messages.size() : "null"));
+            if (messages != null && !messages.isEmpty()) {
+                for (DoctorMessage m : messages) {
+                    System.out.println("  msg id=" + m.getId() + " sender=" + m.getSenderId()
+                        + " receiver=" + m.getReceiverId() + " content=" + m.getContent()
+                        + " expireTime=" + m.getExpireTime());
+                }
+            }
             LambdaQueryWrapper<DoctorMessage> readWrapper = new LambdaQueryWrapper<>();
             readWrapper.eq(DoctorMessage::getSenderId, userB);
             readWrapper.eq(DoctorMessage::getReceiverId, userA);
@@ -145,6 +180,85 @@ public class UserController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("获取消息记录失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/message/conversations")
+    public Result<?> getConversations(@RequestParam Long userId) {
+        try {
+            List<Map<String, Object>> conversations = doctorMessageService.getConversationList(userId);
+            return Result.success(conversations);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取会话列表失败：" + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/message/delete")
+    public Result<?> deleteConversation(@RequestBody Map<String, Object> body) {
+        try {
+            long userA = Long.parseLong(body.get("userA").toString());
+            long userB = Long.parseLong(body.get("userB").toString());
+            LambdaQueryWrapper<DoctorMessage> wrapper = new LambdaQueryWrapper<>();
+            wrapper.and(w -> w.eq(DoctorMessage::getSenderId, userA).eq(DoctorMessage::getReceiverId, userB))
+                .or(w -> w.eq(DoctorMessage::getSenderId, userB).eq(DoctorMessage::getReceiverId, userA));
+            if (doctorMessageService.remove(wrapper)) {
+                return Result.success("删除成功");
+            } else {
+                return Result.error("删除失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("删除对话失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/message/can-send")
+    public Result<?> canSend(@RequestParam Long senderId, @RequestParam Long receiverId) {
+        try {
+            User sender = userService.getById(senderId);
+            if (sender == null) {
+                return Result.error("用户不存在");
+            }
+            boolean canSend = true;
+            if (sender.getUserType() != null && sender.getUserType() == 1) {
+                canSend = doctorMessageService.canDoctorSendMessage(senderId, receiverId);
+            }
+            Map<String, Object> result = new HashMap<>();
+            result.put("canSend", canSend);
+            result.put("userType", sender.getUserType());
+            return Result.success(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("检查权限失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/doctor/patients")
+    public Result<?> getDoctorPatients(@RequestParam Long doctorId) {
+        try {
+            User doctor = userService.getById(doctorId);
+            if (doctor == null || doctor.getUserType() != 1) {
+                return Result.error("非医生身份，无权访问");
+            }
+            List<Map<String, Object>> conversations = doctorMessageService.getConversationList(doctorId);
+            return Result.success(conversations);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取患者列表失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/message/cleanup")
+    public Result<?> cleanupExpired() {
+        try {
+            int deleted = doctorMessageService.cleanupExpiredMessages();
+            Map<String, Object> result = new HashMap<>();
+            result.put("deletedCount", deleted);
+            return Result.success(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("清理过期消息失败：" + e.getMessage());
         }
     }
 }

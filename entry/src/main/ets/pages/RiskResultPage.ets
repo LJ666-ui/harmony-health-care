@@ -24,7 +24,6 @@ class RiskLevelInfo {
   color: string = '';
   icon: string = '';
   message: string = '';
-
   constructor(level?: string, color?: string, icon?: string, message?: string) {
     if (level !== undefined) this.level = level;
     if (color !== undefined) this.color = color;
@@ -41,7 +40,6 @@ class RiskItemDisplay {
   icon: string = '';
   description: string = '';
   value: number = 0;
-
   constructor(id?: string, name?: string, level?: string, levelColor?: string, icon?: string,
     description?: string, value?: number) {
     if (id !== undefined) this.id = id;
@@ -63,7 +61,6 @@ class PageParams {
 @Component
 struct RiskResultPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-
   @State riskLevel: RiskLevelInfo = new RiskLevelInfo('低风险', '#52C41A', '🟢', '您的健康状况良好');
   @State riskItems: RiskItemDisplay[] = [];
   @State radarData: RadarDataItem[] = [];
@@ -93,11 +90,11 @@ struct RiskResultPage {
 
   private applyAIResult(result: RiskAssessmentResult): void {
     this.overallScore = Math.round(result.overallScore * 100);
-
     const levelLabel: string = getRiskLabel(result.overallLevel);
     const levelColor: string = getRiskColor(result.overallLevel);
     let icon: string = '🟢';
     let message: string = '您的健康状况良好';
+
     if (result.overallLevel === AIRiskLevelType.HIGH || result.overallLevel === AIRiskLevelType.CRITICAL) {
       icon = '🔴';
       message = '发现高风险指标，建议尽早就医';
@@ -105,8 +102,8 @@ struct RiskResultPage {
       icon = '🟡';
       message = '有指标需要关注，建议改善生活方式';
     }
-    this.riskLevel = new RiskLevelInfo(levelLabel, levelColor, icon, message);
 
+    this.riskLevel = new RiskLevelInfo(levelLabel, levelColor, icon, message);
     this.riskItems = [
       this.convertRiskItem(result.risks.hypertension, '1', '🩺'),
       this.convertRiskItem(result.risks.diabetes, '2', '💉'),
@@ -114,7 +111,6 @@ struct RiskResultPage {
       this.convertRiskItem(result.risks.frailty, '4', '💪'),
       this.convertRiskItem(result.risks.sarcopenia, '5', '🏋️')
     ];
-
     this.radarData = getRadarDataFromResult(result);
     this.aiSuggestions = result.suggestions;
   }
@@ -142,7 +138,39 @@ struct RiskResultPage {
   }
 
   handleShare() {
-    router.pushUrl({ url: 'pages/DoctorListPage' });
+    const summaryMsg: string = this.buildAssessmentSummary();
+    router.pushUrl({
+      url: 'pages/DoctorListPage',
+      params: { shareMessage: summaryMsg, shareType: 'riskAssessment' }
+    });
+  }
+
+  private buildAssessmentSummary(): string {
+    let lines: string[] = [];
+    lines.push('【健康风险评估报告】');
+    lines.push('综合风险等级：' + this.riskLevel.level + ' ' + this.riskLevel.icon);
+    if (this.overallScore > 0) {
+      lines.push('综合评分：' + this.overallScore + '/100分');
+    }
+    lines.push('');
+    lines.push('五维风险评估详情：');
+    for (let i: number = 0; i < this.riskItems.length; i++) {
+      const item: RiskItemDisplay = this.riskItems[i];
+      const valPercent: number = Math.round(item.value * 100);
+      lines.push(item.icon + ' ' + item.name + '：' + item.level + '(' + valPercent + '%)');
+      if (item.description && item.description.trim() !== '') {
+        lines.push('   → ' + item.description);
+      }
+    }
+    lines.push('');
+    if (this.aiSuggestions.length > 0) {
+      lines.push('AI建议（前3条）：');
+      const showCount: number = Math.min(3, this.aiSuggestions.length);
+      for (let i: number = 0; i < showCount; i++) {
+        lines.push((i + 1).toString() + '. ' + this.aiSuggestions[i]);
+      }
+    }
+    return lines.join('\n');
   }
 
   handleReassess() {
@@ -192,7 +220,7 @@ struct RiskResultPage {
       items.push(new RiskItemDisplay('2', '糖尿病', '低风险', '#52C41A', '💉', '血糖在正常范围内', 0.1));
     }
 
-    if (age >= 65 || data.medicalHistory.includes('骨质疏松') || data.exercise === '每周1-2次' && data.smoking === '是') {
+    if (age >= 65 || data.medicalHistory.includes('骨质疏松') || (data.exercise === '每周1-2次' && data.smoking === '是')) {
       items.push(new RiskItemDisplay('3', '跌倒', '中风险', '#FAAD14', '🧓', age >= 65 ? '年龄较大，存在跌倒风险，建议加强平衡训练' : '存在跌倒风险因素，建议加强平衡训练', 0.4));
       midRiskCount++;
     } else {
@@ -208,7 +236,7 @@ struct RiskResultPage {
       items.push(new RiskItemDisplay('4', '衰弱', '低风险', '#52C41A', '💪', 'BMI正常(' + data.bmi + ')，身体状况良好', 0.15));
     }
 
-    if (data.bmi < 18.5 || data.exercise === '每周1-2次' && age >= 60) {
+    if (data.bmi < 18.5 || (data.exercise === '每周1-2次' && age >= 60)) {
       items.push(new RiskItemDisplay('5', '肌少症', '中风险', '#FAAD14', '🏋️', '建议增加蛋白质摄入和抗阻运动', 0.35));
       midRiskCount++;
     } else {
@@ -217,10 +245,93 @@ struct RiskResultPage {
 
     this.riskItems = items;
     this.radarData = [];
-    for (let i: number = 0; i < items.length; i++) {
-      const item: RiskItemDisplay = items[i];
-      this.radarData.push(new RadarDataItem(item.name, item.value, item.levelColor));
+
+    let bpActual: number = systolic;
+    let bpUnit: string = 'mmHg';
+    let bpL1: number = 119;
+    let bpL2Min: number = 120;
+    let bpL2Max: number = 139;
+    let bpL3Min: number = 140;
+    let bpL3Max: number = 180;
+    if (systolic <= 0) {
+      bpActual = 115; bpL1 = 119; bpL2Min = 120; bpL2Max = 139; bpL3Min = 140; bpL3Max = 180;
+    } else if (systolic >= 140 || diastolic >= 90) {
+      bpL1 = 119; bpL2Min = 120; bpL2Max = 139; bpL3Min = 140; bpL3Max = 180;
+    } else if (systolic >= 120 || diastolic >= 80) {
+      bpL1 = 119; bpL2Min = 120; bpL2Max = 139; bpL3Min = 140; bpL3Max = 180;
     }
+    const bpItem: RadarDataItem = new RadarDataItem();
+    bpItem.label = '高血压';
+    bpItem.value = items[0].value;
+    bpItem.color = items[0].levelColor;
+    bpItem.actualValue = bpActual;
+    bpItem.unit = bpUnit;
+    bpItem.level1Max = bpL1;
+    bpItem.level2Min = bpL2Min;
+    bpItem.level2Max = bpL2Max;
+    bpItem.level3Min = bpL3Min;
+    bpItem.level3Max = bpL3Max;
+    this.radarData.push(bpItem);
+
+    let gluActual: number = fastingGlucose;
+    if (fastingGlucose <= 0) { gluActual = 5.2; }
+    const gluItem: RadarDataItem = new RadarDataItem();
+    gluItem.label = '糖尿病';
+    gluItem.value = items[1].value;
+    gluItem.color = items[1].levelColor;
+    gluItem.actualValue = gluActual;
+    gluItem.unit = 'mmol/L';
+    gluItem.level1Max = 6.09;
+    gluItem.level2Min = 6.10;
+    gluItem.level2Max = 6.99;
+    gluItem.level3Min = 7.00;
+    gluItem.level3Max = 12.0;
+    this.radarData.push(gluItem);
+
+    let fallActual: number = age;
+    if (age <= 0) { fallActual = 45; }
+    const fallItem: RadarDataItem = new RadarDataItem();
+    fallItem.label = '跌倒风险';
+    fallItem.value = items[2].value;
+    fallItem.color = items[2].levelColor;
+    fallItem.actualValue = fallActual;
+    fallItem.unit = '岁';
+    fallItem.level1Max = 64.9;
+    fallItem.level2Min = 65.0;
+    fallItem.level2Max = 75.0;
+    fallItem.level3Min = 76.0;
+    fallItem.level3Max = 100;
+    this.radarData.push(fallItem);
+
+    let bmiVal: number = data.bmi > 0 ? data.bmi : 22;
+    if (bmiVal <= 0) { bmiVal = 22; }
+    const bmiItem: RadarDataItem = new RadarDataItem();
+    bmiItem.label = '衰弱';
+    bmiItem.value = items[3].value;
+    bmiItem.color = items[3].levelColor;
+    bmiItem.actualValue = bmiVal;
+    bmiItem.unit = 'kg/m²';
+    bmiItem.level1Max = 25.0;
+    bmiItem.level2Min = 17.5;
+    bmiItem.level2Max = 27.0;
+    bmiItem.level3Min = 28.0;
+    bmiItem.level3Max = 35.0;
+    this.radarData.push(bmiItem);
+
+    let stepsVal: number = data.exercise === '每周3次以上' ? 8000 :
+      data.exercise === '每周1-2次' ? 3000 : 6000;
+    const stepItem: RadarDataItem = new RadarDataItem();
+    stepItem.label = '肌少症';
+    stepItem.value = items[4].value;
+    stepItem.color = items[4].levelColor;
+    stepItem.actualValue = stepsVal;
+    stepItem.unit = '步';
+    stepItem.level1Max = 5000;
+    stepItem.level2Min = 3000;
+    stepItem.level2Max = 4999;
+    stepItem.level3Min = 1500;
+    stepItem.level3Max = 2999;
+    this.radarData.push(stepItem);
 
     if (highRiskCount > 0) {
       this.riskLevel = new RiskLevelInfo('高风险', '#FF4D4F', '🔴', '发现' + highRiskCount + '项高风险指标，建议尽早就医');
@@ -259,9 +370,7 @@ struct RiskResultPage {
     if (data.exercise === '每周1-2次') {
       suggestions.push('运动频率偏低，建议逐步增加到每周至少150分钟中等强度运动');
     }
-
     suggestions.push('保持良好的作息习惯，保证每晚7-8小时充足睡眠');
-
     this.aiSuggestions = suggestions;
   }
 
@@ -285,7 +394,7 @@ struct RiskResultPage {
           .fontColor('#1677FF')
           .padding(12)
           .onClick(() => {
-            router.push({ url: 'pages/RiskHistoryPage' });
+            router.pushUrl({ url: 'pages/RiskHistoryPage' });
           });
       }
       .width('100%')
@@ -304,7 +413,6 @@ struct RiskResultPage {
                   angle: 135,
                   colors: [[this.riskLevel.color + 'DD', 0], [this.riskLevel.color + '44', 1]]
                 });
-
               Column() {
                 Text(this.riskLevel.icon)
                   .fontSize(56)
@@ -329,7 +437,6 @@ struct RiskResultPage {
               .width('100%')
               .padding(32)
               .alignItems(HorizontalAlign.Center);
-
               Circle()
                 .width(80)
                 .height(80)
@@ -348,19 +455,32 @@ struct RiskResultPage {
                 .fontWeight('bold')
                 .fontColor('#333333')
                 .margin({ bottom: 16 });
-
               RadarChart({
                 data: this.radarData,
                 sizeValue: 300,
                 showValue: true,
                 animated: true
               });
-
+              Row({ space: 20 }) {
+                Row({ space: 6 }) {
+                  Circle().width(10).height(10).fill('#52C41A');
+                  Text('低风险(0-30%)').fontSize(11).fontColor('#666666');
+                }
+                Row({ space: 6 }) {
+                  Circle().width(10).height(10).fill('#FAAD14');
+                  Text('中风险(30-60%)').fontSize(11).fontColor('#666666');
+                }
+                Row({ space: 6 }) {
+                  Circle().width(10).height(10).fill('#FF4D4F');
+                  Text('高风险(60%+)').fontSize(11).fontColor('#666666');
+                }
+              }
+              .margin({ top: 12, bottom: 8 });
               if (this.aiResult) {
                 Text('AI模型: ' + this.aiResult.modelVersion + ' | 耗时: ' + this.aiResult.processingTimeMs + 'ms')
                   .fontSize(11)
                   .fontColor('#999999')
-                  .margin({ top: 8 });
+                  .margin({ top: 4 });
               }
             }
             .width('100%')
@@ -399,7 +519,6 @@ struct RiskResultPage {
                       .margin({ top: 2 });
                   }
                   .width(48);
-
                   Column() {
                     Row() {
                       Text(item.level)
@@ -416,14 +535,12 @@ struct RiskResultPage {
                         .fontColor(item.levelColor);
                     }
                     .width('100%');
-
                     Progress({ value: item.value * 100, total: 100, type: ProgressType.Linear })
                       .width('100%')
                       .height(6)
                       .color(item.levelColor)
                       .backgroundColor('#F0F0F0')
                       .margin({ top: 8, bottom: 4 });
-
                     Text(item.description)
                       .fontSize(13)
                       .fontColor('#666666')
@@ -453,7 +570,6 @@ struct RiskResultPage {
                     .fontWeight('bold')
                     .fontColor('#333333');
                 }
-
                 Blank();
                 Text('基于您的数据生成')
                   .fontSize(11)
@@ -463,7 +579,6 @@ struct RiskResultPage {
                   .borderRadius(10);
               }
               .width('100%');
-
               ForEach(this.aiSuggestions, (suggestion: string, index: number) => {
                 Row({ space: 10 }) {
                   Text((index + 1).toString())
@@ -505,7 +620,6 @@ struct RiskResultPage {
                 .onClick(() => {
                   this.handleViewReport();
                 });
-
               Row() {
                 Button('分享给医生')
                   .layoutWeight(1)
@@ -534,7 +648,6 @@ struct RiskResultPage {
                   });
               }
               .width('100%');
-
               Button('制定康复计划')
                 .width('100%')
                 .height(46)
@@ -563,7 +676,6 @@ struct RiskResultPage {
                   colors: [['#E8E8E8', 0], ['#F5F5F5', 1]]
                 })
                 .borderRadius({ topLeft: 20, topRight: 20, bottomLeft: 16, bottomRight: 16 });
-
               Column() {
                 Text('📋')
                   .fontSize(64)
@@ -586,7 +698,6 @@ struct RiskResultPage {
             }
             .width('90%')
             .margin({ top: 40, bottom: 32 });
-
             Button('开始健康评估')
               .width('60%')
               .height(50)
@@ -599,7 +710,6 @@ struct RiskResultPage {
               .onClick(() => {
                 router.pushUrl({ url: 'pages/RiskAssessmentPage' });
               });
-
             Row({ space: 12 }) {
               Column({ space: 6 }) {
                 Text('📊')
@@ -617,7 +727,6 @@ struct RiskResultPage {
               .onClick(() => {
                 router.pushUrl({ url: 'pages/RiskHistoryPage' });
               });
-
               Column({ space: 6 }) {
                 Text('👨‍⚕️')
                   .fontSize(24);

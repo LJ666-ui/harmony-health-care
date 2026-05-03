@@ -38,6 +38,8 @@ interface HealthStats {
 @Component
 struct Profile {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @StorageLink('userId') userId: number = 0;
+  @StorageLink('username') storedUsername: string = '';
 
   @State showAccessibilityPanel: boolean = false;
   @State banners: BannerItem[] = [];
@@ -46,6 +48,9 @@ struct Profile {
     collectCount: 0,
     browseHistoryCount: 0
   };
+  // 保留动态用户信息展示
+  @State displayUsername: string = '星云用户';
+  @State displayPhone: string = '';
 
   @State menuItems: MenuItem[] = [
     { icon: '📱', title: '设备绑定', color: '#1677FF', url: 'pages/DeviceDiscoveryPage' },
@@ -69,8 +74,29 @@ struct Profile {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
-
+    // 初始化用户信息 + 加载数据
+    this.initUserInfo();
     this.loadAllData();
+  }
+
+  // 初始化用户信息（动态读取存储数据）
+  initUserInfo(): void {
+    if (this.storedUsername && this.storedUsername.trim() !== '') {
+      this.displayUsername = this.storedUsername;
+    }
+    const userInfo: Object | undefined = AppStorage.get<Object>('userInfo');
+    if (userInfo) {
+      const info: Record<string, Object> = userInfo as Record<string, Object>;
+      const phone: string = (info['phone'] !== undefined && info['phone'] !== null)
+        ? String(info['phone']) : '';
+      const name: string = (info['username'] !== undefined && info['username'] !== null)
+        ? String(info['username']) : '';
+      if (name.trim() !== '') { this.displayUsername = name; }
+      if (phone.trim() !== '') {
+        this.displayPhone = phone.length > 7
+          ? phone.substring(0, 3) + '****' + phone.substring(phone.length - 4) : phone;
+      }
+    }
   }
 
   loadAllData() {
@@ -138,16 +164,24 @@ struct Profile {
 
         Scroll() {
           Column() {
-            UserInfoCard({ username: '星云用户', phone: '138****1234', userId: 10086 });
+            // 动态用户信息卡片
+            UserInfoCard({
+              username: this.displayUsername,
+              phone: this.displayPhone || '未绑定手机',
+              userId: this.userId || 0
+            });
 
-            CarouselBanner({ banners: this.banners })
-              .margin({ top: 16 });
+            if (this.banners.length > 0) {
+              CarouselBanner({ banners: this.banners })
+                .margin({ top: 12 });
+            }
 
             HealthStatsCard({
               healthRecordCount: this.healthStats.healthRecordCount,
               collectCount: this.healthStats.collectCount,
               browseHistoryCount: this.healthStats.browseHistoryCount
-            });
+            })
+              .margin({ top: 16 });
 
             ServiceList({
               menuItems: this.menuItems,
@@ -163,6 +197,7 @@ struct Profile {
               }
             });
 
+            // 退出登录按钮（统一样式）
             Button('退出登录')
               .width('85%')
               .height(44)
@@ -171,10 +206,7 @@ struct Profile {
               .fontColor('#FF4D4F')
               .backgroundColor('#FFF1F0')
               .borderRadius(22)
-              .margin({
-                top: 16,
-                bottom: 16
-              })
+              .margin({ top: 20, bottom: 24 })
               .accessibilityText('退出登录按钮')
               .onClick(async () => {
                 try {
@@ -187,11 +219,7 @@ struct Profile {
                 }
               });
           }
-          .width('100%')
-          .padding({
-            top: 16,
-            bottom: 16
-          });
+          .width('100%');
         }
         .height(0)
         .layoutWeight(1)
@@ -204,6 +232,7 @@ struct Profile {
       .height('100%')
       .backgroundColor(AccessibilityConfig.getBgColor());
 
+      // 无障碍设置弹窗
       if (this.showAccessibilityPanel) {
         AccessibilitySettingsPanel({
           onDismiss: () => {

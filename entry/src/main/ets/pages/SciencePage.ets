@@ -33,30 +33,56 @@ struct SciencePage {
   }
 
   build() {
-    Column() {
-      Header({ title: '发现' })
+    // 保留悬浮发布按钮（完整功能）
+    Stack({ alignContent: Alignment.BottomEnd }) {
+      Column() {
+        Header({ title: '发现' })
 
-      Scroll() {
-        Column({ space: this.isElderMode ? 16 : 12 }) {
-          this.buildSearchBar()
-
-          this.buildCarouselBanner()
-
-          this.buildCategoryGrid()
-
-          this.buildArticleSection()
-
-          this.buildAIToolBox()
-
-          Footer({ activeIndex: 3 })
+        Scroll() {
+          Column({ space: this.isElderMode ? 16 : 12 }) {
+            this.buildSearchBar()
+            this.buildCarouselBanner()
+            this.buildCategoryGrid()
+            this.buildArticleSection()
+            this.buildAIToolBox()
+            Footer({ activeIndex: 3 })
+          }
+          .padding({ left: 16, right: 16, bottom: 80 })
         }
-        .padding({ left: 16, right: 16, bottom: 80 })
+        .layoutWeight(1)
+        .scrollBar(BarState.Auto)
       }
-      .layoutWeight(1)
-      .scrollBar(BarState.Auto)
+      .height('100%')
+      .backgroundColor('#F5F7FA')
+
+      // 悬浮发布文章按钮
+      Column() {
+        Text('✏️')
+          .fontSize(24)
+        Text('发布')
+          .fontSize(10)
+          .fontColor('#FFFFFF')
+          .margin({ top: 2 })
+      }
+      .width(56)
+      .height(56)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+      .backgroundColor('#1677FF')
+      .borderRadius(28)
+      .shadow({
+        radius: 8,
+        color: '#1677FF40',
+        offsetX: 0,
+        offsetY: 4
+      })
+      .margin({ right: 20, bottom: 90 })
+      .onClick(() => {
+        this.navigateTo('pages/PublishArticlePage');
+      })
     }
+    .width('100%')
     .height('100%')
-    .backgroundColor('#F5F7FA')
   }
 
   @Builder buildSearchBar(): void {
@@ -132,7 +158,6 @@ struct SciencePage {
       Row({ space: 8 }) {
         Text(icon)
           .fontSize(this.isElderMode ? 28 : 22)
-
         Text(title)
           .fontSize(this.isElderMode ? 20 : 16)
           .fontWeight(FontWeight.Bold)
@@ -152,7 +177,6 @@ struct SciencePage {
           .fontSize(this.isElderMode ? 14 : 12)
           .fontColor('#FFFFFF')
           .fontWeight(FontWeight.Medium)
-
         Text(' →')
           .fontSize(this.isElderMode ? 14 : 12)
           .fontColor('#FFFFFF')
@@ -199,7 +223,6 @@ struct SciencePage {
             Column({ space: 8 }) {
               Text(item['icon'] as string)
                 .fontSize(this.isElderMode ? 36 : 28)
-
               Text(item['title'] as string)
                 .fontSize(this.isElderMode ? 14 : 12)
                 .fontColor('#333333')
@@ -212,8 +235,7 @@ struct SciencePage {
             .borderRadius(12)
             .border({ width: 1, color: '#F0F0F0' })
             .onClick(() => {
-              const route: string = item['route'] as string;
-              this.navigateTo(route);
+              this.navigateTo(item['route'] as string);
             })
           }
         }, (item: Record<string, string>) => item['id'] as string)
@@ -236,6 +258,18 @@ struct SciencePage {
 
         Blank()
 
+        // 发布文章按钮
+        Text('✏️ 发布')
+          .fontSize(this.isElderMode ? 14 : 12)
+          .fontColor('#1677FF')
+          .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+          .backgroundColor('#E6F4FF')
+          .borderRadius(15)
+          .margin({ right: 8 })
+          .onClick(() => {
+            this.navigateTo('pages/PublishArticlePage');
+          })
+
         Text('查看更多 >')
           .fontSize(this.isElderMode ? 14 : 12)
           .fontColor('#1677FF')
@@ -245,61 +279,61 @@ struct SciencePage {
       }
       .width('100%')
 
-      ForEach([
-        { id: 1, title: '高血压预防指南', readCount: '1.2k', author: '张医生', time: '2026-04-20' },
-        { id: 2, title: '糖尿病饮食注意事项', readCount: '890', author: '李医生', time: '2026-04-18' }
-      ], (article: Record<string, string | number>) => {
-        Row({ space: 12 }) {
-          Column()
-            .width(100)
-            .height(80)
-            .backgroundColor('#F0F5FF')
-            .borderRadius(8)
-            .justifyContent(FlexAlign.Center) {
-            Text('📰')
-              .fontSize(32)
-          }
+      Column({ space: 10 }) {
+        ForEach([
+          { id: 1, title: '高血压预防指南', readCount: '1.2k', author: '张医生', time: '2026-04-20' },
+          { id: 2, title: '糖尿病饮食注意事项', readCount: '890', author: '李医生', time: '2026-04-18' }
+        ], (article: Record<string, string | number>) => {
+          Row({ space: 12 }) {
+            Column()
+              .width(100)
+              .height(80)
+              .backgroundColor('#F0F5FF')
+              .borderRadius(8)
+              .justifyContent(FlexAlign.Center) {
+                Text('📰')
+                  .fontSize(32)
+              }
 
-          Column({ space: 6 }) {
-            Text(article['title'] as string)
-              .fontSize(this.isElderMode ? 16 : 14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#333333')
-              .maxLines(2)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            Column({ space: 6 }) {
+              Text(article['title'] as string)
+                .fontSize(this.isElderMode ? 16 : 14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#333333')
+                .maxLines(2)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .width('100%')
+
+              Row({ space: 12 }) {
+                Text('阅读' + (article['readCount'] as string))
+                  .fontSize(this.isElderMode ? 12 : 11)
+                  .fontColor('#999999')
+                Text(article['author'] as string)
+                  .fontSize(this.isElderMode ? 12 : 11)
+                  .fontColor('#999999')
+                Text(article['time'] as string)
+                  .fontSize(this.isElderMode ? 12 : 11)
+                  .fontColor('#999999')
+              }
               .width('100%')
-
-            Row({ space: 12 }) {
-              Text('阅读' + (article['readCount'] as string))
-                .fontSize(this.isElderMode ? 12 : 11)
-                .fontColor('#999999')
-
-              Text(article['author'] as string)
-                .fontSize(this.isElderMode ? 12 : 11)
-                .fontColor('#999999')
-
-              Text(article['time'] as string)
-                .fontSize(this.isElderMode ? 12 : 11)
-                .fontColor('#999999')
             }
-            .width('100%')
+            .layoutWeight(1)
+            .alignItems(HorizontalAlign.Start)
           }
-          .layoutWeight(1)
-          .alignItems(HorizontalAlign.Start)
-        }
-        .width('100%')
-        .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(12)
-        .border({ width: 1, color: '#F0F0F0' })
-        .onClick(() => {
-          const idValue: number = article['id'] as number;
-          this.navigateTo('pages/ScienceDetailPage', {
-            articleId: idValue,
-            articleTitle: article['title'] as string
-          });
-        })
-      }, (article: Record<string, string | number>) => (article['id'] as number).toString())
+          .width('100%')
+          .padding(16)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(12)
+          .border({ width: 1, color: '#F0F0F0' })
+          .onClick(() => {
+            const idValue: number = article['id'] as number;
+            this.navigateTo('pages/ScienceDetailPage', {
+              articleId: idValue,
+              articleTitle: article['title'] as string
+            });
+          })
+        }, (article: Record<string, string | number>) => (article['id'] as number).toString())
+      }
     }
     .margin({ top: 16 })
   }
@@ -334,14 +368,12 @@ struct SciencePage {
             Column({ space: 10 }) {
               Text(tool['icon'] as string)
                 .fontSize(36)
-
               Text(tool['title'] as string)
                 .fontSize(this.isElderMode ? 15 : 13)
                 .fontWeight(FontWeight.Bold)
                 .fontColor('#FFFFFF')
                 .textAlign(TextAlign.Center)
                 .maxLines(1)
-
               Text(tool['subtitle'] as string)
                 .fontSize(this.isElderMode ? 11 : 10)
                 .fontColor('#FFFFFF99')
@@ -358,8 +390,7 @@ struct SciencePage {
             })
             .borderRadius(12)
             .onClick(() => {
-              const route: string = tool['route'] as string;
-              this.navigateTo(route);
+              this.navigateTo(tool['route'] as string);
             })
           }
         }, (tool: Record<string, string | string[]>) => tool['id'] as string)

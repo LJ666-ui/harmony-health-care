@@ -22,6 +22,7 @@ export struct CarouselBanner {
 
   build() {
     if (this.banners.length === 0) {
+      // 空数据时固定高度，避免页面布局塌陷（统一采用合理高度）
       Column()
         .width('100%')
         .height(160)

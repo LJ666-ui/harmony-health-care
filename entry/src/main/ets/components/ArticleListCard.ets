@@ -26,16 +26,17 @@ export struct ArticleListCard {
           .objectFit(ImageFit.Cover)
           .borderRadius(8)
       } else {
-        Column()
-          .width(100)
-          .height(80)
-          .backgroundColor('#F0F5FF')
-          .borderRadius(8)
-          .justifyContent(FlexAlign.Center)
-          .alignItems(HorizontalAlign.Center) {
+        // 统一规范的ArkTS组件写法，清理冲突标记
+        Column() {
           Text('📰')
             .fontSize(32)
         }
+        .width(100)
+        .height(80)
+        .backgroundColor('#F0F5FF')
+        .borderRadius(8)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
       }
 
       Column({ space: 6 }) {

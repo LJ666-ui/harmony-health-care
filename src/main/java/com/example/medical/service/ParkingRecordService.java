@@ -3,6 +3,7 @@ package com.example.medical.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.medical.entity.ParkingRecord;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 

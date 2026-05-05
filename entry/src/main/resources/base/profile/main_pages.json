@@ -89,6 +89,8 @@
     "pages/RehabilitationPage",
     "pages/AIAssistantPage",
     "pages/DistributedCollaborationPage",
-    "pages/PublishArticlePage"
+    "pages/PublishArticlePage",
+    "pages/NewFeaturesDemoPage",
+    "pages/StandardPageTemplate"
   ]
 }

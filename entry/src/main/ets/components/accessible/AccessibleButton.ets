@@ -1,182 +1,137 @@
 /**
  * 无障碍按钮组件
- * 自动应用无障碍配置，支持最小触控区域、高对比度等特性
+ * Accessible Button - 支持老年模式、大字体、语音播报
+ * 
+ * @author Nebula Medical Team
+ * @date 2026-05-06
  */
 
-import { AccessibilityConfig } from '../../common/accessibility/AccessibilityConfig';
+import { AccessibilityConfig } from '../../utils/AccessibilityConfig';
+
+/**
+ * 无障碍按钮属性
+ */
+export interface AccessibleButtonProps {
+  text: string;                    // 按钮文字
+  icon?: string;                   // 图标
+  onClick: () => void;             // 点击事件
+  type?: 'primary' | 'secondary' | 'danger';  // 按钮类型
+  disabled?: boolean;              // 是否禁用
+  fullWidth?: boolean;             // 是否全宽
+  voiceHint?: string;              // 语音提示
+}
 
 /**
  * 无障碍按钮组件
  */
 @Component
 export struct AccessibleButton {
-  // 从全局状态绑定无障碍配置
-  @StorageLink('minTouchTarget') minTouchTarget: number = 44;
-  @StorageLink('fontSize') fontSize: number = 16;
-  @StorageLink('highContrast') highContrast: boolean = false;
-  @StorageLink('elderlyMode') elderlyMode: boolean = false;
-  
-  // 组件属性
   @Prop text: string = '';
-  @Prop icon?: Resource;
+  @Prop icon: string = '';
+  @Prop type: 'primary' | 'secondary' | 'danger' = 'primary';
   @Prop disabled: boolean = false;
-  @Prop type: 'primary' | 'secondary' | 'text' = 'primary';
-  @Prop width?: number;
-  @Prop height?: number;
-  @Prop backgroundColor?: string;
-  @Prop textColor?: string;
-  @Prop borderRadius?: number;
-  
-  // 事件回调
-  private onClickHandler?: () => void;
-  
-  /**
-   * 设置点击事件
-   */
-  public onClick(handler: () => void): this {
-    this.onClickHandler = handler;
-    return this;
+  @Prop fullWidth: boolean = false;
+  @Prop voiceHint: string = '';
+  @Prop isElderMode: boolean = false;
+  @StorageLink('isOldModeEnabled') storageElderMode: boolean = false;
+
+  private onClickHandler: () => void = () => {};
+
+  aboutToAppear() {
+    // 如果没有显式设置 isElderMode，使用全局设置
+    if (!this.isElderMode) {
+      this.isElderMode = this.storageElderMode;
+    }
   }
-  
+
   /**
-   * 获取按钮背景色
+   * 获取按钮颜色
    */
-  private getButtonBackgroundColor(): string {
+  private getButtonColor(): string {
     if (this.disabled) {
-      return '#E0E0E0';
+      return '#D9D9D9';
     }
-    
-    if (this.backgroundColor) {
-      return this.backgroundColor;
-    }
-    
-    if (this.highContrast) {
-      return this.type === 'primary' ? '#000000' : '#FFFFFF';
-    }
-    
+
     switch (this.type) {
       case 'primary':
-        return '#3498DB';
+        return '#1677FF';
       case 'secondary':
-        return '#95A5A6';
-      case 'text':
-        return 'transparent';
+        return '#52C41A';
+      case 'danger':
+        return '#FF4D4F';
       default:
-        return '#3498DB';
+        return '#1677FF';
     }
   }
-  
+
   /**
-   * 获取按钮文字颜色
+   * 获取字体大小
    */
-  private getButtonTextColor(): string {
-    if (this.disabled) {
-      return '#9E9E9E';
-    }
-    
-    if (this.textColor) {
-      return this.textColor;
-    }
-    
-    if (this.highContrast) {
-      return this.type === 'primary' ? '#FFFFFF' : '#000000';
-    }
-    
-    switch (this.type) {
-      case 'primary':
-        return '#FFFFFF';
-      case 'secondary':
-        return '#FFFFFF';
-      case 'text':
-        return '#3498DB';
-      default:
-        return '#FFFFFF';
-    }
+  private getFontSize(): number {
+    return this.isElderMode ? 20 : 16;
   }
-  
-  /**
-   * 获取按钮宽度
-   */
-  private getButtonWidth(): number | string {
-    if (this.width) {
-      return Math.max(this.width, this.minTouchTarget);
-    }
-    return 'auto';
-  }
-  
+
   /**
    * 获取按钮高度
    */
   private getButtonHeight(): number {
-    if (this.height) {
-      return Math.max(this.height, this.minTouchTarget);
-    }
-    return this.minTouchTarget;
+    return this.isElderMode ? 56 : 44;  // 最小44dp
   }
-  
+
   /**
-   * 获取字体大小
+   * 处理点击
    */
-  private getButtonTextSize(): number {
-    return this.elderlyMode ? this.fontSize + 2 : this.fontSize;
+  private handleClick(): void {
+    if (this.disabled) {
+      return;
+    }
+
+    // 语音提示
+    if (this.voiceHint && this.isElderMode) {
+      this.speak(this.voiceHint);
+    }
+
+    // 执行点击事件
+    this.onClickHandler();
   }
-  
+
+  /**
+   * 语音播报
+   */
+  private speak(text: string): void {
+    // 实际项目中使用TTS
+    console.info('[AccessibleButton] 语音播报:', text);
+  }
+
   build() {
     Button() {
       Row() {
         // 图标
         if (this.icon) {
-          Image(this.icon)
-            .width(20)
-            .height(20)
+          Text(this.icon)
+            .fontSize(this.getFontSize() + 4)
             .margin({ right: 8 })
         }
-        
+
         // 文字
         Text(this.text)
-          .fontSize(this.getButtonTextSize())
-          .fontColor(this.getButtonTextColor())
+          .fontSize(this.getFontSize())
+          .fontColor('#FFFFFF')
           .fontWeight(FontWeight.Medium)
       }
-      .justifyContent(FlexAlign.Center)
-      .alignItems(VerticalAlign.Center)
     }
-    .width(this.getButtonWidth())
+    .width(this.fullWidth ? '100%' : 'auto')
     .height(this.getButtonHeight())
-    .backgroundColor(this.getButtonBackgroundColor())
-    .borderRadius(this.borderRadius ?? 8)
+    .backgroundColor(this.getButtonColor())
+    .borderRadius(8)
+    .padding({ left: 16, right: 16 })
     .enabled(!this.disabled)
-    .opacity(this.disabled ? 0.6 : 1)
-    // 无障碍属性
-    .accessibilityText(this.text)
-    .accessibilityDescription(this.disabled ? `${this.text}，按钮已禁用` : `${this.text}，点击执行操作`)
-    .accessibilityLevel(this.type === 'primary' ? 'important' : 'auto')
-    // 点击事件
     .onClick(() => {
-      if (!this.disabled && this.onClickHandler) {
-        this.onClickHandler();
-      }
+      this.handleClick();
     })
+    // 无障碍属性
+    .accessibilityText(this.text + '按钮')
+    .accessibilityDescription(this.voiceHint || `点击${this.text}`)
+    .accessibilityLevel('important')
   }
-}
-
-/**
- * 创建无障碍按钮的便捷函数
- */
-export function createAccessibleButton(
-  text: string,
-  onClick: () => void,
-  options?: {
-    icon?: Resource;
-    disabled?: boolean;
-    type?: 'primary' | 'secondary' | 'text';
-    width?: number;
-    height?: number;
-    backgroundColor?: string;
-    textColor?: string;
-  }
-): AccessibleButton {
-  // 注意：这里返回的是组件定义，实际使用时需要在build()中实例化
-  // 这个函数主要用于文档说明和类型提示
-  throw new Error('This function is for type hinting only. Use the component directly in build() method.');
 }

@@ -3,15 +3,17 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
+import { BreakpointSystem, BreakpointType, BreakpointConstants } from '../utils/BreakpointSystem';
 
 @Entry
 @Component
 export struct HomePage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @StorageLink('currentBreakpoint') currentBreakpoint: BreakpointType = BreakpointType.SM;
   @State currentIndex: number = 0;
   private theme: AccessibilityConfig = new AccessibilityConfig();
+  private breakpointSystem: BreakpointSystem = BreakpointSystem.getInstance();
 
-  // 清理冲突，统一路由（匹配项目已配置页面）
   private quickActions: QuickAction[] = [
     { id: 'appointment', icon: '📅', title: '预约挂号', color: '#3498DB', route: 'pages/HospitalPage' },
     { id: 'medical_record', icon: '📋', title: '病历档案', color: '#9B59B6', route: 'pages/MedicalRecord' },
@@ -32,6 +34,52 @@ export struct HomePage {
     this.theme = AccessibilityConfig.getInstance();
   }
 
+  private getGridColumnsTemplate(): string {
+    const columns = BreakpointConstants.QUICK_ACTION_COLUMNS[this.currentBreakpoint] ?? 4;
+    return `1fr `.repeat(columns).trim();
+  }
+
+  private getContentMaxWidth(): number | string {
+    if (this.currentBreakpoint === BreakpointType.LG) {
+      return 840;
+    } else if (this.currentBreakpoint === BreakpointType.MD) {
+      return 600;
+    }
+    return '100%';
+  }
+
+  private getHorizontalPadding(): number {
+    return this.breakpointSystem.getScaledPadding(16);
+  }
+
+  private getCardPadding(): number {
+    return this.breakpointSystem.getScaledPadding(20);
+  }
+
+  private getActionItemPadding(): number {
+    return this.breakpointSystem.getScaledPadding(12);
+  }
+
+  private getIconFontSize(): number {
+    const base = this.isElderMode ? 36 : 28;
+    return this.breakpointSystem.getIconSize(base);
+  }
+
+  private getTitleFontSize(): number {
+    const base = this.isElderMode ? 24 : 20;
+    return Math.round(base * this.breakpointSystem.getFontSizeScale());
+  }
+
+  private getBodyFontSize(): number {
+    const base = this.isElderMode ? 16 : 14;
+    return Math.round(base * this.breakpointSystem.getFontSizeScale());
+  }
+
+  private getSectionTitleFontSize(): number {
+    const base = this.isElderMode ? 18 : 16;
+    return Math.round(base * this.breakpointSystem.getFontSizeScale());
+  }
+
   build() {
     Column() {
       Header({ title: '智慧医疗健康平台' })
@@ -42,10 +90,17 @@ export struct HomePage {
           this.buildQuickActions()
           this.buildHealthTips()
         }
-        .padding({ left: 16, right: 16 })
+        .width('100%')
+        .constraintSize({ maxWidth: this.getContentMaxWidth() })
+        .padding({
+          left: this.getHorizontalPadding(),
+          right: this.getHorizontalPadding()
+        })
       }
       .layoutWeight(1)
       .scrollBar(BarState.Auto)
+      .width('100%')
+      .align(Alignment.Top)
 
       Footer({ activeIndex: this.currentIndex })
     }
@@ -57,23 +112,22 @@ export struct HomePage {
     Row() {
       Column({ space: 8 }) {
         Text('欢迎使用')
-          .fontSize(this.isElderMode ? 24 : 20)
+          .fontSize(this.getTitleFontSize())
           .fontWeight(FontWeight.Bold)
           .fontColor('#333333')
 
         Text('为您提供全方位的智慧医疗服务')
-          .fontSize(this.isElderMode ? 16 : 14)
+          .fontSize(this.getBodyFontSize())
           .fontColor('#666666')
       }
       .alignItems(HorizontalAlign.Start)
-
-      Blank()
+      .layoutWeight(1)
 
       Text('👨‍⚕️')
-        .fontSize(60)
+        .fontSize(this.breakpointSystem.getIconSize(60))
     }
     .width('100%')
-    .padding(20)
+    .padding(this.getCardPadding())
     .backgroundColor('#FFFFFF')
     .borderRadius(12)
     .border({ width: 1, color: '#F0F0F0' })
@@ -82,7 +136,7 @@ export struct HomePage {
   @Builder buildQuickActions(): void {
     Column({ space: 12 }) {
       Text('快捷服务')
-        .fontSize(this.isElderMode ? 18 : 16)
+        .fontSize(this.getSectionTitleFontSize())
         .fontWeight(FontWeight.Bold)
         .fontColor('#333333')
         .width('100%')
@@ -92,7 +146,7 @@ export struct HomePage {
           GridItem() {
             Column({ space: 8 }) {
               Text(action.icon)
-                .fontSize(this.isElderMode ? 36 : 28)
+                .fontSize(this.getIconFontSize())
 
               Text(action.title)
                 .fontSize(this.isElderMode ? 14 : 12)
@@ -102,7 +156,7 @@ export struct HomePage {
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
             .width('100%')
-            .padding(12)
+            .padding(this.getActionItemPadding())
             .backgroundColor('#FFFFFF')
             .borderRadius(8)
             .onClick(() => {
@@ -115,7 +169,7 @@ export struct HomePage {
           }
         }, (action: QuickAction) => action.id)
       }
-      .columnsTemplate('1fr 1fr 1fr 1fr')
+      .columnsTemplate(this.getGridColumnsTemplate())
       .rowsGap(12)
       .columnsGap(12)
       .width('100%')
@@ -125,48 +179,67 @@ export struct HomePage {
   @Builder buildHealthTips(): void {
     Column({ space: 12 }) {
       Text('健康提示')
-        .fontSize(this.isElderMode ? 18 : 16)
+        .fontSize(this.getSectionTitleFontSize())
         .fontWeight(FontWeight.Bold)
         .fontColor('#333333')
         .width('100%')
 
-      ForEach([
-        { icon: '💧', title: '记得多喝水', desc: '每天至少喝8杯水', color: '#3498DB' },
-        { icon: '🚶', title: '适量运动', desc: '每天步行30分钟', color: '#2ECC71' },
-        { icon: '😴', title: '充足睡眠', desc: '保证7-8小时睡眠', color: '#9B59B6' }
-      ], (tip: HealthTip) => {
+      if (this.currentBreakpoint === BreakpointType.LG) {
         Row({ space: 12 }) {
-          Text(tip.icon)
-            .fontSize(32)
-
-          Column({ space: 4 }) {
-            Text(tip.title)
-              .fontSize(16)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#333333')
-
-            Text(tip.desc)
-              .fontSize(13)
-              .fontColor('#666666')
-          }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
-
-          Text('>')
-            .fontSize(18)
-            .fontColor('#CCCCCC')
+          ForEach(this.getHealthTips(), (tip: HealthTip) => {
+            this.buildHealthTipCard(tip)
+          }, (tip: HealthTip) => tip.title)
         }
         .width('100%')
-        .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(8)
-        .border({ width: 1, color: '#F0F0F0' })
-      }, (tip: HealthTip) => tip.title)
+      } else {
+        Column({ space: 12 }) {
+          ForEach(this.getHealthTips(), (tip: HealthTip) => {
+            this.buildHealthTipCard(tip)
+          }, (tip: HealthTip) => tip.title)
+        }
+        .width('100%')
+      }
     }
+  }
+
+  @Builder buildHealthTipCard(tip: HealthTip): void {
+    Row({ space: 12 }) {
+      Text(tip.icon)
+        .fontSize(this.breakpointSystem.getIconSize(32))
+
+      Column({ space: 4 }) {
+        Text(tip.title)
+          .fontSize(Math.round(16 * this.breakpointSystem.getFontSizeScale()))
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#333333')
+
+        Text(tip.desc)
+          .fontSize(Math.round(13 * this.breakpointSystem.getFontSizeScale()))
+          .fontColor('#666666')
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Text('>')
+        .fontSize(18)
+        .fontColor('#CCCCCC')
+    }
+    .width('100%')
+    .padding(this.getCardPadding())
+    .backgroundColor('#FFFFFF')
+    .borderRadius(8)
+    .border({ width: 1, color: '#F0F0F0' })
+  }
+
+  private getHealthTips(): HealthTip[] {
+    return [
+      { icon: '💧', title: '记得多喝水', desc: '每天至少喝8杯水', color: '#3498DB' },
+      { icon: '🚶', title: '适量运动', desc: '每天步行30分钟', color: '#2ECC71' },
+      { icon: '😴', title: '充足睡眠', desc: '保证7-8小时睡眠', color: '#9B59B6' }
+    ];
   }
 }
 
-// 类型接口定义
 interface QuickAction {
   id: string;
   icon: string;

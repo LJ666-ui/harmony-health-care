@@ -1,216 +1,113 @@
 /**
  * 无障碍文本组件
- * 自动应用无障碍配置，支持字体大小调整、高对比度等特性
+ * Accessible Text - 支持老年模式、大字体、高对比度
+ * 
+ * @author Nebula Medical Team
+ * @date 2026-05-06
  */
 
-import { AccessibilityConfig } from '../../common/accessibility/AccessibilityConfig';
+import { AccessibilityConfig } from '../../utils/AccessibilityConfig';
+
+/**
+ * 文本类型
+ */
+export type TextType = 'title' | 'subtitle' | 'body' | 'caption';
 
 /**
  * 无障碍文本组件
  */
 @Component
 export struct AccessibleText {
-  // 从全局状态绑定无障碍配置
-  @StorageLink('fontSize') fontSize: number = 16;
-  @StorageLink('highContrast') highContrast: boolean = false;
-  @StorageLink('elderlyMode') elderlyMode: boolean = false;
-  
-  // 组件属性
-  @Prop text: string = '';
+  @Prop content: string = '';
+  @Prop type: TextType = 'body';
+  @Prop color?: string;
   @Prop maxLines?: number;
-  @Prop textColor?: string;
-  @Prop fontSizeOverride?: number;
-  @Prop fontWeight?: FontWeight;
-  @Prop textAlign?: TextAlign;
-  @Prop textOverflow?: TextOverflow;
-  @Prop lineHeight?: number;
-  @Prop letterSpacing?: number;
-  @Prop decoration?: TextDecorationType;
-  
+  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+
   /**
-   * 获取实际字体大小
+   * 获取字体大小
    */
-  private getActualFontSize(): number {
-    if (this.fontSizeOverride) {
-      return this.elderlyMode ? this.fontSizeOverride + 2 : this.fontSizeOverride;
+  private getFontSize(): number {
+    let baseSize: number;
+    switch (this.type) {
+      case 'title':
+        baseSize = 20;
+        break;
+      case 'subtitle':
+        baseSize = 18;
+        break;
+      case 'body':
+        baseSize = 16;
+        break;
+      case 'caption':
+        baseSize = 14;
+        break;
+      default:
+        baseSize = 16;
+        break;
     }
-    return this.fontSize;
+
+    return this.isElderMode ? baseSize * 1.25 : baseSize;
   }
-  
+
   /**
-   * 获取实际文字颜色
+   * 获取字体颜色
    */
-  private getActualTextColor(): string {
-    if (this.textColor) {
-      return this.textColor;
+  private getFontColor(): string {
+    if (this.color) {
+      return this.color;
     }
-    
-    // 高对比度模式使用纯黑色
-    if (this.highContrast) {
-      return '#000000';
+
+    // 高对比度模式
+    if (this.isElderMode) {
+      return '#000000';  // 纯黑
     }
-    
-    return '#333333';
+
+    // 标准模式
+    switch (this.type) {
+      case 'title':
+        return '#333333';
+      case 'subtitle':
+        return '#333333';
+      case 'body':
+        return '#666666';
+      case 'caption':
+        return '#999999';
+      default:
+        return '#666666';
+    }
   }
-  
+
   /**
    * 获取行高
    */
-  private getActualLineHeight(): number | undefined {
-    if (this.lineHeight) {
-      return this.lineHeight;
-    }
-    
-    // 老年模式增加行高，提高可读性
-    if (this.elderlyMode) {
-      return this.getActualFontSize() * 1.6;
-    }
-    
-    return undefined;
+  private getLineHeight(): number {
+    return this.getFontSize() * 1.4;
   }
-  
+
+  /**
+   * 获取字重
+   */
+  private getFontWeight(): FontWeight {
+    switch (this.type) {
+      case 'title':
+        return FontWeight.Bold;
+      case 'subtitle':
+        return FontWeight.Medium;
+      default:
+        return FontWeight.Normal;
+    }
+  }
+
   build() {
-    Text(this.text)
-      .fontSize(this.getActualFontSize())
-      .fontColor(this.getActualTextColor())
-      .fontWeight(this.fontWeight ?? FontWeight.Normal)
-      .textAlign(this.textAlign ?? TextAlign.Start)
-      .textOverflow(this.textOverflow ?? TextOverflow.Ellipsis)
-      .maxLines(this.maxLines ?? Infinity)
-      .lineHeight(this.getActualLineHeight())
-      .letterSpacing(this.letterSpacing)
-      .decoration({ type: this.decoration ?? TextDecorationType.None, color: this.getActualTextColor() })
+    Text(this.content)
+      .fontSize(this.getFontSize())
+      .fontColor(this.getFontColor())
+      .fontWeight(this.getFontWeight())
+      .lineHeight(this.getLineHeight())
+      .maxLines(this.maxLines)
+      .textOverflow({ overflow: TextOverflow.Ellipsis })
       // 无障碍属性
-      .accessibilityText(this.text)
-      .accessibilityLevel('auto')
-  }
-}
-
-/**
- * 标题文本组件（H1）
- */
-@Component
-export struct AccessibleH1 {
-  @StorageLink('fontSize') fontSize: number = 16;
-  @StorageLink('highContrast') highContrast: boolean = false;
-  @StorageLink('elderlyMode') elderlyMode: boolean = false;
-  
-  @Prop text: string = '';
-  @Prop textColor?: string;
-  
-  build() {
-    AccessibleText({
-      text: this.text,
-      textColor: this.textColor,
-      fontSizeOverride: this.elderlyMode ? 28 : 24,
-      fontWeight: FontWeight.Bold
-    })
-  }
-}
-
-/**
- * 标题文本组件（H2）
- */
-@Component
-export struct AccessibleH2 {
-  @StorageLink('fontSize') fontSize: number = 16;
-  @StorageLink('highContrast') highContrast: boolean = false;
-  @StorageLink('elderlyMode') elderlyMode: boolean = false;
-  
-  @Prop text: string = '';
-  @Prop textColor?: string;
-  
-  build() {
-    AccessibleText({
-      text: this.text,
-      textColor: this.textColor,
-      fontSizeOverride: this.elderlyMode ? 24 : 20,
-      fontWeight: FontWeight.Bold
-    })
-  }
-}
-
-/**
- * 标题文本组件（H3）
- */
-@Component
-export struct AccessibleH3 {
-  @StorageLink('fontSize') fontSize: number = 16;
-  @StorageLink('highContrast') highContrast: boolean = false;
-  @StorageLink('elderlyMode') elderlyMode: boolean = false;
-  
-  @Prop text: string = '';
-  @Prop textColor?: string;
-  
-  build() {
-    AccessibleText({
-      text: this.text,
-      textColor: this.textColor,
-      fontSizeOverride: this.elderlyMode ? 20 : 18,
-      fontWeight: FontWeight.Medium
-    })
-  }
-}
-
-/**
- * 说明文本组件（较小字体）
- */
-@Component
-export struct AccessibleCaption {
-  @StorageLink('fontSize') fontSize: number = 16;
-  @StorageLink('highContrast') highContrast: boolean = false;
-  @StorageLink('elderlyMode') elderlyMode: boolean = false;
-  
-  @Prop text: string = '';
-  @Prop textColor?: string;
-  @Prop maxLines?: number;
-  
-  build() {
-    AccessibleText({
-      text: this.text,
-      textColor: this.textColor ?? '#666666',
-      fontSizeOverride: this.elderlyMode ? 16 : 14,
-      maxLines: this.maxLines
-    })
-  }
-}
-
-/**
- * 错误文本组件
- */
-@Component
-export struct AccessibleErrorText {
-  @StorageLink('fontSize') fontSize: number = 16;
-  @StorageLink('highContrast') highContrast: boolean = false;
-  @StorageLink('elderlyMode') elderlyMode: boolean = false;
-  
-  @Prop text: string = '';
-  
-  build() {
-    AccessibleText({
-      text: this.text,
-      textColor: this.highContrast ? '#000000' : '#E74C3C',
-      fontSizeOverride: this.elderlyMode ? 16 : 14
-    })
-  }
-}
-
-/**
- * 成功文本组件
- */
-@Component
-export struct AccessibleSuccessText {
-  @StorageLink('fontSize') fontSize: number = 16;
-  @StorageLink('highContrast') highContrast: boolean = false;
-  @StorageLink('elderlyMode') elderlyMode: boolean = false;
-  
-  @Prop text: string = '';
-  
-  build() {
-    AccessibleText({
-      text: this.text,
-      textColor: this.highContrast ? '#000000' : '#27AE60',
-      fontSizeOverride: this.elderlyMode ? 16 : 14
-    })
+      .accessibilityText(this.content)
   }
 }

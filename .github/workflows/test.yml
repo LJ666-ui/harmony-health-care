@@ -1,0 +1,234 @@
+# HarmonyOS应用CI/CD流水线
+# 用于自动化测试和部署
+
+name: HarmonyOS CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # 代码检查
+  lint:
+    name: 代码检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: 安装依赖
+        run: npm install
+      
+      - name: 运行代码检查
+        run: npm run lint
+      
+      - name: 上传检查报告
+        uses: actions/upload-artifact@v3
+        with:
+          name: lint-report
+          path: reports/lint/
+
+  # 单元测试
+  unit-test:
+    name: 单元测试
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: 安装依赖
+        run: npm install
+      
+      - name: 运行单元测试
+        run: npm run test:unit
+      
+      - name: 生成覆盖率报告
+        run: npm run test:coverage
+      
+      - name: 上传覆盖率报告
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage/
+      
+      - name: 检查覆盖率阈值
+        run: |
+          COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "覆盖率 $COVERAGE% 低于阈值 80%"
+            exit 1
+          fi
+
+  # 集成测试
+  integration-test:
+    name: 集成测试
+    runs-on: ubuntu-latest
+    needs: unit-test
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: 安装依赖
+        run: npm install
+      
+      - name: 运行集成测试
+        run: npm run test:integration
+      
+      - name: 上传测试报告
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-report
+          path: reports/integration/
+
+  # UI测试
+  ui-test:
+    name: UI测试
+    runs-on: ubuntu-latest
+    needs: integration-test
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: 安装依赖
+        run: npm install
+      
+      - name: 运行UI测试
+        run: npm run test:ui
+      
+      - name: 上传测试报告
+        uses: actions/upload-artifact@v3
+        with:
+          name: ui-test-report
+          path: reports/ui/
+
+  # 性能测试
+  performance-test:
+    name: 性能测试
+    runs-on: ubuntu-latest
+    needs: ui-test
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: 安装依赖
+        run: npm install
+      
+      - name: 运行性能测试
+        run: npm run test:performance
+      
+      - name: 验证性能指标
+        run: |
+          # 检查启动时间
+          STARTUP=$(cat reports/performance/startup.json | jq '.avgStartupTime')
+          if (( $(echo "$STARTUP > 1500" | bc -l) )); then
+            echo "启动时间 $STARTUP ms 超过阈值 1500 ms"
+            exit 1
+          fi
+          
+          # 检查内存使用
+          MEMORY=$(cat reports/performance/memory.json | jq '.peakMemory')
+          if (( $(echo "$MEMORY > 200" | bc -l) )); then
+            echo "内存使用 $MEMORY MB 超过阈值 200 MB"
+            exit 1
+          fi
+      
+      - name: 上传性能报告
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: reports/performance/
+
+  # 构建
+  build:
+    name: 构建应用
+    runs-on: ubuntu-latest
+    needs: [unit-test, integration-test, ui-test]
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 设置HarmonyOS SDK
+        uses: harmonyos/setup-sdk@v1
+        with:
+          sdk-version: '12'
+      
+      - name: 构建应用
+        run: |
+          hvigorw clean
+          hvigorw assembleHap
+      
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-hap
+          path: build/outputs/hap/
+
+  # 部署（仅main分支）
+  deploy:
+    name: 部署应用
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+      
+      - name: 下载构建产物
+        uses: actions/download-artifact@v3
+        with:
+          name: app-hap
+          path: build/outputs/hap/
+      
+      - name: 部署到测试环境
+        run: |
+          echo "部署到测试环境"
+          # TODO: 实际的部署逻辑
+      
+      - name: 通知部署结果
+        run: |
+          echo "部署完成"
+          # TODO: 发送通知
+
+  # 质量门禁
+  quality-gate:
+    name: 质量门禁检查
+    runs-on: ubuntu-latest
+    needs: [unit-test, integration-test, ui-test, performance-test]
+    steps:
+      - name: 检查所有测试结果
+        run: |
+          echo "所有测试通过"
+          echo "质量门禁检查通过"
+      
+      - name: 生成质量报告
+        run: |
+          echo "生成质量报告"
+          # TODO: 生成综合质量报告

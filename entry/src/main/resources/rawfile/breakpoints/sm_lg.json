@@ -2,31 +2,31 @@
   "float": [
     {
       "name": "page_text_font_size",
-      "value": "50fp"
+      "value": "55fp"
     },
     {
       "name": "grid_columns",
-      "value": "4"
+      "value": "12"
     },
     {
       "name": "content_max_width",
-      "value": "360vp"
+      "value": "840vp"
     },
     {
       "name": "horizontal_padding",
-      "value": "16vp"
+      "value": "24vp"
     },
     {
       "name": "card_padding",
-      "value": "16vp"
+      "value": "24vp"
     },
     {
       "name": "quick_action_columns",
-      "value": "4"
+      "value": "6"
     },
     {
       "name": "list_columns",
-      "value": "1"
+      "value": "3"
     }
   ]
 }

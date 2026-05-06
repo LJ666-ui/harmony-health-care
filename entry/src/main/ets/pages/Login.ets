@@ -6,7 +6,8 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
-import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
+import { SettingsUtil, PersistedUserInfo, PersistedDoctorInfo } from '../utils/SettingsUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 
 interface LoginResponseData {
   token: string;
@@ -145,6 +146,33 @@ struct Login {
                 undefined
               );
             }
+
+            if (userInfo.userType === 1 && userInfo.userId) {
+              try {
+                const doctorInfoUrl: string = ApiConstants.DOCTOR_INFO + userInfo.userId;
+                const doctorResp: BaseResponse<Object> = await HttpUtil.get<Object>(doctorInfoUrl);
+                if (doctorResp.success && doctorResp.data) {
+                  const raw: Record<string, Object> = doctorResp.data as Record<string, Object>;
+                  const doctorInfo: PersistedDoctorInfo = {};
+                  if (raw['id'] !== undefined) { doctorInfo.id = raw['id'] as number; }
+                  if (raw['realName'] !== undefined) { doctorInfo.realName = raw['realName'] as string; }
+                  if (raw['phone'] !== undefined) { doctorInfo.phone = raw['phone'] as string; }
+                  if (raw['hospital'] !== undefined) { doctorInfo.hospital = raw['hospital'] as string; }
+                  if (raw['department'] !== undefined) { doctorInfo.department = raw['department'] as string; }
+                  if (raw['licenseNumber'] !== undefined) { doctorInfo.licenseNumber = raw['licenseNumber'] as string; }
+                  if (raw['title'] !== undefined) { doctorInfo.title = raw['title'] as string; }
+                  if (raw['specialty'] !== undefined) { doctorInfo.specialty = raw['specialty'] as string; }
+                  if (raw['avatar'] !== undefined) { doctorInfo.avatar = raw['avatar'] as string; }
+                  if (raw['description'] !== undefined) { doctorInfo.description = raw['description'] as string; }
+                  if (raw['rating'] !== undefined) { doctorInfo.rating = raw['rating'] as number; }
+                  if (raw['status'] !== undefined) { doctorInfo.status = raw['status'] as number; }
+                  userInfo.doctorInfo = doctorInfo;
+                }
+              } catch (doctorErr) {
+                console.error('获取医生信息失败:', JSON.stringify(doctorErr));
+              }
+            }
+
             await settings.saveUserInfo(userInfo);
           } catch (error) {
             console.error('保存用户信息失败:', error);

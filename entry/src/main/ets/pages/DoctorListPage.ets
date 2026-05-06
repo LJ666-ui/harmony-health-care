@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
 
 class ConversationItem {
   otherUserId: number = 0;
@@ -19,7 +20,7 @@ struct DoctorListPage {
   @StorageLink('userId') currentUserId: number = 0;
 
   @State conversations: ConversationItem[] = [];
-  @State doctors: DoctorItem[] = [];
+  @State doctors: DoctorInfo[] = [];
   @State isLoading: boolean = true;
   @State activeTab: number = 0;
   @State searchKeyword: string = '';
@@ -88,19 +89,14 @@ struct DoctorListPage {
     if (keyword && keyword.trim() !== '') {
       params['keyword'] = keyword.trim();
     }
-    HttpUtil.get<DoctorItem[]>(ApiConstants.DOCTOR_LIST, params as Object)
+    HttpUtil.get<DoctorInfo[]>(ApiConstants.DOCTOR_LIST, params as Object)
       .then((response) => {
         if (response.success && response.data) {
           const rawData: Object[] = response.data as Object[];
-          const list: DoctorItem[] = [];
+          const list: DoctorInfo[] = [];
           for (let i: number = 0; i < rawData.length; i++) {
-            const item: DoctorItem = new DoctorItem();
             const raw: Record<string, Object> = rawData[i] as Record<string, Object>;
-            if (raw['id']) { item.id = raw['id'] as number; }
-            if (raw['username']) { item.username = raw['username'] as string; }
-            if (raw['phone']) { item.phone = raw['phone'] as string; }
-            if (raw['age']) { item.age = raw['age'] as number; }
-            list.push(item);
+            list.push(DoctorInfoHelper.fromJson(raw));
           }
           this.doctors = list;
         }
@@ -453,7 +449,7 @@ struct DoctorListPage {
     } else {
       Scroll(this.scroller) {
         Column() {
-          ForEach(this.doctors, (doctor: DoctorItem) => {
+          ForEach(this.doctors, (doctor: DoctorInfo) => {
             Column() {
               Row() {
                 Stack({ alignContent: Alignment.Center }) {
@@ -461,7 +457,7 @@ struct DoctorListPage {
                     .width(52)
                     .height(52)
                     .fill('#1677FF');
-                  Text(doctor.username.charAt(0))
+                  Text(DoctorInfoHelper.getDisplayName(doctor).charAt(0))
                     .fontSize(22)
                     .fontWeight('bold')
                     .fontColor('#FFFFFF');
@@ -470,11 +466,11 @@ struct DoctorListPage {
 
                 Column({ space: 6 }) {
                   Row() {
-                    Text(doctor.username)
+                    Text(DoctorInfoHelper.getDisplayName(doctor))
                       .fontSize(16)
                       .fontWeight('bold')
                       .fontColor('#333333');
-                    Text('执业医师')
+                    Text(doctor.title || '执业医师')
                       .fontSize(11)
                       .fontColor('#FFFFFF')
                       .padding({ left: 8, right: 8, top: 2, bottom: 2 })
@@ -484,13 +480,13 @@ struct DoctorListPage {
                   }
 
                   Row() {
-                    if (doctor.age > 0) {
-                      Text(doctor.age + '岁 · ')
+                    if (doctor.hospital && doctor.hospital.trim() !== '') {
+                      Text(doctor.hospital + ' · ')
                         .fontSize(12)
                         .fontColor('#888888');
                     }
-                    if (doctor.phone && doctor.phone !== '') {
-                      Text(this.maskPhone(doctor.phone))
+                    if (doctor.department && doctor.department.trim() !== '') {
+                      Text(doctor.department)
                         .fontSize(12)
                         .fontColor('#888888');
                     }
@@ -512,8 +508,8 @@ struct DoctorListPage {
                       router.push({
                         url: 'pages/DoctorChatPage',
                         params: {
-                          doctorId: doctor.id,
-                          doctorName: doctor.username,
+                          doctorId: doctor.userId,
+                          doctorName: DoctorInfoHelper.getDisplayName(doctor),
                           currentUserId: this.currentUserId,
                           prefillMessage: this.shareMessage
                         }
@@ -522,8 +518,8 @@ struct DoctorListPage {
                       router.push({
                         url: 'pages/DoctorChatPage',
                         params: {
-                          doctorId: doctor.id,
-                          doctorName: doctor.username,
+                          doctorId: doctor.userId,
+                          doctorName: DoctorInfoHelper.getDisplayName(doctor),
                           currentUserId: this.currentUserId
                         }
                       });
@@ -539,7 +535,7 @@ struct DoctorListPage {
             .borderRadius(16)
             .margin({ bottom: 10 })
             .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 3 });
-          }, (doctor: DoctorItem) => doctor.id.toString());
+          }, (doctor: DoctorInfo) => doctor.id.toString());
         }
         .width('85%')
         .padding({ top: 8, bottom: 48 });
@@ -610,9 +606,4 @@ struct DoctorListPage {
   }
 }
 
-class DoctorItem {
-  id: number = 0;
-  username: string = '';
-  phone: string = '';
-  age: number = 0;
-}
+

@@ -219,6 +219,9 @@ interface ApiConstantsInterface {
 
   DOCTOR_LIST: string;
   DOCTOR_DETAIL: string;
+  DOCTOR_REGISTER: string;
+  DOCTOR_INFO: string;
+  DOCTOR_UPDATE: string;
 
   MESSAGE_SEND: string;
   MESSAGE_HISTORY: string;
@@ -413,6 +416,9 @@ export const ApiConstants: ApiConstantsInterface = {
 
   DOCTOR_LIST: '/user/doctor/list',
   DOCTOR_DETAIL: '/user/doctor/detail/',
+  DOCTOR_REGISTER: '/doctor/register',
+  DOCTOR_INFO: '/doctor/info/',
+  DOCTOR_UPDATE: '/doctor/update',
 
   MESSAGE_SEND: '/user/message/send',
   MESSAGE_HISTORY: '/user/message/history',

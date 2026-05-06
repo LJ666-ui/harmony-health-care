@@ -2,6 +2,7 @@ import { router } from '@kit.ArkUI';
 import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
+import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
 
 class PatientConvItem {
   otherUserId: number = 0;
@@ -21,6 +22,7 @@ struct DoctorHomePage {
   @StorageLink('userId') currentUserId: number = 0;
 
   @State doctorName: string = '医生';
+  @State doctorInfo: DoctorInfo | null = null;
   @State conversations: PatientConvItem[] = [];
   @State isLoading: boolean = true;
   @State showDeleteDialog: boolean = false;
@@ -56,7 +58,24 @@ struct DoctorHomePage {
   private loadDoctorInfo(): void {
     const settings: SettingsUtil = SettingsUtil.getInstance();
     settings.getUserInfo().then((info: PersistedUserInfo | null) => {
-      if (info && info.username) {
+      if (info && info.doctorInfo) {
+        this.doctorName = info.doctorInfo.realName || info.username || '医生';
+        const docInfo: DoctorInfo = new DoctorInfo();
+        docInfo.realName = info.doctorInfo.realName || '';
+        docInfo.phone = info.doctorInfo.phone || '';
+        docInfo.hospital = info.doctorInfo.hospital || '';
+        docInfo.department = info.doctorInfo.department || '';
+        docInfo.licenseNumber = info.doctorInfo.licenseNumber || '';
+        docInfo.title = info.doctorInfo.title || '';
+        docInfo.specialty = info.doctorInfo.specialty || '';
+        docInfo.avatar = info.doctorInfo.avatar || '';
+        docInfo.description = info.doctorInfo.description || '';
+        docInfo.rating = info.doctorInfo.rating || 0;
+        docInfo.status = info.doctorInfo.status || 0;
+        if (info.doctorInfo.id) { docInfo.id = info.doctorInfo.id; }
+        if (info.userId) { docInfo.userId = info.userId; }
+        this.doctorInfo = docInfo;
+      } else if (info && info.username) {
         this.doctorName = info.username;
       }
     }).catch(() => {});
@@ -158,10 +177,17 @@ struct DoctorHomePage {
           .fontWeight(FontWeight.Bold)
           .fontColor('#FFFFFF')
           .margin({ left: 8 });
-        Text('医生工作台')
-          .fontSize(13)
-          .fontColor('#FFFFFFCC')
-          .margin({ left: 8 });
+        if (this.doctorInfo) {
+          Text(DoctorInfoHelper.getDisplayTitle(this.doctorInfo))
+            .fontSize(13)
+            .fontColor('#FFFFFFCC')
+            .margin({ left: 8 });
+        } else {
+          Text('医生工作台')
+            .fontSize(13)
+            .fontColor('#FFFFFFCC')
+            .margin({ left: 8 });
+        }
         Blank();
         Text('退出')
           .fontSize(14)
@@ -265,6 +291,57 @@ struct DoctorHomePage {
       .width('100%')
       .linearGradient({ angle: 135, colors: [['#1677FF', 0], ['#36CFC9', 1]] })
       .borderRadius({ bottomLeft: 24, bottomRight: 24 });
+
+      if (this.doctorInfo) {
+        Row({ space: 12 }) {
+          Column({ space: 4 }) {
+            Text(DoctorInfoHelper.getDisplayHospital(this.doctorInfo) || '未填写')
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#333333');
+            Text('所属医院')
+              .fontSize(11)
+              .fontColor('#999999');
+          }
+          .layoutWeight(1)
+          .padding(12)
+          .borderRadius(10)
+          .backgroundColor('#FFFFFF')
+          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+
+          Column({ space: 4 }) {
+            Text(this.doctorInfo.department || '未填写')
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#333333');
+            Text('科室')
+              .fontSize(11)
+              .fontColor('#999999');
+          }
+          .layoutWeight(1)
+          .padding(12)
+          .borderRadius(10)
+          .backgroundColor('#FFFFFF')
+          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+
+          Column({ space: 4 }) {
+            Text(this.doctorInfo.title || '未填写')
+              .fontSize(13)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#333333');
+            Text('职称')
+              .fontSize(11)
+              .fontColor('#999999');
+          }
+          .layoutWeight(1)
+          .padding(12)
+          .borderRadius(10)
+          .backgroundColor('#FFFFFF')
+          .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 10, bottom: 6 });
+      }
 
       Row() {
         Text('⚠️ 对话规则：患者主动联系后，您才可回复；对话48小时后自动消失')

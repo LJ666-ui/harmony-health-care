@@ -92,7 +92,7 @@ struct HospitalPage {
   }
 
   openARNavigation(): void {
-    router.pushUrl({ url: 'pages/ARNavigationPage' }).catch((error: Error) => {
+    router.pushUrl({ url: 'pages/DestinationSelectPage' }).catch((error: Error) => {
       console.error('导航失败:', error.message);
     });
   }

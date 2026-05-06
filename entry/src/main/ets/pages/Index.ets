@@ -1,11 +1,13 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
+import { DeviceTypeUtil, DeviceType } from '../utils/DeviceTypeUtil';
 
 @Entry
 @Component
 struct Index {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @State showPage: boolean = true;
+  private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -14,12 +16,27 @@ struct Index {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
 
+    // 输出设备类型检测信息
+    console.info('[Index] 设备类型: ' + this.deviceUtil.getDeviceType());
+    console.info('[Index] 是否为可穿戴设备: ' + this.deviceUtil.isWatchOrWearable());
+
     setTimeout(() => {
       this.showPage = false;
       setTimeout(() => {
-        router.replaceUrl({
-          url: 'pages/Login'
-        });
+        // 根据设备类型跳转到不同的首页
+        if (this.deviceUtil.isWatchOrWearable()) {
+          // 手环手表跳转到精简版首页
+          console.info('[Index] 跳转到手表专用页面: WatchHomePage');
+          router.replaceUrl({
+            url: 'pages/WatchHomePage'
+          });
+        } else {
+          // 其他设备跳转到登录页
+          console.info('[Index] 跳转到登录页面: Login');
+          router.replaceUrl({
+            url: 'pages/Login'
+          });
+        }
       }, 300);
     }, 2000);
   }

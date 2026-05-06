@@ -1,3 +1,4 @@
+import { router } from '@kit.ArkUI';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { GraphCanvas } from '../components/GraphCanvas';

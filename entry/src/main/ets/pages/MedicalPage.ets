@@ -118,12 +118,18 @@ export struct MedicalPage {
                 // 统一项目有效路由，匹配main_pages.json配置
                 if (service.id === 'appointment') {
                   router.pushUrl({ url: 'pages/HospitalPage' });
-                } else if (service.id === 'prescription') {
-                  router.pushUrl({ url: 'pages/Medications' });
-                } else if (service.id === 'hospital_nav') {
-                  router.pushUrl({ url: 'pages/ARNavigationPage' });
+                } else if (service.id === 'queue') {
+                  // 排队叫号功能 - 跳转到预约管理页面查看排队信息
+                  router.pushUrl({ url: 'pages/AppointmentManagementPage' });
                 } else if (service.id === 'report') {
                   router.pushUrl({ url: 'pages/HealthRecords' });
+                } else if (service.id === 'prescription') {
+                  router.pushUrl({ url: 'pages/Medications' });
+                } else if (service.id === 'payment') {
+                  // 缴费支付功能 - 跳转到预约管理页面查看费用信息
+                  router.pushUrl({ url: 'pages/AppointmentManagementPage' });
+                } else if (service.id === 'hospital_nav') {
+                  router.pushUrl({ url: 'pages/ARNavigationPage' });
                 } else {
                   console.log(`服务 ${service.title} 暂未开放`);
                 }

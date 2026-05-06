@@ -3,6 +3,30 @@
     {
       "name": "page_text_font_size",
       "value": "50fp"
+    },
+    {
+      "name": "grid_columns",
+      "value": "4"
+    },
+    {
+      "name": "content_max_width",
+      "value": "360vp"
+    },
+    {
+      "name": "horizontal_padding",
+      "value": "16vp"
+    },
+    {
+      "name": "card_padding",
+      "value": "16vp"
+    },
+    {
+      "name": "quick_action_columns",
+      "value": "4"
+    },
+    {
+      "name": "list_columns",
+      "value": "1"
     }
   ]
 }

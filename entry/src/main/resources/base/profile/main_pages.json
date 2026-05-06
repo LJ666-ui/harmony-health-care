@@ -80,6 +80,17 @@
     "pages/ParkingListPage",
     "pages/ParkingSpacePage",
     "pages/FindCarPage",
-    "pages/PublishArticlePage"
+    "pages/ReportPage",
+    "pages/MedicationPage",
+    "pages/ConsultationPage",
+    "pages/EmergencyPage",
+    "pages/FamilyDoctorPage",
+    "pages/InsurancePage",
+    "pages/RehabilitationPage",
+    "pages/AIAssistantPage",
+    "pages/DistributedCollaborationPage",
+    "pages/PublishArticlePage",
+    "pages/NewFeaturesDemoPage",
+    "pages/StandardPageTemplate"
   ]
 }

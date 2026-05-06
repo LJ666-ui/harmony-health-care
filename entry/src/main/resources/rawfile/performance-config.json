@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "monitor": {
+    "enabled": true,
+    "sampleRate": 1.0,
+    "maxMetrics": 1000,
+    "reportInterval": 60000,
+    "enableRealTimeReport": false
+  },
+  "stats": {
+    "windowSize": 100,
+    "timeWindow": 300000
+  },
+  "reporter": {
+    "serverUrl": "https://api.example.com/performance/report",
+    "batchSize": 50,
+    "maxRetryCount": 3,
+    "retryDelay": 1000,
+    "enableEncryption": true,
+    "enableLocalCache": true,
+    "cacheKey": "performance_metrics_cache"
+  },
+  "thresholds": {
+    "startupTime": 1500,
+    "pageSwitch": 300,
+    "frameRate": 55,
+    "memoryUsage": 200,
+    "cpuUsage": 30,
+    "networkRequest": 500
+  },
+  "alerts": {
+    "enabled": true,
+    "startupTimeAlert": true,
+    "memoryLeakAlert": true,
+    "cpuSpikeAlert": true,
+    "frameDropAlert": true
+  }
+}

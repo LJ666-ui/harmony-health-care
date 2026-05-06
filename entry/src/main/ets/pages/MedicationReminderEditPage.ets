@@ -88,7 +88,7 @@ struct MedicationReminderEditPage {
   }
 
   saveReminder(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       if (!this.medicineName.trim()) {
         ToastUtil.showError('请输入药品名称');
         resolve();

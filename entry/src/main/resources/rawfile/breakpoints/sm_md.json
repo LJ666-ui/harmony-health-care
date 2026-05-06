@@ -1,0 +1,32 @@
+{
+  "float": [
+    {
+      "name": "page_text_font_size",
+      "value": "52fp"
+    },
+    {
+      "name": "grid_columns",
+      "value": "8"
+    },
+    {
+      "name": "content_max_width",
+      "value": "600vp"
+    },
+    {
+      "name": "horizontal_padding",
+      "value": "20vp"
+    },
+    {
+      "name": "card_padding",
+      "value": "20vp"
+    },
+    {
+      "name": "quick_action_columns",
+      "value": "4"
+    },
+    {
+      "name": "list_columns",
+      "value": "2"
+    }
+  ]
+}

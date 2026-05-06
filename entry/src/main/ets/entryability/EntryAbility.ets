@@ -1,7 +1,8 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { window } from '@kit.ArkUI';
+import { display, window } from '@kit.ArkUI';
 import { AccessibilityConfig, FontSizeLevel, ColorMode, AnimationMode } from '../utils/AccessibilityConfig';
+import { BreakpointSystem, BreakpointType } from '../utils/BreakpointSystem';
 import RdbHelper from '../utils/RdbHelper';
 import { SettingsUtil } from '../utils/SettingsUtil';
 import {
@@ -88,8 +89,10 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
+
+    this.initBreakpointSystem(windowStage);
+    this.setWindowLayoutFullScreen(windowStage);
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
@@ -98,6 +101,61 @@ export default class EntryAbility extends UIAbility {
       }
       hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
     });
+  }
+
+  private initBreakpointSystem(windowStage: window.WindowStage): void {
+    try {
+      const mainWindow = windowStage.getMainWindowSync();
+      const properties = mainWindow.getWindowProperties();
+      const windowRect = properties.windowRect;
+      const breakpointSystem = BreakpointSystem.getInstance();
+      breakpointSystem.updateBreakpoint(px2vp(windowRect.width));
+
+      AppStorage.setOrCreate<BreakpointType>('currentBreakpoint', breakpointSystem.getCurrentBreakpoint());
+      AppStorage.setOrCreate<number>('windowWidth', px2vp(windowRect.width));
+      AppStorage.setOrCreate<number>('windowHeight', px2vp(windowRect.height));
+
+      mainWindow.on('windowSizeChange', (size: window.Size) => {
+        const width = px2vp(size.width);
+        const height = px2vp(size.height);
+        breakpointSystem.updateBreakpoint(width);
+        AppStorage.setOrCreate<BreakpointType>('currentBreakpoint', breakpointSystem.getCurrentBreakpoint());
+        AppStorage.setOrCreate<number>('windowWidth', width);
+        AppStorage.setOrCreate<number>('windowHeight', height);
+        hilog.info(DOMAIN, 'testTag', 'Window size changed: %{public}f x %{public}f, breakpoint: %{public}s',
+          width, height, breakpointSystem.getCurrentBreakpoint());
+      });
+
+      hilog.info(DOMAIN, 'testTag', 'BreakpointSystem initialized: %{public}s (%{public}f x %{public}f)',
+        breakpointSystem.getCurrentBreakpoint(), px2vp(windowRect.width), px2vp(windowRect.height));
+    } catch (error) {
+      hilog.error(DOMAIN, 'testTag', 'Failed to init BreakpointSystem: %{public}s', JSON.stringify(error));
+    }
+  }
+
+  private setWindowLayoutFullScreen(windowStage: window.WindowStage): void {
+    try {
+      const mainWindow = windowStage.getMainWindowSync();
+      const sysBarProps: window.SystemBarProperties = {
+        statusBarColor: '#00000000',
+        statusBarContentColor: '#333333',
+        navigationBarColor: '#00000000',
+        navigationBarContentColor: '#333333'
+      };
+      mainWindow.setWindowLayoutFullScreen(true);
+      mainWindow.setSystemBarProperties(sysBarProps);
+
+      const topAvoidArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+      const defaultRect: window.Rect = { top: 0, height: 0, left: 0, width: 0 };
+      const topRect = topAvoidArea.visible ? topAvoidArea.topRect : defaultRect;
+      AppStorage.setOrCreate<number>('statusBarHeight', px2vp(topRect.height));
+
+      const bottomAvoidArea = mainWindow.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+      const bottomRect = bottomAvoidArea.visible ? bottomAvoidArea.bottomRect : defaultRect;
+      AppStorage.setOrCreate<number>('navigationBarHeight', px2vp(bottomRect.height));
+    } catch (error) {
+      hilog.error(DOMAIN, 'testTag', 'Failed to set full screen layout: %{public}s', JSON.stringify(error));
+    }
   }
 
   onWindowStageDestroy(): void {

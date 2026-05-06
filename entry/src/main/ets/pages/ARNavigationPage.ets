@@ -1,209 +1,444 @@
-import { router } from '@kit.ArkUI';
-import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
-import { GlobalTheme } from '../global';
+/**
+ * AR院内导航系统 - AR导航主页面
+ * 
+ * AR实景导航主界面,显示相机画面和导航指引
+ * 
+ * @version 1.0
+ * @date 2025-01-18
+ * @author SDD Agent
+ */
+
+import router from '@ohos.router';
+import {
+  NavigationDestination,
+  NavigationPath,
+  ARNavigationState,
+  NavigationMode
+} from '../models/ARNavigationModels';
+import {
+  getMockDestinationById
+} from '../mock/arMock';
+import {
+  ARNavigationService,
+  NavigationEventType
+} from '../ar/ARNavigationService';
+import { ARRenderer } from '../ar/ARRenderer';
+import {
+  ARView,
+  NavigationProgress
+} from '../components/ARNavigationComponents';
 
 @Entry
 @Component
 struct ARNavigationPage {
-  @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  // 路由参数
+  private destinationId: string = '';
+  private destinationName: string = '';
+  private pathDataStr: string = '';
 
-  @State targetDept: string = '内科·302诊室';
-  @State distance: string = '85米 | 约2分钟';
+  // 状态变量
+  @State destination: NavigationDestination | null = null;
+  @State navigationPath: NavigationPath | null = null;
+  @State navigationState: ARNavigationState | null = null;
+  @State isMuted: boolean = false;
+  @State showModeSelector: boolean = false;
+  @State currentMode: NavigationMode = NavigationMode.AR_MODE;
+  @State isInitializing: boolean = true;
+  @State hasArrived: boolean = false;
 
-  @State routeSteps: string[] = [
-    '当前位置',
-    '直行 50米',
-    '左转',
-    '直行 35米',
-    '到达目标科室'
-  ];
+  // 服务实例
+  private navService: ARNavigationService = ARNavigationService.getInstance();
+  private arRenderer: ARRenderer = ARRenderer.getInstance();
 
-  @State currentStep: number = 1;
+  // Canvas上下文
+  private settings: RenderingContextSettings = new RenderingContextSettings(true);
+  private canvasContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
 
-  aboutToAppear(): void {
-    if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
-      AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
-    } else {
-      this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
+  async aboutToAppear() {
+    // 解析路由参数
+    this.parseRouteParams();
+    
+    // 初始化导航
+    await this.initializeNavigation();
+  }
+
+  aboutToDisappear() {
+    // 结束导航
+    this.endNavigation();
+  }
+
+  /**
+   * 解析路由参数
+   */
+  private parseRouteParams(): void {
+    try {
+      const params = router.getParams();
+      
+      if (params !== null && params !== undefined) {
+        const paramsObj = params as Record<string, string>;
+        this.destinationId = paramsObj['destinationId'] ?? '';
+        this.destinationName = paramsObj['destinationName'] ?? '';
+        this.pathDataStr = paramsObj['pathData'] ?? '';
+      }
+    } catch (error) {
+      console.error('[ARNavigationPage] 解析路由参数失败:', error);
     }
   }
 
-  handleBack(): void {
-    router.back();
+  /**
+   * 初始化导航
+   */
+  private async initializeNavigation(): Promise<void> {
+    try {
+      // 1. 获取目的地信息
+      this.destination = getMockDestinationById(this.destinationId);
+      
+      if (this.destination === null) {
+        console.error('[ARNavigationPage] 未找到目的地');
+        router.back();
+        return;
+      }
+
+      // 2. 解析路径数据
+      if (this.pathDataStr !== '') {
+        this.navigationPath = JSON.parse(this.pathDataStr) as NavigationPath;
+      }
+
+      // 3. 初始化AR渲染器
+      await this.arRenderer.initialize(this.canvasContext);
+
+      // 4. 启动导航服务
+      if (this.destination !== null) {
+        await this.navService.startNavigation(this.destination);
+      }
+
+      // 5. 设置事件监听
+      this.setupEventListeners();
+
+      // 6. 启动状态更新循环
+      this.startStateUpdateLoop();
+
+      this.isInitializing = false;
+      console.log('[ARNavigationPage] 导航初始化完成');
+    } catch (error) {
+      console.error('[ARNavigationPage] 初始化导航失败:', error);
+      router.back();
+    }
+  }
+
+  /**
+   * 设置事件监听器
+   */
+  private setupEventListeners(): void {
+    // 监听到达事件
+    this.navService.addEventListener(NavigationEventType.ARRIVED, () => {
+      this.hasArrived = true;
+      console.log('[ARNavigationPage] 已到达目的地');
+    });
+
+    // 监听错误事件
+    this.navService.addEventListener(NavigationEventType.ERROR, (event) => {
+      console.error('[ARNavigationPage] 导航错误:', event);
+    });
+  }
+
+  /**
+   * 启动状态更新循环
+   */
+  private startStateUpdateLoop(): void {
+    // 每500ms更新一次UI状态
+    setInterval(() => {
+      this.navigationState = this.navService.getNavigationState();
+    }, 500);
+  }
+
+  /**
+   * 结束导航
+   */
+  private endNavigation(): void {
+    this.navService.endNavigation();
+    this.arRenderer.stopRendering();
+    console.log('[ARNavigationPage] 导航已结束');
+  }
+
+  /**
+   * 切换静音状态
+   */
+  private toggleMute(): void {
+    this.isMuted = !this.isMuted;
+    this.navService.setMuted(this.isMuted);
+  }
+
+  /**
+   * 切换导航模式
+   */
+  private switchMode(mode: NavigationMode): void {
+    this.currentMode = mode;
+    this.navService.setNavigationMode(mode);
+    this.showModeSelector = false;
   }
 
   build() {
-    Column() {
-      Column() {
-        Row() {
-          Text('←')
-            .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
-            .fontColor('#FFFFFF')
-            .width(44)
-            .height(44)
-            .textAlign(TextAlign.Center)
-            .backgroundColor('#00000040')
-            .borderRadius(22)
-            .onClick(() => this.handleBack());
-
-          Blank();
-
-          Column({ space: 4 }) {
-            Text(this.targetDept)
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontWeight('bold')
-              .fontColor('#FFFFFF')
-              .textAlign(TextAlign.Center);
-
-            Text(this.distance)
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor('#FFFFFF99')
-              .textAlign(TextAlign.Center);
-          }
-          .alignItems(HorizontalAlign.Center);
-
-          Blank();
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, top: 12, bottom: 12 });
-      }
-      .width('100%')
-      .backgroundColor('#00000060');
-
-      Stack({ alignContent: Alignment.Center }) {
+    Stack() {
+      // 1. AR视图(底层)
+      if (this.currentMode === NavigationMode.AR_MODE) {
+        ARView({
+          canvasWidth: 1080,
+          canvasHeight: 1920
+        })
+      } else {
+        // 非AR模式显示简单背景
         Column()
           .width('100%')
           .height('100%')
-          .linearGradient({
-            angle: 180,
-            colors: [['#0A1628', 0], ['#1A3A5C', 0.5], ['#0D2137', 1]]
-          });
-
-        Column({ space: 24 }) {
-          Column() {
-            Text('↑')
-              .fontSize(this.isElderMode ? 80 : 64)
-              .fontColor('#1677FF')
-              .fontWeight('bold');
-
-            Text('直行 50米')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor('#FFFFFF')
-              .fontWeight(FontWeight.Medium);
-          }
-          .alignItems(HorizontalAlign.Center);
-
-          Column({ space: 8 }) {
-            Row({ space: 8 }) {
-              ForEach([1, 2, 3], (item: number) => {
-                Text('—')
-                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                  .fontColor('#1677FF80');
-              })
-            }
-
-            Text('◀ 左转')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor('#52C41A')
-              .fontWeight(FontWeight.Bold);
-          }
-          .alignItems(HorizontalAlign.Center);
-
-          Column() {
-            Text('↑')
-              .fontSize(this.isElderMode ? 80 : 64)
-              .fontColor('#1677FF')
-              .fontWeight('bold');
-
-            Text('直行 35米')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor('#FFFFFF')
-              .fontWeight(FontWeight.Medium);
-          }
-          .alignItems(HorizontalAlign.Center);
-
-          Column({ space: 12 }) {
-            Text('🏥')
-              .fontSize(this.isElderMode ? 56 : 48);
-
-            Text('到达目标科室')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor('#52C41A')
-              .fontWeight('bold');
-          }
-          .alignItems(HorizontalAlign.Center);
-        }
-        .alignItems(HorizontalAlign.Center)
-        .justifyContent(FlexAlign.Center);
-
-        Column() {
-          ForEach(['📍 您的位置', '', '', '', '🏥 目的地'], (label: string, index: number) => {
-            if (label) {
-              Text(label)
-                .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                .fontColor(index === 0 ? '#1677FF' : '#52C41A')
-                .backgroundColor(index === 0 ? '#1677FF20' : '#52C41A20')
-                .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-                .borderRadius(12);
-            } else {
-              Column().height(80);
-            }
-          });
-        }
-        .position({ x: 20, y: 80 });
+          .backgroundColor('#F5F5F5')
       }
-      .layoutWeight(1)
-      .width('100%');
 
+      // 2. 导航信息叠加层
       Column() {
-        Column({ space: 12 }) {
-          Text('路线指引')
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontWeight('bold')
-            .fontColor('#333333')
-            .width('100%')
-            .textAlign(TextAlign.Center);
+        // 顶部栏
+        this.TopBar()
 
-          Row({ space: 8 }) {
-            ForEach(this.routeSteps, (step: string, index: number) => {
-              Column({ space: 4 }) {
-                if (index < this.routeSteps.length - 1) {
-                  Text(step)
-                    .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                    .fontColor(index === this.currentStep ? '#1677FF' : index < this.currentStep ? '#999999' : '#666666')
-                    .fontWeight(index === this.currentStep ? FontWeight.Bold : FontWeight.Normal);
-
-                  Text('↓')
-                    .fontSize(14)
-                    .fontColor('#CCCCCC');
-                } else {
-                  Text(step)
-                    .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                    .fontColor('#52C41A')
-                    .fontWeight(FontWeight.Bold);
-                }
-              }
-              .alignItems(HorizontalAlign.Center);
-            });
+        // 中间内容区
+        Column() {
+          if (this.isInitializing) {
+            // 加载中
+            Column() {
+              LoadingProgress()
+                .width(48)
+                .height(48)
+                .color('#52C41A')
+              
+              Text('正在初始化导航...')
+                .fontSize(14)
+                .fontColor('#666666')
+                .margin({ top: 16 })
+            }
+            .layoutWeight(1)
+            .justifyContent(FlexAlign.Center)
+          } else if (this.hasArrived) {
+            // 到达提示
+            this.ArrivalView()
+          } else {
+            // 导航中
+            this.NavigationInfo()
           }
-          .width('100%')
-          .justifyContent(FlexAlign.Center)
-          .padding({ left: 8, right: 8 });
         }
-        .width('85%')
-        .padding(GlobalTheme.getSpacingMD(this.isElderMode))
-        .backgroundColor('#FFFFFF')
-        .borderRadius(16)
-        .shadow({ radius: 12, color: '#00000015', offsetX: 0, offsetY: 4 });
+        .layoutWeight(1)
+
+        // 底部控制栏
+        this.BottomBar()
       }
       .width('100%')
-      .padding({ top: 12, bottom: 12 });
+      .height('100%')
 
-      Footer({ activeIndex: 1 });
+      // 3. 模式选择器(弹出层)
+      if (this.showModeSelector) {
+        this.ModeSelector()
+      }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F7FA');
+  }
+
+  // ==================== 子组件 ====================
+
+  /**
+   * 顶部栏
+   */
+  @Builder
+  TopBar() {
+    Row() {
+      // 返回按钮
+      Column() {
+        Text('←')
+          .fontSize(24)
+          .fontColor('#FFFFFF')
+      }
+      .width(40)
+      .height(40)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor('#33000000')
+      .borderRadius(20)
+      .onClick(() => router.back())
+
+      Blank()
+
+      // 目的地名称
+      if (this.destination !== null) {
+        Text(this.destination.name)
+          .fontSize(16)
+          .fontColor('#FFFFFF')
+          .fontWeight(FontWeight.Bold)
+      }
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 48, bottom: 16 })
+  }
+
+  /**
+   * 导航信息
+   */
+  @Builder
+  NavigationInfo() {
+    Column() {
+      // 剩余距离和时间
+      if (this.navigationState !== null) {
+        NavigationProgress({
+          currentDistance: this.navigationState.remainingDistance,
+          totalDistance: this.navigationState.totalDistance,
+          estimatedTime: this.navigationState.estimatedTime
+        })
+      }
+    }
+    .width('100%')
+    .padding(16)
+  }
+
+  /**
+   * 到达提示视图
+   */
+  @Builder
+  ArrivalView() {
+    Column() {
+      Text('✓')
+        .fontSize(64)
+        .fontColor('#52C41A')
+      
+      Text('已到达目的地')
+        .fontSize(20)
+        .fontColor('#333333')
+        .fontWeight(FontWeight.Bold)
+        .margin({ top: 16 })
+      
+      if (this.destination !== null) {
+        Text(this.destination.name)
+          .fontSize(16)
+          .fontColor('#666666')
+          .margin({ top: 8 })
+      }
+      
+      Button('结束导航')
+        .width(200)
+        .height(48)
+        .fontSize(16)
+        .fontColor('#FFFFFF')
+        .backgroundColor('#52C41A')
+        .borderRadius(24)
+        .margin({ top: 32 })
+        .onClick(() => router.back())
+    }
+    .layoutWeight(1)
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor('#FFFFFF')
+    .borderRadius({ topLeft: 24, topRight: 24 })
+  }
+
+  /**
+   * 底部控制栏
+   */
+  @Builder
+  BottomBar() {
+    Row() {
+      // 静音按钮
+      Column() {
+        Text(this.isMuted ? '🔇' : '🔊')
+          .fontSize(24)
+      }
+      .width(48)
+      .height(48)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(24)
+      .onClick(() => this.toggleMute())
+
+      Blank()
+
+      // 模式切换按钮
+      Column() {
+        Text('切换')
+          .fontSize(14)
+          .fontColor('#333333')
+      }
+      .width(80)
+      .height(48)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(24)
+      .onClick(() => {
+        this.showModeSelector = !this.showModeSelector;
+      })
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 16, bottom: 32 })
+    .backgroundColor('#33000000')
+  }
+
+  /**
+   * 模式选择器
+   */
+  @Builder
+  ModeSelector() {
+    Column() {
+      Column() {
+        Text('选择导航模式')
+          .fontSize(16)
+          .fontColor('#333333')
+          .fontWeight(FontWeight.Bold)
+          .margin({ bottom: 16 })
+
+        // AR模式
+        Row() {
+          Text('AR实景')
+            .fontSize(14)
+            .fontColor(this.currentMode === NavigationMode.AR_MODE ? '#52C41A' : '#333333')
+        }
+        .width('100%')
+        .height(48)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(this.currentMode === NavigationMode.AR_MODE ? '#E6F7FF' : '#F5F5F5')
+        .borderRadius(8)
+        .onClick(() => this.switchMode(NavigationMode.AR_MODE))
+
+        // 2D地图模式
+        Row() {
+          Text('2D地图')
+            .fontSize(14)
+            .fontColor(this.currentMode === NavigationMode.MAP_2D ? '#52C41A' : '#333333')
+        }
+        .width('100%')
+        .height(48)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(this.currentMode === NavigationMode.MAP_2D ? '#E6F7FF' : '#F5F5F5')
+        .borderRadius(8)
+        .margin({ top: 8 })
+        .onClick(() => this.switchMode(NavigationMode.MAP_2D))
+
+        // 文字模式
+        Row() {
+          Text('文字导航')
+            .fontSize(14)
+            .fontColor(this.currentMode === NavigationMode.TEXT_MODE ? '#52C41A' : '#333333')
+        }
+        .width('100%')
+        .height(48)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(this.currentMode === NavigationMode.TEXT_MODE ? '#E6F7FF' : '#F5F5F5')
+        .borderRadius(8)
+        .margin({ top: 8 })
+        .onClick(() => this.switchMode(NavigationMode.TEXT_MODE))
+      }
+      .width('80%')
+      .padding(24)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(16)
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor('#66000000')
+    .onClick(() => {
+      this.showModeSelector = false;
+    })
   }
 }

@@ -6,7 +6,8 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
-import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
+import { SettingsUtil, PersistedUserInfo, PersistedDoctorInfo } from '../utils/SettingsUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 
 interface LoginResponseData {
   token: string;
@@ -48,6 +49,12 @@ struct Login {
   @State password: string = '';
   @State isLoading: boolean = false;
   @State errorMessage: string = '';
+  @State phoneError: string = '';
+  @State passwordError: string = '';
+  @State showPassword: boolean = false;
+
+  // 手机号验证正则：11位，1开头，第二位3-9
+  private phoneRegex: RegExp = /^1[3-9]\d{9}$/;
 
   async aboutToAppear(): Promise<void> {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -82,6 +89,41 @@ struct Login {
     } catch (error) {
       console.error('检查登录状态失败:', error);
     }
+  }
+
+  /**
+   * 实时验证手机号
+   */
+  private validatePhone(): void {
+    if (!this.username) {
+      this.phoneError = '';
+    } else if (!this.phoneRegex.test(this.username)) {
+      this.phoneError = '请输入正确的11位手机号';
+    } else {
+      this.phoneError = '';
+    }
+  }
+
+  /**
+   * 实时验证密码
+   */
+  private validatePassword(): void {
+    if (!this.password) {
+      this.passwordError = '';
+    } else if (this.password.length < 6 || this.password.length > 20) {
+      this.passwordError = '密码长度为6-20位';
+    } else {
+      this.passwordError = '';
+    }
+  }
+
+  /**
+   * 检查表单是否有效
+   */
+  private isFormValid(): boolean {
+    return this.phoneRegex.test(this.username) &&
+           this.password.length >= 6 &&
+           this.password.length <= 20;
   }
 
   validateForm(): boolean {
@@ -145,6 +187,33 @@ struct Login {
                 undefined
               );
             }
+
+            if (userInfo.userType === 1 && userInfo.userId) {
+              try {
+                const doctorInfoUrl: string = ApiConstants.DOCTOR_INFO + userInfo.userId;
+                const doctorResp: BaseResponse<Object> = await HttpUtil.get<Object>(doctorInfoUrl);
+                if (doctorResp.success && doctorResp.data) {
+                  const raw: Record<string, Object> = doctorResp.data as Record<string, Object>;
+                  const doctorInfo: PersistedDoctorInfo = {};
+                  if (raw['id'] !== undefined) { doctorInfo.id = raw['id'] as number; }
+                  if (raw['realName'] !== undefined) { doctorInfo.realName = raw['realName'] as string; }
+                  if (raw['phone'] !== undefined) { doctorInfo.phone = raw['phone'] as string; }
+                  if (raw['hospital'] !== undefined) { doctorInfo.hospital = raw['hospital'] as string; }
+                  if (raw['department'] !== undefined) { doctorInfo.department = raw['department'] as string; }
+                  if (raw['licenseNumber'] !== undefined) { doctorInfo.licenseNumber = raw['licenseNumber'] as string; }
+                  if (raw['title'] !== undefined) { doctorInfo.title = raw['title'] as string; }
+                  if (raw['specialty'] !== undefined) { doctorInfo.specialty = raw['specialty'] as string; }
+                  if (raw['avatar'] !== undefined) { doctorInfo.avatar = raw['avatar'] as string; }
+                  if (raw['description'] !== undefined) { doctorInfo.description = raw['description'] as string; }
+                  if (raw['rating'] !== undefined) { doctorInfo.rating = raw['rating'] as number; }
+                  if (raw['status'] !== undefined) { doctorInfo.status = raw['status'] as number; }
+                  userInfo.doctorInfo = doctorInfo;
+                }
+              } catch (doctorErr) {
+                console.error('获取医生信息失败:', JSON.stringify(doctorErr));
+              }
+            }
+
             await settings.saveUserInfo(userInfo);
             
             if (userInfo && userInfo.userId) {
@@ -220,17 +289,101 @@ struct Login {
           .borderRadius({ bottomLeft: 32, bottomRight: 32 })
           .margin({ top: -GlobalTheme.getSpacingLG(this.isElderMode), left: -GlobalTheme.getSpacingMD(this.isElderMode), right: -GlobalTheme.getSpacingMD(this.isElderMode) });
 
-          Input({
-            placeholder: '请输入手机号/账号',
-            inputType: 'text',
-            text: $username
-          })
+          // 手机号输入框
+          Column({ space: 4 }) {
+            Row() {
+              Text('📱')
+                .fontSize(16)
+                .margin({ right: 8 });
+              TextInput({ placeholder: '请输入手机号', text: this.username })
+                .type(InputType.Number)
+                .maxLength(11)
+                .layoutWeight(1)
+                .height(44)
+                .backgroundColor('#FFFFFF')
+                .borderRadius(8)
+                .border({
+                  width: 1,
+                  color: this.phoneError ? '#F5222D' : '#E8ECF2',
+                  style: BorderStyle.Solid
+                })
+                .padding({ left: 12, right: 12 })
+                .onChange((value: string) => {
+                  this.username = value;
+                  this.validatePhone();
+                });
+              if (this.username) {
+                Button({ type: ButtonType.Circle }) {
+                  Text('✕')
+                    .fontSize(14)
+                    .fontColor('#999999');
+                }
+                .width(24)
+                .height(24)
+                .backgroundColor('#F5F5F5')
+                .margin({ left: 8 })
+                .onClick(() => {
+                  this.username = '';
+                  this.phoneError = '';
+                });
+              }
+            }
+            .width('100%');
 
-          Input({
-            placeholder: '请输入密码',
-            inputType: 'password',
-            text: $password
-          })
+            if (this.phoneError) {
+              Text(this.phoneError)
+                .fontSize(12)
+                .fontColor('#F5222D')
+                .margin({ left: 24 });
+            }
+          }
+          .width('100%');
+
+          // 密码输入框
+          Column({ space: 4 }) {
+            Row() {
+              Text('🔒')
+                .fontSize(16)
+                .margin({ right: 8 });
+              TextInput({ placeholder: '请输入密码', text: this.password })
+                .type(this.showPassword ? InputType.Normal : InputType.Password)
+                .maxLength(20)
+                .layoutWeight(1)
+                .height(44)
+                .backgroundColor('#FFFFFF')
+                .borderRadius(8)
+                .border({
+                  width: 1,
+                  color: this.passwordError ? '#F5222D' : '#E8ECF2',
+                  style: BorderStyle.Solid
+                })
+                .padding({ left: 12, right: 12 })
+                .onChange((value: string) => {
+                  this.password = value;
+                  this.validatePassword();
+                });
+              Button({ type: ButtonType.Circle }) {
+                Text(this.showPassword ? '👁️' : '👁️‍🗨️')
+                  .fontSize(14);
+              }
+              .width(24)
+              .height(24)
+              .backgroundColor('#F5F5F5')
+              .margin({ left: 8 })
+              .onClick(() => {
+                this.showPassword = !this.showPassword;
+              });
+            }
+            .width('100%');
+
+            if (this.passwordError) {
+              Text(this.passwordError)
+                .fontSize(12)
+                .fontColor('#F5222D')
+                .margin({ left: 24 });
+            }
+          }
+          .width('100%');
 
           if (this.errorMessage) {
             Row() {
@@ -251,17 +404,18 @@ struct Login {
           if (this.isLoading) {
             Loading();
           } else {
-            Button('登 录')
+            Button(this.isLoading ? '登录中...' : '登 录')
               .width('100%')
               .height(GlobalTheme.getButtonHeight(this.isElderMode))
               .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
               .fontWeight('bold')
-              .fontColor(GlobalTheme.BUTTON_TEXT_COLOR)
-              .backgroundColor(GlobalTheme.THEME_COLOR)
+              .fontColor(this.isFormValid() ? GlobalTheme.BUTTON_TEXT_COLOR : '#999999')
+              .backgroundColor(this.isFormValid() ? GlobalTheme.THEME_COLOR : '#CCCCCC')
               .borderRadius(GlobalTheme.RADIUS_MD)
+              .enabled(this.isFormValid() && !this.isLoading)
               .shadow({
                 radius: 12,
-                color: '#1677FF44',
+                color: this.isFormValid() ? '#1677FF44' : '#00000000',
                 offsetX: 0,
                 offsetY: 6
               })
@@ -272,7 +426,9 @@ struct Login {
             Text('忘记密码？')
               .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
               .fontColor(GlobalTheme.THEME_COLOR)
-              .onClick(() => console.log('忘记密码'));
+              .onClick(() => {
+                ToastUtil.showInfo('请联系客服重置密码', 2000);
+              });
 
             Blank();
 

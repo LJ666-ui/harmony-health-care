@@ -41,6 +41,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/user/login",
                         "/user/register",
+                        "/user/send-code",  // 验证码接口无需登录
                         "/ai/**",
                         "/herbal/**",  // 药材百科接口无需登录
                         "/error",

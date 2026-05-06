@@ -25,6 +25,17 @@ public class ArticleCollect {
     private Date updateTime;
     @TableField("is_deleted")
     private Integer isDeleted;
+    
+    @TableField(exist = false)
+    private String title;
+    @TableField(exist = false)
+    private String coverImage;
+    @TableField(exist = false)
+    private String summary;
+    @TableField(exist = false)
+    private String categoryName;
+    @TableField(exist = false)
+    private Integer viewCount;
 
     public ArticleCollect() {
     }

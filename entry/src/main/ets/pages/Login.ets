@@ -146,6 +146,11 @@ struct Login {
               );
             }
             await settings.saveUserInfo(userInfo);
+            
+            if (userInfo && userInfo.userId) {
+              AppStorage.setOrCreate<number>('userId', userInfo.userId);
+              console.info('登录成功，userId已保存:', userInfo.userId);
+            }
           } catch (error) {
             console.error('保存用户信息失败:', error);
           }

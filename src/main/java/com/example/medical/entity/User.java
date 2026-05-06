@@ -38,18 +38,6 @@ public class User {
     @TableField("user_type")
     private Integer userType;
 
-    @TableField("real_name")
-    private String realName;
-
-    @TableField("hospital")
-    private String hospital;
-
-    @TableField("department")
-    private String department;
-
-    @TableField("license_number")
-    private String licenseNumber;
-
     @TableField("create_time")
     private Date createTime;
 

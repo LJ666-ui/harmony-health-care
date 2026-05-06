@@ -6,6 +6,21 @@ const TOKEN_KEY: string = 'auth_token';
 const USER_INFO_KEY: string = 'user_info';
 const IS_LOGGED_IN_KEY: string = 'is_logged_in';
 
+export interface PersistedDoctorInfo {
+  id?: number;
+  realName?: string;
+  phone?: string;
+  hospital?: string;
+  department?: string;
+  licenseNumber?: string;
+  title?: string;
+  specialty?: string;
+  avatar?: string;
+  description?: string;
+  rating?: number;
+  status?: number;
+}
+
 export interface PersistedUserInfo {
   userId?: number;
   username: string;
@@ -13,6 +28,7 @@ export interface PersistedUserInfo {
   avatar?: string;
   age?: number;
   gender?: string;
+  doctorInfo?: PersistedDoctorInfo;
 }
 
 export class SettingsUtil {

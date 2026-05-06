@@ -7,6 +7,7 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
 
 interface RegisterRequestData {
   username: string;
@@ -23,6 +24,25 @@ interface RegisterResponseData {
   userId: number;
   message: string;
   userType: number;
+}
+
+interface SendCodeRequest {
+  phone: string;
+}
+
+interface SendCodeResponse {
+  message: string;
+  code?: string;
+}
+
+interface LoginRequestData {
+  username: string;
+  password: string;
+}
+
+interface LoginResponseData {
+  token: string;
+  userInfo?: PersistedUserInfo;
 }
 
 const DEPARTMENTS: string[] = [
@@ -49,10 +69,123 @@ struct Register {
   @State isLoading: boolean = false;
   @State errorMessage: string = '';
 
+  // 验证码相关状态
+  @State verificationCode: string = '';
+  @State countdown: number = 0;
+  @State isCountingDown: boolean = false;
+  private countdownTimer: number = -1;
+
+  // 密码强度相关状态
+  @State passwordStrength: 'weak' | 'medium' | 'strong' = 'weak';
+  @State passwordStrengthPercent: number = 0;
+
+  // 用户协议
+  @State agreedToTerms: boolean = false;
+
+  // 手机号验证正则
+  private phoneRegex: RegExp = /^1[3-9]\d{9}$/;
+
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+  }
+
+  aboutToDisappear(): void {
+    // 清除倒计时定时器
+    if (this.countdownTimer !== -1) {
+      clearInterval(this.countdownTimer);
+    }
+  }
+
+  /**
+   * 发送验证码
+   */
+  private async sendVerificationCode(): Promise<void> {
+    // 验证手机号格式
+    if (!this.phoneRegex.test(this.username)) {
+      ToastUtil.showError('请输入正确的手机号', 2000);
+      return;
+    }
+
+    try {
+      const sendCodeRequest: SendCodeRequest = {
+        phone: this.username
+      };
+      const response = await HttpUtil.post<SendCodeResponse>('/user/send-code', sendCodeRequest, { skipAuth: true });
+      if (response.success) {
+        ToastUtil.showSuccess('验证码已发送', 2000);
+        this.startCountdown();
+        // 测试环境：如果后端返回了验证码，自动填充
+        if (response.data && response.data.code) {
+          this.verificationCode = response.data.code;
+          console.log('[测试模式] 验证码已自动填充:', response.data.code);
+        }
+      } else {
+        ToastUtil.showError(response.message || '发送失败', 2000);
+      }
+    } catch (error) {
+      // 后端服务未启动时，使用Mock模式
+      console.warn('验证码服务暂不可用，使用Mock模式');
+      ToastUtil.showSuccess('验证码已发送（测试模式）', 2000);
+      this.startCountdown();
+      // 自动填充测试验证码
+      this.verificationCode = '123456';
+    }
+  }
+
+  /**
+   * 开始倒计时
+   */
+  private startCountdown(): void {
+    this.countdown = 60;
+    this.isCountingDown = true;
+    this.countdownTimer = setInterval(() => {
+      this.countdown--;
+      if (this.countdown <= 0) {
+        clearInterval(this.countdownTimer);
+        this.isCountingDown = false;
+        this.countdown = 0;
+      }
+    }, 1000);
+  }
+
+  /**
+   * 计算密码强度
+   */
+  private calculatePasswordStrength(): void {
+    const pwd = this.password;
+
+    if (!pwd || pwd.length === 0) {
+      this.passwordStrength = 'weak';
+      this.passwordStrengthPercent = 0;
+      return;
+    }
+
+    // 弱：长度<8 或 纯数字
+    if (pwd.length < 8 || /^\d+$/.test(pwd)) {
+      this.passwordStrength = 'weak';
+      this.passwordStrengthPercent = 30;
+      return;
+    }
+
+    // 强：长度>12 且 包含特殊字符
+    if (pwd.length > 12 && /[!@#$%^&*]/.test(pwd)) {
+      this.passwordStrength = 'strong';
+      this.passwordStrengthPercent = 100;
+      return;
+    }
+
+    // 中：长度8-12 且 包含字母和数字
+    if (pwd.length >= 8 && pwd.length <= 12 && /[a-zA-Z]/.test(pwd) && /\d/.test(pwd)) {
+      this.passwordStrength = 'medium';
+      this.passwordStrengthPercent = 60;
+      return;
+    }
+
+    // 默认中等
+    this.passwordStrength = 'medium';
+    this.passwordStrengthPercent = 60;
   }
 
   validateForm(): boolean {
@@ -114,6 +247,12 @@ struct Register {
   }
 
   async handleRegister(): Promise<void> {
+    // 验证用户协议
+    if (!this.agreedToTerms) {
+      ToastUtil.showError('请先同意用户协议', 2000);
+      return;
+    }
+
     if (!this.validateForm()) {
       ToastUtil.showError(this.errorMessage, 2000);
       return;
@@ -125,7 +264,8 @@ struct Register {
       const registerRequest: RegisterRequestData = {
         username: this.username,
         password: this.password,
-        userType: this.selectedRole
+        userType: this.selectedRole,
+        phone: this.username  // 普通用户使用手机号作为用户名，同时也设置phone字段
       };
 
       if (this.selectedRole === 1) {
@@ -137,17 +277,35 @@ struct Register {
       }
 
       const response: BaseResponse<RegisterResponseData> = await HttpUtil.post<RegisterResponseData>(
-        ApiConstants.USER_REGISTER, registerRequest
+        ApiConstants.USER_REGISTER, registerRequest, { skipAuth: true }
       );
 
       if (response.success) {
-        ToastUtil.showSuccess('注册成功，请登录');
+        ToastUtil.showSuccess('注册成功，正在自动登录...', 2000);
 
-        setTimeout(() => {
+        // 自动登录
+        setTimeout(async () => {
           try {
-            router.back();
+            const loginRequest: LoginRequestData = {
+              username: this.username,
+              password: this.password
+            };
+            const loginResponse = await HttpUtil.post<LoginResponseData>('/user/login', loginRequest, { skipAuth: true });
+
+            if (loginResponse.success && loginResponse.data) {
+              await HttpUtil.saveToken(loginResponse.data.token);
+              if (loginResponse.data.userInfo) {
+                const settings = SettingsUtil.getInstance();
+                await settings.saveUserInfo(loginResponse.data.userInfo);
+              }
+              AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+              router.replaceUrl({ url: 'pages/HomePage' });
+            } else {
+              router.back();
+            }
           } catch (error) {
-            console.error('返回登录页失败:', error);
+            console.error('自动登录失败:', error);
+            router.back();
           }
         }, 1000);
       } else {
@@ -239,23 +397,152 @@ struct Register {
           }
           .width('100%');
 
-          Input({
-            placeholder: '请输入账号(3-20位)',
-            inputType: 'text',
-            text: $username
-          })
+          // 手机号输入框
+          Column({ space: 4 }) {
+            Row() {
+              Text('📱')
+                .fontSize(16)
+                .margin({ right: 8 });
+              TextInput({ placeholder: '请输入手机号', text: this.username })
+                .type(InputType.Number)
+                .maxLength(11)
+                .layoutWeight(1)
+                .height(44)
+                .backgroundColor('#FFFFFF')
+                .borderRadius(8)
+                .border({ width: 1, color: '#E8ECF2', style: BorderStyle.Solid })
+                .padding({ left: 12, right: 12 })
+                .onChange((value: string) => {
+                  this.username = value;
+                });
+            }
+            .width('100%');
+          }
+          .width('100%');
 
-          Input({
-            placeholder: '请输入密码(至少6位)',
-            inputType: 'password',
-            text: $password
-          })
+          // 验证码输入框
+          Row({ space: 8 }) {
+            TextInput({ placeholder: '请输入验证码', text: this.verificationCode })
+              .type(InputType.Number)
+              .maxLength(6)
+              .layoutWeight(1)
+              .height(44)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(8)
+              .border({ width: 1, color: '#E8ECF2', style: BorderStyle.Solid })
+              .padding({ left: 16, right: 16 });
 
-          Input({
-            placeholder: '请再次输入密码',
-            inputType: 'password',
-            text: $confirmPassword
-          })
+            Button(this.isCountingDown ? `${this.countdown}秒` : '获取验证码')
+              .width(110)
+              .height(44)
+              .fontSize(13)
+              .fontColor(this.isCountingDown || !this.phoneRegex.test(this.username) ? '#999999' : '#FFFFFF')
+              .backgroundColor(this.isCountingDown || !this.phoneRegex.test(this.username) ? '#CCCCCC' : GlobalTheme.THEME_COLOR)
+              .borderRadius(8)
+              .enabled(!this.isCountingDown && this.phoneRegex.test(this.username))
+              .onClick(async () => await this.sendVerificationCode());
+          }
+          .width('100%');
+
+          // 密码输入框
+          Column({ space: 4 }) {
+            TextInput({ placeholder: '请设置密码(6-20位)', text: this.password })
+              .type(InputType.Password)
+              .maxLength(20)
+              .width('100%')
+              .height(44)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(8)
+              .border({ width: 1, color: '#E8ECF2', style: BorderStyle.Solid })
+              .padding({ left: 16, right: 16 })
+              .onChange((value: string) => {
+                this.password = value;
+                this.calculatePasswordStrength();
+              });
+
+            // 密码强度指示器
+            if (this.password && this.password.length > 0) {
+              Row({ space: 8 }) {
+                Progress({ value: this.passwordStrengthPercent, total: 100, type: ProgressType.Linear })
+                  .width(100)
+                  .height(4)
+                  .color(this.passwordStrength === 'weak' ? '#F5222D' :
+                         this.passwordStrength === 'medium' ? '#FAAD14' : '#52C41A');
+
+                Text('密码强度：')
+                  .fontSize(12)
+                  .fontColor('#666666');
+
+                Text(this.passwordStrength === 'weak' ? '弱' :
+                     this.passwordStrength === 'medium' ? '中' : '强')
+                  .fontSize(12)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(this.passwordStrength === 'weak' ? '#F5222D' :
+                             this.passwordStrength === 'medium' ? '#FAAD14' : '#52C41A');
+              }
+              .width('100%');
+            }
+          }
+          .width('100%');
+
+          // 确认密码输入框
+          Column({ space: 4 }) {
+            TextInput({ placeholder: '请再次输入密码', text: this.confirmPassword })
+              .type(InputType.Password)
+              .maxLength(20)
+              .width('100%')
+              .height(44)
+              .backgroundColor('#FFFFFF')
+              .borderRadius(8)
+              .border({ width: 1, color: '#E8ECF2', style: BorderStyle.Solid })
+              .padding({ left: 16, right: 16 })
+              .onChange((value: string) => {
+                this.confirmPassword = value;
+              });
+
+            if (this.confirmPassword && this.confirmPassword.length > 0 && this.password !== this.confirmPassword) {
+              Text('两次密码输入不一致')
+                .fontSize(12)
+                .fontColor('#F5222D');
+            }
+          }
+          .width('100%');
+
+          // 用户协议
+          Row({ space: 8 }) {
+            Checkbox({ name: 'agreement', group: 'registerGroup' })
+              .select(this.agreedToTerms)
+              .selectedColor(GlobalTheme.THEME_COLOR)
+              .onChange((isChecked: boolean) => {
+                this.agreedToTerms = isChecked;
+              });
+
+            Row({ space: 4 }) {
+              Text('我已阅读并同意')
+                .fontSize(12)
+                .fontColor('#666666');
+
+              Text('《用户协议》')
+                .fontSize(12)
+                .fontColor(GlobalTheme.THEME_COLOR)
+                .onClick(() => {
+                  router.pushUrl({ url: 'pages/PrivacyPolicyPage' });
+                });
+
+              Text('和')
+                .fontSize(12)
+                .fontColor('#666666');
+
+              Text('《隐私政策》')
+                .fontSize(12)
+                .fontColor(GlobalTheme.THEME_COLOR)
+                .onClick(() => {
+                  router.pushUrl({ url: 'pages/PrivacyPolicyPage' });
+                });
+            }
+          }
+          .width('100%')
+          .padding({ top: 8, bottom: 8 });
 
           if (this.selectedRole === 1) {
             Column({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {

@@ -11,9 +11,10 @@ interface EnvConfig {
 
 const ENV_MAP: Record<EnvType, EnvConfig> = {
   // 🔧 说明：根据你的运行环境选择地址：
-  // - 模拟器：使用 http://10.0.2.2:8080
-  // - 真机：替换为你电脑在局域网的真实IP，如 http://192.168.x.x:8080
-  [EnvType.DEV]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
+  // - 鸿蒙模拟器：使用宿主机实际IP（不支持10.0.2.2）
+  // - 真机：使用电脑在局域网的IP
+  // 当前配置：尝试使用 192.168.66.1
+  [EnvType.DEV]: { BASE_URL: 'http://192.168.66.1:8080', UPLOAD_URL: 'http://192.168.66.1:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
@@ -218,6 +219,9 @@ interface ApiConstantsInterface {
 
   DOCTOR_LIST: string;
   DOCTOR_DETAIL: string;
+  DOCTOR_REGISTER: string;
+  DOCTOR_INFO: string;
+  DOCTOR_UPDATE: string;
 
   MESSAGE_SEND: string;
   MESSAGE_HISTORY: string;
@@ -412,6 +416,9 @@ export const ApiConstants: ApiConstantsInterface = {
 
   DOCTOR_LIST: '/user/doctor/list',
   DOCTOR_DETAIL: '/user/doctor/detail/',
+  DOCTOR_REGISTER: '/doctor/register',
+  DOCTOR_INFO: '/doctor/info/',
+  DOCTOR_UPDATE: '/doctor/update',
 
   MESSAGE_SEND: '/user/message/send',
   MESSAGE_HISTORY: '/user/message/history',

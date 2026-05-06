@@ -91,6 +91,11 @@
     "pages/DistributedCollaborationPage",
     "pages/PublishArticlePage",
     "pages/NewFeaturesDemoPage",
-    "pages/StandardPageTemplate"
+    "pages/StandardPageTemplate",
+    "pages/AdminLogin",
+    "pages/AdminDashboard",
+    "pages/AdminUsers",
+    "pages/AdminFamily",
+    "pages/AdminManage"
   ]
 }

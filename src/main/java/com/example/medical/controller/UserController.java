@@ -30,6 +30,34 @@ public class UserController {
     @Autowired
     private DoctorMessageService doctorMessageService;
 
+    /**
+     * 发送验证码（模拟）
+     * 实际项目中应该调用短信服务API
+     */
+    @PostMapping("/send-code")
+    public Result<?> sendVerificationCode(@RequestBody Map<String, String> params) {
+        String phone = params.get("phone");
+        if (phone == null || phone.trim().isEmpty()) {
+            return Result.error("手机号不能为空");
+        }
+        // 验证手机号格式
+        if (!phone.matches("^1[3-9]\\d{9}$")) {
+            return Result.error("手机号格式不正确");
+        }
+        
+        // TODO: 实际项目中这里应该：
+        // 1. 调用短信服务API发送验证码
+        // 2. 将验证码存入Redis并设置过期时间
+        // 3. 返回发送结果
+        
+        // 模拟发送成功
+        System.out.println("[验证码] 发送验证码到手机: " + phone + ", 验证码: 123456");
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "验证码发送成功");
+        result.put("code", "123456"); // 测试环境返回验证码，生产环境应删除
+        return Result.success(result);
+    }
+
     @PostMapping("/register")
     public Result<?> register(@Valid @RequestBody User user) {
         if (userService.findByUsername(user.getUsername()) != null) {

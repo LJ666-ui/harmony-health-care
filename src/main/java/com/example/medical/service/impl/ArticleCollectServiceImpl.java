@@ -3,8 +3,11 @@ package com.example.medical.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.medical.entity.ArticleCollect;
+import com.example.medical.entity.HealthArticle;
+import com.example.medical.entity.ArticleCategory;
 import com.example.medical.mapper.ArticleCollectMapper;
 import com.example.medical.service.ArticleCollectService;
+import com.example.medical.service.ArticleCategoryService;
 import com.example.medical.service.HealthArticleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,6 +20,9 @@ public class ArticleCollectServiceImpl extends ServiceImpl<ArticleCollectMapper,
 
     @Autowired
     private HealthArticleService healthArticleService;
+    
+    @Autowired
+    private ArticleCategoryService articleCategoryService;
 
     @Override
     public boolean collectArticle(Long userId, Long articleId) {
@@ -64,12 +70,41 @@ public class ArticleCollectServiceImpl extends ServiceImpl<ArticleCollectMapper,
 
     @Override
     public List<ArticleCollect> getMyCollects(Long userId) {
-        // 查询用户的所有收藏，按收藏时间倒序排序
-        return baseMapper.selectList(
+        List<ArticleCollect> collects = baseMapper.selectList(
                 new QueryWrapper<ArticleCollect>().lambda()
                         .eq(ArticleCollect::getUserId, userId)
                         .eq(ArticleCollect::getIsDeleted, 0)
                         .orderByDesc(ArticleCollect::getCollectTime)
         );
+        
+        for (ArticleCollect collect : collects) {
+            if (collect.getArticleId() != null) {
+                HealthArticle article = healthArticleService.getById(collect.getArticleId());
+                if (article != null) {
+                    collect.setTitle(article.getTitle());
+                    collect.setCoverImage(article.getCoverImage());
+                    String content = article.getContent();
+                    if (content != null && content.length() > 100) {
+                        collect.setSummary(content.substring(0, 100));
+                    } else {
+                        collect.setSummary(content);
+                    }
+                    collect.setViewCount(article.getViewCount());
+                    
+                    if (article.getCategoryId() != null) {
+                        try {
+                            ArticleCategory category = articleCategoryService.getById(article.getCategoryId());
+                            if (category != null) {
+                                collect.setCategoryName(category.getCategoryName());
+                            }
+                        } catch (Exception e) {
+                            System.err.println("获取分类名称失败: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+        }
+        
+        return collects;
     }
 }

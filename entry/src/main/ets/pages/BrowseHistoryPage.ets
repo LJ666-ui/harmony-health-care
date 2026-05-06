@@ -158,13 +158,13 @@ struct BrowseHistoryPage {
     
     switch (record.browse_type) {
       case 'ARTICLE':
-        router.push({ url: 'pages/ScienceDetailPage', params: { id: record.target_id } });
+        router.pushUrl({ url: 'pages/ScienceDetailPage', params: { id: record.target_id } });
         break;
       case 'HERBAL':
-        router.push({ url: 'pages/HerbalDetailPage', params: { id: record.target_id } });
+        router.pushUrl({ url: 'pages/HerbalDetailPage', params: { id: record.target_id } });
         break;
       case 'HOSPITAL':
-        router.push({ url: 'pages/HospitalDetailPage', params: { id: record.target_id } });
+        router.pushUrl({ url: 'pages/HospitalDetailPage', params: { id: record.target_id } });
         break;
       default:
         break;

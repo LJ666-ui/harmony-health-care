@@ -250,11 +250,22 @@ struct StatisticsPage {
         Row() {
           ForEach(data, (point: DataPoint, index: number) => {
             Column({ space: 4 }) {
-              Column()
-                .width(8)
-                .height(Math.max(8, ((point.value - minVal) / (maxVal - minVal)) * 80))
-                .backgroundColor(color)
-                .borderRadius(4);
+              // 柱子
+              Column() {
+                // 在柱子顶部显示数值
+                if (index === data.length - 1) {
+                  Text(point.value.toFixed(1))
+                    .fontSize(8)
+                    .fontColor(color)
+                    .fontWeight(FontWeight.Bold);
+                }
+              }
+              .width(20)
+              .height(Math.max(8, ((point.value - minVal) / (maxVal - minVal)) * 80))
+              .backgroundColor(color)
+              .borderRadius(4)
+              .justifyContent(FlexAlign.Start)
+              .padding({ top: 2 });
 
               Text(point.label)
                 .fontSize(9)
@@ -312,7 +323,7 @@ struct StatisticsPage {
                 .fontSize(12)
                 .fontColor('#FFFFFF');
             } else {
-              Text('✗')
+              Text('休')
                 .fontSize(10)
                 .fontColor('#CCCCCC');
             }
@@ -338,18 +349,21 @@ struct StatisticsPage {
 
   @Builder
   buildSummaryCard(icon: string, title: string, value: string, textColor: string, bgColor: string) {
-    Column({ space: 10 }) {
-      Text(icon)
-        .fontSize(28);
+    Column({ space: 8 }) {
+      Row({ space: 6 }) {
+        Text(icon)
+          .fontSize(24);
+        
+        Text(title)
+          .fontSize(13)
+          .fontColor('#333333')
+          .fontWeight(FontWeight.Medium);
+      }
 
       Text(value)
-        .fontSize(22)
+        .fontSize(24)
         .fontWeight(FontWeight.Bold)
         .fontColor(textColor);
-
-      Text(title)
-        .fontSize(12)
-        .fontColor('#666666');
     }
     .width('48%')
     .padding(16)

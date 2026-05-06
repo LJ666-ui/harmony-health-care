@@ -282,7 +282,7 @@ struct RiskHistoryPage {
               .backgroundColor('#1677FF')
               .borderRadius(22)
               .margin({ top: 8, bottom: 32 })
-              .onClick(() => { router.push({ url: 'pages/RiskAssessmentPage' }); });
+              .onClick(() => { router.pushUrl({ url: 'pages/RiskAssessmentPage' }); });
           }
           .width('90%')
           .padding({ top: 16, bottom: 16 });

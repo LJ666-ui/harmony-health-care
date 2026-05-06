@@ -13,10 +13,15 @@ interface RegisterRequestData {
   password: string;
   userType: number;
   phone?: string;
-  realName?: string;
-  hospital?: string;
-  department?: string;
-  licenseNumber?: string;
+}
+
+interface DoctorRegisterData {
+  userId: number;
+  realName: string;
+  phone: string;
+  hospital: string;
+  department: string;
+  licenseNumber: string;
 }
 
 interface RegisterResponseData {
@@ -130,10 +135,6 @@ struct Register {
 
       if (this.selectedRole === 1) {
         registerRequest.phone = this.phone;
-        registerRequest.realName = this.realName;
-        registerRequest.hospital = this.hospital;
-        registerRequest.department = this.department;
-        registerRequest.licenseNumber = this.licenseNumber;
       }
 
       const response: BaseResponse<RegisterResponseData> = await HttpUtil.post<RegisterResponseData>(
@@ -141,6 +142,23 @@ struct Register {
       );
 
       if (response.success) {
+        if (this.selectedRole === 1 && response.data && response.data.userId) {
+          try {
+            const doctorData: DoctorRegisterData = {
+              userId: response.data.userId,
+              realName: this.realName,
+              phone: this.phone,
+              hospital: this.hospital,
+              department: this.department,
+              licenseNumber: this.licenseNumber
+            };
+            await HttpUtil.post<Record<string, Object>>(ApiConstants.DOCTOR_REGISTER, doctorData);
+          } catch (doctorError) {
+            console.error('医生信息注册失败:', JSON.stringify(doctorError));
+            ToastUtil.showInfo('账号已创建，但医生信息提交失败，请联系管理员补录');
+          }
+        }
+
         ToastUtil.showSuccess('注册成功，请登录');
 
         setTimeout(() => {

@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.medical.common.BCryptUtil;
 import com.example.medical.common.JwtUtil;
 import com.example.medical.common.Result;
+import com.example.medical.entity.Doctor;
 import com.example.medical.entity.DoctorMessage;
 import com.example.medical.entity.User;
 import com.example.medical.service.DoctorMessageService;
+import com.example.medical.service.DoctorService;
 import com.example.medical.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -28,6 +30,9 @@ public class UserController {
     private UserService userService;
 
     @Autowired
+    private DoctorService doctorService;
+
+    @Autowired
     private DoctorMessageService doctorMessageService;
 
     @PostMapping("/register")
@@ -37,23 +42,6 @@ public class UserController {
         }
         if (user.getUserType() == null) {
             user.setUserType(0);
-        }
-        if (user.getUserType() == 1) {
-            if (user.getRealName() == null || user.getRealName().trim().isEmpty()) {
-                return Result.error("请填写真实姓名");
-            }
-            if (user.getHospital() == null || user.getHospital().trim().isEmpty()) {
-                return Result.error("请填写所属医院");
-            }
-            if (user.getDepartment() == null || user.getDepartment().trim().isEmpty()) {
-                return Result.error("请填写科室");
-            }
-            if (user.getLicenseNumber() == null || user.getLicenseNumber().trim().isEmpty()) {
-                return Result.error("请填写执业证号");
-            }
-            if (user.getPhone() == null || user.getPhone().trim().isEmpty()) {
-                return Result.error("请填写手机号");
-            }
         }
         user.setPassword(BCryptUtil.encrypt(user.getPassword()));
         user.setCreateTime(new Date());
@@ -107,26 +95,95 @@ public class UserController {
     }
 
     @GetMapping("/doctor/list")
-    public Result<List<User>> getDoctorList(@RequestParam(required = false) String keyword) {
+    public Result<List<Doctor>> getDoctorList(@RequestParam(required = false) String keyword) {
         try {
-            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(User::getUserType, 1);
-            wrapper.eq(User::getIsDeleted, 0);
+            LambdaQueryWrapper<Doctor> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Doctor::getIsDeleted, 0);
             if (keyword != null && !keyword.isEmpty()) {
                 final String kw = keyword.trim().toLowerCase();
-                wrapper.and(w -> w.like(User::getUsername, kw)
+                wrapper.and(w -> w.like(Doctor::getRealName, kw)
                     .or()
-                    .like(User::getPhone, kw));
+                    .like(Doctor::getHospital, kw)
+                    .or()
+                    .like(Doctor::getDepartment, kw));
             }
-            wrapper.orderByDesc(User::getCreateTime);
-            List<User> doctors = userService.list(wrapper);
-            for (User doctor : doctors) {
-                doctor.setPassword(null);
-            }
+            wrapper.orderByDesc(Doctor::getCreateTime);
+            List<Doctor> doctors = doctorService.list(wrapper);
             return Result.success(doctors);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("获取医生列表失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/doctor/register")
+    public Result<?> doctorRegister(@RequestBody Doctor doctor) {
+        try {
+            if (doctor.getUserId() == null) {
+                return Result.error("用户ID不能为空");
+            }
+            if (doctor.getRealName() == null || doctor.getRealName().trim().isEmpty()) {
+                return Result.error("请填写真实姓名");
+            }
+            if (doctor.getHospital() == null || doctor.getHospital().trim().isEmpty()) {
+                return Result.error("请填写所属医院");
+            }
+            if (doctor.getDepartment() == null || doctor.getDepartment().trim().isEmpty()) {
+                return Result.error("请填写科室");
+            }
+            if (doctor.getLicenseNumber() == null || doctor.getLicenseNumber().trim().isEmpty()) {
+                return Result.error("请填写执业证号");
+            }
+            Doctor existing = doctorService.getByUserId(doctor.getUserId());
+            if (existing != null) {
+                return Result.error("该用户已注册医生信息");
+            }
+            doctor.setStatus(0);
+            doctor.setIsDeleted(0);
+            doctor.setCreateTime(new Date());
+            if (doctorService.save(doctor)) {
+                Map<String, Object> result = new HashMap<>();
+                result.put("doctorId", doctor.getId());
+                result.put("message", "医生信息提交成功，等待审核");
+                return Result.success(result);
+            } else {
+                return Result.error("医生信息保存失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("医生注册失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/doctor/info/{userId}")
+    public Result<?> getDoctorInfo(@PathVariable Long userId) {
+        try {
+            Doctor doctor = doctorService.getByUserId(userId);
+            if (doctor == null) {
+                return Result.error("医生信息不存在");
+            }
+            return Result.success(doctor);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取医生信息失败：" + e.getMessage());
+        }
+    }
+
+    @PutMapping("/doctor/update")
+    public Result<?> updateDoctor(@RequestBody Doctor doctor) {
+        try {
+            if (doctor.getId() == null) {
+                return Result.error("医生ID不能为空");
+            }
+            doctor.setUpdateTime(new Date());
+            if (doctorService.updateById(doctor)) {
+                return Result.success("更新成功");
+            } else {
+                return Result.error("更新失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("更新失败：" + e.getMessage());
         }
     }
 

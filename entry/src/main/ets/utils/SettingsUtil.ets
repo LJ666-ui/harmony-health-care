@@ -5,6 +5,7 @@ const ELDER_MODE_KEY: string = 'elder_mode_enabled';
 const TOKEN_KEY: string = 'auth_token';
 const USER_INFO_KEY: string = 'user_info';
 const IS_LOGGED_IN_KEY: string = 'is_logged_in';
+const SESSION_INFO_KEY: string = 'session_info';
 
 export interface PersistedDoctorInfo {
   id?: number;
@@ -239,6 +240,48 @@ export class SettingsUtil {
     } catch (e) {
       console.error('SettingsUtil - check login status sync failed:', e);
       return false;
+    }
+  }
+
+  async saveSessionInfo(sessionInfo: Record<string, Object>): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      const jsonStr: string = JSON.stringify(sessionInfo);
+      await this.dataPreferences.put(SESSION_INFO_KEY, jsonStr);
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - save session info failed:', e);
+    }
+  }
+
+  async getSessionInfo(): Promise<Record<string, Object> | null> {
+    if (this.dataPreferences === null) {
+      return null;
+    }
+    try {
+      const value: preferences.ValueType = await this.dataPreferences.get(SESSION_INFO_KEY, '{}');
+      const jsonStr: string = value as string;
+      if (jsonStr && jsonStr !== '{}' && jsonStr !== '') {
+        return JSON.parse(jsonStr) as Record<string, Object>;
+      }
+      return null;
+    } catch (e) {
+      console.error('SettingsUtil - get session info failed:', e);
+      return null;
+    }
+  }
+
+  async clearSessionInfo(): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      await this.dataPreferences.delete(SESSION_INFO_KEY);
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - clear session info failed:', e);
     }
   }
 }

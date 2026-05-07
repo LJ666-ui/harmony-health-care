@@ -160,7 +160,15 @@ struct Login {
         username: this.username,
         password: this.password
       };
-      const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>('/user/login', loginRequest);
+      const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>(
+        '/user/login',
+        loginRequest,
+        {
+          showLoading: true,
+          loadingText: '登录中...',
+          retryCount: 1
+        }
+      );
 
       if (response.success) {
         if (response.data && response.data.token) {
@@ -215,6 +223,11 @@ struct Login {
             }
 
             await settings.saveUserInfo(userInfo);
+            
+            if (userInfo && userInfo.userId) {
+              AppStorage.setOrCreate<number>('userId', userInfo.userId);
+              console.info('登录成功，userId已保存:', userInfo.userId);
+            }
           } catch (error) {
             console.error('保存用户信息失败:', error);
           }

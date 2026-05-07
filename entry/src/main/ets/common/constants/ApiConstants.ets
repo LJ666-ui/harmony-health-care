@@ -1,5 +1,7 @@
 export enum EnvType {
   DEV = 'DEV',
+  DEV_EMULATOR = 'DEV_EMULATOR',
+  DEV_DEVICE = 'DEV_DEVICE',
   TEST = 'TEST',
   PROD = 'PROD'
 }
@@ -10,11 +12,9 @@ interface EnvConfig {
 }
 
 const ENV_MAP: Record<EnvType, EnvConfig> = {
-  // 🔧 说明：根据你的运行环境选择地址：
-  // - 鸿蒙模拟器：使用宿主机实际IP（不支持10.0.2.2）
-  // - 真机：使用电脑在局域网的IP
-  // 当前配置：尝试使用 192.168.66.1
-  [EnvType.DEV]: { BASE_URL: 'http://192.168.66.1:8080', UPLOAD_URL: 'http://192.168.66.1:8080/upload' },
+  [EnvType.DEV]: { BASE_URL: 'http://192.168.71.233:8080', UPLOAD_URL: 'http://192.168.71.233:8080/upload' },
+  [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
+  [EnvType.DEV_DEVICE]: { BASE_URL: 'http://192.168.71.233:8080', UPLOAD_URL: 'http://192.168.71.233:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };

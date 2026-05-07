@@ -51,18 +51,22 @@ export interface RelatedArticle {
 export interface CommentData {
   id: number;
   articleId: number;
+  userId: number;
   userName: string;
   userAvatar: string;
   content: string;
   likeCount: number;
   parentId: number;
+  status: number;
   createTime: string;
+  updateTime: string;
+  isDeleted: number;
 }
 
 interface CommentPostData {
   articleId: number;
   content: string;
-  userName: string;
+  userId: number;
   parentId: number;
 }
 
@@ -74,6 +78,8 @@ interface LikeResponseData {
 @Component
 struct ScienceDetailPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @StorageLink('userId') currentUserId: number = 0;
+  @StorageLink('username') currentUsername: string = '';
   @State articleId: string = '';
   @State articleTitle: string = '';
   @State isFavorited: boolean = false;
@@ -126,8 +132,10 @@ struct ScienceDetailPage {
   async loadArticleDetail(): Promise<void> {
     this.isLoading = true;
     try {
+      console.info('开始加载文章详情，文章ID:', this.articleId);
       const url: string = ApiConstants.ARTICLE_DETAIL + this.articleId;
       const response: BaseResponse<ArticleDetailData> = await HttpUtil.get<ArticleDetailData>(url);
+      console.info('文章详情响应:', JSON.stringify(response));
 
       if (response.success && response.data) {
         this.articleDetail = response.data;
@@ -140,11 +148,13 @@ struct ScienceDetailPage {
 
         this.cacheArticleLocally();
       } else {
-        ToastUtil.showSuccess('加载失败');
+        console.error('加载文章详情失败:', response.message);
+        ToastUtil.showSuccess(response.message || '加载失败');
       }
     } catch (e) {
-      console.error('加载文章详情失败:', e);
-      ToastUtil.showSuccess('网络异常，请检查连接');
+      console.error('加载文章详情异常:', e);
+      const error = e as Error;
+      ToastUtil.showSuccess(error.message || '网络异常，请检查连接');
     } finally {
       this.isLoading = false;
     }
@@ -227,17 +237,32 @@ struct ScienceDetailPage {
 
   async checkCollectionStatus(): Promise<void> {
     try {
-      const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
-      predicates.equalTo(COLUMN_COLLECT_TYPE, 'ARTICLE');
-      predicates.equalTo(COLUMN_TARGET_ID, Number(this.articleId));
-
-      const result = await RdbHelper.queryByPredicates(predicates, ['id']);
-      if (result && result.rowCount > 0) {
-        this.isFavorited = true;
-        result.close();
+      const response: BaseResponse<Object[]> = await HttpUtil.get<Object[]>(ApiConstants.ARTICLE_MY_COLLECTS);
+      if (response.success && response.data && Array.isArray(response.data)) {
+        this.isFavorited = false;
+        for (let i = 0; i < response.data.length; i++) {
+          const item = response.data[i] as Record<string, Object>;
+          const collectedArticleId = String(item['articleId'] || item['id'] || '');
+          if (collectedArticleId === this.articleId) {
+            this.isFavorited = true;
+            break;
+          }
+        }
       }
     } catch (e) {
       console.error('查询收藏状态失败:', e);
+      try {
+        const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
+        predicates.equalTo(COLUMN_COLLECT_TYPE, 'ARTICLE');
+        predicates.equalTo(COLUMN_TARGET_ID, Number(this.articleId));
+        const result = await RdbHelper.queryByPredicates(predicates, ['id']);
+        if (result && result.rowCount > 0) {
+          this.isFavorited = true;
+          result.close();
+        }
+      } catch (localError) {
+        console.error('本地查询收藏状态也失败:', localError);
+      }
     }
   }
 
@@ -260,7 +285,13 @@ struct ScienceDetailPage {
           predicates.equalTo(COLUMN_TARGET_ID, Number(this.articleId));
           await RdbHelper.delete(predicates);
         } else {
-          ToastUtil.showSuccess('取消收藏失败');
+          console.error('取消收藏失败:', response.message);
+          this.isFavorited = false;
+          const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
+          predicates.equalTo(COLUMN_COLLECT_TYPE, 'ARTICLE');
+          predicates.equalTo(COLUMN_TARGET_ID, Number(this.articleId));
+          await RdbHelper.delete(predicates);
+          ToastUtil.showSuccess('已同步收藏状态');
         }
       } else {
         const collectUrl: string = ApiConstants.ARTICLE_COLLECT + this.articleId + '/collect';
@@ -311,30 +342,60 @@ struct ScienceDetailPage {
   }
 
   async loadComments(): Promise<void> {
-    if (!this.articleId) return;
+    if (!this.articleId) {
+      console.warn('文章ID为空，跳过加载评论');
+      return;
+    }
     try {
+      console.info('开始加载评论，文章ID:', this.articleId);
       const url: string = ApiConstants.COMMENT_LIST + this.articleId;
       const response: BaseResponse<CommentData[]> = await HttpUtil.get<CommentData[]>(url);
+      console.info('评论加载响应:', JSON.stringify(response));
+      
       if (response.success && response.data) {
         this.comments = response.data;
+        console.info('成功加载评论数量:', this.comments.length);
+      } else {
+        console.warn('评论加载失败:', response.message);
+        this.comments = [];
       }
     } catch (e) {
-      console.error('加载评论失败:', e);
+      console.error('加载评论异常:', e);
+      this.comments = [];
     }
   }
 
   async postComment(): Promise<void> {
-    if (!this.commentInputText.trim() || this.isSubmittingComment) return;
+    console.info('评论按钮被点击');
+    console.info('用户ID:', this.currentUserId, '文章ID:', this.articleId);
+    
+    if (!this.commentInputText.trim()) {
+      console.error('评论内容为空');
+      ToastUtil.showSuccess('请输入评论内容');
+      return;
+    }
+    if (this.isSubmittingComment) {
+      console.warn('正在提交评论，请勿重复点击');
+      return;
+    }
+    
+    if (!this.currentUserId || this.currentUserId === 0) {
+      console.error('未登录或用户ID无效');
+      ToastUtil.showSuccess('请先登录');
+      return;
+    }
 
     this.isSubmittingComment = true;
     try {
       const postData: CommentPostData = {
         articleId: Number(this.articleId),
         content: this.commentInputText.trim(),
-        userName: '当前用户',
+        userId: this.currentUserId,
         parentId: this.replyToCommentId
       };
+      console.info('发送评论请求:', JSON.stringify(postData));
       const response: BaseResponse<CommentData> = await HttpUtil.post<CommentData>(ApiConstants.COMMENT_ADD, postData);
+      console.info('评论响应:', JSON.stringify(response));
       if (response.success && response.data) {
         this.comments.unshift(response.data);
         this.commentInputText = '';
@@ -343,11 +404,26 @@ struct ScienceDetailPage {
         this.showCommentInput = false;
         ToastUtil.showSuccess('评论发布成功');
       } else {
-        ToastUtil.showSuccess('评论发布失败');
+        const errorMsg = response.message || '评论发布失败';
+        console.error('评论发布失败:', errorMsg, '响应码:', response.code);
+        ToastUtil.showSuccess(errorMsg);
       }
     } catch (e) {
-      console.error('发布评论失败:', e);
-      ToastUtil.showSuccess('发布失败，请检查网络');
+      console.error('发布评论异常:', e);
+      const error = e as Error;
+      let errorMsg = '发布失败，请检查网络';
+      if (error.message) {
+        if (error.message.includes('timeout')) {
+          errorMsg = '请求超时，请稍后重试';
+        } else if (error.message.includes('network')) {
+          errorMsg = '网络连接失败';
+        } else if (error.message.includes('401')) {
+          errorMsg = '登录已过期，请重新登录';
+        } else {
+          errorMsg = '发布失败: ' + error.message;
+        }
+      }
+      ToastUtil.showSuccess(errorMsg);
     } finally {
       this.isSubmittingComment = false;
     }

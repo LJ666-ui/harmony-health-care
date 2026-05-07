@@ -1,5 +1,6 @@
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
 import { BrowseTracker } from '../utils/BrowseTracker';
+import EventPersistenceManager from '../utils/EventPersistenceManager';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
@@ -42,6 +43,20 @@ export struct DiscoverPage {
   aboutToAppear(): void {
     this.loadAllData();
     this.recordId = BrowseTracker.recordStart('DiscoverPage', '发现页');
+    this.loadSearchHistoryFromDB();
+  }
+
+  async loadSearchHistoryFromDB(): Promise<void> {
+    try {
+      const items = await EventPersistenceManager.getSearchHistory('GLOBAL', 10);
+      const keywords: string[] = [];
+      for (let i = 0; i < items.length; i++) {
+        keywords.push(items[i].keyword);
+      }
+      this.searchHistory = keywords;
+    } catch (error) {
+      console.error('[DiscoverPage] 加载搜索历史失败:', error);
+    }
   }
 
   aboutToDisappear(): void {
@@ -133,16 +148,17 @@ export struct DiscoverPage {
   }
 
   // 添加搜索历史
-  addToSearchHistory() {
+  async addToSearchHistory(): Promise<void> {
     const index = this.searchHistory.indexOf(this.searchText);
     if (index !== -1) this.searchHistory.splice(index, 1);
     this.searchHistory.unshift(this.searchText);
     if (this.searchHistory.length > 10) this.searchHistory.pop();
+    await EventPersistenceManager.addSearchHistory(this.searchText, 'GLOBAL');
   }
 
-  // 清空搜索历史
-  clearSearchHistory() {
+  async clearSearchHistory(): Promise<void> {
     this.searchHistory = [];
+    await EventPersistenceManager.clearSearchHistory('GLOBAL');
   }
 
   // 选择搜索历史

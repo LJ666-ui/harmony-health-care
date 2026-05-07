@@ -1,6 +1,7 @@
 import promptAction from '@ohos.promptAction';
 import http from '@ohos.net.http';
 import connection from '@ohos.net.connection';
+import { router } from '@kit.ArkUI';
 import { getBaseUrl } from '../constants/ApiConstants';
 import { SettingsUtil } from '../../utils/SettingsUtil';
 import { selectTimeout, TimeoutConfig } from '../constants/TimeoutConfig';
@@ -65,6 +66,7 @@ export interface RequestOptions {
   retryCount?: number;
   skipAuth?: boolean;
   timeout?: number;
+  isAdmin?: boolean;  // 标识是否为管理员请求
 }
 
 interface FormDataItem {
@@ -78,10 +80,12 @@ const DEFAULT_OPTIONS: RequestOptions = {
   loadingText: '加载中...',
   retryCount: 1,
   skipAuth: false,
-  timeout: TimeoutConfig.NORMAL
+  timeout: TimeoutConfig.NORMAL,
+  isAdmin: false
 };
 
 let loadingCount: number = 0;
+let isHandling401: boolean = false;  // 防止重复处理401
 
 export class HttpUtil {
   private static readonly TIMEOUT: number = TimeoutConfig.NORMAL;
@@ -98,7 +102,8 @@ export class HttpUtil {
       loadingText: DEFAULT_OPTIONS.loadingText,
       retryCount: DEFAULT_OPTIONS.retryCount,
       skipAuth: DEFAULT_OPTIONS.skipAuth,
-      timeout: DEFAULT_OPTIONS.timeout
+      timeout: DEFAULT_OPTIONS.timeout,
+      isAdmin: DEFAULT_OPTIONS.isAdmin
     };
     if (options) {
       if (options.showLoading !== undefined) {
@@ -115,6 +120,9 @@ export class HttpUtil {
       }
       if (options.timeout !== undefined) {
         opts.timeout = options.timeout;
+      }
+      if (options.isAdmin !== undefined) {
+        opts.isAdmin = options.isAdmin;
       }
     }
 
@@ -165,7 +173,9 @@ export class HttpUtil {
     const timeoutValue: number = (options && options.timeout) || selectTimeout(url);
     console.log('[HttpUtil] ' + method + ' ' + fullUrl + ' (timeout: ' + timeoutValue + 'ms)', data ? JSON.stringify(data) : '');
 
-    const token: string | null = HttpUtil.getToken();
+    // 根据isAdmin选择不同的Token
+    const isAdminRequest: boolean = (options && options.isAdmin) || false;
+    const token: string | null = isAdminRequest ? HttpUtil.getAdminToken() : HttpUtil.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     };
@@ -338,8 +348,37 @@ export class HttpUtil {
     }
 
     if (response.responseCode === 401) {
-      HttpUtil.clearToken();
-      HttpUtil.showToast('登录已过期，请重新登录');
+      // 防止重复处理
+      if (!isHandling401) {
+        isHandling401 = true;
+        
+        // 判断当前是管理员还是普通用户
+        const isAdminLoggedIn: boolean = AppStorage.get<boolean>('isAdminLoggedIn') || false;
+        const isLoggedIn: boolean = AppStorage.get<boolean>('isLoggedIn') || false;
+        
+        if (isAdminLoggedIn) {
+          // 管理员Token过期
+          HttpUtil.clearAdminToken();
+          AppStorage.setOrCreate<boolean>('isAdminLoggedIn', false);
+          HttpUtil.showToast('登录已过期，请重新登录');
+          setTimeout(() => {
+            router.replaceUrl({ url: 'pages/AdminLogin' });
+            isHandling401 = false;
+          }, 1500);
+        } else if (isLoggedIn) {
+          // 普通用户Token过期
+          HttpUtil.clearToken();
+          AppStorage.setOrCreate<boolean>('isLoggedIn', false);
+          HttpUtil.showToast('登录已过期，请重新登录');
+          setTimeout(() => {
+            router.replaceUrl({ url: 'pages/Login' });
+            isHandling401 = false;
+          }, 1500);
+        } else {
+          // 未登录状态，不做处理
+          isHandling401 = false;
+        }
+      }
       return new BaseResponse<T>(false, '登录已过期，请重新登录', undefined, 401);
     }
 
@@ -431,6 +470,23 @@ export class HttpUtil {
     }
   }
 
+  /**
+   * 获取管理员Token
+   * 管理员使用独立的Token存储，避免与普通用户Token混淆
+   */
+  static getAdminToken(): string | null {
+    try {
+      const tokenFromAppStorage: string | undefined = AppStorage.get<string>('adminToken');
+      if (tokenFromAppStorage && tokenFromAppStorage.length > 0) {
+        return tokenFromAppStorage;
+      }
+      return null;
+    } catch (error) {
+      console.error('[HttpUtil] 获取管理员Token失败:', error);
+      return null;
+    }
+  }
+
   static async saveToken(token: string): Promise<void> {
     try {
       AppStorage.setOrCreate<string>('token', token);
@@ -448,6 +504,29 @@ export class HttpUtil {
       await settings.clearToken();
     } catch (error) {
       console.error('[HttpUtil] 清除Token失败:', error);
+    }
+  }
+
+  /**
+   * 保存管理员Token
+   * 管理员Token独立存储，不与普通用户Token混淆
+   */
+  static async saveAdminToken(token: string): Promise<void> {
+    try {
+      AppStorage.setOrCreate<string>('adminToken', token);
+    } catch (error) {
+      console.error('[HttpUtil] 保存管理员Token失败:', error);
+    }
+  }
+
+  /**
+   * 清除管理员Token
+   */
+  static async clearAdminToken(): Promise<void> {
+    try {
+      AppStorage.setOrCreate<string>('adminToken', '');
+    } catch (error) {
+      console.error('[HttpUtil] 清除管理员Token失败:', error);
     }
   }
 

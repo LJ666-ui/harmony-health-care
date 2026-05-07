@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import EventPersistenceManager from '../utils/EventPersistenceManager';
 
 interface RecordType {
   label: string;
@@ -78,7 +79,7 @@ struct AddHealthRecord {
     return true;
   }
 
-  saveRecord(): void {
+  async saveRecord(): Promise<void> {
     if (!this.validateForm()) {
       return;
     }
@@ -100,6 +101,38 @@ struct AddHealthRecord {
       wtValue = this.value.trim();
     }
 
+    try {
+      const numValue = Number(this.value);
+      switch (this.selectedType) {
+        case '血压':
+          // 血压值格式应该是 "收缩压/舒张压"，需要解析
+          const bpParts = bpValue ? bpValue.split('/') : [];
+          const systolic = bpParts.length > 0 ? Number(bpParts[0]) : numValue;
+          const diastolic = bpParts.length > 1 ? Number(bpParts[1]) : 0;
+          await EventPersistenceManager.saveBloodPressure(systolic, diastolic, this.notes);
+          break;
+        case '血糖':
+          await EventPersistenceManager.saveBloodSugar(numValue, this.notes);
+          break;
+        case '心率':
+          await EventPersistenceManager.saveHeartRate(numValue, this.notes);
+          break;
+        case '体重':
+          await EventPersistenceManager.saveWeight(numValue, this.notes);
+          break;
+        default:
+          await EventPersistenceManager.saveHealthRecord({
+            recordType: this.selectedType,
+            value: numValue,
+            unit: '',
+            notes: this.notes
+          });
+          break;
+      }
+    } catch (dbError) {
+      console.warn('AddHealthRecord: 本地保存失败，继续尝试网络保存', dbError);
+    }
+
     const recordData: HealthRecordInputData = {
       "userId": 1,
       "bloodPressure": bpValue,
@@ -116,12 +149,13 @@ struct AddHealthRecord {
         if (response.success) {
           router.back();
         } else {
-          this.errorMessage = response.message || '保存失败';
+          this.errorMessage = response.message || '已保存到本地，网络同步失败';
         }
       })
       .catch(() => {
         this.isSaving = false;
-        this.errorMessage = '网络请求失败，请重试';
+        console.log('AddHealthRecord: 网络请求失败，数据已保存在本地');
+        router.back();
       });
   }
 

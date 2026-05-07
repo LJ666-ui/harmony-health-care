@@ -1,26 +1,41 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
-import { AdminMock, AdminInfo, UserInfo } from '../mock/adminMock';
+import { AdminAuthService, AdminLoginResponse } from '../services/AdminAuthService';
+import promptAction from '@ohos.promptAction';
 
 @Entry
 @Component
 struct AdminDashboard {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @State currentAdmin: AdminInfo | null = null;
+  @State currentAdmin: AdminLoginResponse | null = null;
   @State selectedTab: number = 0;
   @State showSidebar: boolean = false;
+  @State hasAccess: boolean = false;
 
-  private tabs: string[] = ['仪表盘', '用户管理', '家属管理', '管理员管理'];
-  private tabIcons: string[] = ['📊', '👥', '👨‍👩‍👧', '🛡️'];
+  private tabs: string[] = ['仪表盘', '数据大屏', '用户管理', '家属管理', '管理员管理'];
+  private tabIcons: string[] = ['📊', '🖥️', '👥', '👨‍👩‍👧', '🛡️'];
   private tabRoutes: string[] = [
     'pages/AdminDashboard',
+    'pages/AdminDataDashboard',
     'pages/AdminUsers',
     'pages/AdminFamily',
     'pages/AdminManage'
   ];
 
   aboutToAppear(): void {
-    this.currentAdmin = AppStorage.get<AdminInfo>('currentAdmin') || null;
+    this.checkAccess();
+  }
+
+  private checkAccess(): void {
+    const admin = AdminAuthService.getCurrentAdmin();
+    if (!admin) {
+      promptAction.showToast({ message: '请先登录管理员账号' });
+      router.replaceUrl({ url: 'pages/AdminLogin' });
+      return;
+    }
+
+    this.currentAdmin = admin;
+    this.hasAccess = true;
   }
 
   build() {
@@ -28,6 +43,7 @@ struct AdminDashboard {
       Column() {
         this.TitleBar();
         this.StatsSection();
+        this.DataDashboardBanner();
         this.QuickActions();
         this.RecentSection();
       }
@@ -69,7 +85,7 @@ struct AdminDashboard {
       Row({ space: 6 }) {
         Text('👤')
           .fontSize(16);
-        Text(this.currentAdmin ? this.currentAdmin.real_name : '管理员')
+        Text(this.currentAdmin ? this.currentAdmin.realName : '管理员')
           .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
           .fontColor('#FFFFFFCC');
       }
@@ -95,10 +111,10 @@ struct AdminDashboard {
         .width('100%');
 
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        this.StatCard('👥', AdminMock.users.length, '注册用户', '#1677FF');
-        this.StatCard('👨‍👩‍👧', AdminMock.familyMembers.length, '家属记录', '#52C41A');
-        this.StatCard('🏥', AdminMock.users.filter(u => u.user_type === 1).length, '医生用户', '#FAAD14');
-        this.StatCard('🛡️', AdminMock.admins.length, '管理员', '#8B5CF6');
+        this.StatCard('👥', 0, '注册用户', '#1677FF');
+        this.StatCard('👨‍👩‍👧', 0, '家属记录', '#52C41A');
+        this.StatCard('🏥', 0, '医生用户', '#FAAD14');
+        this.StatCard('🛡️', 0, '管理员', '#8B5CF6');
       }
       .width('100%');
     }
@@ -107,6 +123,47 @@ struct AdminDashboard {
     .backgroundColor('#FFFFFF')
     .borderRadius(12)
     .margin({ top: 12, left: 12, right: 12 });
+  }
+
+  @Builder
+  DataDashboardBanner() {
+    Row() {
+      Column({ space: 8 }) {
+        Text('🖥️ 数据大屏')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#0F172A');
+        Text('全局运营监控 · 实时数据可视化')
+          .fontSize(11)
+          .fontColor('#64748B');
+      }
+      .alignItems(HorizontalAlign.Start);
+
+      Blank();
+
+      Column({ space: 4 }) {
+        Text('进入大屏 →')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#1677FF');
+        Text('用户/健康/预约/风险 全局视图')
+          .fontSize(9)
+          .fontColor('#94A3B8');
+      }
+      .alignItems(HorizontalAlign.End);
+    }
+    .width('100%')
+    .padding({ left: 20, right: 20, top: 16, bottom: 16 })
+    .linearGradient({
+      angle: 135,
+      colors: [['#E6F4FF', 0], ['#BAE7FF', 1]]
+    })
+    .borderRadius(12)
+    .border({ width: 1.5, color: '#91D5FF', style: BorderStyle.Solid })
+    .margin({ top: 12, left: 12, right: 12 })
+    .onClick(() => {
+      router.pushUrl({ url: 'pages/AdminDataDashboard' });
+    });
   }
 
   @Builder
@@ -186,33 +243,12 @@ struct AdminDashboard {
         .fontColor(GlobalTheme.TEXT_PRIMARY)
         .width('100%');
 
-      ForEach(AdminMock.users.slice(-5).reverse(), (user: UserInfo) => {
-        Row() {
-          Column({ space: 2 }) {
-            Text(user.username)
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor(GlobalTheme.TEXT_PRIMARY)
-              .fontWeight(FontWeight.Medium);
-            Text(user.phone)
-              .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-              .fontColor(GlobalTheme.TEXT_HINT);
-          }
-          .alignItems(HorizontalAlign.Start);
-
-          Blank();
-
-          Text(AdminMock.getUserTypeName(user.user_type))
-            .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-            .fontColor(AdminMock.getUserTypeColor(user.user_type))
-            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-            .backgroundColor(AdminMock.getUserTypeColor(user.user_type) + '15')
-            .borderRadius(6);
-        }
+      Text('暂无数据')
+        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+        .fontColor(GlobalTheme.TEXT_HINT)
         .width('100%')
-        .padding(12)
-        .backgroundColor('#F8FAFC')
-        .borderRadius(8);
-      }, (user: UserInfo) => `${user.id}`);
+        .textAlign(TextAlign.Center)
+        .padding(20);
     }
     .width('100%')
     .padding(16)
@@ -237,11 +273,11 @@ struct AdminDashboard {
           Column({ space: 8 }) {
             Text('🛡️')
               .fontSize(40);
-            Text(this.currentAdmin ? this.currentAdmin.real_name : '管理员')
+            Text(this.currentAdmin ? this.currentAdmin.realName : '管理员')
               .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
               .fontWeight(FontWeight.Bold)
               .fontColor('#FFFFFF');
-            Text(this.currentAdmin ? AdminMock.getRoleName(this.currentAdmin.role) : '')
+            Text(this.currentAdmin ? (this.currentAdmin.role === 1 ? '超级管理员' : '普通管理员') : '')
               .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
               .fontColor('#94A3B8')
               .padding({ left: 12, right: 12, top: 4, bottom: 4 })
@@ -292,10 +328,9 @@ struct AdminDashboard {
           .width('100%')
           .padding({ left: 20, top: 14, bottom: 14 })
           .borderRadius(8)
-          .onClick(() => {
+          .onClick(async () => {
             this.showSidebar = false;
-            AppStorage.setOrCreate<AdminInfo | null>('currentAdmin', null);
-            router.replaceUrl({ url: 'pages/AdminLogin' });
+            await AdminAuthService.logout();
           });
         }
         .width('75%')

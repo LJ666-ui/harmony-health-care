@@ -7,6 +7,7 @@ import { AccessibilityConfig } from '../utils/AccessibilityConfig';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
+import EventPersistenceManager from '../utils/EventPersistenceManager';
 import { UserInfoCard } from '../components/UserInfoCard';
 import { HealthStatsCard } from '../components/HealthStatsCard';
 import { ServiceList } from '../components/ServiceList';
@@ -213,6 +214,7 @@ struct Profile {
                 try {
                   const settings: SettingsUtil = SettingsUtil.getInstance();
                   await settings.clearAllLoginData();
+                  EventPersistenceManager.clearUserCache();
                   ToastUtil.showInfo('已退出登录');
                   router.replaceUrl({ url: 'pages/Login' });
                 } catch (error) {

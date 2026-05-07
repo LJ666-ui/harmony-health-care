@@ -98,8 +98,48 @@ struct ScienceDetailPage {
   @State replyToCommentId: number = 0;
   @State replyToUserName: string = '';
   @State showCommentInput: boolean = false;
+  @State showDeleteConfirm: boolean = false;
 
   private browseRecordId: number | undefined = undefined;
+
+  handleDeleteClick(): void {
+    this.showDeleteConfirm = true;
+  }
+
+  confirmDelete(): void {
+    this.showDeleteConfirm = false;
+    this.deleteArticle();
+  }
+
+  cancelDelete(): void {
+    this.showDeleteConfirm = false;
+  }
+
+  async deleteArticle(): Promise<void> {
+    if (!this.articleDetail) {
+      ToastUtil.showError('文章不存在', 3000);
+      return;
+    }
+
+    try {
+      console.info('删除文章，ID:', this.articleDetail.id);
+      const url: string = ApiConstants.ARTICLE_DELETE + this.articleDetail.id;
+      const response: BaseResponse<Object> = await HttpUtil.delete<Object>(url);
+      console.info('删除响应:', JSON.stringify(response));
+
+      if (response.success) {
+        ToastUtil.showSuccess('删除成功');
+        setTimeout(() => {
+          router.back();
+        }, 1000);
+      } else {
+        ToastUtil.showError(response.message || '删除失败', 3000);
+      }
+    } catch (e) {
+      console.error('删除文章异常:', e);
+      ToastUtil.showError('删除失败，请重试', 3000);
+    }
+  }
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -713,19 +753,32 @@ struct ScienceDetailPage {
           .fontColor('#333333')
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
-        Text('\u{1F4E4}')
-          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-          .fontColor('#1677FF')
-          .width(40)
-          .height(40)
-          .textAlign(TextAlign.Center)
-          .onClick(() => this.handleShare());
+
+        Row({ space: 8 }) {
+          Text('\u{1F4E4}')
+            .fontSize(20)
+            .fontColor('#1677FF')
+            .width(36)
+            .height(36)
+            .textAlign(TextAlign.Center)
+            .onClick(() => this.handleShare())
+
+          if (this.articleDetail && this.currentUserId > 0) {
+            Text('🗑️')
+              .fontSize(20)
+              .width(36)
+              .height(36)
+              .textAlign(TextAlign.Center)
+              .onClick(() => this.handleDeleteClick())
+          }
+        }
       }
       .width('100%')
       .height(56)
       .backgroundColor('#FFFFFF')
       .padding({ left: 16, right: 16 })
-      .justifyContent(FlexAlign.Center)
+      .justifyContent(FlexAlign.SpaceBetween)
+      .alignItems(VerticalAlign.Center)
 
       Scroll() {
         Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
@@ -779,6 +832,15 @@ struct ScienceDetailPage {
                 Text('\u{1F441} ' + this.formatReadCount(this.articleDetail.viewCount))
                   .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
                   .fontColor('#999999');
+
+                Blank()
+
+                if (this.currentUserId > 0) {
+                  Text('🗑️ 删除')
+                    .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                    .fontColor('#E74C3C')
+                    .onClick(() => this.handleDeleteClick())
+                }
               }
               .justifyContent(FlexAlign.Start)
               .width('100%')
@@ -856,6 +918,16 @@ struct ScienceDetailPage {
             }
           })
 
+          if (this.currentUserId > 0) {
+            Button('🗑️')
+              .width(56)
+              .height(56)
+              .fontSize(24)
+              .backgroundColor('transparent')
+              .border({ width: 0 })
+              .onClick(() => this.handleDeleteClick());
+          }
+
           Row() {
             Button('A-')
               .width(48)
@@ -900,6 +972,56 @@ struct ScienceDetailPage {
         offsetX: 0,
         offsetY: -4
       });
+
+      if (this.showDeleteConfirm) {
+        Column() {
+          Blank()
+          Column({ space: 20 }) {
+            Text('⚠️ 确认删除')
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333333')
+
+            Text('删除后无法恢复，确定要删除这篇文章吗？')
+              .fontSize(15)
+              .fontColor('#666666')
+              .textAlign(TextAlign.Center)
+
+            Row({ space: 16 }) {
+              Button('取消')
+                .layoutWeight(1)
+                .height(44)
+                .fontSize(15)
+                .fontColor('#666666')
+                .backgroundColor('#F5F7FA')
+                .borderRadius(10)
+                .onClick(() => this.cancelDelete())
+
+              Button('确认删除')
+                .layoutWeight(1)
+                .height(44)
+                .fontSize(15)
+                .fontColor('#FFFFFF')
+                .backgroundColor('#E74C3C')
+                .borderRadius(10)
+                .onClick(() => this.confirmDelete())
+            }
+            .width('100%')
+          }
+          .width('85%')
+          .padding(24)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(16)
+          .shadow({ radius: 20, color: '#00000022', offsetX: 0, offsetY: 4 })
+          Blank()
+        }
+        .width('100%')
+        .height('100%')
+        .position({ x: 0, y: 0 })
+        .backgroundColor('#00000055')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+      }
 
       Footer({ activeIndex: 3 });
     }

@@ -4,15 +4,18 @@ import { FamilyService } from '../services/FamilyService';
 import { FamilyMember, FamilyMemberHelper, FamilyRelation, CreateFamilyRequest } from '../models/FamilyMember';
 import { SessionManager } from '../utils/SessionManager';
 import { BaseResponse } from '../common/utils/HttpUtil';
+import { AuthManager, UserRole } from '../utils/AuthManager';
 
 @Entry
 @Component
 struct FamilyPage {
   @StorageLink('userId') userId: number = 0;
+  @StorageLink('isLoggedIn') isLoggedIn: boolean = false;
   @State familyMembers: FamilyMember[] = [];
   @State isLoading: boolean = false;
   @State showAddDialog: boolean = false;
   @State editingMember: FamilyMember | null = null;
+  @State hasAccess: boolean = false;
 
   @State newMember: CreateFamilyRequest = {
     name: '',
@@ -22,6 +25,26 @@ struct FamilyPage {
   };
 
   aboutToAppear(): void {
+    this.checkAccess();
+  }
+
+  private checkAccess(): void {
+    const authManager: AuthManager = AuthManager.getInstance();
+    const currentRole: UserRole = authManager.getCurrentRole();
+
+    if (currentRole === UserRole.GUEST) {
+      promptAction.showToast({ message: '请先登录' });
+      router.replaceUrl({ url: 'pages/Login' });
+      return;
+    }
+
+    if (currentRole !== UserRole.USER && currentRole !== UserRole.DOCTOR) {
+      promptAction.showToast({ message: '无权访问此页面' });
+      router.back();
+      return;
+    }
+
+    this.hasAccess = true;
     this.loadFamilyMembers();
   }
 

@@ -8,6 +8,7 @@ import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
+import EventPersistenceManager from '../utils/EventPersistenceManager';
 
 interface RegisterRequestData {
   username: string;
@@ -366,6 +367,17 @@ struct Register {
               if (loginResponse.data.userInfo) {
                 const settings = SettingsUtil.getInstance();
                 await settings.saveUserInfo(loginResponse.data.userInfo);
+                try {
+                  await EventPersistenceManager.cacheUserInfo(
+                    loginResponse.data.userInfo.userId ?? 0,
+                    loginResponse.data.token ?? '',
+                    loginResponse.data.userInfo.username,
+                    loginResponse.data.userInfo.avatar,
+                    String(loginResponse.data.userInfo.userType ?? 0)
+                  );
+                } catch (cacheErr) {
+                  console.warn('Register: 缓存用户信息到本地DB失败:', cacheErr);
+                }
               }
               AppStorage.setOrCreate<boolean>('isLoggedIn', true);
               router.replaceUrl({ url: 'pages/HomePage' });

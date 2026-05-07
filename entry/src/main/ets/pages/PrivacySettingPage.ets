@@ -7,6 +7,7 @@ import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { SettingsUtil } from '../utils/SettingsUtil';
+import EventPersistenceManager from '../utils/EventPersistenceManager';
 
 export interface PrivacySetting {
   locationEnabled: boolean;
@@ -178,6 +179,7 @@ struct PrivacySettingPage {
         try {
           const settings: SettingsUtil = SettingsUtil.getInstance();
           await settings.clearAllLoginData();
+          EventPersistenceManager.clearUserCache();
           ToastUtil.showInfo('已退出登录');
           router.replaceUrl({ url: 'pages/Login' });
         } catch (error) {

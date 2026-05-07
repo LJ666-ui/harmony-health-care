@@ -8,6 +8,7 @@ import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { SettingsUtil, PersistedUserInfo, PersistedDoctorInfo } from '../utils/SettingsUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import EventPersistenceManager from '../utils/EventPersistenceManager';
 
 interface LoginResponseData {
   token: string;
@@ -223,6 +224,18 @@ struct Login {
             }
 
             await settings.saveUserInfo(userInfo);
+
+            try {
+              await EventPersistenceManager.cacheUserInfo(
+                userInfo.userId ?? 0,
+                response.data?.token ?? '',
+                userInfo.username,
+                userInfo.avatar,
+                String(userInfo.userType ?? 0)
+              );
+            } catch (cacheErr) {
+              console.warn('Login: 缓存用户信息到本地DB失败:', cacheErr);
+            }
             
             if (userInfo && userInfo.userId) {
               AppStorage.setOrCreate<number>('userId', userInfo.userId);

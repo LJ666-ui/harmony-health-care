@@ -1,6 +1,7 @@
 import { SessionInfo, SessionInfoHelper, UserType } from '../models/SessionInfo';
 import { AdminInfo, AdminRole } from '../models/AdminInfo';
 import { PermissionInfoHelper, PAGE_PERMISSIONS } from '../models/PermissionInfo';
+import { CurrentAdmin } from '../services/AdminAuthService';
 
 export enum UserRole {
   GUEST = 'guest',
@@ -140,7 +141,18 @@ export class AuthManager {
   }
 
   private getAdminInfo(): AdminInfo | null {
-    const admin: AdminInfo | null | undefined = AppStorage.get<AdminInfo | null>('currentAdmin');
-    return admin !== undefined ? admin : null;
+    const admin: CurrentAdmin | null | undefined = AppStorage.get<CurrentAdmin | null>('currentAdmin');
+    if (admin === undefined || admin === null) {
+      return null;
+    }
+    const adminInfo: AdminInfo = new AdminInfo();
+    adminInfo.id = admin.id;
+    adminInfo.username = admin.username;
+    adminInfo.realName = admin.realName;
+    adminInfo.role = admin.role;
+    adminInfo.phone = admin.phone;
+    adminInfo.email = admin.email;
+    adminInfo.status = admin.status;
+    return adminInfo;
   }
 }

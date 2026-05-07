@@ -97,6 +97,13 @@
     "pages/AdminDashboard",
     "pages/AdminUsers",
     "pages/AdminFamily",
-    "pages/AdminManage"
+    "pages/AdminManage",
+    "pages/WatchHomePage",
+    "pages/WatchHealthMonitorPage",
+    "pages/WatchMedicationPage",
+    "pages/WatchEmergencyPage",
+    "pages/WatchSportPage",
+    "pages/WatchSleepPage",
+    "pages/WatchMessagePage"
   ]
 }

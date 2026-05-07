@@ -51,9 +51,23 @@ struct PublishArticlePage {
   ];
 
   aboutToAppear(): void {
+    console.info('===== PublishArticlePage aboutToAppear =====');
+    
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+    
+    if (AppStorage.get<boolean>('isLoggedIn') === undefined) {
+      AppStorage.setOrCreate<boolean>('isLoggedIn', false);
+    }
+    
+    if (AppStorage.get<number>('userId') === undefined) {
+      AppStorage.setOrCreate<number>('userId', 0);
+    }
+    
+    console.info('初始化后 - isLoggedIn:', AppStorage.get<boolean>('isLoggedIn'));
+    console.info('初始化后 - userId:', AppStorage.get<number>('userId'));
+    
     this.loadDraft();
   }
 
@@ -104,90 +118,7 @@ struct PublishArticlePage {
       ToastUtil.showSuccess('草稿已保存');
     } catch (e) {
       console.error('保存草稿失败:', e);
-      ToastUtil.showSuccess('草稿保存失败');
-    }
-  }
-
-  async publishArticle(): Promise<void> {
-    console.info('发布按钮被点击');
-    console.info('登录状态:', this.isLoggedIn, '用户ID:', this.currentUserId);
-    
-    if (!this.isLoggedIn || !this.currentUserId || this.currentUserId === 0) {
-      console.error('未登录或用户ID无效');
-      ToastUtil.showSuccess('请先登录');
-      return;
-    }
-    
-    if (!this.articleTitle.trim()) {
-      console.error('标题为空');
-      ToastUtil.showSuccess('请输入文章标题');
-      return;
-    }
-    if (this.articleTitle.trim().length < 5) {
-      console.error('标题长度不足:', this.articleTitle.trim().length);
-      ToastUtil.showSuccess('文章标题至少需要5个字');
-      return;
-    }
-    if (!this.articleContent.trim()) {
-      console.error('内容为空');
-      ToastUtil.showSuccess('请输入文章内容');
-      return;
-    }
-    if (this.articleContent.trim().length < 20) {
-      console.error('内容长度不足:', this.articleContent.trim().length);
-      ToastUtil.showSuccess('文章内容至少需要20个字');
-      return;
-    }
-
-    if (this.isPublishing) {
-      console.warn('正在发布中，请勿重复点击');
-      return;
-    }
-
-    this.isPublishing = true;
-    try {
-      const postData: ArticlePostData = {
-        title: this.articleTitle.trim(),
-        content: this.articleContent.trim(),
-        categoryId: this.categories[this.selectedCategoryIndex].id,
-        categoryName: this.categories[this.selectedCategoryIndex].name,
-        author: '当前用户',
-        coverImage: ''
-      };
-
-      console.info('发布文章请求:', JSON.stringify(postData));
-      const response: BaseResponse<Object> = await HttpUtil.post<Object>(ApiConstants.ARTICLE_ADD, postData);
-      console.info('发布文章响应:', JSON.stringify(response));
-
-      if (response.success) {
-        this.clearDraft();
-        ToastUtil.showSuccess('发布成功！');
-        setTimeout(() => {
-          router.back();
-        }, 1000);
-      } else {
-        const errorMsg = response.message || '发布失败，请重试';
-        console.error('发布失败:', errorMsg, '响应码:', response.code);
-        ToastUtil.showSuccess(errorMsg);
-      }
-    } catch (e) {
-      console.error('发布文章异常:', e);
-      const error = e as Error;
-      let errorMsg = '网络异常，请检查连接';
-      if (error.message) {
-        if (error.message.includes('timeout')) {
-          errorMsg = '请求超时，请稍后重试';
-        } else if (error.message.includes('network')) {
-          errorMsg = '网络连接失败';
-        } else if (error.message.includes('401')) {
-          errorMsg = '登录已过期，请重新登录';
-        } else {
-          errorMsg = '发布失败: ' + error.message;
-        }
-      }
-      ToastUtil.showSuccess(errorMsg);
-    } finally {
-      this.isPublishing = false;
+      ToastUtil.showError('草稿保存失败', 3000);
     }
   }
 
@@ -219,6 +150,78 @@ struct PublishArticlePage {
     router.back();
   }
 
+  handlePublish(): void {
+    console.info('===== handlePublish 开始 =====');
+    console.info('isPublishing:', this.isPublishing);
+    console.info('isLoggedIn:', this.isLoggedIn, 'userId:', this.currentUserId);
+    console.info('title:', this.articleTitle);
+    console.info('content:', this.articleContent.substring(0, 20) + '...');
+    
+    if (this.isPublishing) {
+      console.warn('正在发布，跳过');
+      return;
+    }
+    
+    if (!this.isLoggedIn || !this.currentUserId || this.currentUserId === 0) {
+      console.error('未登录');
+      ToastUtil.showError('请先登录', 3000);
+      setTimeout(() => {
+        router.pushUrl({ url: 'pages/Login' });
+      }, 1500);
+      return;
+    }
+    
+    const title = this.articleTitle.trim();
+    const content = this.articleContent.trim();
+    
+    if (!title || title.length < 5) {
+      ToastUtil.showError('标题至少5个字', 3000);
+      return;
+    }
+    
+    if (!content || content.length < 20) {
+      ToastUtil.showError('内容至少20个字', 3000);
+      return;
+    }
+    
+    console.info('验证通过，开始发布');
+    this.doPublish(title, content);
+  }
+
+  async doPublish(title: string, content: string): Promise<void> {
+    this.isPublishing = true;
+    
+    try {
+      const postData: ArticlePostData = {
+        title: title,
+        content: content,
+        categoryId: this.categories[this.selectedCategoryIndex].id,
+        categoryName: this.categories[this.selectedCategoryIndex].name,
+        author: '当前用户',
+        coverImage: ''
+      };
+
+      console.info('发布请求:', JSON.stringify(postData));
+      const response: BaseResponse<Object> = await HttpUtil.post<Object>(ApiConstants.ARTICLE_ADD, postData);
+      console.info('发布响应:', JSON.stringify(response));
+
+      if (response.success) {
+        await this.clearDraft();
+        ToastUtil.showSuccess('发布成功！');
+        setTimeout(() => {
+          router.back();
+        }, 1000);
+      } else {
+        ToastUtil.showError(response.message || '发布失败', 3000);
+      }
+    } catch (e) {
+      console.error('发布异常:', e);
+      ToastUtil.showError('网络异常，请重试', 3000);
+    } finally {
+      this.isPublishing = false;
+    }
+  }
+
   build() {
     Column() {
       Row() {
@@ -239,20 +242,25 @@ struct PublishArticlePage {
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
 
-        Button(this.isPublishing ? '发布中...' : '发布')
+        Text(this.isPublishing ? '发布中...' : '发布')
           .fontSize(14)
           .fontColor('#FFFFFF')
           .backgroundColor(this.isPublishing ? '#CCCCCC' : '#1677FF')
           .borderRadius(16)
           .height(36)
-          .enabled(!this.isPublishing)
-          .onClick(() => this.publishArticle())
+          .width(70)
+          .textAlign(TextAlign.Center)
+          .onClick(() => {
+            console.info('发布按钮被点击');
+            this.handlePublish();
+          })
       }
       .width('100%')
       .height(56)
       .backgroundColor('#FFFFFF')
       .padding({ left: 16, right: 16 })
-      .justifyContent(FlexAlign.Center)
+      .justifyContent(FlexAlign.SpaceBetween)
+      .alignItems(VerticalAlign.Center)
 
       Scroll() {
         Column({ space: this.isElderMode ? 20 : 16 }) {
@@ -417,6 +425,24 @@ struct PublishArticlePage {
           .backgroundColor('#FFFBEA')
           .borderRadius(12)
           .border({ width: 1, color: '#FFE58F' })
+
+          Column() {
+            Button(this.isPublishing ? '发布中...' : '发布文章')
+              .width('100%')
+              .height(50)
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#FFFFFF')
+              .backgroundColor(this.isPublishing ? '#CCCCCC' : '#1677FF')
+              .borderRadius(25)
+              .enabled(!this.isPublishing)
+              .onClick(() => {
+                console.info('底部发布按钮被点击');
+                this.handlePublish();
+              })
+          }
+          .width('100%')
+          .margin({ top: 16 })
         }
         .width('85%')
         .padding({ top: 16, bottom: 32 });

@@ -26,6 +26,15 @@ import {
   EmptyView
 } from '../components/ARNavigationComponents';
 
+/**
+ * 分类配置接口
+ */
+interface CategoryConfig {
+  category: DestinationCategory;
+  name: string;
+  icon: Resource;
+}
+
 @Entry
 @Component
 struct DestinationSelectPage {
@@ -39,17 +48,17 @@ struct DestinationSelectPage {
   @State showFavorites: boolean = false;
 
   // 分类配置
-  private categories = [
-    { category: DestinationCategory.DEPARTMENT, name: '科室', icon: $r('app.media.ic_department') },
-    { category: DestinationCategory.PHARMACY, name: '药房', icon: $r('app.media.ic_pharmacy') },
-    { category: DestinationCategory.LAB, name: '检验', icon: $r('app.media.ic_lab') },
-    { category: DestinationCategory.ELEVATOR, name: '电梯', icon: $r('app.media.ic_elevator') },
-    { category: DestinationCategory.RESTROOM, name: '洗手间', icon: $r('app.media.ic_restroom') },
-    { category: DestinationCategory.PAYMENT, name: '缴费', icon: $r('app.media.ic_payment') },
-    { category: DestinationCategory.EMERGENCY, name: '急诊', icon: $r('app.media.ic_emergency') },
-    { category: DestinationCategory.REGISTRATION, name: '挂号', icon: $r('app.media.ic_registration') },
-    { category: DestinationCategory.IMAGING, name: '影像', icon: $r('app.media.ic_imaging') },
-    { category: DestinationCategory.WARD, name: '病房', icon: $r('app.media.ic_ward') }
+  private categories: CategoryConfig[] = [
+    { category: DestinationCategory.DEPARTMENT, name: '科室', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.PHARMACY, name: '药房', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.LAB, name: '检验', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.ELEVATOR, name: '电梯', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.RESTROOM, name: '洗手间', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.PAYMENT, name: '缴费', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.EMERGENCY, name: '急诊', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.REGISTRATION, name: '挂号', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.IMAGING, name: '影像', icon: $r('app.media.startIcon') },
+    { category: DestinationCategory.WARD, name: '病房', icon: $r('app.media.startIcon') }
   ];
 
   aboutToAppear() {
@@ -162,17 +171,11 @@ struct DestinationSelectPage {
       
       // 搜索框
       SearchBar({
-        keyword: $searchKeyword,
+        searchText: $searchKeyword,
         placeholder: '搜索科室、药房、检验科...'
       })
         .width('90%')
         .margin({ top: 15, bottom: 15 })
-        .onSearch((keyword: string) => {
-          this.handleSearch(keyword);
-        })
-        .onClear(() => {
-          this.handleSearch('');
-        })
       
       // 分类标签
       this.CategoryTabs()
@@ -206,10 +209,9 @@ struct DestinationSelectPage {
   TitleBar() {
     Row() {
       // 返回按钮
-      Image($r('app.media.ic_back'))
-        .width(24)
-        .height(24)
-        .fillColor('#333333')
+      Text('←')
+        .fontSize(24)
+        .fontColor('#333333')
         .onClick(() => {
           router.back();
         })
@@ -224,10 +226,9 @@ struct DestinationSelectPage {
         .layoutWeight(1)
       
       // 收藏按钮
-      Image($r('app.media.ic_favorite'))
-        .width(24)
-        .height(24)
-        .fillColor(this.showFavorites ? '#FF4D4F' : '#999999')
+      Text('⭐')
+        .fontSize(24)
+        .fontColor(this.showFavorites ? '#FF4D4F' : '#999999')
         .onClick(() => {
           this.showFavorites = !this.showFavorites;
           if (this.showFavorites) {
@@ -256,30 +257,24 @@ struct DestinationSelectPage {
       Row() {
         // 全部分类
         CategoryTab({
-          category: DestinationCategory.DEPARTMENT,
-          name: '全部',
-          icon: $r('app.media.ic_all'),
-          count: this.destinationList.length,
-          isSelected: this.selectedCategory === null
-        })
-          .onClick(() => {
+          category: null,
+          isSelected: this.selectedCategory === null,
+          onTabClick: () => {
             this.handleCategorySelect(null);
-          })
-        
+          }
+        })
+
         Blank().width(10)
-        
+
         // 各分类
-        ForEach(this.categories, (item: any) => {
+        ForEach(this.categories, (item: CategoryConfig) => {
           CategoryTab({
             category: item.category,
-            name: item.name,
-            icon: item.icon,
-            count: getMockDestinationsByCategory(item.category).length,
-            isSelected: this.selectedCategory === item.category
-          })
-            .onClick(() => {
+            isSelected: this.selectedCategory === item.category,
+            onTabClick: () => {
               this.handleCategorySelect(item.category);
-            })
+            }
+          })
           
           Blank().width(10)
         })
@@ -305,15 +300,13 @@ struct DestinationSelectPage {
           DestinationCard({
             destination: destination,
             isFavorite: this.favoriteIds.includes(destination.id),
-            distance: 0,
-            showDistance: false
-          })
-            .onFavoriteToggle(() => {
-              this.toggleFavorite(destination.id);
-            })
-            .onClick(() => {
+            onCardClick: () => {
               this.navigateToSummary(destination);
-            })
+            },
+            onFavoriteToggle: () => {
+              this.toggleFavorite(destination.id);
+            }
+          })
         }
         .margin({ bottom: 10 })
       })
@@ -331,10 +324,9 @@ struct DestinationSelectPage {
   FavoriteBar() {
     Row() {
       // 收藏图标
-      Image($r('app.media.ic_favorite_filled'))
-        .width(20)
-        .height(20)
-        .fillColor('#FF4D4F')
+      Text('⭐')
+        .fontSize(20)
+        .fontColor('#FF4D4F')
       
       Blank().width(10)
       
@@ -351,10 +343,9 @@ struct DestinationSelectPage {
             .fontSize(14)
             .fontColor('#52C41A')
           
-          Image($r('app.media.ic_arrow_right'))
-            .width(16)
-            .height(16)
-            .fillColor('#52C41A')
+          Text('→')
+            .fontSize(16)
+            .fontColor('#52C41A')
         }
         .onClick(() => {
           this.showFavorites = true;

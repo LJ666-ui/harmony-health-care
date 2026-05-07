@@ -5,7 +5,7 @@ import { Input } from '../components/Input';
 import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
-import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { HttpUtil, BaseResponse, RequestOptions } from '../common/utils/HttpUtil';
 import { SettingsUtil, PersistedUserInfo, PersistedDoctorInfo } from '../utils/SettingsUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import EventPersistenceManager from '../utils/EventPersistenceManager';
@@ -68,22 +68,38 @@ struct Login {
       if (isLoggedIn) {
         const token: string = await settings.getToken();
         if (token && token.length > 0) {
-          AppStorage.setOrCreate<string>('token', token);
-          AppStorage.setOrCreate<boolean>('isLoggedIn', true);
-          const userInfo: PersistedUserInfo | null = await settings.getUserInfo();
-          if (userInfo) {
-            AppStorage.setOrCreate<PersistedUserInfo | null>('userInfo', userInfo);
-            AppStorage.setOrCreate<string>('username', userInfo.username || '');
-            if (userInfo.userId) {
-              AppStorage.setOrCreate<number>('userId', userInfo.userId);
-            }
-            if (userInfo.userType === 1) {
-              router.replaceUrl({ url: 'pages/DoctorHomePage' });
+          // 先验证Token是否有效，再决定是否自动登录
+          try {
+            const options: RequestOptions = { skipAuth: false };
+            const response = await HttpUtil.get<PersistedUserInfo>('/user/info', options);
+            if (response.success) {
+              // Token有效，恢复登录状态
+              AppStorage.setOrCreate<string>('token', token);
+              AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+              const userInfo: PersistedUserInfo | null = await settings.getUserInfo();
+              if (userInfo) {
+                AppStorage.setOrCreate<PersistedUserInfo | null>('userInfo', userInfo);
+                AppStorage.setOrCreate<string>('username', userInfo.username || '');
+                if (userInfo.userId) {
+                  AppStorage.setOrCreate<number>('userId', userInfo.userId);
+                }
+                if (userInfo.userType === 1) {
+                  router.replaceUrl({ url: 'pages/DoctorHomePage' });
+                } else {
+                  router.replaceUrl({ url: 'pages/HomePage' });
+                }
+              } else {
+                router.replaceUrl({ url: 'pages/HomePage' });
+              }
             } else {
-              router.replaceUrl({ url: 'pages/HomePage' });
+              // Token无效，清除登录状态
+              console.info('[Login] Token已失效，清除登录状态');
+              await settings.clearAllLoginData();
             }
-          } else {
-            router.replaceUrl({ url: 'pages/HomePage' });
+          } catch (error) {
+            // 验证失败，清除登录状态
+            console.error('[Login] Token验证失败:', error);
+            await settings.clearAllLoginData();
           }
         }
       }
@@ -486,6 +502,28 @@ struct Login {
           .backgroundColor('#FAFBFF')
           .borderRadius(10)
           .border({ width: 1, color: '#E8ECF2', style: BorderStyle.Solid });
+
+          // 管理员登录入口
+          Row({ space: 8 }) {
+            Text('🛡️')
+              .fontSize(16);
+            Text('管理员登录')
+              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+              .fontColor('#1E293B')
+              .fontWeight(FontWeight.Medium);
+            Blank();
+            Text('→')
+              .fontSize(16)
+              .fontColor('#1E293B');
+          }
+          .width('100%')
+          .padding(14)
+          .backgroundColor('#F8FAFC')
+          .borderRadius(10)
+          .border({ width: 1, color: '#CBD5E1', style: BorderStyle.Solid })
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/AdminLogin' });
+          });
 
           // 功能亮点
           Row({ space: 0 }) {

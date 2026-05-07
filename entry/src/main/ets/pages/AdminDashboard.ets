@@ -1,6 +1,8 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
 import { AdminMock, AdminInfo, UserInfo } from '../mock/adminMock';
+import { AuthManager, UserRole } from '../utils/AuthManager';
+import promptAction from '@ohos.promptAction';
 
 @Entry
 @Component
@@ -9,6 +11,7 @@ struct AdminDashboard {
   @State currentAdmin: AdminInfo | null = null;
   @State selectedTab: number = 0;
   @State showSidebar: boolean = false;
+  @State hasAccess: boolean = false;
 
   private tabs: string[] = ['仪表盘', '用户管理', '家属管理', '管理员管理'];
   private tabIcons: string[] = ['📊', '👥', '👨‍👩‍👧', '🛡️'];
@@ -20,7 +23,27 @@ struct AdminDashboard {
   ];
 
   aboutToAppear(): void {
+    this.checkAccess();
+  }
+
+  private checkAccess(): void {
+    const authManager: AuthManager = AuthManager.getInstance();
+    const currentRole: UserRole = authManager.getCurrentRole();
+
+    if (currentRole === UserRole.GUEST) {
+      promptAction.showToast({ message: '请先登录管理员账号' });
+      router.replaceUrl({ url: 'pages/AdminLogin' });
+      return;
+    }
+
+    if (currentRole !== UserRole.ADMIN && currentRole !== UserRole.SUPER_ADMIN) {
+      promptAction.showToast({ message: '无权访问管理后台' });
+      router.back();
+      return;
+    }
+
     this.currentAdmin = AppStorage.get<AdminInfo>('currentAdmin') || null;
+    this.hasAccess = true;
   }
 
   build() {

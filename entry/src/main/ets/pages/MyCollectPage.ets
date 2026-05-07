@@ -4,6 +4,7 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import EventPersistenceManager from '../utils/EventPersistenceManager';
 
 export interface ScienceArticle {
   id: string;
@@ -82,6 +83,7 @@ struct MyCollectPage {
 
   async handleUncollect(articleId: string): Promise<void> {
     try {
+      await EventPersistenceManager.removeCollect('article', Number(articleId));
       const url: string = ApiConstants.ARTICLE_UNCOLLECT + articleId + '/collect';
       const response: BaseResponse<Object> = await HttpUtil.delete<Object>(url);
       if (response.success) {

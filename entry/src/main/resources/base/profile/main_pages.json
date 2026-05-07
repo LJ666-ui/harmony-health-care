@@ -73,6 +73,7 @@
     "pages/AlertHistoryPage",
     "pages/ReminderSettingsPage",
     "pages/EmergencyContactsPage",
+    "pages/FamilyPage",
     "pages/NurseStationDashboardSimple",
     "pages/SmartWardDevicesSimple",
     "pages/SmartWardAlertsSimple",

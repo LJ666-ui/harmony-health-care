@@ -173,13 +173,38 @@ export class HttpUtil {
     const timeoutValue: number = (options && options.timeout) || selectTimeout(url);
     console.log('[HttpUtil] ' + method + ' ' + fullUrl + ' (timeout: ' + timeoutValue + 'ms)', data ? JSON.stringify(data) : '');
 
-    // 根据isAdmin选择不同的Token
-    const isAdminRequest: boolean = (options && options.isAdmin) || false;
-    const token: string | null = isAdminRequest ? HttpUtil.getAdminToken() : HttpUtil.getToken();
+    // 自动检测当前登录角色并选择对应的Token
+    // 优先级：家属 > 护士 > 管理员 > 普通用户
+    let token: string | null = null;
+    
+    if (options && options.skipAuth) {
+      // 跳过认证，不添加Token
+      token = null;
+    } else if (options && options.isAdmin) {
+      // 明确指定为管理员请求
+      token = HttpUtil.getAdminToken();
+    } else {
+      // 自动检测当前登录角色
+      const isFamilyLoggedIn: boolean = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
+      const isNurseLoggedIn: boolean = AppStorage.get<boolean>('isNurseLoggedIn') || false;
+      const isAdminLoggedIn: boolean = AppStorage.get<boolean>('isAdminLoggedIn') || false;
+      const isLoggedIn: boolean = AppStorage.get<boolean>('isLoggedIn') || false;
+      
+      if (isFamilyLoggedIn) {
+        token = HttpUtil.getFamilyToken();
+      } else if (isNurseLoggedIn) {
+        token = HttpUtil.getNurseToken();
+      } else if (isAdminLoggedIn) {
+        token = HttpUtil.getAdminToken();
+      } else if (isLoggedIn) {
+        token = HttpUtil.getToken();
+      }
+    }
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     };
-    if (token && !(options && options.skipAuth)) {
+    if (token) {
       headers['Token'] = token;
     }
 
@@ -352,11 +377,31 @@ export class HttpUtil {
       if (!isHandling401) {
         isHandling401 = true;
         
-        // 判断当前是管理员还是普通用户
+        // 检测当前登录角色（优先级：家属 > 护士 > 管理员 > 普通用户）
+        const isFamilyLoggedIn: boolean = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
+        const isNurseLoggedIn: boolean = AppStorage.get<boolean>('isNurseLoggedIn') || false;
         const isAdminLoggedIn: boolean = AppStorage.get<boolean>('isAdminLoggedIn') || false;
         const isLoggedIn: boolean = AppStorage.get<boolean>('isLoggedIn') || false;
         
-        if (isAdminLoggedIn) {
+        if (isFamilyLoggedIn) {
+          // 家属Token过期
+          HttpUtil.clearFamilyToken();
+          AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', false);
+          HttpUtil.showToast('登录已过期，请重新登录');
+          setTimeout(() => {
+            router.replaceUrl({ url: 'pages/FamilyLogin' });
+            isHandling401 = false;
+          }, 1500);
+        } else if (isNurseLoggedIn) {
+          // 护士Token过期
+          HttpUtil.clearNurseToken();
+          AppStorage.setOrCreate<boolean>('isNurseLoggedIn', false);
+          HttpUtil.showToast('登录已过期，请重新登录');
+          setTimeout(() => {
+            router.replaceUrl({ url: 'pages/NurseLogin' });
+            isHandling401 = false;
+          }, 1500);
+        } else if (isAdminLoggedIn) {
           // 管理员Token过期
           HttpUtil.clearAdminToken();
           AppStorage.setOrCreate<boolean>('isAdminLoggedIn', false);
@@ -533,5 +578,105 @@ export class HttpUtil {
   static hasToken(): boolean {
     const token = HttpUtil.getToken();
     return !!token && token.length > 0;
+  }
+
+  // ==================== 家属相关方法 ====================
+
+  /**
+   * 获取家属Token
+   */
+  static getFamilyToken(): string | null {
+    try {
+      const tokenFromAppStorage: string | undefined = AppStorage.get<string>('familyToken');
+      if (tokenFromAppStorage && tokenFromAppStorage.length > 0) {
+        return tokenFromAppStorage;
+      }
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      const tokenFromPrefs: string = settings.getFamilyTokenSync();
+      if (tokenFromPrefs && tokenFromPrefs.length > 0) {
+        AppStorage.setOrCreate<string>('familyToken', tokenFromPrefs);
+        return tokenFromPrefs;
+      }
+      return null;
+    } catch (error) {
+      console.error('[HttpUtil] 获取家属Token失败:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 保存家属Token
+   */
+  static async saveFamilyToken(token: string): Promise<void> {
+    try {
+      AppStorage.setOrCreate<string>('familyToken', token);
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.saveFamilyToken(token);
+    } catch (error) {
+      console.error('[HttpUtil] 保存家属Token失败:', error);
+    }
+  }
+
+  /**
+   * 清除家属Token
+   */
+  static async clearFamilyToken(): Promise<void> {
+    try {
+      AppStorage.setOrCreate<string>('familyToken', '');
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.clearFamilyAuth();
+    } catch (error) {
+      console.error('[HttpUtil] 清除家属Token失败:', error);
+    }
+  }
+
+  // ==================== 护士相关方法 ====================
+
+  /**
+   * 获取护士Token
+   */
+  static getNurseToken(): string | null {
+    try {
+      const tokenFromAppStorage: string | undefined = AppStorage.get<string>('nurseToken');
+      if (tokenFromAppStorage && tokenFromAppStorage.length > 0) {
+        return tokenFromAppStorage;
+      }
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      const tokenFromPrefs: string = settings.getNurseTokenSync();
+      if (tokenFromPrefs && tokenFromPrefs.length > 0) {
+        AppStorage.setOrCreate<string>('nurseToken', tokenFromPrefs);
+        return tokenFromPrefs;
+      }
+      return null;
+    } catch (error) {
+      console.error('[HttpUtil] 获取护士Token失败:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 保存护士Token
+   */
+  static async saveNurseToken(token: string): Promise<void> {
+    try {
+      AppStorage.setOrCreate<string>('nurseToken', token);
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.saveNurseToken(token);
+    } catch (error) {
+      console.error('[HttpUtil] 保存护士Token失败:', error);
+    }
+  }
+
+  /**
+   * 清除护士Token
+   */
+  static async clearNurseToken(): Promise<void> {
+    try {
+      AppStorage.setOrCreate<string>('nurseToken', '');
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.clearNurseAuth();
+    } catch (error) {
+      console.error('[HttpUtil] 清除护士Token失败:', error);
+    }
   }
 }

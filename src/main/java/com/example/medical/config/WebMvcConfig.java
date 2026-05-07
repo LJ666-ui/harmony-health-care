@@ -43,6 +43,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/register",
                         "/user/send-code",  // 验证码接口无需登录
                         "/admin/login",  // 管理员登录接口无需登录
+                        "/family/login",  // 家属登录接口无需登录
+                        "/nurse/login",  // 护士登录接口无需登录
                         "/ai/**",
                         "/herbal/**",  // 药材百科接口无需登录
                         "/error",

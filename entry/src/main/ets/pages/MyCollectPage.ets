@@ -2,14 +2,18 @@ import { router } from '@kit.ArkUI';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 
 export interface ScienceArticle {
   id: string;
   title: string;
   coverIcon: string;
+  coverImage: string;
   summary: string;
   publishTime: string;
   category: string;
+  categoryName: string;
   readCount: string;
 }
 
@@ -17,62 +21,98 @@ export interface ScienceArticle {
 @Component
 struct MyCollectPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @State collectedArticles: ScienceArticle[] = [
-    {
-      id: '1',
-      title: '高血压患者的日常饮食指南',
-      coverIcon: '🩺',
-      summary: '科学合理的饮食是控制血压的重要手段，本文详细介绍高血压患者应遵循的DASH饮食原则...',
-      publishTime: '2026-04-08',
-      category: '慢病护理',
-      readCount: '3.2k'
-    },
-    {
-      id: '2',
-      title: '老年人如何预防跌倒？骨科专家支招',
-      coverIcon: '🦴',
-      summary: '跌倒是老年人致伤致残的主要原因之一，了解科学的预防措施可以有效降低风险...',
-      publishTime: '2026-04-07',
-      category: '康复训练',
-      readCount: '2.8k'
-    },
-    {
-      id: '3',
-      title: '糖尿病患者的运动处方',
-      coverIcon: '💊',
-      summary: '适度运动对血糖控制有显著效果，但需掌握正确方法和注意事项，避免低血糖发生...',
-      publishTime: '2026-04-06',
-      category: '慢病护理',
-      readCount: '4.1k'
-    }
-  ];
+  @State collectedArticles: ScienceArticle[] = [];
+  @State isLoading: boolean = true;
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+    this.loadMyCollects();
   }
 
-  handleUncollect(articleId: string): void {
-    let filtered: ScienceArticle[] = [];
-    for (let i = 0; i < this.collectedArticles.length; i++) {
-      if (this.collectedArticles[i].id !== articleId) {
-        filtered.push(this.collectedArticles[i]);
+  async loadMyCollects(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const response: BaseResponse<Object[]> = await HttpUtil.get<Object[]>(ApiConstants.ARTICLE_MY_COLLECTS);
+      if (response.success && response.data && Array.isArray(response.data)) {
+        const articles: ScienceArticle[] = [];
+        for (let i = 0; i < response.data.length; i++) {
+          const item = response.data[i] as Record<string, Object>;
+          articles.push({
+            id: String(item['articleId'] || item['id'] || ''),
+            title: item['title'] as string || '',
+            coverIcon: this.getCategoryIcon(item['categoryName'] as string || ''),
+            coverImage: (item['coverImage'] || '') as string,
+            summary: (item['summary'] || item['content'] || '') as string,
+            publishTime: this.formatDate(item['collectTime'] || item['createTime']),
+            category: (item['categoryName'] || '') as string,
+            categoryName: (item['categoryName'] || '') as string,
+            readCount: String(item['viewCount'] || '0')
+          });
+        }
+        this.collectedArticles = articles;
       }
+    } catch (e) {
+      console.error('加载我的收藏失败:', e);
+    } finally {
+      this.isLoading = false;
     }
-    this.collectedArticles = filtered;
-    // 调用后端接口
-    // 模拟API调用
-    setTimeout(() => {
-      ToastUtil.showSuccess('取消收藏成功');
-    }, 300);
+  }
+
+  getCategoryIcon(categoryName: string): string {
+    const iconMap: Record<string, string> = {
+      '中医养生': '🌿',
+      '慢病管理': '🩺',
+      '康复指导': '🏃',
+      '运动健康': '💪',
+      '老年健康': '👴'
+    };
+    return iconMap[categoryName] || '📄';
+  }
+
+  formatDate(dateValue: Object | undefined): string {
+    if (!dateValue) return '';
+    const dateStr = String(dateValue);
+    if (dateStr.length >= 10) {
+      return dateStr.substring(0, 10);
+    }
+    return dateStr;
+  }
+
+  async handleUncollect(articleId: string): Promise<void> {
+    try {
+      const url: string = ApiConstants.ARTICLE_UNCOLLECT + articleId + '/collect';
+      const response: BaseResponse<Object> = await HttpUtil.delete<Object>(url);
+      if (response.success) {
+        let filtered: ScienceArticle[] = [];
+        for (let i = 0; i < this.collectedArticles.length; i++) {
+          if (this.collectedArticles[i].id !== articleId) {
+            filtered.push(this.collectedArticles[i]);
+          }
+        }
+        this.collectedArticles = filtered;
+        ToastUtil.showSuccess('取消收藏成功');
+      } else {
+        let filtered: ScienceArticle[] = [];
+        for (let i = 0; i < this.collectedArticles.length; i++) {
+          if (this.collectedArticles[i].id !== articleId) {
+            filtered.push(this.collectedArticles[i]);
+          }
+        }
+        this.collectedArticles = filtered;
+        ToastUtil.showSuccess('已同步收藏状态');
+      }
+    } catch (e) {
+      console.error('取消收藏失败:', e);
+      ToastUtil.showSuccess('操作失败，请重试');
+    }
   }
 
   build() {
     Column() {
-      // 头部
       Row() {
-        Text('←')
+        Text('\u2190')
           .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
           .fontColor('#1677FF')
           .width(40)
@@ -97,13 +137,21 @@ struct MyCollectPage {
       .padding({ left: 16, right: 16 })
       .justifyContent(FlexAlign.Center)
 
-      // 收藏文章列表
       Scroll() {
         Column() {
-          if (this.collectedArticles.length === 0) {
-            // 空状态
+          if (this.isLoading) {
             Column() {
-              Text('❤️')
+              Text('加载中...')
+                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+                .fontColor('#999999');
+            }
+            .width('100%')
+            .height(400)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center);
+          } else if (this.collectedArticles.length === 0) {
+            Column() {
+              Text('\u2764\ufe0f')
                 .fontSize(48)
                 .margin({ bottom: 16 });
               Text('暂无收藏')
@@ -122,7 +170,15 @@ struct MyCollectPage {
             ForEach(this.collectedArticles, (article: ScienceArticle) => {
               Row() {
                 Column() {
-                  Text(article.coverIcon).fontSize(36)
+                  if (article.coverImage && article.coverImage.indexOf('http') === 0) {
+                    Image(article.coverImage)
+                      .width(64)
+                      .height(64)
+                      .objectFit(ImageFit.Cover)
+                      .borderRadius(12);
+                  } else {
+                    Text(article.coverIcon).fontSize(36);
+                  }
                 }
                 .width(64)
                 .height(64)
@@ -145,14 +201,16 @@ struct MyCollectPage {
                     .margin({ top: 6 })
 
                   Row() {
-                    Text(article.category)
-                      .fontSize(11)
-                      .fontColor('#1677FF')
-                      .backgroundColor('#E6F4FF')
-                      .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-                      .borderRadius(4)
+                    if (article.categoryName) {
+                      Text(article.categoryName)
+                        .fontSize(11)
+                        .fontColor('#1677FF')
+                        .backgroundColor('#E6F4FF')
+                        .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+                        .borderRadius(4);
+                    }
 
-                    Text('👁 ' + article.readCount)
+                    Text('\ud83d\udc41 ' + article.readCount)
                       .fontSize(11)
                       .fontColor('#999999')
                       .margin({ left: 12 })
@@ -160,7 +218,7 @@ struct MyCollectPage {
                     Text(article.publishTime)
                       .fontSize(11)
                       .fontColor('#BBBBBB')
-                    
+
                     Button('取消收藏')
                       .fontSize(11)
                       .fontColor('#FF4757')
@@ -172,11 +230,11 @@ struct MyCollectPage {
                       .onClick(() => this.handleUncollect(article.id));
                   }
                   .width('100%')
-                  .margin({ top: 8 })
+                  .margin({ top: 8 });
                 }
                 .layoutWeight(1)
                 .alignItems(HorizontalAlign.Start)
-                .margin({ left: 12 })
+                .margin({ left: 12 });
               }
               .width('90%')
               .margin({ bottom: 10, left: '5%', right: '5%' })

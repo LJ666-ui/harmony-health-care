@@ -6,9 +6,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface AncientMedicalImageService {
 
-    AncientMedicalImage uploadImage(MultipartFile file, String title, String desc);
+    AncientMedicalImage uploadImage(MultipartFile file, String title, String desc, String source);
 
-    Page<AncientMedicalImage> getImageList(int page, int size);
+    Page<AncientMedicalImage> getImageList(int page, int size, String source);
 
     AncientMedicalImage getImageDetail(Long id);
 

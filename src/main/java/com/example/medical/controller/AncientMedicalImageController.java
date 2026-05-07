@@ -18,12 +18,13 @@ public class AncientMedicalImageController {
     @PostMapping("/upload")
     public Result<?> uploadImage(@RequestParam("file") MultipartFile file,
                                  @RequestParam(value = "title", required = false) String title,
-                                 @RequestParam(value = "desc", required = false) String desc) {
+                                 @RequestParam(value = "desc", required = false) String desc,
+                                 @RequestParam(value = "source", required = false) String source) {
         try {
             if (file.isEmpty()) {
                 return Result.error("上传文件不能为空");
             }
-            AncientMedicalImage image = ancientMedicalImageService.uploadImage(file, title, desc);
+            AncientMedicalImage image = ancientMedicalImageService.uploadImage(file, title, desc, source);
             return Result.success(image);
         } catch (Exception e) {
             return Result.error("上传失败：" + e.getMessage());
@@ -32,9 +33,10 @@ public class AncientMedicalImageController {
 
     @GetMapping("/list")
     public Result<?> getImageList(@RequestParam(defaultValue = "1") int page,
-                                  @RequestParam(defaultValue = "10") int size) {
+                                  @RequestParam(defaultValue = "10") int size,
+                                  @RequestParam(required = false) String source) {
         try {
-            Page<AncientMedicalImage> pageResult = ancientMedicalImageService.getImageList(page, size);
+            Page<AncientMedicalImage> pageResult = ancientMedicalImageService.getImageList(page, size, source);
             return Result.success(pageResult);
         } catch (Exception e) {
             return Result.error("查询失败：" + e.getMessage());

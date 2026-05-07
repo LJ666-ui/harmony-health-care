@@ -9,37 +9,36 @@ import lombok.Data;
 import java.util.Date;
 
 /**
- * 药品信息实体类，对应 medicine 表
+ * 药品分类字典实体类，对应 medicine_categories 表
  */
 @Data
-@TableName("medicine")
-public class Medicine {
+@TableName("medicine_categories")
+public class MedicineCategory {
 
-    @TableId(type = IdType.AUTO) // 主键，自动递增
+    @TableId(type = IdType.AUTO)
     private Long id;
-
-    /** 药品名 */
-    private String name;
-
-    /** 药品类别 */
-    private String category;
 
     /** 分类编码 */
     @TableField("category_code")
     private String categoryCode;
 
-    /** 适应症 */
-    private String indication;
+    /** 分类名称 */
+    @TableField("category_name")
+    private String categoryName;
 
-    /** 用法用量 */
-    @TableField("usage_desc")
-    private String usageDesc;
+    /** 父分类编码 */
+    @TableField("parent_code")
+    private String parentCode;
 
-    /** 禁忌 */
-    private String taboo;
+    /** 分类层级：1=一级 2=二级 3=三级 */
+    private Integer level;
 
-    /** 来源 */
-    private String source;
+    /** 显示顺序 */
+    @TableField("display_order")
+    private Integer displayOrder;
+
+    /** 状态：0=禁用 1=启用 */
+    private Integer status;
 
     /** 创建时间 */
     @TableField("create_time")

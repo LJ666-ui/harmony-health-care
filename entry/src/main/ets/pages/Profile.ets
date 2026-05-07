@@ -54,6 +54,7 @@ struct Profile {
 
   @State menuItems: MenuItem[] = [
     { icon: '📱', title: '设备绑定', color: '#1677FF', url: 'pages/DeviceDiscoveryPage' },
+    { icon: '👥', title: '家属管理', color: '#52C41A', url: 'pages/FamilyPage' },
     { icon: '🎤', title: '语音助手', color: '#1677FF', url: 'pages/VoiceAssistantPage' },
     { icon: '📊', title: '健康统计报告', color: '#52C41A', url: 'pages/StatisticsPage' },
     { icon: '🏆', title: '社区排行榜', color: '#FAAD14', url: 'pages/RankingPage' },

@@ -99,12 +99,67 @@ struct Register {
   }
 
   /**
+   * 安全显示Toast提示（捕获异常并提供降级方案）
+   */
+  private safeShowToast(type: 'success' | 'error', message: string, duration: number = 2000): void {
+    try {
+      if (type === 'success') {
+        ToastUtil.showSuccess(message, duration);
+      } else {
+        ToastUtil.showError(message, duration);
+      }
+      console.log(`[Toast] ${type}: ${message}`);
+    } catch (error) {
+      console.error('[Toast] Toast显示失败，使用降级方案:', error);
+      console.log(`[Toast降级] ${type}: ${message}`);
+    }
+  }
+
+  /**
+   * 断言状态一致性（检测并修正状态不一致）
+   */
+  private assertStateConsistency(): void {
+    console.log('[状态检查] 开始状态一致性检查');
+    console.log(`[状态检查] username: ${this.username}`);
+    console.log(`[状态检查] isCountingDown: ${this.isCountingDown}`);
+    console.log(`[状态检查] countdown: ${this.countdown}`);
+    console.log(`[状态检查] phoneRegex.test(username): ${this.phoneRegex.test(this.username)}`);
+
+    if (this.isCountingDown && this.countdown <= 0) {
+      console.error('[状态检查] 检测到状态不一致: isCountingDown=true但countdown<=0，自动修正');
+      this.isCountingDown = false;
+      this.countdown = 0;
+    }
+
+    if (!this.isCountingDown && this.countdown > 0) {
+      console.error('[状态检查] 检测到状态不一致: isCountingDown=false但countdown>0，自动修正');
+      this.countdown = 0;
+    }
+
+    if (!this.phoneRegex.test(this.username)) {
+      console.warn('[状态检查] 手机号格式无效');
+    }
+
+    console.log('[状态检查] 状态一致性检查完成');
+  }
+
+  /**
    * 发送验证码
    */
   private async sendVerificationCode(): Promise<void> {
+    console.log('[验证码] 进入sendVerificationCode方法');
+    console.log(`[验证码] 当前手机号: ${this.username}`);
+
+    // 状态一致性检查
+    this.assertStateConsistency();
+
     // 验证手机号格式
-    if (!this.phoneRegex.test(this.username)) {
-      ToastUtil.showError('请输入正确的手机号', 2000);
+    const isValidPhone = this.phoneRegex.test(this.username);
+    console.log(`[验证码] 手机号验证结果: ${isValidPhone}`);
+
+    if (!isValidPhone) {
+      console.warn('[验证码] 手机号格式验证失败');
+      this.safeShowToast('error', '请输入正确的手机号', 2000);
       return;
     }
 
@@ -112,9 +167,18 @@ struct Register {
       const sendCodeRequest: SendCodeRequest = {
         phone: this.username
       };
-      const response = await HttpUtil.post<SendCodeResponse>('/user/send-code', sendCodeRequest, { skipAuth: true });
+      console.log(`[验证码] 准备发送请求: ${JSON.stringify(sendCodeRequest)}`);
+
+      const response = await HttpUtil.post<SendCodeResponse>(
+        '/user/send-code',
+        sendCodeRequest,
+        { skipAuth: true }
+      );
+      console.log(`[验证码] 收到响应: ${JSON.stringify(response)}`);
+
       if (response.success) {
-        ToastUtil.showSuccess('验证码已发送', 2000);
+        console.log('[验证码] 验证码发送成功');
+        this.safeShowToast('success', '验证码已发送', 2000);
         this.startCountdown();
         // 测试环境：如果后端返回了验证码，自动填充
         if (response.data && response.data.code) {
@@ -122,15 +186,18 @@ struct Register {
           console.log('[测试模式] 验证码已自动填充:', response.data.code);
         }
       } else {
-        ToastUtil.showError(response.message || '发送失败', 2000);
+        console.warn(`[验证码] 验证码发送失败: ${response.message}`);
+        this.safeShowToast('error', response.message || '发送失败', 2000);
       }
     } catch (error) {
       // 后端服务未启动时，使用Mock模式
-      console.warn('验证码服务暂不可用，使用Mock模式');
-      ToastUtil.showSuccess('验证码已发送（测试模式）', 2000);
+      console.warn('[验证码] 验证码服务暂不可用，使用Mock模式');
+      console.error('[验证码] 错误详情:', error);
+      this.safeShowToast('success', '验证码已发送（测试模式）', 2000);
       this.startCountdown();
       // 自动填充测试验证码
       this.verificationCode = '123456';
+      console.log('[测试模式] 验证码已自动填充: 123456');
     }
   }
 
@@ -277,7 +344,9 @@ struct Register {
       }
 
       const response: BaseResponse<RegisterResponseData> = await HttpUtil.post<RegisterResponseData>(
-        ApiConstants.USER_REGISTER, registerRequest, { skipAuth: true }
+        ApiConstants.USER_REGISTER,
+        registerRequest,
+        { skipAuth: true, retryCount: 1 }
       );
 
       if (response.success) {
@@ -440,7 +509,19 @@ struct Register {
               .backgroundColor(this.isCountingDown || !this.phoneRegex.test(this.username) ? '#CCCCCC' : GlobalTheme.THEME_COLOR)
               .borderRadius(8)
               .enabled(!this.isCountingDown && this.phoneRegex.test(this.username))
-              .onClick(async () => await this.sendVerificationCode());
+              .hitTestBehavior(HitTestMode.Block)
+              .onClick(() => {
+                console.log('[onClick] 验证码按钮被点击');
+                console.log(`[onClick] 按钮状态 - enabled: ${!this.isCountingDown && this.phoneRegex.test(this.username)}`);
+                console.log(`[onClick] 手机号: ${this.username}, 正在倒计时: ${this.isCountingDown}`);
+                
+                try {
+                  this.sendVerificationCode();
+                } catch (error) {
+                  console.error('[onClick] onClick处理异常:', error);
+                  this.safeShowToast('error', '操作失败，请重试', 2000);
+                }
+              });
           }
           .width('100%');
 

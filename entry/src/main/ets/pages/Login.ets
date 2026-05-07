@@ -160,7 +160,15 @@ struct Login {
         username: this.username,
         password: this.password
       };
-      const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>('/user/login', loginRequest);
+      const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>(
+        '/user/login',
+        loginRequest,
+        {
+          showLoading: true,
+          loadingText: '登录中...',
+          retryCount: 1
+        }
+      );
 
       if (response.success) {
         if (response.data && response.data.token) {

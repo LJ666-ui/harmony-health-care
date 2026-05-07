@@ -39,6 +39,30 @@ export interface AdminInfo {
   createTime?: string;
 }
 
+export interface AdminSession {
+  sessionId: string;
+  userId: number;
+  userType: string;
+  username: string;
+  token: string;
+  loginTime: number;
+  expireTime: number;
+}
+
+export interface CurrentAdmin {
+  id: number;
+  username: string;
+  realName: string;
+  role: number;
+  phone: string;
+  email: string;
+  password: string;
+  status: number;
+  lastLoginTime: string;
+  createTime: string;
+  updateTime: string;
+}
+
 /**
  * 管理员认证服务类
  * 封装管理员认证相关的API调用和状态管理
@@ -102,11 +126,38 @@ export class AdminAuthService {
    */
   static async saveAuthInfo(token: string, adminInfo: AdminLoginResponse): Promise<void> {
     try {
-      // 使用独立的管理员Token存储
       await HttpUtil.saveAdminToken(token);
       AppStorage.setOrCreate<string>('adminToken', token);
       AppStorage.setOrCreate<AdminLoginResponse>('adminInfo', adminInfo);
       AppStorage.setOrCreate<boolean>('isAdminLoggedIn', true);
+
+      const session: AdminSession = {
+        sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
+        userId: adminInfo.adminId,
+        userType: 'admin',
+        username: adminInfo.username,
+        token: token,
+        loginTime: Date.now(),
+        expireTime: Date.now() + 24 * 60 * 60 * 1000
+      };
+      AppStorage.setOrCreate<AdminSession>('adminSession', session);
+
+      const currentAdmin: CurrentAdmin = {
+        id: adminInfo.adminId,
+        username: adminInfo.username,
+        realName: adminInfo.realName,
+        role: adminInfo.role,
+        phone: '',
+        email: '',
+        password: '',
+        status: 1,
+        lastLoginTime: '',
+        createTime: '',
+        updateTime: ''
+      };
+      AppStorage.setOrCreate<CurrentAdmin>('currentAdmin', currentAdmin);
+
+      console.info('[AdminAuthService] 保存认证信息成功, role:', adminInfo.role);
     } catch (error) {
       console.error('保存管理员认证信息失败:', error);
     }

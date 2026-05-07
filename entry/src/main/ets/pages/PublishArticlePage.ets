@@ -33,6 +33,8 @@ interface ArticlePostData {
 @Component
 struct PublishArticlePage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @StorageLink('userId') currentUserId: number = 0;
+  @StorageLink('isLoggedIn') isLoggedIn: boolean = false;
 
   @State articleTitle: string = '';
   @State articleContent: string = '';
@@ -107,16 +109,38 @@ struct PublishArticlePage {
   }
 
   async publishArticle(): Promise<void> {
+    console.info('发布按钮被点击');
+    console.info('登录状态:', this.isLoggedIn, '用户ID:', this.currentUserId);
+    
+    if (!this.isLoggedIn || !this.currentUserId || this.currentUserId === 0) {
+      console.error('未登录或用户ID无效');
+      ToastUtil.showSuccess('请先登录');
+      return;
+    }
+    
     if (!this.articleTitle.trim()) {
+      console.error('标题为空');
       ToastUtil.showSuccess('请输入文章标题');
       return;
     }
+    if (this.articleTitle.trim().length < 5) {
+      console.error('标题长度不足:', this.articleTitle.trim().length);
+      ToastUtil.showSuccess('文章标题至少需要5个字');
+      return;
+    }
     if (!this.articleContent.trim()) {
+      console.error('内容为空');
       ToastUtil.showSuccess('请输入文章内容');
       return;
     }
     if (this.articleContent.trim().length < 20) {
+      console.error('内容长度不足:', this.articleContent.trim().length);
       ToastUtil.showSuccess('文章内容至少需要20个字');
+      return;
+    }
+
+    if (this.isPublishing) {
+      console.warn('正在发布中，请勿重复点击');
       return;
     }
 
@@ -131,7 +155,9 @@ struct PublishArticlePage {
         coverImage: ''
       };
 
+      console.info('发布文章请求:', JSON.stringify(postData));
       const response: BaseResponse<Object> = await HttpUtil.post<Object>(ApiConstants.ARTICLE_ADD, postData);
+      console.info('发布文章响应:', JSON.stringify(response));
 
       if (response.success) {
         this.clearDraft();
@@ -140,11 +166,26 @@ struct PublishArticlePage {
           router.back();
         }, 1000);
       } else {
-        ToastUtil.showSuccess(response.message || '发布失败，请重试');
+        const errorMsg = response.message || '发布失败，请重试';
+        console.error('发布失败:', errorMsg, '响应码:', response.code);
+        ToastUtil.showSuccess(errorMsg);
       }
     } catch (e) {
-      console.error('发布文章失败:', e);
-      ToastUtil.showSuccess('网络异常，请检查连接');
+      console.error('发布文章异常:', e);
+      const error = e as Error;
+      let errorMsg = '网络异常，请检查连接';
+      if (error.message) {
+        if (error.message.includes('timeout')) {
+          errorMsg = '请求超时，请稍后重试';
+        } else if (error.message.includes('network')) {
+          errorMsg = '网络连接失败';
+        } else if (error.message.includes('401')) {
+          errorMsg = '登录已过期，请重新登录';
+        } else {
+          errorMsg = '发布失败: ' + error.message;
+        }
+      }
+      ToastUtil.showSuccess(errorMsg);
     } finally {
       this.isPublishing = false;
     }

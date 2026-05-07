@@ -3,6 +3,7 @@ import http from '@ohos.net.http';
 import connection from '@ohos.net.connection';
 import { getBaseUrl } from '../constants/ApiConstants';
 import { SettingsUtil } from '../../utils/SettingsUtil';
+import { selectTimeout, TimeoutConfig } from '../constants/TimeoutConfig';
 
 export class BaseResponse<T> {
   success: boolean = false;
@@ -77,13 +78,13 @@ const DEFAULT_OPTIONS: RequestOptions = {
   loadingText: '加载中...',
   retryCount: 1,
   skipAuth: false,
-  timeout: 15000
+  timeout: TimeoutConfig.NORMAL
 };
 
 let loadingCount: number = 0;
 
 export class HttpUtil {
-  private static readonly TIMEOUT: number = 15000;
+  private static readonly TIMEOUT: number = TimeoutConfig.NORMAL;
 
   static async request<T>(
     method: HttpMethod,
@@ -161,7 +162,8 @@ export class HttpUtil {
       }
     }
 
-    console.log('[HttpUtil] ' + method + ' ' + fullUrl, data ? JSON.stringify(data) : '');
+    const timeoutValue: number = (options && options.timeout) || selectTimeout(url);
+    console.log('[HttpUtil] ' + method + ' ' + fullUrl + ' (timeout: ' + timeoutValue + 'ms)', data ? JSON.stringify(data) : '');
 
     const token: string | null = HttpUtil.getToken();
     const headers: Record<string, string> = {
@@ -177,7 +179,7 @@ export class HttpUtil {
       body: data ? JSON.stringify(data) : undefined
     };
 
-    const response: HttpResponse = await HttpUtil.fetch(fullUrl, requestOptions, (options && options.timeout) || HttpUtil.TIMEOUT);
+    const response: HttpResponse = await HttpUtil.fetch(fullUrl, requestOptions, timeoutValue);
     return HttpUtil.handleResponse<T>(response);
   }
 

@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
-import { AdminMock, AdminInfo } from '../mock/adminMock';
+import { AdminAuthService, AdminLoginResponse } from '../services/AdminAuthService';
+import { HttpUtil } from '../common/utils/HttpUtil';
 
 @Entry
 @Component
@@ -11,6 +12,19 @@ struct AdminLogin {
   @State showPassword: boolean = false;
   @State isLoading: boolean = false;
   @State errorMsg: string = '';
+
+  async aboutToAppear(): Promise<void> {
+    // 进入登录页时，强制清理所有管理员相关的登录状态
+    // 避免残留的Token导致"登录已过期"提示
+    try {
+      await HttpUtil.clearAdminToken();
+      AppStorage.setOrCreate<boolean>('isAdminLoggedIn', false);
+      AppStorage.delete('adminInfo');
+      console.info('[AdminLogin] 清理所有管理员登录状态');
+    } catch (error) {
+      console.error('[AdminLogin] 初始化失败:', error);
+    }
+  }
 
   build() {
     Column() {
@@ -152,7 +166,7 @@ struct AdminLogin {
     .backgroundColor('#F5F7FA');
   }
 
-  private handleLogin(): void {
+  private async handleLogin(): Promise<void> {
     if (!this.username.trim()) {
       this.errorMsg = '请输入用户名';
       return;
@@ -167,15 +181,26 @@ struct AdminLogin {
     }
 
     this.isLoading = true;
-    setTimeout(() => {
-      const admin: AdminInfo | null = AdminMock.login(this.username, this.password);
+    this.errorMsg = '';
+
+    try {
+      const response = await AdminAuthService.login({
+        username: this.username,
+        password: this.password
+      });
+
       this.isLoading = false;
-      if (admin) {
-        AppStorage.setOrCreate<AdminInfo>('currentAdmin', admin);
+
+      if (response.code === 200 && response.data) {
+        await AdminAuthService.saveAuthInfo(response.data.token, response.data);
         router.replaceUrl({ url: 'pages/AdminDashboard' });
       } else {
-        this.errorMsg = '用户名或密码错误';
+        this.errorMsg = response.message || '登录失败，请检查用户名和密码';
       }
-    }, 600);
+    } catch (error) {
+      this.isLoading = false;
+      this.errorMsg = '网络错误，请稍后重试';
+      console.error('管理员登录失败:', error);
+    }
   }
 }

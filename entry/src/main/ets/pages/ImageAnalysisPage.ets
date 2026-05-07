@@ -23,6 +23,7 @@ import {
   DISCLAIMER
 } from '../models/ImagingModels';
 import { getMockResult, delay } from '../mock/imagingMock';
+import { SampleImageManager } from '../utils/SampleImageUtil';
 
 @Entry
 @Component
@@ -228,6 +229,16 @@ struct ImageAnalysisPage {
       .width('100%')
       .justifyContent(FlexAlign.SpaceEvenly)
       .margin({ top: 24 })
+
+      // 示例图片按钮（用于模拟器测试）
+      Button('使用示例图片测试')
+        .width('80%')
+        .height(44)
+        .fontSize(16)
+        .backgroundColor('#FF9800')
+        .fontColor('#FFFFFF')
+        .margin({ top: 16 })
+        .onClick(() => this.useSampleImage())
 
       // 影像类型选择
       Column() {
@@ -636,6 +647,19 @@ struct ImageAnalysisPage {
       console.info('拍照功能待实现');
     } catch (error) {
       console.error('拍照失败:', error);
+    }
+  }
+
+  /**
+   * 使用示例图片（用于模拟器测试）
+   */
+  private async useSampleImage() {
+    try {
+      // 使用示例图片管理器获取图片路径
+      this.imageUri = SampleImageManager.getSampleImagePath(this.selectedImagingType);
+      console.info('已加载示例图片:', this.selectedImagingType, '路径:', this.imageUri);
+    } catch (error) {
+      console.error('加载示例图片失败:', error);
     }
   }
 

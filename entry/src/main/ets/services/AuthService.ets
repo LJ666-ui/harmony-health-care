@@ -58,7 +58,7 @@ export class AuthService {
       username: request.phone,
       password: request.password
     };
-    return await HttpUtil.post<LoginResponse>(`${this.BASE_URL}/login`, loginData);
+    return await HttpUtil.post<LoginResponse>(`${this.BASE_URL}/login`, loginData, { skipAuth: true });
   }
 
   /**
@@ -73,7 +73,7 @@ export class AuthService {
       verificationCode: request.verificationCode,
       agreedToTerms: request.agreedToTerms
     };
-    return await HttpUtil.post<{ userId: number }>(`${this.BASE_URL}/register`, registerData);
+    return await HttpUtil.post<{ userId: number }>(`${this.BASE_URL}/register`, registerData, { skipAuth: true });
   }
 
   /**
@@ -82,7 +82,7 @@ export class AuthService {
    * @returns 发送结果
    */
   static async sendVerificationCode(phone: string): Promise<BaseResponse<void>> {
-    return await HttpUtil.post<void>(`${this.BASE_URL}/send-code`, { phone });
+    return await HttpUtil.post<void>(`${this.BASE_URL}/send-code`, { phone }, { skipAuth: true });
   }
 
   /**

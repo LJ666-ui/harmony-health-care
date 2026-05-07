@@ -12,14 +12,14 @@ interface EnvConfig {
 }
 
 const ENV_MAP: Record<EnvType, EnvConfig> = {
-  [EnvType.DEV]: { BASE_URL: 'http://192.168.71.233:8080', UPLOAD_URL: 'http://192.168.71.233:8080/upload' },
+  [EnvType.DEV]: { BASE_URL: 'http://localhost:8080', UPLOAD_URL: 'http://localhost:8080/upload' },
   [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
   [EnvType.DEV_DEVICE]: { BASE_URL: 'http://192.168.71.233:8080', UPLOAD_URL: 'http://192.168.71.233:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
 
-let currentEnv: EnvType = EnvType.DEV;
+let currentEnv: EnvType = EnvType.DEV_EMULATOR;
 
 export function setEnv(env: EnvType): void {
   currentEnv = env;
@@ -234,6 +234,10 @@ interface ApiConstantsInterface {
   MESSAGE_CLEANUP: string;
 
   UPLOAD_3D: string;
+
+  ADMIN_LOGIN: string;
+  ADMIN_INFO: string;
+  ADMIN_LOGOUT: string;
 }
 
 export const ApiConstants: ApiConstantsInterface = {
@@ -432,5 +436,9 @@ export const ApiConstants: ApiConstantsInterface = {
   DOCTOR_PATIENTS: '/user/doctor/patients',
   MESSAGE_CLEANUP: '/user/message/cleanup',
 
-  UPLOAD_3D: '/api/upload/3d'
+  UPLOAD_3D: '/api/upload/3d',
+
+  ADMIN_LOGIN: '/admin/login',
+  ADMIN_INFO: '/admin/info',
+  ADMIN_LOGOUT: '/admin/logout'
 };

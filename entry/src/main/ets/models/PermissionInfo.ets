@@ -9,14 +9,17 @@ export class PermissionInfo {
 export const PERMISSION_CONFIG: Record<string, PermissionInfo> = {
   'user': {
     role: 'user',
-    permissions: ['view_profile', 'edit_profile', 'view_family', 'manage_family', 'view_health'],
-    routes: ['HomePage', 'Profile', 'FamilyPage', 'HealthPage']
+    permissions: ['view_profile', 'edit_profile', 'view_family', 'manage_family', 'view_health',
+                  'chat_with_doctor', 'view_family_chat'],
+    routes: ['HomePage', 'Profile', 'FamilyPage', 'HealthPage', 'DoctorChatPage']
   },
   'doctor': {
     role: 'doctor',
     permissions: ['view_profile', 'edit_profile', 'view_family', 'manage_family', 'view_health',
-                  'view_patients', 'manage_appointments', 'view_medical_records'],
-    routes: ['HomePage', 'Profile', 'FamilyPage', 'HealthPage', 'PatientPage', 'AppointmentPage']
+                  'view_patients', 'manage_appointments', 'view_medical_records',
+                  'chat_with_patient', 'chat_with_family', 'view_family_chat'],
+    routes: ['HomePage', 'Profile', 'FamilyPage', 'HealthPage', 'PatientPage', 'AppointmentPage',
+             'DoctorChatPage', 'DoctorFamilyChatPage']
   },
   'admin': {
     role: 'admin',
@@ -67,6 +70,8 @@ export const PAGE_PERMISSIONS: Record<string, string[]> = {
   'HealthPage': ['user', 'doctor'],
   'PatientPage': ['doctor'],
   'AppointmentPage': ['doctor'],
+  'DoctorChatPage': ['user', 'doctor'],
+  'DoctorFamilyChatPage': ['doctor'],
   'AdminLogin': ['guest', 'user', 'doctor', 'admin', 'superAdmin'],
   'AdminDashboard': ['admin', 'superAdmin'],
   'AdminUsers': ['admin', 'superAdmin'],

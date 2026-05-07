@@ -5,7 +5,7 @@ import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
 
-const TAG: string = 'DoctorChatPage';
+const TAG: string = 'DoctorFamilyChatPage';
 
 class ChatMsg {
   id: number = 0;
@@ -15,17 +15,22 @@ class ChatMsg {
   isRead: number = 0;
   createTime: string = '';
   expireTime: string = '';
+  senderType: string = ''; // 'doctor', 'patient', 'family'
 }
 
 class SendMessageRequest {
   senderId: number = 0;
   receiverId: number = 0;
   content: string = '';
+  senderType: string = '';
+  receiverType: string = '';
 
-  constructor(senderId?: number, receiverId?: number, content?: string) {
+  constructor(senderId?: number, receiverId?: number, content?: string, senderType?: string, receiverType?: string) {
     if (senderId !== undefined) this.senderId = senderId;
     if (receiverId !== undefined) this.receiverId = receiverId;
     if (content !== undefined) this.content = content;
+    if (senderType !== undefined) this.senderType = senderType;
+    if (receiverType !== undefined) this.receiverType = receiverType;
   }
 }
 
@@ -33,15 +38,14 @@ class ChatParams {
   doctorId: number = 0;
   doctorName: string = '';
   currentUserId: number = 0;
-  otherUserId?: number = 0;
-  otherUserName?: string = '';
-  isDoctor?: boolean = false;
-  prefillMessage?: string = '';
+  otherUserId: number = 0;
+  otherUserName: string = '';
+  otherUserType: string = ''; // 'patient' or 'family'
 }
 
 @Entry
 @Component
-struct DoctorChatPage {
+struct DoctorFamilyChatPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @StorageLink('userId') currentUserId: number = 0;
 
@@ -49,11 +53,11 @@ struct DoctorChatPage {
   @State inputText: string = '';
   @State isLoading: boolean = true;
   @State sending: boolean = false;
-  @State isDoctor: boolean = false;
   @State canSend: boolean = true;
   @State remainHours: number = 48;
   @State expireWarning: string = '';
   @State hasAccess: boolean = false;
+  @State otherUserType: string = 'patient'; // 'patient' or 'family'
 
   private scroller: Scroller = new Scroller();
   private doctorId: number = 0;
@@ -78,39 +82,36 @@ struct DoctorChatPage {
       return;
     }
 
+    if (currentRole !== UserRole.DOCTOR) {
+      promptAction.showToast({ message: '只有医生可以访问此页面' });
+      router.back();
+      return;
+    }
+
     this.hasAccess = true;
     this.initParams();
   }
 
   private initParams(): void {
     const params: ChatParams = router.getParams() as ChatParams;
-    hilog.info(0x0000, TAG, 'aboutToAppear params=%{public}s', JSON.stringify(params));
+    hilog.info(0x0000, TAG, 'initParams params=%{public}s', JSON.stringify(params));
+
     if (params) {
-      this.isDoctor = params.isDoctor === true;
-      this.doctorId = params.doctorId || 0;
+      this.doctorId = params.doctorId || this.currentUserId;
       this.doctorName = params.doctorName || '医生';
-      this.currentUserId = params.currentUserId || this.currentUserId || 1;
+      this.otherUserId = params.otherUserId || 0;
+      this.otherUserName = params.otherUserName || '用户';
+      this.otherUserType = params.otherUserType || 'patient';
 
-      if (this.isDoctor) {
-        this.otherUserId = params.otherUserId || 0;
-        this.otherUserName = params.otherUserName || '患者';
-      } else {
-        this.otherUserId = this.doctorId;
-        this.otherUserName = this.doctorName;
-      }
-
-      if (this.isDoctor) {
-        this.checkCanSend();
-      } else {
-        this.canSend = true;
-      }
-
-      if (params.prefillMessage && params.prefillMessage.trim() !== '') {
-        this.inputText = params.prefillMessage;
+      if (params.currentUserId) {
+        this.currentUserId = params.currentUserId;
       }
     }
-    hilog.info(0x0000, TAG, 'init done isDoctor=%{public}b currentUserId=%{public}d otherUserId=%{public}d doctorId=%{public}d',
-      this.isDoctor, this.currentUserId, this.otherUserId, this.doctorId);
+
+    hilog.info(0x0000, TAG, 'init done doctorId=%{public}d otherUserId=%{public}d otherUserType=%{public}s',
+      this.doctorId, this.otherUserId, this.otherUserType);
+
+    this.checkCanSend();
     this.loadHistory();
     this.startPolling();
     this.startCountdown();
@@ -176,8 +177,6 @@ struct DoctorChatPage {
       this.remainHours = Math.floor(diffMs / (60 * 60 * 1000));
       if (this.remainHours < 6) {
         this.expireWarning = '对话即将过期';
-      } else if (this.remainHours < 12) {
-        this.expireWarning = '';
       } else {
         this.expireWarning = '';
       }
@@ -198,7 +197,9 @@ struct DoctorChatPage {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        this.canSend = true;
+      });
   }
 
   private loadHistory(): void {
@@ -208,7 +209,7 @@ struct DoctorChatPage {
 
   private pollNewMessages(): void {
     if (this.currentUserId === 0 || this.otherUserId === 0) {
-      hilog.error(0x0000, TAG, 'ID缺失 currentUserId=%{public}d otherUserId=%{public}d', this.currentUserId, this.otherUserId);
+      hilog.error(0x0000, TAG, 'ID缺失');
       if (this.isLoading) { this.isLoading = false; }
       return;
     }
@@ -216,27 +217,24 @@ struct DoctorChatPage {
       'userA': this.currentUserId.toString(),
       'userB': this.otherUserId.toString()
     };
-    hilog.info(0x0000, TAG, 'pollNewMessages 请求 userA=%{public}s userB=%{public}s', requestParams['userA'], requestParams['userB']);
+    hilog.info(0x0000, TAG, 'pollNewMessages 请求');
     HttpUtil.get<ChatMsg[]>(ApiConstants.MESSAGE_HISTORY, requestParams as Object)
       .then((response) => {
-        hilog.info(0x0000, TAG, '响应 success=%{public}b', response.success);
         if (response.success && response.data) {
           const rawData: Object[] = response.data as Object[];
-          hilog.info(0x0000, TAG, '原始数据条数=%{public}d', rawData.length);
           const serverList: ChatMsg[] = [];
           for (let i: number = 0; i < rawData.length; i++) {
             const msg: ChatMsg = new ChatMsg();
             const raw: Record<string, Object> = rawData[i] as Record<string, Object>;
-            if (raw['id'] !== undefined && raw['id'] !== null) { msg.id = Number(raw['id']); }
-            if (raw['senderId'] !== undefined && raw['senderId'] !== null) { msg.senderId = Number(raw['senderId']); }
-            if (raw['receiverId'] !== undefined && raw['receiverId'] !== null) { msg.receiverId = Number(raw['receiverId']); }
-            if (raw['content'] !== undefined && raw['content'] !== null) { msg.content = String(raw['content']); }
-            if (raw['createTime'] !== undefined && raw['createTime'] !== null) { msg.createTime = String(raw['createTime']); }
-            if (raw['expireTime'] !== undefined && raw['expireTime'] !== null) { msg.expireTime = String(raw['expireTime']); }
+            if (raw['id'] !== undefined) { msg.id = Number(raw['id']); }
+            if (raw['senderId'] !== undefined) { msg.senderId = Number(raw['senderId']); }
+            if (raw['receiverId'] !== undefined) { msg.receiverId = Number(raw['receiverId']); }
+            if (raw['content'] !== undefined) { msg.content = String(raw['content']); }
+            if (raw['createTime'] !== undefined) { msg.createTime = String(raw['createTime']); }
+            if (raw['expireTime'] !== undefined) { msg.expireTime = String(raw['expireTime']); }
+            if (raw['senderType'] !== undefined) { msg.senderType = String(raw['senderType']); }
             if (msg.content) { serverList.push(msg); }
           }
-          hilog.info(0x0000, TAG, '解析后 serverList 条数=%{public}d messages最终条数=%{public}d',
-            serverList.length, serverList.length + this.pendingLocalMsgs.length);
           const merged: ChatMsg[] = this.pendingLocalMsgs.length > 0
             ? [...serverList, ...this.pendingLocalMsgs]
             : serverList;
@@ -244,8 +242,6 @@ struct DoctorChatPage {
           setTimeout(() => {
             try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
           }, 100);
-        } else {
-          hilog.warn(0x0000, TAG, '响应为空或失败 success=%{public}b msg=%{public}s', response.success, response.message);
         }
       })
       .catch((err: Error) => {
@@ -293,10 +289,17 @@ struct DoctorChatPage {
     localMsg.receiverId = this.otherUserId;
     localMsg.content = text;
     localMsg.createTime = new Date().toISOString();
+    localMsg.senderType = 'doctor';
     this.pendingLocalMsgs = [...this.pendingLocalMsgs, localMsg];
     this.refreshDisplay();
 
-    const sendRequest: SendMessageRequest = new SendMessageRequest(this.currentUserId, this.otherUserId, text);
+    const sendRequest: SendMessageRequest = new SendMessageRequest(
+      this.currentUserId,
+      this.otherUserId,
+      text,
+      'doctor',
+      this.otherUserType
+    );
 
     HttpUtil.post<Record<string, Object>>(ApiConstants.MESSAGE_SEND, sendRequest as object)
       .then((response) => {
@@ -304,7 +307,7 @@ struct DoctorChatPage {
           this.pendingLocalMsgs = [];
           this.pollNewMessages();
         } else {
-          if (this.isDoctor && response.message) {
+          if (response.message) {
             this.canSend = false;
           }
           this.pendingLocalMsgs = this.pendingLocalMsgs.filter((m: ChatMsg) => m.id !== localMsg.id);
@@ -337,29 +340,20 @@ struct DoctorChatPage {
           .padding(10)
           .onClick(() => router.back());
 
-        if (this.isDoctor) {
-          Text(this.otherUserName + ' 患者')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
-            .margin({ left: 8 })
-            .layoutWeight(1);
-        } else {
-          Text(this.otherUserName + ' 医生')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
-            .margin({ left: 8 })
-            .layoutWeight(1);
-        }
+        Text(this.otherUserName + (this.otherUserType === 'family' ? ' 家属' : ' 患者'))
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .margin({ left: 8 })
+          .layoutWeight(1);
 
         Row() {
           Text('⏱️ ' + this.formatRemainDisplay())
             .fontSize(11)
-            .fontColor(this.remainHours < 6 ? '#FF4D4F' : (this.remainHours < 12 ? '#FAAD14' : '#52C41A'))
+            .fontColor(this.remainHours < 6 ? '#FF4D4F' : '#52C41A')
             .padding({ left: 8, right: 8, top: 4, bottom: 4 })
             .borderRadius(10)
-            .backgroundColor(this.remainHours < 6 ? '#FFF1F0' : (this.remainHours < 12 ? '#FFFBE6' : '#F6FFED'));
+            .backgroundColor(this.remainHours < 6 ? '#FFF1F0' : '#F6FFED');
         }
         .padding({ right: 12 });
       }
@@ -382,9 +376,9 @@ struct DoctorChatPage {
         .backgroundColor('#FFF1F0');
       }
 
-      if (this.isDoctor && !this.canSend) {
+      if (!this.canSend) {
         Row() {
-          Text('🔒 该患者尚未联系您，您无法主动发起对话')
+          Text('🔒 该用户尚未联系您，您无法主动发起对话')
             .fontSize(12)
             .fontColor('#FAAD14')
             .padding({ left: 16, right: 16, top: 6, bottom: 6 });
@@ -408,15 +402,9 @@ struct DoctorChatPage {
             Text('💬')
               .fontSize(48)
               .margin({ bottom: 12 });
-            if (this.isDoctor) {
-              Text('等待患者发起咨询')
-                .fontSize(14)
-                .fontColor('#999999');
-            } else {
-              Text('暂无消息，发送第一条消息开始对话吧')
-                .fontSize(14)
-                .fontColor('#999999');
-            }
+            Text('等待用户发起咨询')
+              .fontSize(14)
+              .fontColor('#999999');
           }
           .width('100%')
           .height('100%')
@@ -453,7 +441,7 @@ struct DoctorChatPage {
                       .constraintSize({ maxWidth: '70%' })
                       .padding({ top: 10, bottom: 10, left: 14, right: 14 })
                       .borderRadius({ topLeft: 16, topRight: 4, bottomLeft: 16, bottomRight: 16 })
-                      .backgroundColor(this.isDoctor ? '#36CFC9' : '#1677FF');
+                      .backgroundColor('#36CFC9');
 
                     Text(this.formatTime(msg.createTime))
                       .fontSize(10)
@@ -479,7 +467,7 @@ struct DoctorChatPage {
 
       if (this.canSend) {
         Row() {
-          TextInput({ placeholder: this.isDoctor ? '回复患者...' : '输入消息...', text: this.inputText })
+          TextInput({ placeholder: '回复消息...', text: this.inputText })
             .layoutWeight(1)
             .height(40)
             .fontSize(15)
@@ -494,12 +482,12 @@ struct DoctorChatPage {
               this.sendMsg();
             });
 
-          Button(this.isDoctor ? '回复' : '发送')
+          Button('回复')
             .width(64)
             .height(36)
             .fontSize(14)
             .fontColor('#FFFFFF')
-            .backgroundColor(this.isDoctor ? '#36CFC9' : '#1677FF')
+            .backgroundColor('#36CFC9')
             .borderRadius(18)
             .enabled(!this.sending)
             .opacity(this.sending ? 0.5 : 1)

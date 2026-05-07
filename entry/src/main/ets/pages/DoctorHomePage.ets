@@ -7,7 +7,7 @@ import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
 class PatientConvItem {
   otherUserId: number = 0;
   otherUserName: string = '';
-  otherUserType: number = 0;
+  otherUserType: number = 0; // 0=患者, 1=家属
   lastMessage: string = '';
   lastTime: string = '';
   unreadCount: number = 0;
@@ -423,11 +423,11 @@ struct DoctorHomePage {
                       .fontWeight(FontWeight.Bold)
                       .fontColor('#333333');
 
-                    Text('患者')
+                    Text(conv.otherUserType === 1 ? '家属' : '患者')
                       .fontSize(11)
                       .fontColor('#FFFFFF')
                       .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-                      .backgroundColor('#36CFC9')
+                      .backgroundColor(conv.otherUserType === 1 ? '#FA8C16' : '#36CFC9')
                       .borderRadius(4)
                       .margin({ left: 8 });
 
@@ -480,7 +480,7 @@ struct DoctorHomePage {
               .alignItems(VerticalAlign.Top);
 
               Row() {
-                Button('回复患者')
+                Button(conv.otherUserType === 1 ? '回复家属' : '回复患者')
                   .height(32)
                   .padding({ left: 16, right: 16 })
                   .fontSize(13)
@@ -488,17 +488,33 @@ struct DoctorHomePage {
                   .backgroundColor('#E8F0FF')
                   .borderRadius(16)
                   .onClick(() => {
-                    router.push({
-                      url: 'pages/DoctorChatPage',
-                      params: {
-                        doctorId: this.currentUserId,
-                        doctorName: this.doctorName,
-                        currentUserId: this.currentUserId,
-                        otherUserId: conv.otherUserId,
-                        otherUserName: conv.otherUserName,
-                        isDoctor: true
-                      }
-                    });
+                    if (conv.otherUserType === 1) {
+                      // 家属聊天
+                      router.push({
+                        url: 'pages/DoctorFamilyChatPage',
+                        params: {
+                          doctorId: this.currentUserId,
+                          doctorName: this.doctorName,
+                          currentUserId: this.currentUserId,
+                          otherUserId: conv.otherUserId,
+                          otherUserName: conv.otherUserName,
+                          otherUserType: 'family'
+                        }
+                      });
+                    } else {
+                      // 患者聊天
+                      router.push({
+                        url: 'pages/DoctorChatPage',
+                        params: {
+                          doctorId: this.currentUserId,
+                          doctorName: this.doctorName,
+                          currentUserId: this.currentUserId,
+                          otherUserId: conv.otherUserId,
+                          otherUserName: conv.otherUserName,
+                          isDoctor: true
+                        }
+                      });
+                    }
                   });
               }
               .width('100%')

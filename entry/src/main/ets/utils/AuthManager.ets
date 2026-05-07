@@ -109,16 +109,21 @@ export class AuthManager {
   }
 
   private getAdminSession(): SessionInfo | null {
-    return AppStorage.get<SessionInfo | null>('adminSession', null);
+    const session: SessionInfo | null | undefined = AppStorage.get<SessionInfo | null>('adminSession');
+    return session !== undefined ? session : null;
   }
 
   private getUserSession(): SessionInfo | null {
-    const token: string = AppStorage.get<string>('token', '');
-    const userId: number = AppStorage.get<number>('userId', 0);
-    const username: string = AppStorage.get<string>('username', '');
-    const isLoggedIn: boolean = AppStorage.get<boolean>('isLoggedIn', false);
+    const token: string | undefined = AppStorage.get<string>('token');
+    const userId: number | undefined = AppStorage.get<number>('userId');
+    const username: string | undefined = AppStorage.get<string>('username');
+    const isLoggedIn: boolean | undefined = AppStorage.get<boolean>('isLoggedIn');
 
-    if (!isLoggedIn || token.length === 0 || userId === 0) {
+    if (!isLoggedIn || !token || token.length === 0 || !userId || userId === 0) {
+      return null;
+    }
+
+    if (!isLoggedIn || !token || token.length === 0 || !userId || userId === 0) {
       return null;
     }
 
@@ -126,7 +131,7 @@ export class AuthManager {
     session.sessionId = 'user_session';
     session.userId = userId;
     session.userType = UserType.USER;
-    session.username = username;
+    session.username = username || '';
     session.token = token;
     session.loginTime = Date.now() - 3600000;
     session.expireTime = Date.now() + 3600000;
@@ -135,6 +140,7 @@ export class AuthManager {
   }
 
   private getAdminInfo(): AdminInfo | null {
-    return AppStorage.get<AdminInfo | null>('currentAdmin', null);
+    const admin: AdminInfo | null | undefined = AppStorage.get<AdminInfo | null>('currentAdmin');
+    return admin !== undefined ? admin : null;
   }
 }

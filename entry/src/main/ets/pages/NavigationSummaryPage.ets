@@ -150,10 +150,9 @@ struct NavigationSummaryPage {
   TitleBar() {
     Row() {
       // 返回按钮
-      Image($r('app.media.ic_back'))
-        .width(24)
-        .height(24)
-        .fillColor('#333333')
+      Text('←')
+        .fontSize(24)
+        .fontColor('#333333')
         .onClick(() => {
           router.back();
         })

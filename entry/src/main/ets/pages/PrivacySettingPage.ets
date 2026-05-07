@@ -7,6 +7,7 @@ import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { SettingsUtil } from '../utils/SettingsUtil';
+import EventPersistenceManager from '../utils/EventPersistenceManager';
 
 export interface PrivacySetting {
   locationEnabled: boolean;
@@ -35,6 +36,27 @@ export interface AccessLogItem {
   detail: string;
 }
 
+export interface LocalDataSummary {
+  healthRecords: number;
+  searchHistory: number;
+  collections: number;
+  browseHistory: number;
+}
+
+export interface ExportSummary {
+  totalHealthRecords: number;
+  totalSearchHistory: number;
+  totalCollections: number;
+}
+
+export interface ExportData {
+  exportTime: string;
+  healthRecords: ESObject[];
+  searchHistory: ESObject[];
+  collections: ESObject[];
+  summary: ExportSummary;
+}
+
 @Entry
 @Component
 struct PrivacySettingPage {
@@ -52,6 +74,11 @@ struct PrivacySettingPage {
   @State isLoadingSettings: boolean = true;
   @State isLoadingAuths: boolean = true;
   @State isLoadingLogs: boolean = true;
+  @State localDataSummary: LocalDataSummary = {
+    healthRecords: 0, searchHistory: 0, collections: 0, browseHistory: 0
+  };
+  @State isExporting: boolean = false;
+  @State isDeletingAllData: boolean = false;
 
   private getActiveAuthCount(): number {
     let count = 0;
@@ -73,6 +100,7 @@ struct PrivacySettingPage {
     this.loadPrivacySettings();
     this.loadAuthList();
     this.loadAccessLogs();
+    this.loadLocalDataSummary();
   }
 
   async loadPrivacySettings(): Promise<void> {
@@ -178,6 +206,7 @@ struct PrivacySettingPage {
         try {
           const settings: SettingsUtil = SettingsUtil.getInstance();
           await settings.clearAllLoginData();
+          EventPersistenceManager.clearUserCache();
           ToastUtil.showInfo('已退出登录');
           router.replaceUrl({ url: 'pages/Login' });
         } catch (error) {
@@ -185,6 +214,201 @@ struct PrivacySettingPage {
         }
       }
     });
+  }
+
+  async loadLocalDataSummary(): Promise<void> {
+    try {
+      const healthRecords = await EventPersistenceManager.getOfflineHealthRecords(999);
+      const searchHistory = await EventPersistenceManager.getSearchHistory(undefined, 999);
+      const collections = await EventPersistenceManager.getCollectionList(undefined, 999);
+      const browseHistory = await EventPersistenceManager.getRecentBrowseHistory(999);
+      this.localDataSummary = {
+        healthRecords: healthRecords.length,
+        searchHistory: searchHistory.length,
+        collections: collections.length,
+        browseHistory: browseHistory.length
+      };
+    } catch (e) {
+      console.error('加载本地数据摘要失败:', e);
+    }
+  }
+
+  async exportMyData(): Promise<void> {
+    if (this.isExporting) return;
+    this.isExporting = true;
+
+    try {
+      const healthRecords = await EventPersistenceManager.getOfflineHealthRecords(999);
+      const searchHistory = await EventPersistenceManager.getSearchHistory(undefined, 999);
+      const collections = await EventPersistenceManager.getCollectionList(undefined, 999);
+
+      const exportData: ExportData = {
+        exportTime: new Date().toISOString(),
+        healthRecords: healthRecords,
+        searchHistory: searchHistory,
+        collections: collections,
+        summary: {
+          totalHealthRecords: healthRecords.length,
+          totalSearchHistory: searchHistory.length,
+          totalCollections: collections.length
+        }
+      };
+
+      const jsonStr = JSON.stringify(exportData, null, 2);
+
+      promptAction.showDialog({
+        title: '数据导出成功',
+        message: '已导出 ' + (healthRecords.length + searchHistory.length + collections.length) + ' 条记录（JSON格式预览）',
+        buttons: [{ text: '确定', color: '#1677FF' }]
+      });
+
+      console.info('PrivacySettingPage: 数据导出完成，大小=' + jsonStr.length + '字节');
+    } catch (e) {
+      console.error('数据导出失败:', e);
+      ToastUtil.showInfo('导出失败，请重试');
+    } finally {
+      this.isExporting = false;
+    }
+  }
+
+  async requestDeleteAllData(): Promise<void> {
+    if (this.isDeletingAllData) return;
+
+    promptAction.showDialog({
+      title: '⚠️ 危险操作确认',
+      message: '此操作将永久删除您在本地的所有健康记录、搜索历史、收藏和浏览数据。此操作不可恢复！\n\n是否继续？',
+      buttons: [
+        { text: '取消', color: '#999999' },
+        { text: '确认删除全部数据', color: '#FF4D4F' }
+      ]
+    }).then(async (result: promptAction.ShowDialogSuccessResponse) => {
+      if (result.index === 1) {
+        this.isDeletingAllData = true;
+        try {
+          await EventPersistenceManager.clearSearchHistory();
+          await EventPersistenceManager.clearUserCache();
+          this.localDataSummary = { healthRecords: 0, searchHistory: 0, collections: 0, browseHistory: 0 };
+          ToastUtil.showSuccess('已清除所有本地数据');
+          this.loadLocalDataSummary();
+        } catch (e) {
+          console.error('删除数据失败:', e);
+          ToastUtil.showInfo('部分数据清除失败');
+        } finally {
+          this.isDeletingAllData = false;
+        }
+      }
+    }).catch((error: Error) => {
+      console.error('显示对话框失败:', error.message);
+    });
+  }
+
+  @Builder
+  DataManagementSection() {
+    Column({ space: 12 }) {
+      Text('\uD83D\uDCCA \u6211\u7684\u6570\u636E')
+        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333')
+        .width('100%');
+
+      Column({ space: 8 }) {
+        Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+          Text('\uD83D\uDCD8 \u5065\u5EBB\u8BB0\u5F55')
+            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+            .fontColor('#333333')
+            .layoutWeight(1);
+          Text(String(this.localDataSummary.healthRecords) + ' 条')
+            .fontSize(12)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#1677FF');
+        }
+        .width('100%')
+        .padding(GlobalTheme.getSpacingSM(this.isElderMode))
+        .backgroundColor('#FAFAFA')
+        .borderRadius(6);
+
+        Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+          Text('\uD83D\uDD0D \u641C\u7D22\u5386\u53F2')
+            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+            .fontColor('#333333')
+            .layoutWeight(1);
+          Text(String(this.localDataSummary.searchHistory) + ' 条')
+            .fontSize(12)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#52C41A');
+        }
+        .width('100%')
+        .padding(GlobalTheme.getSpacingSM(this.isElderMode))
+        .backgroundColor('#FAFAFA')
+        .borderRadius(6);
+
+        Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+          Text('\u2B50 \u6536\u85CF\u8BB0\u5F55')
+            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+            .fontColor('#333333')
+            .layoutWeight(1);
+          Text(String(this.localDataSummary.collections) + ' 条')
+            .fontSize(12)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FAAD14');
+        }
+        .width('100%')
+        .padding(GlobalTheme.getSpacingSM(this.isElderMode))
+        .backgroundColor('#FAFAFA')
+        .borderRadius(6);
+
+        Row({ space: GlobalTheme.getSpacingMD(this.isElderMode) }) {
+          Text('\uD83D\uDCDA \u6D4F\u89C8\u8BB0\u5F55')
+            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+            .fontColor('#333333')
+            .layoutWeight(1);
+          Text(String(this.localDataSummary.browseHistory) + ' 条')
+            .fontSize(12)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#722ED1');
+        }
+        .width('100%')
+        .padding(GlobalTheme.getSpacingSM(this.isElderMode))
+        .backgroundColor('#FAFAFA')
+        .borderRadius(6);
+      }
+      .width('100%');
+
+      Flex({ justifyContent: FlexAlign.SpaceBetween }) {
+        Button(this.isExporting ? '导出中...' : '\u{1F4E4} 导出我的数据')
+          .layoutWeight(1)
+          .height(40)
+          .fontSize(13)
+          .fontColor('#1677FF')
+          .backgroundColor('#E6F4FF')
+          .borderRadius(20)
+          .enabled(!this.isExporting)
+          .onClick(() => this.exportMyData());
+
+        Button(this.isDeletingAllData ? '处理中...' : '\u{1F5D1} 清除全部数据')
+          .layoutWeight(1)
+          .height(40)
+          .fontSize(13)
+          .fontColor('#FF4D4F')
+          .backgroundColor('#FFF1F0')
+          .borderRadius(20)
+          .margin({ left: 10 })
+          .enabled(!this.isDeletingAllData)
+          .onClick(() => this.requestDeleteAllData());
+      }
+      .width('100%');
+
+      Text('* 数据导出为JSON格式，包含健康记录、搜索历史和收藏；清除操作仅影响本机存储，服务端数据不受影响')
+        .fontSize(10)
+        .fontColor('#BBBBBB')
+        .lineHeight(16)
+        .width('100%');
+    }
+    .width('100%')
+    .padding(GlobalTheme.getSpacingMD(this.isElderMode))
+    .backgroundColor('#FFFFFF')
+    .borderRadius(12)
+    .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
   }
 
   build() {
@@ -370,6 +594,8 @@ struct PrivacySettingPage {
           .backgroundColor('#FFFFFF')
           .borderRadius(12)
           .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+
+          this.DataManagementSection();
 
           Column() {
             Text('\uD83D\uDCDE \u64CD\u4F5BA5BA\u8BA1\u65E5\u5FD7')

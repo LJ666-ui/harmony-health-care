@@ -193,6 +193,8 @@ interface ApiConstantsInterface {
   MEDICINE_PAGE: string;
   MEDICINE_SEARCH: string;
   MEDICINE_DETAIL: string;
+  MEDICINE_CATEGORY_LIST: string;
+  MEDICINE_CATEGORY_DETAIL: string;
 
   DISEASE_DICT_SEARCH: string;
   DISEASE_DICT_CATEGORY: string;
@@ -390,6 +392,8 @@ export const ApiConstants: ApiConstantsInterface = {
   MEDICINE_PAGE: '/medicine/page',
   MEDICINE_SEARCH: '/medicine/search',
   MEDICINE_DETAIL: '/medicine/detail/',
+  MEDICINE_CATEGORY_LIST: '/medicine/category/list',
+  MEDICINE_CATEGORY_DETAIL: '/medicine/category/',
 
   DISEASE_DICT_SEARCH: '/diseaseDict/search',
   DISEASE_DICT_CATEGORY: '/diseaseDict/category',

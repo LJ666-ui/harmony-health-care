@@ -44,6 +44,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/send-code",  // 验证码接口无需登录
                         "/ai/**",
                         "/herbal/**",  // 药材百科接口无需登录
+                        "/medicine/**",  // 药品信息接口无需登录
+                        "/medicine-category/**",  // 药品分类接口无需登录
+                        "/ancient-image/list",  // 古医图库查询无需登录
+                        "/ancient-image/*",  // 古医图库详情无需登录
                         "/error",
                         "/uploads/**",
                         "/api/rehab/action/list",

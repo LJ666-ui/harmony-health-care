@@ -116,6 +116,12 @@
             <artifactId>springdoc-openapi-ui</artifactId>
             <version>1.7.0</version> <!-- 适配 SpringBoot 2.7.x 的版本 -->
         </dependency>
+
+        <!-- 12. WebSocket依赖（实时通信必需） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
     </dependencies>
 
 

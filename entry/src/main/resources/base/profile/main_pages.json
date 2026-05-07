@@ -75,6 +75,8 @@
     "pages/ReminderSettingsPage",
     "pages/EmergencyContactsPage",
     "pages/FamilyPage",
+    "pages/FamilyLogin",
+    "pages/FamilyHome",
     "pages/NurseStationDashboardSimple",
     "pages/SmartWardDevicesSimple",
     "pages/SmartWardAlertsSimple",
@@ -106,6 +108,9 @@
     "pages/WatchEmergencyPage",
     "pages/WatchSportPage",
     "pages/WatchSleepPage",
-    "pages/WatchMessagePage"
+    "pages/WatchMessagePage",
+    "pages/NurseLogin",
+    "pages/NurseWorkbench",
+    "pages/NurseProfile"
   ]
 }

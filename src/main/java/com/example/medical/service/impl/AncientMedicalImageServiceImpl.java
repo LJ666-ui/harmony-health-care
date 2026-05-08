@@ -24,7 +24,7 @@ public class AncientMedicalImageServiceImpl implements AncientMedicalImageServic
     private String uploadPath;
 
     @Override
-    public AncientMedicalImage uploadImage(MultipartFile file, String title, String desc) {
+    public AncientMedicalImage uploadImage(MultipartFile file, String title, String desc, String source) {
         if (file.isEmpty()) {
             throw new RuntimeException("上传文件不能为空");
         }
@@ -44,6 +44,7 @@ public class AncientMedicalImageServiceImpl implements AncientMedicalImageServic
             image.setTitle(title);
             image.setOriginalUrl("/uploads/ancient/" + newFilename);
             image.setDesc(desc);
+            image.setSource(source);
             image.setIsDeleted(0);
             image.setCreateTime(LocalDateTime.now());
             image.setUpdateTime(LocalDateTime.now());
@@ -57,10 +58,13 @@ public class AncientMedicalImageServiceImpl implements AncientMedicalImageServic
     }
 
     @Override
-    public Page<AncientMedicalImage> getImageList(int page, int size) {
+    public Page<AncientMedicalImage> getImageList(int page, int size, String source) {
         Page<AncientMedicalImage> pageParam = new Page<>(page, size);
         QueryWrapper<AncientMedicalImage> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("is_deleted", 0);
+        if (source != null && !source.isEmpty() && !"全部".equals(source)) {
+            queryWrapper.like("source", source);
+        }
         queryWrapper.orderByDesc("create_time");
         return ancientMedicalImageMapper.selectPage(pageParam, queryWrapper);
     }

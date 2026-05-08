@@ -5,7 +5,11 @@ import com.example.medical.common.BCryptUtil;
 import com.example.medical.common.JwtUtil;
 import com.example.medical.common.Result;
 import com.example.medical.entity.Admin;
+import com.example.medical.entity.User;
+import com.example.medical.entity.Doctor;
 import com.example.medical.service.AdminService;
+import com.example.medical.service.UserService;
+import com.example.medical.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,6 +28,12 @@ public class AdminController {
 
     @Autowired
     private AdminService adminService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private DoctorService doctorService;
 
     /**
      * 管理员登录
@@ -152,5 +163,49 @@ public class AdminController {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+
+    /**
+     * 获取管理仪表盘统计数据
+     */
+    @GetMapping("/dashboard/stats")
+    public Result<?> getDashboardStats() {
+        try {
+            Map<String, Object> stats = new HashMap<>();
+
+            // 用户总数
+            LambdaQueryWrapper<User> userWrapper = new LambdaQueryWrapper<>();
+            userWrapper.eq(User::getIsDeleted, 0);
+            long userCount = userService.count(userWrapper);
+            stats.put("userCount", userCount);
+
+            // 医生总数
+            LambdaQueryWrapper<Doctor> doctorWrapper = new LambdaQueryWrapper<>();
+            doctorWrapper.eq(Doctor::getIsDeleted, 0);
+            long doctorCount = doctorService.count(doctorWrapper);
+            stats.put("doctorCount", doctorCount);
+
+            // 管理员总数
+            LambdaQueryWrapper<Admin> adminWrapper = new LambdaQueryWrapper<>();
+            adminWrapper.eq(Admin::getIsDeleted, 0);
+            long adminCount = adminService.count(adminWrapper);
+            stats.put("adminCount", adminCount);
+
+            // 家属总数（暂时设为0，后续实现）
+            stats.put("familyCount", 0);
+
+            // 最近注册的用户（前5个）
+            LambdaQueryWrapper<User> recentWrapper = new LambdaQueryWrapper<>();
+            recentWrapper.eq(User::getIsDeleted, 0);
+            recentWrapper.orderByDesc(User::getCreateTime);
+            recentWrapper.last("LIMIT 5");
+            List<User> recentUsers = userService.list(recentWrapper);
+            stats.put("recentUsers", recentUsers);
+
+            return Result.success(stats);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取仪表盘统计数据失败：" + e.getMessage());
+        }
     }
 }

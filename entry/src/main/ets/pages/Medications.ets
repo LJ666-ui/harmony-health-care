@@ -9,10 +9,22 @@ import { ApiConstants } from '../common/constants/ApiConstants';
 interface MedicineItem {
   id: number;
   name: string;
+  category: string;
+  categoryCode: string;
   indication: string;
   usageDesc: string;
   taboo: string;
   source: string;
+}
+
+interface CategoryItem {
+  id: number;
+  categoryCode: string;
+  categoryName: string;
+  parentCode: string;
+  level: number;
+  displayOrder: number;
+  medicineCount: number;
 }
 
 @Entry
@@ -20,10 +32,11 @@ interface MedicineItem {
 struct Medications {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @State searchText: string = '';
-  @State selectedCategory: string = '全部';
+  @State selectedCategoryCode: string = '';
+  @State selectedCategoryName: string = '全部';
   @State allMedicines: MedicineItem[] = [];
   @State filteredMedicines: MedicineItem[] = [];
-  @State categories: string[] = ['全部'];
+  @State categories: CategoryItem[] = [];
   @State isLoading: boolean = true;
   @State errorMessage: string = '';
 
@@ -33,7 +46,57 @@ struct Medications {
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
+    this.loadCategories();
     this.loadMedicines();
+  }
+
+  async loadCategories(): Promise<void> {
+    console.log('[Medications] 开始加载分类数据...');
+    
+    try {
+      const response: BaseResponse<CategoryItem[]> = await HttpUtil.get<CategoryItem[]>(ApiConstants.MEDICINE_CATEGORY_LIST);
+      
+      if (response.success && response.data) {
+        const categoryData = response.data as CategoryItem[];
+        
+        const totalMedicineCount = categoryData.reduce((sum, cat) => sum + (cat.medicineCount || 0), 0);
+        
+        const allCategory: CategoryItem = {
+          id: 0,
+          categoryCode: '',
+          categoryName: '全部',
+          parentCode: '',
+          level: 0,
+          displayOrder: 0,
+          medicineCount: totalMedicineCount
+        };
+        
+        this.categories = [allCategory, ...categoryData.filter(cat => cat.medicineCount > 0)];
+        console.log('[Medications] 分类数据加载成功，共', this.categories.length, '个分类');
+      } else {
+        console.warn('[Medications] 分类数据加载失败，使用默认分类');
+        this.categories = [{
+          id: 0,
+          categoryCode: '',
+          categoryName: '全部',
+          parentCode: '',
+          level: 0,
+          displayOrder: 0,
+          medicineCount: 0
+        }];
+      }
+    } catch (error) {
+      console.error('[Medications] 加载分类数据异常:', error);
+      this.categories = [{
+        id: 0,
+        categoryCode: '',
+        categoryName: '全部',
+        parentCode: '',
+        level: 0,
+        displayOrder: 0,
+        medicineCount: 0
+      }];
+    }
   }
 
   async loadMedicines(): Promise<void> {
@@ -45,7 +108,7 @@ struct Medications {
     console.log('[Medications] 完整URL:', ApiConstants.BASE_URL + ApiConstants.MEDICINE_LIST);
 
     try {
-      const response: BaseResponse<MedicineItem[]> = await HttpUtil.get<MedicineItem[]>(ApiConstants.MEDICINE_LIST);
+      const response: BaseResponse<MedicineItem[]> = await HttpUtil.get<MedicineItem[]>(ApiConstants.MEDICINE_LIST, undefined, { skipAuth: true });
       
       console.log('[Medications] API响应成功');
       console.log('[Medications] response.success:', response.success);
@@ -70,6 +133,8 @@ struct Medications {
           const medicineItem: MedicineItem = {
             id: item.id || 0,
             name: item.name ? item.name.trim() : '未知药品',
+            category: item.category ? item.category.trim() : '',
+            categoryCode: item.categoryCode ? item.categoryCode.trim() : '',
             indication: item.indication ? item.indication.trim() : '',
             usageDesc: item.usageDesc ? item.usageDesc.trim() : '',
             taboo: item.taboo ? item.taboo.trim() : '',
@@ -81,7 +146,6 @@ struct Medications {
         console.log('[Medications] 清洗后数据长度:', cleanedData.length);
 
         this.allMedicines = cleanedData;
-        this.extractCategories();
         this.filterMedicines();
 
         console.log('[Medications] 最终显示数据长度:', this.filteredMedicines.length);
@@ -103,6 +167,8 @@ struct Medications {
       {
         id: 1,
         name: '阿莫西林胶囊',
+        category: '抗生素',
+        categoryCode: 'antibiotics',
         indication: '用于敏感菌所致的各种感染，如呼吸道感染、泌尿道感染、皮肤软组织感染等',
         usageDesc: '口服，成人一次0.5g，每6-8小时1次，每日剂量不超过4g',
         taboo: '青霉素过敏者禁用',
@@ -111,6 +177,8 @@ struct Medications {
       {
         id: 2,
         name: '布洛芬缓释胶囊',
+        category: '解热镇痛',
+        categoryCode: 'analgesic',
         indication: '用于缓解轻至中度疼痛如头痛、关节痛、偏头痛、牙痛、肌肉痛、神经痛、痛经',
         usageDesc: '口服，成人一次1粒（0.3g），一日2次',
         taboo: '活动性消化道溃疡者禁用',
@@ -119,6 +187,8 @@ struct Medications {
       {
         id: 3,
         name: '复方甘草片',
+        category: '止咳化痰',
+        categoryCode: 'cough',
         indication: '用于镇咳祛痰，适用于上呼吸道感染、支气管炎等引起的咳嗽',
         usageDesc: '口服，成人一次3-4片，一日3次',
         taboo: '孕妇及哺乳期妇女慎用',
@@ -127,6 +197,8 @@ struct Medications {
       {
         id: 4,
         name: '维生素C片',
+        category: '维生素类',
+        categoryCode: 'vitamin',
         indication: '用于预防坏血病，也可用于各种急慢性传染疾病及紫癜等的辅助治疗',
         usageDesc: '口服，成人一次1-2片，一日3次',
         taboo: '长期过量服用可能引起腹泻等不良反应',
@@ -135,6 +207,8 @@ struct Medications {
       {
         id: 5,
         name: '奥美拉唑肠溶胶囊',
+        category: '消化系统',
+        categoryCode: 'digestive',
         indication: '用于胃溃疡、十二指肠溃疡、反流性食管炎等酸相关性疾病',
         usageDesc: '口服，晨起吞服，一次20mg，一日1-2次',
         taboo: '严重肾功能不全者禁用',
@@ -143,6 +217,8 @@ struct Medications {
       {
         id: 6,
         name: '氯雷他定片',
+        category: '抗过敏药',
+        categoryCode: 'antiallergy',
         indication: '用于缓解过敏性鼻炎有关的症状，如喷嚏、流涕、鼻痒、鼻塞以及眼部痒及烧灼感',
         usageDesc: '口服，成人一次10mg，一日1次',
         taboo: '对本品过敏者禁用',
@@ -151,6 +227,8 @@ struct Medications {
       {
         id: 7,
         name: '二甲双胍缓释片',
+        category: '降糖药',
+        categoryCode: 'diabetes',
         indication: '用于2型糖尿病，尤其是肥胖的2型糖尿病患者',
         usageDesc: '口服，起始剂量为一次0.5g，一日1-2次',
         taboo: '严重肾功能不全者禁用',
@@ -159,6 +237,8 @@ struct Medications {
       {
         id: 8,
         name: '氨氯地平片',
+        category: '心血管药',
+        categoryCode: 'cardiovascular',
         indication: '用于高血压及心绞痛的治疗',
         usageDesc: '口服，初始剂量一次5mg，一日1次',
         taboo: '严重主动脉瓣狭窄者禁用',
@@ -167,27 +247,16 @@ struct Medications {
     ];
 
     this.allMedicines = defaultMeds;
-    this.extractCategories();
     this.filterMedicines();
-  }
-
-  extractCategories(): void {
-    const categorySet: Set<string> = new Set<string>();
-    for (let i = 0; i < this.allMedicines.length; i++) {
-      if (this.allMedicines[i].source && this.allMedicines[i].source.trim()) {
-        categorySet.add(this.allMedicines[i].source.trim());
-      }
-    }
-    this.categories = ['全部', ...Array.from(categorySet)];
-    console.log('[Medications] 提取到的分类:', JSON.stringify(this.categories));
   }
 
   handleSearch(): void {
     this.filterMedicines();
   }
 
-  handleCategoryFilter(category: string): void {
-    this.selectedCategory = category;
+  handleCategoryFilter(categoryCode: string, categoryName: string): void {
+    this.selectedCategoryCode = categoryCode;
+    this.selectedCategoryName = categoryName;
     this.filterMedicines();
   }
 
@@ -211,10 +280,10 @@ struct Medications {
       result = searchResult;
     }
 
-    if (this.selectedCategory !== '全部') {
+    if (this.selectedCategoryCode !== '') {
       let categoryResult: MedicineItem[] = [];
       for (let k = 0; k < result.length; k++) {
-        if (result[k].source === this.selectedCategory) {
+        if (result[k].categoryCode === this.selectedCategoryCode) {
           categoryResult.push(result[k]);
         }
       }
@@ -306,20 +375,20 @@ struct Medications {
 
       Scroll() {
         Row({ space: 12 }) {
-          ForEach(this.categories, (category: string) => {
-            Text(category)
+          ForEach(this.categories, (category: CategoryItem) => {
+            Text(category.categoryName + ' (' + category.medicineCount + ')')
               .padding({ left: 16, right: 16, top: 8, bottom: 8 })
               .fontSize(this.isElderMode ? 16 : 14)
-              .fontColor(this.selectedCategory === category ? '#1677FF' : '#666666')
-              .backgroundColor(this.selectedCategory === category ? '#E6F4FF' : '#F5F7FA')
+              .fontColor(this.selectedCategoryCode === category.categoryCode ? '#1677FF' : '#666666')
+              .backgroundColor(this.selectedCategoryCode === category.categoryCode ? '#E6F4FF' : '#F5F7FA')
               .borderRadius(20)
-              .onClick(() => this.handleCategoryFilter(category));
-          }, (category: string) => category);
+              .onClick(() => this.handleCategoryFilter(category.categoryCode, category.categoryName));
+          }, (category: CategoryItem) => category.categoryCode + '_' + category.categoryName);
         }
-        .width('100%')
         .padding({ left: 16, right: 16, bottom: 8 })
       }
-      .scrollBar(BarState.Off)
+      .width('100%')
+      .scrollBar(BarState.Auto)
       .scrollable(ScrollDirection.Horizontal)
 
       Text('药品列表')
@@ -379,40 +448,29 @@ struct Medications {
           } else {
             ForEach(this.filteredMedicines, (med: MedicineItem) => {
               Column() {
-                Row() {
-                  Text(med.name)
-                    .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#333333')
-                    .layoutWeight(1);
-                  Text(med.source ? med.source.substring(0, 10) + (med.source.length > 10 ? '...' : '') : '')
-                    .fontSize(12)
-                    .fontColor('#999999')
-                    .margin({ right: 8 });
-                }
-                .margin({ bottom: 8 });
+                Text(med.name)
+                  .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#333333')
+                  .width('100%')
+                  .margin({ bottom: 8 });
                 
                 Text('ID: ' + med.id)
                   .fontSize(11)
                   .fontColor('#CCCCCC')
+                  .width('100%')
                   .margin({ bottom: 4 });
                   
                 Text('适应症: ' + (med.indication ? med.indication.substring(0, 50) + (med.indication.length > 50 ? '...' : '') : '暂无'))
                   .fontSize(12)
                   .fontColor('#999999')
+                  .width('100%')
                   .margin({ bottom: 4 });
                 Text('用法: ' + (med.usageDesc ? med.usageDesc.substring(0, 40) + (med.usageDesc.length > 40 ? '...' : '') : '暂无'))
                   .fontSize(12)
                   .fontColor('#666666')
+                  .width('100%')
                   .margin({ bottom: 4 });
-                Row() {
-                  Text(med.source || '未知来源')
-                    .fontSize(12)
-                    .fontColor('#1677FF')
-                    .backgroundColor('#E6F4FF')
-                    .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                    .borderRadius(4);
-                }
               }
               .width('85%')
               .margin({ bottom: 16, left: '7.5%', right: '7.5%' })

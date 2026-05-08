@@ -21,6 +21,13 @@ public class Medicine {
     /** 药品名 */
     private String name;
 
+    /** 药品类别 */
+    private String category;
+
+    /** 分类编码 */
+    @TableField("category_code")
+    private String categoryCode;
+
     /** 适应症 */
     private String indication;
 

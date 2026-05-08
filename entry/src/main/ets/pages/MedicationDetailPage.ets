@@ -197,14 +197,6 @@ struct MedicationDetailPage {
                 .fontWeight(FontWeight.Bold)
                 .fontColor('#333333')
                 .margin({ bottom: 12 });
-              Row() {
-                Text(this.medicine.source || '未知来源')
-                  .fontSize(12)
-                  .fontColor('#1677FF')
-                  .backgroundColor('#E6F4FF')
-                  .padding({ left: 8, right: 8, top: 4, bottom: 4 })
-                  .borderRadius(4);
-              }
             }
             .width('100%')
             .padding({ top: 24, bottom: 24 })
@@ -269,27 +261,6 @@ struct MedicationDetailPage {
             }
             .width('85%')
             .margin({ bottom: 16, left: '7.5%', right: '7.5%' })
-            .padding(16)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(12)
-            .border({ width: 1, color: '#F0F0F0' });
-
-            Column() {
-              Text('数据来源')
-                .fontSize(18)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#333333')
-                .margin({ bottom: 12 })
-                .width('100%')
-                .textAlign(TextAlign.Start);
-              Text(this.medicine.source || '暂无信息')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width('100%')
-                .textAlign(TextAlign.Start);
-            }
-            .width('85%')
-            .margin({ bottom: 100, left: '7.5%', right: '7.5%' })
             .padding(16)
             .backgroundColor('#FFFFFF')
             .borderRadius(12)

@@ -1,6 +1,7 @@
 package com.example.medical.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -17,10 +18,12 @@ public class AncientMedicalImage {
 
     private String restoreUrl;
 
+    @TableField("model_3d_url")
     private String model3dUrl;
 
     private String title;
 
+    @TableField("`desc`")
     private String desc;
 
     private String source;

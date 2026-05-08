@@ -27,6 +27,11 @@ interface QuickAction {
   route: string;
 }
 
+interface GridConfig {
+  rowsTemplate: string;
+  height: number;
+}
+
 @Entry
 @Component
 struct NurseWorkbench {
@@ -35,13 +40,36 @@ struct NurseWorkbench {
   @State currentIndex: number = 0;
 
   private quickActions: QuickAction[] = [
-    { id: 'patient_manage', icon: '👥', title: '患者管理', color: '#3498DB', route: 'pages/FamilyPage' },
-    { id: 'health_record', icon: '📋', title: '健康档案', color: '#9B59B6', route: 'pages/HealthRecords' },
-    { id: 'medication_manage', icon: '💊', title: '用药管理', color: '#E74C3C', route: 'pages/MedicationPage' },
-    { id: 'nursing_record', icon: '📝', title: '护理记录', color: '#2ECC71', route: 'pages/MedicalRecord' },
-    { id: 'vital_signs', icon: '📊', title: '生命体征', color: '#F39C12', route: 'pages/HealthPage' },
-    { id: 'schedule', icon: '📅', title: '排班查看', color: '#1ABC9C', route: 'pages/NurseStationDashboard' }
+    { id: 'patient_manage', icon: '👥', title: '患者管理', color: '#3498DB', route: 'pages/NursePatientList' },
+    { id: 'health_record', icon: '📋', title: '健康档案', color: '#9B59B6', route: 'pages/NurseHealthRecords' },
+    { id: 'medication_manage', icon: '💊', title: '用药管理', color: '#E74C3C', route: 'pages/NurseMedicationPage' },
+    { id: 'nursing_record', icon: '📝', title: '护理记录', color: '#2ECC71', route: 'pages/NurseMedicalRecord' },
+    { id: 'vital_signs', icon: '📊', title: '生命体征', color: '#F39C12', route: 'pages/NurseHealthPage' },
+    { id: 'schedule', icon: '📅', title: '排班查看', color: '#1ABC9C', route: 'pages/NurseStationDashboard' },
+    { id: 'patient_chat', icon: '💬', title: '患者聊天', color: '#13C2C2', route: 'pages/NursePatientList' },
+    { id: 'family_chat', icon: '👨‍👩‍👧', title: '家属沟通', color: '#F5A623', route: 'pages/NurseFamilyList' }
   ];
+
+  private calculateGridConfig(): GridConfig {
+    const itemCount = this.quickActions.length;
+    const columns = 3;
+    const rows = Math.ceil(itemCount / columns);
+    const rowHeight = 120;
+    const gap = 12;
+    const totalHeight = rows * rowHeight + (rows - 1) * gap;
+    
+    const rowsTemplateArray: string[] = [];
+    for (let i = 0; i < rows; i++) {
+      rowsTemplateArray.push('1fr');
+    }
+    
+    const config: GridConfig = {
+      rowsTemplate: rowsTemplateArray.join(' '),
+      height: totalHeight
+    };
+    
+    return config;
+  }
 
   async aboutToAppear(): Promise<void> {
     // 检查登录状态
@@ -172,11 +200,11 @@ struct NurseWorkbench {
               })
             }
             .columnsTemplate('1fr 1fr 1fr')
-            .rowsTemplate('1fr 1fr')
+            .rowsTemplate(this.calculateGridConfig().rowsTemplate)
             .columnsGap(12)
             .rowsGap(12)
             .width('100%')
-            .height(280)
+            .height(this.calculateGridConfig().height)
           }
           .width('100%')
           .padding(20)

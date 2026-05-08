@@ -210,6 +210,12 @@ struct FamilyHome {
 
             Divider().width('100%').color('#E0E0E0')
 
+            this.MenuItem('💬 咨询聊天', '与医护人员在线沟通', () => {
+              router.pushUrl({ url: 'pages/FamilyChatListPage' });
+            })
+
+            Divider().width('100%').color('#E0E0E0')
+
             this.MenuItem('💊 用药管理', '查看和管理用药信息', () => {
               router.pushUrl({ url: 'pages/FamilyMedication' });
             })

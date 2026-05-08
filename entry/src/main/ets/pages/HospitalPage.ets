@@ -33,7 +33,7 @@ struct HospitalPage {
   @State hasError: boolean = false;
   @State errorMessage: string = '';
 
-  private levels: string[] = ['全部', '三级甲等', '三级乙等', '二级甲等', '二级乙等', '一级甲等', '一级乙等', '综合医院', '专科医院'];
+  private levels: string[] = ['全部', '三级甲等', '综合医院', '社区医院', '专科医院', '卫生院', '保健机构', '诊所'];
   private isRequesting: boolean = false;
 
   async loadHospitalList(filterLevel?: string): Promise<void> {

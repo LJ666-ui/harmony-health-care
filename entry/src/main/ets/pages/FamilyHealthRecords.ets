@@ -18,7 +18,7 @@ interface HealthRecord {
 @Component
 struct FamilyHealthRecords {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @StorageLink('familyInfo') familyInfo: any | null = null;
+  @StorageLink('familyInfo') familyInfo: object | null = null;
   @State isLoading: boolean = false;
   @State records: HealthRecord[] = [];
   @State selectedType: string = '全部';

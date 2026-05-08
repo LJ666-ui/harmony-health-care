@@ -5,6 +5,8 @@
 
 import { TaskStatus } from './SmartWardEnums';
 
+export { TaskStatus };
+
 /**
  * 护理任务接口
  * 描述单个护理任务的信息

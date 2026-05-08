@@ -111,6 +111,18 @@
     "pages/WatchMessagePage",
     "pages/NurseLogin",
     "pages/NurseWorkbench",
-    "pages/NurseProfile"
+    "pages/NurseProfile",
+    "pages/DoctorLogin",
+    "pages/FamilyChatListPage",
+    "pages/FamilyHealthRecords",
+    "pages/FamilyMedication",
+    "pages/NursePatientList",
+    "pages/NurseFamilyList",
+    "pages/NurseStationDashboard",
+    "pages/NurseChatPage",
+    "pages/NurseHealthRecords",
+    "pages/NurseMedicationPage",
+    "pages/NurseMedicalRecord",
+    "pages/NurseHealthPage"
   ]
 }

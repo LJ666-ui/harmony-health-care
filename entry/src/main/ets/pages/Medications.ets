@@ -385,10 +385,10 @@ struct Medications {
               .onClick(() => this.handleCategoryFilter(category.categoryCode, category.categoryName));
           }, (category: CategoryItem) => category.categoryCode + '_' + category.categoryName);
         }
-        .width('100%')
         .padding({ left: 16, right: 16, bottom: 8 })
       }
-      .scrollBar(BarState.Off)
+      .width('100%')
+      .scrollBar(BarState.Auto)
       .scrollable(ScrollDirection.Horizontal)
 
       Text('药品列表')
@@ -448,40 +448,29 @@ struct Medications {
           } else {
             ForEach(this.filteredMedicines, (med: MedicineItem) => {
               Column() {
-                Row() {
-                  Text(med.name)
-                    .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#333333')
-                    .layoutWeight(1);
-                  Text(med.source ? med.source.substring(0, 10) + (med.source.length > 10 ? '...' : '') : '')
-                    .fontSize(12)
-                    .fontColor('#999999')
-                    .margin({ right: 8 });
-                }
-                .margin({ bottom: 8 });
+                Text(med.name)
+                  .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#333333')
+                  .width('100%')
+                  .margin({ bottom: 8 });
                 
                 Text('ID: ' + med.id)
                   .fontSize(11)
                   .fontColor('#CCCCCC')
+                  .width('100%')
                   .margin({ bottom: 4 });
                   
                 Text('适应症: ' + (med.indication ? med.indication.substring(0, 50) + (med.indication.length > 50 ? '...' : '') : '暂无'))
                   .fontSize(12)
                   .fontColor('#999999')
+                  .width('100%')
                   .margin({ bottom: 4 });
                 Text('用法: ' + (med.usageDesc ? med.usageDesc.substring(0, 40) + (med.usageDesc.length > 40 ? '...' : '') : '暂无'))
                   .fontSize(12)
                   .fontColor('#666666')
+                  .width('100%')
                   .margin({ bottom: 4 });
-                Row() {
-                  Text(med.source || '未知来源')
-                    .fontSize(12)
-                    .fontColor('#1677FF')
-                    .backgroundColor('#E6F4FF')
-                    .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                    .borderRadius(4);
-                }
               }
               .width('85%')
               .margin({ bottom: 16, left: '7.5%', right: '7.5%' })

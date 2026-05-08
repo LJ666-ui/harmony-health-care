@@ -482,6 +482,60 @@ struct Login {
           }
           .width('100%');
 
+          // 家属登录入口
+          Column() {
+            Divider()
+              .width('100%')
+              .color('#E0E0E0')
+              .margin({ top: 20, bottom: 20 });
+
+            Text('其他登录方式')
+              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+              .fontColor(GlobalTheme.TEXT_SECONDARY)
+              .margin({ bottom: 15 });
+
+            Button('家属登录')
+              .width('100%')
+              .height(GlobalTheme.getButtonHeight(this.isElderMode))
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontColor(GlobalTheme.THEME_COLOR)
+              .backgroundColor('#FFFFFF')
+              .border({ width: 1, color: GlobalTheme.THEME_COLOR })
+              .borderRadius(GlobalTheme.RADIUS_MD)
+              .onClick(() => {
+                try {
+                  router.pushUrl({ url: 'pages/FamilyLogin' });
+                } catch (error) {
+                  console.error('跳转家属登录页失败:', error);
+                  ToastUtil.showError('跳转失败，请重试');
+                }
+              });
+
+            Button('护士登录')
+              .width('100%')
+              .height(GlobalTheme.getButtonHeight(this.isElderMode))
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontColor('#2ECC71')
+              .backgroundColor('#FFFFFF')
+              .border({ width: 1, color: '#2ECC71' })
+              .borderRadius(GlobalTheme.RADIUS_MD)
+              .margin({ top: 10 })
+              .onClick(() => {
+                try {
+                  router.pushUrl({ url: 'pages/NurseLogin' });
+                } catch (error) {
+                  console.error('跳转护士登录页失败:', error);
+                  ToastUtil.showError('跳转失败，请重试');
+                }
+              });
+
+            Text('家属或护士可使用手机号登录')
+              .fontSize(12)
+              .fontColor(GlobalTheme.TEXT_SECONDARY)
+              .margin({ top: 10 });
+          }
+          .width('100%');
+
           // 演示账号提示卡片
           Row({ space: 8 }) {
             Text('💡')

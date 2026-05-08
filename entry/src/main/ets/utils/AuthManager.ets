@@ -7,6 +7,8 @@ export enum UserRole {
   GUEST = 'guest',
   USER = 'user',
   DOCTOR = 'doctor',
+  FAMILY = 'family',  // 家属角色
+  NURSE = 'nurse',     // 护士角色
   ADMIN = 'admin',
   SUPER_ADMIN = 'superAdmin'
 }
@@ -31,6 +33,19 @@ export class AuthManager {
   }
 
   getCurrentRole(): UserRole {
+    // 检查家属登录状态
+    const isFamilyLoggedIn: boolean = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
+    if (isFamilyLoggedIn) {
+      return UserRole.FAMILY;
+    }
+
+    // 检查护士登录状态
+    const isNurseLoggedIn: boolean = AppStorage.get<boolean>('isNurseLoggedIn') || false;
+    if (isNurseLoggedIn) {
+      return UserRole.NURSE;
+    }
+
+    // 检查管理员登录状态
     const adminSession: SessionInfo | null = this.getAdminSession();
     if (adminSession && SessionInfoHelper.isValid(adminSession)) {
       const adminInfo: AdminInfo | null = this.getAdminInfo();
@@ -39,6 +54,7 @@ export class AuthManager {
       }
     }
 
+    // 检查普通用户登录状态
     const userSession: SessionInfo | null = this.getUserSession();
     if (userSession && SessionInfoHelper.isValid(userSession)) {
       const userType: number | undefined = AppStorage.get<number>('userType');

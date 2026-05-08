@@ -1,5 +1,0 @@
-com\example\medical\config\MyBatisPlusConfig.class
-com\example\medical\service\HealthFoodService.class
-com\example\medical\controller\HealthFoodController.class
-com\example\medical\entity\Hospital.class
-com\example\medical\entity\HealthFood.class

@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
 import { AdminMock, AdminInfo } from '../mock/adminMock';
+import { CurrentAdmin } from '../services/AdminAuthService';
 
 @Entry
 @Component
@@ -29,7 +30,24 @@ struct AdminManage {
   @State resetConfirmPwd: string = '';
 
   aboutToAppear(): void {
-    this.currentAdmin = AppStorage.get<AdminInfo>('currentAdmin') || null;
+    const currentAdminData: CurrentAdmin | null = AppStorage.get<CurrentAdmin>('currentAdmin') || null;
+    if (currentAdminData) {
+      this.currentAdmin = {
+        id: currentAdminData.id,
+        username: currentAdminData.username,
+        password: '',
+        real_name: currentAdminData.realName,
+        phone: currentAdminData.phone,
+        email: currentAdminData.email,
+        avatar: '',
+        role: currentAdminData.role,
+        status: currentAdminData.status,
+        last_login_time: '',
+        last_login_ip: '',
+        create_time: '',
+        is_deleted: 0
+      };
+    }
     if (!this.currentAdmin || this.currentAdmin.role !== 1) {
       this.accessDenied = true;
     } else {

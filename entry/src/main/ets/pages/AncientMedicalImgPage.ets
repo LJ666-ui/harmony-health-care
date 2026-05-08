@@ -42,6 +42,8 @@ struct AncientMedicalImgPage {
   @State uploadProgress: number = 0;
   @State currentPage: number = 1;
   @State totalImages: number = 0;
+  @State hasMore: boolean = true;
+  @State isLoadingMore: boolean = false;
   @State recordId: number = 0;
 
   private scroller: Scroller = new Scroller();
@@ -68,7 +70,10 @@ struct AncientMedicalImgPage {
   async loadImageList(): Promise<void> {
     this.isLoading = true;
     try {
-      const url: string = ApiConstants.ANCIENT_IMAGE_LIST + '?page=' + this.currentPage + '&size=20';
+      let url: string = ApiConstants.ANCIENT_IMAGE_LIST + '?page=' + this.currentPage + '&size=20';
+      if (this.currentCategory !== '全部') {
+        url += '&source=' + encodeURIComponent(this.currentCategory);
+      }
       const response: BaseResponse<Record<string, Object>> = await HttpUtil.get<Record<string, Object>>(url);
 
       if (response.success && response.data) {
@@ -83,7 +88,10 @@ struct AncientMedicalImgPage {
         }
 
         this.totalImages = total;
-        this.images = [];
+        
+        if (this.currentPage === 1) {
+          this.images = [];
+        }
 
         for (let i = 0; i < records.length; i++) {
           const record: Record<string, Object> = records[i] as Record<string, Object>;
@@ -101,6 +109,8 @@ struct AncientMedicalImgPage {
           };
           this.images.push(item);
         }
+
+        this.hasMore = this.images.length < total;
       }
     } catch (e) {
       console.error('加载古医图列表失败:', e);
@@ -110,18 +120,64 @@ struct AncientMedicalImgPage {
     }
   }
 
-  getFilteredImages(): AncientImageItem[] {
-    if (this.currentCategory === '全部') {
-      return this.images;
+  async loadMoreImages(): Promise<void> {
+    if (this.isLoadingMore || !this.hasMore) {
+      return;
     }
-    let filtered: AncientImageItem[] = [];
-    for (let i = 0; i < this.images.length; i++) {
-      const img = this.images[i];
-      if (img.desc && (img.desc.indexOf(this.currentCategory) >= 0 || img.title.indexOf(this.currentCategory) >= 0)) {
-        filtered.push(img);
+
+    this.isLoadingMore = true;
+    this.currentPage += 1;
+
+    try {
+      let url: string = ApiConstants.ANCIENT_IMAGE_LIST + '?page=' + this.currentPage + '&size=20';
+      if (this.currentCategory !== '全部') {
+        url += '&source=' + encodeURIComponent(this.currentCategory);
       }
+      const response: BaseResponse<Record<string, Object>> = await HttpUtil.get<Record<string, Object>>(url);
+
+      if (response.success && response.data) {
+        const dataObj: Record<string, Object> = response.data;
+        let records: Object[] = [];
+        if (dataObj['records'] && Array.isArray(dataObj['records'])) {
+          records = dataObj['records'] as Object[];
+        }
+
+        for (let i = 0; i < records.length; i++) {
+          const record: Record<string, Object> = records[i] as Record<string, Object>;
+          const item: AncientImageItem = {
+            id: record['id'] as number || 0,
+            originalUrl: record['originalUrl'] as string || '',
+            restoreUrl: record['restoreUrl'] as string || '',
+            model3dUrl: record['model3dUrl'] as string || '',
+            title: record['title'] as string || '未命名图片',
+            desc: record['desc'] as string || '',
+            source: record['source'] as string || '',
+            createTime: record['createTime'] as string || '',
+            updateTime: record['updateTime'] as string || '',
+            isDeleted: record['isDeleted'] as number || 0
+          };
+          this.images.push(item);
+        }
+
+        this.hasMore = this.images.length < this.totalImages;
+      } else {
+        this.currentPage -= 1;
+        throw new Error(response.message ? response.message : '加载失败');
+      }
+    } catch (e) {
+      this.currentPage -= 1;
+      console.error('加载更多失败:', e);
+      ToastUtil.showInfo('加载失败，请重试');
+    } finally {
+      this.isLoadingMore = false;
     }
-    return filtered;
+  }
+
+  async handleCategoryChange(category: string): Promise<void> {
+    this.currentCategory = category;
+    this.currentPage = 1;
+    this.hasMore = true;
+    await this.loadImageList();
   }
 
   getStatusText(image: AncientImageItem): string {
@@ -171,7 +227,8 @@ struct AncientMedicalImgPage {
 
       const formData: Record<string, Object> = {};
       formData['title'] = this.newTitle.trim();
-      formData['desc'] = this.newDescription.trim() + '[' + this.newCategory + ']';
+      formData['desc'] = this.newDescription.trim();
+      formData['source'] = this.newCategory;
 
       this.uploadProgress = 60;
 
@@ -329,7 +386,7 @@ struct AncientMedicalImgPage {
                     .padding({ left: 14, right: 14, top: 7, bottom: 7 })
                     .borderRadius(16)
                     .onClick(() => {
-                      this.currentCategory = category;
+                      this.handleCategoryChange(category);
                     });
                 }, (category: string) => category);
               }
@@ -350,7 +407,7 @@ struct AncientMedicalImgPage {
               .width('100%')
               .height(250)
               .justifyContent(FlexAlign.Center);
-            } else if (this.getFilteredImages().length === 0) {
+            } else if (this.images.length === 0) {
               Column({ space: 16 }) {
                 Text('\uD83D\uDCDC')
                   .fontSize(64);
@@ -367,9 +424,34 @@ struct AncientMedicalImgPage {
               .height(300)
               .justifyContent(FlexAlign.Center);
             } else {
-              ForEach(this.getFilteredImages(), (image: AncientImageItem) => {
+              ForEach(this.images, (image: AncientImageItem) => {
                 this.buildImageCard(image);
               }, (image: AncientImageItem) => image.id.toString());
+              
+              if (this.isLoadingMore) {
+                Column({ space: 8 }) {
+                  LoadingProgress()
+                    .width(30)
+                    .height(30)
+                    .color('#722ED1');
+                  
+                  Text('加载更多...')
+                    .fontSize(12)
+                    .fontColor('#999999');
+                }
+                .width('100%')
+                .height(80)
+                .justifyContent(FlexAlign.Center);
+              } else if (!this.hasMore && this.images.length > 0) {
+                Column() {
+                  Text('已加载全部图片')
+                    .fontSize(12)
+                    .fontColor('#999999');
+                }
+                .width('100%')
+                .height(60)
+                .justifyContent(FlexAlign.Center);
+              }
             }
           }
           .width('85%')
@@ -378,7 +460,12 @@ struct AncientMedicalImgPage {
         .height(0)
         .layoutWeight(1)
         .scrollBar(BarState.Off)
-        .align(Alignment.Top);
+        .align(Alignment.Top)
+        .onScrollEdge((edge: Edge) => {
+          if (edge === Edge.Bottom && this.hasMore && !this.isLoadingMore) {
+            this.loadMoreImages();
+          }
+        });
 
         Footer({ activeIndex: 4 });
       }
@@ -402,30 +489,42 @@ struct AncientMedicalImgPage {
   buildImageCard(image: AncientImageItem) {
     Column({ space: 12 }) {
       Stack({ alignContent: Alignment.TopEnd }) {
-        Column()
-          .width('100%')
-          .height(180)
-          .linearGradient({
-            angle: 135,
-            colors: [['#F9F0FF', 0], ['#E6F7FF', 1]]
-          })
-          .borderRadius({ topLeft: 12, topRight: 12 })
-          .justifyContent(FlexAlign.Center);
+        if (image.originalUrl && image.originalUrl.length > 0) {
+          Image(image.originalUrl)
+            .width('100%')
+            .height(180)
+            .objectFit(ImageFit.Cover)
+            .borderRadius({ topLeft: 12, topRight: 12 })
+            .onError(() => {
+              console.error('图片加载失败:', image.originalUrl);
+            });
+        } else {
+          Column()
+            .width('100%')
+            .height(180)
+            .linearGradient({
+              angle: 135,
+              colors: [['#F9F0FF', 0], ['#E6F7FF', 1]]
+            })
+            .borderRadius({ topLeft: 12, topRight: 12 })
+            .justifyContent(FlexAlign.Center);
 
-        Column() {
-          Text('\uD83D\uDCDC')
-            .fontSize(48);
+          Column() {
+            Text('\uD83D\uDCDC')
+              .fontSize(48);
+          }
+        }
 
-          if (image.desc && image.desc.indexOf('[') >= 0) {
-            if (image.desc.lastIndexOf('[') >= 0 && image.desc.lastIndexOf(']') > image.desc.lastIndexOf('[')) {
-              Text(image.desc.substring(image.desc.lastIndexOf('[') + 1, image.desc.lastIndexOf(']')))
-                .fontSize(11)
-                .fontColor('#FFFFFF')
-                .backgroundColor('#722ED1')
-                .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-                .borderRadius(8)
-                .margin({ top: 8 });
-            }
+        if (image.desc && image.desc.indexOf('[') >= 0) {
+          if (image.desc.lastIndexOf('[') >= 0 && image.desc.lastIndexOf(']') > image.desc.lastIndexOf('[')) {
+            Text(image.desc.substring(image.desc.lastIndexOf('[') + 1, image.desc.lastIndexOf(']')))
+              .fontSize(11)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#722ED1')
+              .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+              .borderRadius(8)
+              .margin({ top: 8, left: 10 })
+              .position({ x: 10, y: 10 });
           }
         }
 
@@ -704,15 +803,24 @@ struct AncientMedicalImgPage {
           .fontColor('#666666')
           .width('100%');
 
-        Column()
-          .width('100%')
-          .height(300)
-          .borderRadius(12)
-          .linearGradient({
-            angle: 135,
-            colors: [['#FFF7F7', 0], ['#F6FFED', 1]]
-          })
-          .justifyContent(FlexAlign.Center);
+        if (this.selectedImage && this.selectedImage.restoreUrl && this.selectedImage.restoreUrl.length > 0) {
+          Image(this.selectedImage.restoreUrl)
+            .width('100%')
+            .height(300)
+            .objectFit(ImageFit.Contain)
+            .borderRadius(12)
+            .backgroundColor('#F5F5F5');
+        } else {
+          Column()
+            .width('100%')
+            .height(300)
+            .borderRadius(12)
+            .linearGradient({
+              angle: 135,
+              colors: [['#FFF7F7', 0], ['#F6FFED', 1]]
+            })
+            .justifyContent(FlexAlign.Center);
+        }
 
         Row({ space: 24 }) {
           Column({ space: 6 }) {
@@ -721,14 +829,24 @@ struct AncientMedicalImgPage {
               .fontColor('#FF4D4F')
               .fontWeight(FontWeight.Medium);
 
-            Column()
-              .width(60)
-              .height(60)
-              .backgroundColor('#FFF7F7')
-              .borderRadius(8)
-              .border({ width: 1, color: '#FFCCC7' })
-              .justifyContent(FlexAlign.Center)
-              .clip(true);
+            if (this.selectedImage && this.selectedImage.originalUrl) {
+              Image(this.selectedImage.originalUrl)
+                .width(60)
+                .height(60)
+                .objectFit(ImageFit.Cover)
+                .borderRadius(8)
+                .border({ width: 1, color: '#FFCCC7' })
+                .clip(true);
+            } else {
+              Column()
+                .width(60)
+                .height(60)
+                .backgroundColor('#FFF7F7')
+                .borderRadius(8)
+                .border({ width: 1, color: '#FFCCC7' })
+                .justifyContent(FlexAlign.Center)
+                .clip(true);
+            }
 
             Text('\u6A21\u7CCA/\u7834\u635F')
               .fontSize(10)
@@ -745,14 +863,24 @@ struct AncientMedicalImgPage {
               .fontColor('#52C41A')
               .fontWeight(FontWeight.Medium);
 
-            Column()
-              .width(60)
-              .height(60)
-              .backgroundColor('#F6FFED')
-              .borderRadius(8)
-              .border({ width: 1, color: '#B7EB8F' })
-              .justifyContent(FlexAlign.Center)
-              .clip(true);
+            if (this.selectedImage && this.selectedImage.restoreUrl) {
+              Image(this.selectedImage.restoreUrl)
+                .width(60)
+                .height(60)
+                .objectFit(ImageFit.Cover)
+                .borderRadius(8)
+                .border({ width: 1, color: '#B7EB8F' })
+                .clip(true);
+            } else {
+              Column()
+                .width(60)
+                .height(60)
+                .backgroundColor('#F6FFED')
+                .borderRadius(8)
+                .border({ width: 1, color: '#B7EB8F' })
+                .justifyContent(FlexAlign.Center)
+                .clip(true);
+            }
 
             Text('\u6E05\u6670/\u5B8C\u6574')
               .fontSize(10)

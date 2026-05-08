@@ -14,6 +14,7 @@ interface FamilyLoginResponseData {
 
 interface FamilyInfo {
   id: number;
+  userId: number;
   name: string;
   phone: string;
   relation: string;
@@ -251,12 +252,6 @@ struct FamilyLogin {
             .onClick(() => {
               this.handleLogin();
             })
-
-          // 提示信息
-          Text('家属登录功能需由用户在"家属管理"中开启')
-            .fontSize(12)
-            .fontColor(GlobalTheme.TEXT_SECONDARY)
-            .margin({ top: 20 })
 
           // 返回用户登录
           Button('用户登录')

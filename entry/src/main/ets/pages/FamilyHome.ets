@@ -68,12 +68,35 @@ struct FamilyHome {
       if (response.success && response.data) {
         this.familyInfo = response.data;
         AppStorage.setOrCreate<FamilyInfo>('familyInfo', response.data);
+        
+        // 获取关联患者信息
+        if (response.data.userId) {
+          this.relatedUser = {
+            id: response.data.userId,
+            username: '',
+            realName: '',
+            phone: ''
+          };
+          await this.loadRelatedUserInfo(response.data.userId);
+        }
       }
     } catch (error) {
       console.error('加载家属信息失败:', error);
       ToastUtil.showError('加载信息失败');
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  private async loadRelatedUserInfo(userId: number): Promise<void> {
+    try {
+      const response = await HttpUtil.get<RelatedUser>(`/user/${userId}`);
+      if (response.success && response.data) {
+        this.relatedUser = response.data;
+        AppStorage.setOrCreate<RelatedUser>('relatedUser', response.data);
+      }
+    } catch (error) {
+      console.error('加载关联用户信息失败:', error);
     }
   }
 
@@ -185,6 +208,70 @@ struct FamilyHome {
           .borderRadius(12)
           .margin({ top: 15 })
           .shadow({ radius: 5, color: '#E0E0E0', offsetX: 0, offsetY: 2 })
+
+        // 关联患者信息卡片
+        if (this.relatedUser) {
+          Column() {
+            Text('👤 关联患者')
+              .fontSize(this.isElderMode ? 18 : 16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(GlobalTheme.TEXT_PRIMARY)
+              .width('100%')
+              .margin({ bottom: 15 })
+
+            Row() {
+              Image($r('app.media.startIcon'))
+                .width(50)
+                .height(50)
+                .borderRadius(25)
+                .margin({ right: 15 })
+
+              Column() {
+                Text(this.relatedUser.realName || this.relatedUser.username || '患者')
+                  .fontSize(this.isElderMode ? 20 : 18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(GlobalTheme.TEXT_PRIMARY)
+
+                Text(`ID: ${this.relatedUser.id}`)
+                  .fontSize(12)
+                  .fontColor(GlobalTheme.TEXT_SECONDARY)
+                  .margin({ top: 5 })
+
+                if (this.relatedUser.phone) {
+                  Text(`电话: ${this.relatedUser.phone}`)
+                    .fontSize(12)
+                    .fontColor(GlobalTheme.TEXT_SECONDARY)
+                    .margin({ top: 2 })
+                }
+              }
+              .alignItems(HorizontalAlign.Start)
+
+              Blank()
+
+              Button('查看详情')
+                .height(32)
+                .fontSize(12)
+                .fontColor('#3498DB')
+                .backgroundColor('#E8F4FD')
+                .borderRadius(16)
+                .onClick(() => {
+                  if (this.relatedUser) {
+                    router.pushUrl({ 
+                      url: 'pages/FamilyHealthRecords',
+                      params: { userId: this.relatedUser.id }
+                    });
+                  }
+                })
+            }
+            .width('100%')
+            .padding(15)
+          }
+          .width('95%')
+          .backgroundColor('#FFFFFF')
+          .borderRadius(12)
+          .margin({ top: 15 })
+          .shadow({ radius: 5, color: '#E0E0E0', offsetX: 0, offsetY: 2 })
+        }
         }
 
         // 功能菜单
@@ -210,14 +297,20 @@ struct FamilyHome {
 
             Divider().width('100%').color('#E0E0E0')
 
+            this.MenuItem('💬 咨询聊天', '与医护人员在线沟通', () => {
+              router.pushUrl({ url: 'pages/FamilyChatListPage' });
+            })
+
+            Divider().width('100%').color('#E0E0E0')
+
             this.MenuItem('💊 用药管理', '查看和管理用药信息', () => {
               router.pushUrl({ url: 'pages/FamilyMedication' });
             })
 
             Divider().width('100%').color('#E0E0E0')
 
-            this.MenuItem('🏥 医疗记录', '查看医疗和就诊记录', () => {
-              router.pushUrl({ url: 'pages/FamilyHealthRecords' });
+            this.MenuItem('🏥 医疗记录', '查看关联患者的就诊记录', () => {
+              router.pushUrl({ url: 'pages/FamilyMedicalRecords' });
             })
 
             Divider().width('100%').color('#E0E0E0')

@@ -529,6 +529,24 @@ struct Login {
                 }
               });
 
+            Button('医生登录')
+              .width('100%')
+              .height(GlobalTheme.getButtonHeight(this.isElderMode))
+              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+              .fontColor('#1677FF')
+              .backgroundColor('#FFFFFF')
+              .border({ width: 1, color: '#1677FF' })
+              .borderRadius(GlobalTheme.RADIUS_MD)
+              .margin({ top: 10 })
+              .onClick(() => {
+                try {
+                  router.pushUrl({ url: 'pages/DoctorLogin' });
+                } catch (error) {
+                  console.error('跳转医生登录页失败:', error);
+                  ToastUtil.showError('跳转失败，请重试');
+                }
+              });
+
             Text('家属或护士可使用手机号登录')
               .fontSize(12)
               .fontColor(GlobalTheme.TEXT_SECONDARY)

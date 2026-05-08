@@ -23,6 +23,29 @@ spring:
   tomcat:
     max-http-post-size: -1
 
+  # Redis配置
+  redis:
+    host: 192.168.149.130  # 你的 Redis 服务器IP
+    port: 6379             # 端口
+
+  rabbitmq:
+    host: 192.168.149.130
+    port: 5672
+    username: admin
+    password: 123456
+    virtual-host: /
+    listener:
+      type: simple
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 3000
+
+
+
 # MyBatis-Plus
 mybatis-plus:
   type-aliases-package: com.example.medical.entity
@@ -33,3 +56,4 @@ mybatis-plus:
 # 文件上传配置（你本地3D模型/视频存放路径）
 file:
   upload-path: D:/harmony-health-care/uploads/
+

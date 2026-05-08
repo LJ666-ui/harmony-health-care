@@ -18,6 +18,10 @@ class HospitalItem {
   description: string = '';
 }
 
+interface HospitalPageData {
+  records: HospitalItem[];
+}
+
 @Entry
 @Component
 struct HospitalPage {
@@ -30,11 +34,17 @@ struct HospitalPage {
   @State errorMessage: string = '';
 
   private levels: string[] = ['全部', '三级甲等', '三级乙等', '二级甲等', '二级乙等', '一级甲等', '一级乙等', '综合医院', '专科医院'];
+  private isRequesting: boolean = false;
 
   async loadHospitalList(filterLevel?: string): Promise<void> {
+    if (this.isRequesting) {
+      console.log('[HospitalPage] 请求进行中，跳过重复请求');
+      return;
+    }
+
+    this.isRequesting = true;
     this.isLoading = true;
     this.hasError = false;
-    this.hospitals = [];
 
     try {
       let url: string = ApiConstants.HOSPITAL_LIST;
@@ -49,18 +59,43 @@ struct HospitalPage {
         };
       }
 
-      const response: BaseResponse<HospitalItem[]> = await HttpUtil.request<HospitalItem[]>(
-        HttpMethod.GET,
-        url,
-        undefined,
-        queryParams as Object,
-        { showLoading: true, loadingText: '加载医院列表...' }
-      );
+      let response: BaseResponse<HospitalItem[]>;
+      
+      if (queryParams) {
+        response = await HttpUtil.request<HospitalItem[]>(
+          HttpMethod.GET,
+          url,
+          undefined,
+          queryParams,
+          { showLoading: false, loadingText: '加载医院列表...' }
+        );
+      } else {
+        response = await HttpUtil.request<HospitalItem[]>(
+          HttpMethod.GET,
+          url,
+          undefined,
+          undefined,
+          { showLoading: false, loadingText: '加载医院列表...' }
+        );
+      }
 
       if (response.success && response.data) {
-        this.hospitals = response.data;
+        let hospitalList: HospitalItem[] = [];
+        const data: Object = response.data;
         
-        if (this.hospitals.length === 0) {
+        if (Array.isArray(data)) {
+          hospitalList = data;
+        } else if (data && typeof data === 'object') {
+          const pageData = data as HospitalPageData;
+          if (pageData.records && Array.isArray(pageData.records)) {
+            hospitalList = pageData.records;
+          }
+        }
+        
+        if (hospitalList.length > 0) {
+          this.hospitals = hospitalList;
+        } else {
+          this.hospitals = [];
           this.errorMessage = '暂无医院数据';
         }
       } else {
@@ -70,10 +105,13 @@ struct HospitalPage {
       }
     } catch (error) {
       this.hasError = true;
-      this.errorMessage = '网络错误，请检查网络连接';
+      const err = error as Error;
+      this.errorMessage = err?.message || '网络错误，请检查网络连接';
+      console.error('[HospitalPage] 加载医院列表失败:', error);
       ToastUtil.showError(this.errorMessage, 2000);
     } finally {
       this.isLoading = false;
+      this.isRequesting = false;
     }
   }
 
@@ -171,7 +209,7 @@ struct HospitalPage {
                     Button() {
                       Column() {
                         Row() {
-                          Text(item.name)
+                          Text(item.name || '未知医院')
                             .fontSize(this.isElderMode ? 17 : 14)
                             .fontWeight(FontWeight.Bold)
                             .fontColor('#333333')
@@ -183,7 +221,7 @@ struct HospitalPage {
                         }
                         .width('100%')
 
-                        if (item.level !== '') {
+                        if (item.level && item.level !== '') {
                           Text(item.level)
                             .fontSize(this.isElderMode ? 13 : 11)
                             .fontColor('#1677FF')
@@ -192,7 +230,7 @@ struct HospitalPage {
                             .margin({ top: 4 })
                         }
 
-                        if (item.address !== '') {
+                        if (item.address && item.address !== '') {
                           Text(item.address)
                             .fontSize(this.isElderMode ? 13 : 11)
                             .fontColor('#666666')
@@ -221,7 +259,7 @@ struct HospitalPage {
                       });
                     })
                   }
-                }, (item: HospitalItem, index: number) => `${index}`)
+                }, (item: HospitalItem, index: number) => `${item.id}_${index}`)
               }
               .width('100%')
               .layoutWeight(1)

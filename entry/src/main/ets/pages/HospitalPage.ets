@@ -7,6 +7,7 @@ import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { GlobalTheme } from '../global';
+import hospitalCacheManager, { HospitalCacheItem } from '../utils/HospitalCacheManager';
 
 class HospitalItem {
   id: number = 0;
@@ -47,6 +48,32 @@ struct HospitalPage {
     this.hasError = false;
 
     try {
+      // 先尝试从缓存读取
+      const cachedHospitals = await hospitalCacheManager.getHospitalsByLevel(filterLevel || '全部');
+      const isCacheValid = await hospitalCacheManager.isCacheValid();
+      
+      if (cachedHospitals.length > 0 && isCacheValid) {
+        console.log('[HospitalPage] 使用缓存数据，数量：', cachedHospitals.length);
+        this.hospitals = cachedHospitals.map((item: HospitalCacheItem): HospitalItem => {
+          const hospital: HospitalItem = {
+            id: item.id,
+            name: item.name,
+            address: item.address,
+            phone: item.phone,
+            level: item.level,
+            department: item.department,
+            description: item.description
+          };
+          return hospital;
+        });
+        this.isLoading = false;
+        this.isRequesting = false;
+        return;
+      }
+
+      // 缓存无效或为空，从服务器获取
+      console.log('[HospitalPage] 缓存无效，从服务器获取数据');
+      
       let url: string = ApiConstants.HOSPITAL_LIST;
       let queryParams: Record<string, string> | undefined = undefined;
       
@@ -94,6 +121,27 @@ struct HospitalPage {
         
         if (hospitalList.length > 0) {
           this.hospitals = hospitalList;
+          
+          // 保存到缓存
+          const cacheItems: HospitalCacheItem[] = hospitalList.map((item: HospitalItem): HospitalCacheItem => {
+            const cacheItem: HospitalCacheItem = {
+              id: item.id,
+              name: item.name,
+              address: item.address || '',
+              phone: item.phone || '',
+              level: item.level || '',
+              department: item.department || '',
+              description: item.description || '',
+              longitude: 0,
+              latitude: 0,
+              cached_time: Date.now(),
+              data_source: 'server'
+            };
+            return cacheItem;
+          });
+          
+          await hospitalCacheManager.saveHospitals(cacheItems);
+          console.log('[HospitalPage] 已保存到缓存，数量：', cacheItems.length);
         } else {
           this.hospitals = [];
           this.errorMessage = '暂无医院数据';

@@ -1,7 +1,28 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
 import { AdminAuthService, AdminLoginResponse } from '../services/AdminAuthService';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import promptAction from '@ohos.promptAction';
+
+interface SystemStatistics {
+  userCount?: number;
+  familyCount?: number;
+  doctorCount?: number;
+  adminCount?: number;
+  todayNewRecords?: number;
+  weeklyActiveUsers?: number;
+  monthlyEvaluations?: number;
+  planCompletionRate?: number;
+}
+
+interface UserInfo {
+  id: number;
+  username: string;
+  real_name?: string;
+  realName?: string;
+  create_time?: string;
+  createTime?: string;
+}
 
 @Entry
 @Component
@@ -11,6 +32,12 @@ struct AdminDashboard {
   @State selectedTab: number = 0;
   @State showSidebar: boolean = false;
   @State hasAccess: boolean = false;
+  @State userCount: number = 0;
+  @State familyCount: number = 0;
+  @State doctorCount: number = 0;
+  @State adminCount: number = 0;
+  @State recentUsers: UserInfo[] = [];
+  @State isLoadingStats: boolean = false;
 
   private tabs: string[] = ['仪表盘', '数据大屏', '用户管理', '家属管理', '管理员管理'];
   private tabIcons: string[] = ['📊', '🖥️', '👥', '👨‍👩‍👧', '🛡️'];
@@ -24,6 +51,41 @@ struct AdminDashboard {
 
   aboutToAppear(): void {
     this.checkAccess();
+    this.loadStatistics();
+  }
+
+  private async loadStatistics(): Promise<void> {
+    this.isLoadingStats = true;
+    try {
+      console.info('[AdminDashboard] 开始加载统计数据...');
+      
+      const response: BaseResponse<SystemStatistics> = await HttpUtil.get<SystemStatistics>(
+        '/admin/dashboard/stats',
+        undefined,
+        { isAdmin: true }
+      );
+      
+      console.info('[AdminDashboard] API响应:', JSON.stringify(response));
+      
+      if (response.code === 200 && response.data) {
+        this.userCount = response.data.userCount || 0;
+        this.familyCount = response.data.familyCount || 0;
+        this.doctorCount = response.data.doctorCount || 0;
+        this.adminCount = response.data.adminCount || 0;
+        console.info('[AdminDashboard] 数据加载成功:', 
+          'userCount=', this.userCount,
+          'doctorCount=', this.doctorCount,
+          'adminCount=', this.adminCount);
+      } else {
+        console.error('[AdminDashboard] API返回错误:', response.code, response.message);
+        promptAction.showToast({ message: '获取统计数据失败: ' + (response.message || '未知错误') });
+      }
+    } catch (error) {
+      console.error('[AdminDashboard] 加载统计数据异常:', error);
+      promptAction.showToast({ message: '网络错误，请检查后端服务' });
+    } finally {
+      this.isLoadingStats = false;
+    }
   }
 
   private checkAccess(): void {
@@ -110,13 +172,25 @@ struct AdminDashboard {
         .fontColor(GlobalTheme.TEXT_PRIMARY)
         .width('100%');
 
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        this.StatCard('👥', 0, '注册用户', '#1677FF');
-        this.StatCard('👨‍👩‍👧', 0, '家属记录', '#52C41A');
-        this.StatCard('🏥', 0, '医生用户', '#FAAD14');
-        this.StatCard('🛡️', 0, '管理员', '#8B5CF6');
+      if (this.isLoadingStats) {
+        Row() {
+          LoadingProgress()
+            .width(40)
+            .height(40)
+            .color('#1677FF');
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
+        .padding(20);
+      } else {
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+          this.StatCard('👥', this.userCount, '注册用户', '#1677FF');
+          this.StatCard('👨‍👩‍👧', this.familyCount, '家属记录', '#52C41A');
+          this.StatCard('🏥', this.doctorCount, '医生用户', '#FAAD14');
+          this.StatCard('🛡️', this.adminCount, '管理员', '#8B5CF6');
+        }
+        .width('100%');
       }
-      .width('100%');
     }
     .width('100%')
     .padding(16)
@@ -243,12 +317,38 @@ struct AdminDashboard {
         .fontColor(GlobalTheme.TEXT_PRIMARY)
         .width('100%');
 
-      Text('暂无数据')
-        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-        .fontColor(GlobalTheme.TEXT_HINT)
-        .width('100%')
-        .textAlign(TextAlign.Center)
-        .padding(20);
+      if (this.recentUsers.length === 0) {
+        Text('暂无数据')
+          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+          .fontColor(GlobalTheme.TEXT_HINT)
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .padding(20);
+      } else {
+        Column({ space: 8 }) {
+          ForEach(this.recentUsers, (user: UserInfo, index: number) => {
+            Row({ space: 12 }) {
+              Text('👤')
+                .fontSize(20);
+              Column({ space: 4 }) {
+                Text(user.real_name || user.realName || user.username)
+                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                  .fontColor(GlobalTheme.TEXT_PRIMARY)
+                  .fontWeight(FontWeight.Medium);
+                Text(user.create_time || user.createTime || '未知时间')
+                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+                  .fontColor(GlobalTheme.TEXT_SECONDARY);
+              }
+              .alignItems(HorizontalAlign.Start);
+            }
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#F8FAFC')
+            .borderRadius(8);
+          }, (user: UserInfo, index: number) => `${index}`);
+        }
+        .width('100%');
+      }
     }
     .width('100%')
     .padding(16)

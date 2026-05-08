@@ -20,8 +20,13 @@ public class MedicineController {
     private MedicineService medicineService;
 
     @GetMapping("/list")
-    public Result<List<Medicine>> list() {
-        List<Medicine> dataList = medicineService.list();
+    public Result<List<Medicine>> list(@RequestParam(required = false) String categoryCode) {
+        List<Medicine> dataList;
+        if (categoryCode != null && !categoryCode.isEmpty()) {
+            dataList = medicineService.findByCategoryCode(categoryCode);
+        } else {
+            dataList = medicineService.list();
+        }
         System.out.println("数据库数据：" + dataList);
         return Result.success(dataList);
     }

@@ -116,9 +116,13 @@ export class TerminalManager {
     ['pages/MedicationPage', [TerminalType.PATIENT]],
     ['pages/HealthRecords', [TerminalType.PATIENT]],
     ['pages/EmergencyPage', [TerminalType.PATIENT]],
+    ['pages/PatientChatListPage', [TerminalType.PATIENT]],
+    ['pages/PatientDoctorChatPage', [TerminalType.PATIENT]],
+    ['pages/PatientNurseChatPage', [TerminalType.PATIENT]],
     
     // 医生端页面
     ['pages/DoctorHomePage', [TerminalType.DOCTOR]],
+    ['pages/DoctorLogin', [TerminalType.DOCTOR]],
     ['pages/DoctorChatPage', [TerminalType.DOCTOR]],
     ['pages/DoctorFamilyChatPage', [TerminalType.DOCTOR]],
     
@@ -126,11 +130,18 @@ export class TerminalManager {
     ['pages/NurseWorkbench', [TerminalType.NURSE]],
     ['pages/NurseStationDashboard', [TerminalType.NURSE]],
     ['pages/NurseProfile', [TerminalType.NURSE]],
+    ['pages/NurseChatPage', [TerminalType.NURSE]],
+    ['pages/NurseFamilyChatPage', [TerminalType.NURSE]],
+    ['pages/NursePatientList', [TerminalType.NURSE]],
+    ['pages/NurseFamilyList', [TerminalType.NURSE]],
     
     // 家属端页面
     ['pages/FamilyHome', [TerminalType.FAMILY]],
     ['pages/FamilyMedication', [TerminalType.FAMILY]],
     ['pages/FamilyHealthRecords', [TerminalType.FAMILY]],
+    ['pages/FamilyChatListPage', [TerminalType.FAMILY]],
+    ['pages/FamilyDoctorChatPage', [TerminalType.FAMILY]],
+    ['pages/FamilyNurseChatPage', [TerminalType.FAMILY]],
     
     // 管理员端页面
     ['pages/AdminDashboard', [TerminalType.ADMIN]],

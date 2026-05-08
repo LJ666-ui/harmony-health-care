@@ -1,5 +1,6 @@
 package com.example.medical.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.medical.common.JwtUtil;
 import com.example.medical.common.Result;
 import com.example.medical.dto.NurseLoginRequest;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -49,7 +51,6 @@ public class NurseController {
     @GetMapping("/info")
     public Result<?> getNurseInfo(HttpServletRequest request) {
         try {
-            // 从Token中获取护士ID
             String token = request.getHeader("Authorization");
             if (token != null && token.startsWith("Bearer ")) {
                 token = token.substring(7);
@@ -68,6 +69,38 @@ public class NurseController {
             return Result.success(nurseInfo);
         } catch (Exception e) {
             return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取护士列表（供家属/患者选择）
+     * GET /nurse/list
+     */
+    @GetMapping("/list")
+    public Result<?> getNurseList(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String department) {
+        try {
+            LambdaQueryWrapper<Nurse> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Nurse::getStatus, 1);
+            wrapper.eq(Nurse::getIsDeleted, 0);
+            
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                wrapper.and(w -> w.like(Nurse::getName, keyword)
+                        .or().like(Nurse::getNurseNo, keyword));
+            }
+            
+            if (department != null && !department.trim().isEmpty()) {
+                wrapper.like(Nurse::getDepartment, department);
+            }
+            
+            wrapper.orderByAsc(Nurse::getId);
+            
+            List<Nurse> nurses = nurseService.list(wrapper);
+            return Result.success(nurses);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取护士列表失败：" + e.getMessage());
         }
     }
 

@@ -48,6 +48,7 @@
     "pages/DosageCalc",
     "pages/DataAuthPage",
     "pages/AncientMedicalImgPage",
+    "pages/AncientImageVideoPage",
     "pages/ImageRestorationPage",
     "pages/StatisticsPage",
     "pages/RankingPage",
@@ -111,6 +112,20 @@
     "pages/WatchMessagePage",
     "pages/NurseLogin",
     "pages/NurseWorkbench",
-    "pages/NurseProfile"
+    "pages/NurseProfile",
+    "pages/DoctorLogin",
+    "pages/FamilyChatListPage",
+    "pages/FamilyHealthRecords",
+    "pages/FamilyMedicalRecords",
+    "pages/FamilyNurseListPage",
+    "pages/FamilyMedication",
+    "pages/NursePatientList",
+    "pages/NurseFamilyList",
+    "pages/NurseStationDashboard",
+    "pages/NurseChatPage",
+    "pages/NurseHealthRecords",
+    "pages/NurseMedicationPage",
+    "pages/NurseMedicalRecord",
+    "pages/NurseHealthPage"
   ]
 }

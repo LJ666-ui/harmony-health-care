@@ -1,0 +1,37 @@
+========================================
+登录问题快速修复 - SQL命令
+========================================
+
+请按顺序执行以下SQL命令：
+
+1. 连接数据库
+   mysql -u root -p
+
+2. 选择数据库
+   USE medical_health;
+
+3. 修复医生账号（启用状态）
+   UPDATE doctor SET status = 1 WHERE id = 1;
+
+4. 修复管理员密码（密码改为123456）
+   UPDATE admin SET password = '$2a$10$drI53FwlB2.tdaOYC4MkCOKlAW4PiYG0qLn.S7LoiJq07QcJpZEV.' WHERE username = 'admin';
+
+5. 验证修复
+   SELECT id, phone, status FROM doctor WHERE id = 1;
+   SELECT id, username, status FROM admin WHERE username = 'admin';
+
+========================================
+修复后登录信息
+========================================
+
+医生登录：
+  手机号: 13812345001
+  密码: 123456
+
+管理员登录：
+  用户名: admin
+  密码: 123456
+
+========================================
+注意：管理员密码已从 admin123 改为 123456
+========================================

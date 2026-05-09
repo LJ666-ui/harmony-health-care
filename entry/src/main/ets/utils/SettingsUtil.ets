@@ -284,4 +284,355 @@ export class SettingsUtil {
       console.error('SettingsUtil - clear session info failed:', e);
     }
   }
+
+  // ========== 家属相关方法 ==========
+
+  /**
+   * 保存家属Token
+   */
+  async saveFamilyToken(token: string): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      await this.dataPreferences.put('family_token', token);
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - save family token failed:', e);
+    }
+  }
+
+  /**
+   * 获取家属Token
+   */
+  async getFamilyToken(): Promise<string> {
+    if (this.dataPreferences === null) {
+      return '';
+    }
+    try {
+      const value: preferences.ValueType = await this.dataPreferences.get('family_token', '');
+      return value as string;
+    } catch (e) {
+      console.error('SettingsUtil - get family token failed:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 同步获取家属Token
+   */
+  getFamilyTokenSync(): string {
+    if (this.dataPreferences === null) {
+      return '';
+    }
+    try {
+      const value: preferences.ValueType = this.dataPreferences.getSync('family_token', '');
+      return value as string;
+    } catch (e) {
+      console.error('SettingsUtil - get family token sync failed:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 保存家属信息
+   */
+  async saveFamilyInfo(familyInfo: object): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      const jsonStr: string = JSON.stringify(familyInfo);
+      await this.dataPreferences.put('family_info', jsonStr);
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - save family info failed:', e);
+    }
+  }
+
+  /**
+   * 获取家属信息
+   */
+  async getFamilyInfo(): Promise<object | null> {
+    if (this.dataPreferences === null) {
+      return null;
+    }
+    try {
+      const value: preferences.ValueType = await this.dataPreferences.get('family_info', '{}');
+      const jsonStr: string = value as string;
+      if (jsonStr && jsonStr !== '{}' && jsonStr !== '') {
+        return JSON.parse(jsonStr);
+      }
+      return null;
+    } catch (e) {
+      console.error('SettingsUtil - get family info failed:', e);
+      return null;
+    }
+  }
+
+  /**
+   * 清除家属认证信息
+   */
+  async clearFamilyAuth(): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      await this.dataPreferences.delete('family_token');
+      await this.dataPreferences.delete('family_info');
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - clear family auth failed:', e);
+    }
+  }
+
+  /**
+   * 检查家属是否已登录
+   */
+  async isFamilyLoggedIn(): Promise<boolean> {
+    if (this.dataPreferences === null) {
+      return false;
+    }
+    try {
+      const token: string = await this.getFamilyToken();
+      return token.length > 0;
+    } catch (e) {
+      console.error('SettingsUtil - check family login status failed:', e);
+      return false;
+    }
+  }
+
+  // ==================== 护士相关方法 ====================
+
+  /**
+   * 保存护士Token
+   */
+  async saveNurseToken(token: string): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      await this.dataPreferences.put('nurse_token', token);
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - save nurse token failed:', e);
+    }
+  }
+
+  /**
+   * 获取护士Token
+   */
+  async getNurseToken(): Promise<string> {
+    if (this.dataPreferences === null) {
+      return '';
+    }
+    try {
+      const value: preferences.ValueType = await this.dataPreferences.get('nurse_token', '');
+      return value as string;
+    } catch (e) {
+      console.error('SettingsUtil - get nurse token failed:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 同步获取护士Token
+   */
+  getNurseTokenSync(): string {
+    if (this.dataPreferences === null) {
+      return '';
+    }
+    try {
+      const value: preferences.ValueType = this.dataPreferences.getSync('nurse_token', '');
+      return value as string;
+    } catch (e) {
+      console.error('SettingsUtil - get nurse token sync failed:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 保存护士信息
+   */
+  async saveNurseInfo(nurseInfo: object): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      const jsonStr: string = JSON.stringify(nurseInfo);
+      await this.dataPreferences.put('nurse_info', jsonStr);
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - save nurse info failed:', e);
+    }
+  }
+
+  /**
+   * 获取护士信息
+   */
+  async getNurseInfo(): Promise<object | null> {
+    if (this.dataPreferences === null) {
+      return null;
+    }
+    try {
+      const value: preferences.ValueType = await this.dataPreferences.get('nurse_info', '{}');
+      const jsonStr: string = value as string;
+      if (jsonStr && jsonStr !== '{}' && jsonStr !== '') {
+        return JSON.parse(jsonStr);
+      }
+      return null;
+    } catch (e) {
+      console.error('SettingsUtil - get nurse info failed:', e);
+      return null;
+    }
+  }
+
+  /**
+   * 清除护士认证信息
+   */
+  async clearNurseAuth(): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      await this.dataPreferences.delete('nurse_token');
+      await this.dataPreferences.delete('nurse_info');
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - clear nurse auth failed:', e);
+    }
+  }
+
+  /**
+   * 检查护士是否已登录
+   */
+  async isNurseLoggedIn(): Promise<boolean> {
+    if (this.dataPreferences === null) {
+      return false;
+    }
+    try {
+      const token: string = await this.getNurseToken();
+      return token.length > 0;
+    } catch (e) {
+      console.error('SettingsUtil - check nurse login status failed:', e);
+      return false;
+    }
+  }
+
+  // ==================== 医生相关方法 ====================
+
+  /**
+   * 保存医生Token
+   */
+  async saveDoctorToken(token: string): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      await this.dataPreferences.put('doctor_token', token);
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - save doctor token failed:', e);
+    }
+  }
+
+  /**
+   * 获取医生Token
+   */
+  async getDoctorToken(): Promise<string> {
+    if (this.dataPreferences === null) {
+      return '';
+    }
+    try {
+      const value: preferences.ValueType = await this.dataPreferences.get('doctor_token', '');
+      return value as string;
+    } catch (e) {
+      console.error('SettingsUtil - get doctor token failed:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 同步获取医生Token
+   */
+  getDoctorTokenSync(): string {
+    if (this.dataPreferences === null) {
+      return '';
+    }
+    try {
+      const value: preferences.ValueType = this.dataPreferences.getSync('doctor_token', '');
+      return value as string;
+    } catch (e) {
+      console.error('SettingsUtil - get doctor token sync failed:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 保存医生信息
+   */
+  async saveDoctorInfo(doctorInfo: object): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      const jsonStr: string = JSON.stringify(doctorInfo);
+      await this.dataPreferences.put('doctor_info', jsonStr);
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - save doctor info failed:', e);
+    }
+  }
+
+  /**
+   * 获取医生信息
+   */
+  async getDoctorInfo(): Promise<object | null> {
+    if (this.dataPreferences === null) {
+      return null;
+    }
+    try {
+      const value: preferences.ValueType = await this.dataPreferences.get('doctor_info', '{}');
+      const jsonStr: string = value as string;
+      if (jsonStr && jsonStr !== '{}' && jsonStr !== '') {
+        return JSON.parse(jsonStr);
+      }
+      return null;
+    } catch (e) {
+      console.error('SettingsUtil - get doctor info failed:', e);
+      return null;
+    }
+  }
+
+  /**
+   * 清除医生认证信息
+   */
+  async clearDoctorAuth(): Promise<void> {
+    if (this.dataPreferences === null) {
+      return;
+    }
+    try {
+      await this.dataPreferences.delete('doctor_token');
+      await this.dataPreferences.delete('doctor_info');
+      await this.dataPreferences.flush();
+    } catch (e) {
+      console.error('SettingsUtil - clear doctor auth failed:', e);
+    }
+  }
+
+  /**
+   * 检查医生是否已登录
+   */
+  async isDoctorLoggedIn(): Promise<boolean> {
+    if (this.dataPreferences === null) {
+      return false;
+    }
+    try {
+      const token: string = await this.getDoctorToken();
+      return token.length > 0;
+    } catch (e) {
+      console.error('SettingsUtil - check doctor login status failed:', e);
+      return false;
+    }
+  }
 }

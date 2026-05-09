@@ -3,7 +3,7 @@ import promptAction from '@ohos.promptAction';
 import { FamilyService } from '../services/FamilyService';
 import { FamilyMember, FamilyMemberHelper, FamilyRelation, CreateFamilyRequest } from '../models/FamilyMember';
 import { SessionManager } from '../utils/SessionManager';
-import { BaseResponse } from '../common/utils/HttpUtil';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 
 @Entry
@@ -38,7 +38,11 @@ struct FamilyPage {
       return;
     }
 
-    if (currentRole !== UserRole.USER && currentRole !== UserRole.DOCTOR) {
+    // 允许用户、医生、家属、护士访问
+    if (currentRole !== UserRole.USER && 
+        currentRole !== UserRole.DOCTOR && 
+        currentRole !== UserRole.FAMILY && 
+        currentRole !== UserRole.NURSE) {
       promptAction.showToast({ message: '无权访问此页面' });
       router.back();
       return;
@@ -51,7 +55,7 @@ struct FamilyPage {
   async loadFamilyMembers(): Promise<void> {
     this.isLoading = true;
     try {
-      const response: BaseResponse<FamilyMember[]> = await FamilyService.getMyFamily();
+      const response: BaseResponse<FamilyMember[]> = await HttpUtil.get<FamilyMember[]>('/family/my');
       if (response.success && response.data) {
         this.familyMembers = response.data;
       } else {
@@ -76,7 +80,7 @@ struct FamilyPage {
     }).then(async (result) => {
       if (result.index === 1) {
         try {
-          const response: BaseResponse<void> = await FamilyService.deleteFamily(id);
+          const response: BaseResponse<void> = await HttpUtil.delete<void>(`/family/${id}`);
           if (response.success) {
             promptAction.showToast({ message: '删除成功' });
             await this.loadFamilyMembers();
@@ -93,7 +97,10 @@ struct FamilyPage {
 
   async setEmergency(id: number, isEmergency: boolean): Promise<void> {
     try {
-      const response: BaseResponse<FamilyMember> = await FamilyService.setEmergencyContact(id, isEmergency);
+      const data: Record<string, boolean> = {
+        'isEmergencyContact': isEmergency
+      };
+      const response: BaseResponse<FamilyMember> = await HttpUtil.post<FamilyMember>(`/family/${id}/emergency`, data);
       if (response.success) {
         promptAction.showToast({ message: isEmergency ? '已设为紧急联系人' : '已取消紧急联系人' });
         await this.loadFamilyMembers();
@@ -294,7 +301,7 @@ struct FamilyPage {
           }
           
           try {
-            const response: BaseResponse<FamilyMember> = await FamilyService.addFamily(this.newMember);
+            const response: BaseResponse<FamilyMember> = await HttpUtil.post<FamilyMember>('/family', this.newMember);
             if (response.success) {
               promptAction.showToast({ message: '添加成功' });
               this.showAddDialog = false;

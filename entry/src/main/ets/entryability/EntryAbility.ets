@@ -17,6 +17,21 @@ import {
 } from '../utils/DatabaseConstants';
 
 const DOMAIN = 0x0000;
+const CREATE_TABLE_HOSPITAL_CACHE = `
+  CREATE TABLE IF NOT EXISTS local_hospital_cache (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    address TEXT,
+    phone TEXT,
+    level TEXT,
+    department TEXT,
+    description TEXT,
+    longitude REAL,
+    latitude REAL,
+    cached_time INTEGER NOT NULL,
+    data_source TEXT DEFAULT 'server'
+  )
+`;
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -47,6 +62,13 @@ export default class EntryAbility extends UIAbility {
       await RdbHelper.executeSql(CREATE_TABLE_BROWSE_HISTORY);
       await RdbHelper.executeSql(CREATE_TABLE_SEARCH_HISTORY);
       await RdbHelper.executeSql(CREATE_TABLE_COLLECTION_CACHE);
+      
+      // 创建医院缓存表
+      await RdbHelper.executeSql(CREATE_TABLE_HOSPITAL_CACHE);
+      
+      // 创建医院缓存表索引
+      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_hospital_level ON local_hospital_cache(level)');
+      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_hospital_name ON local_hospital_cache(name)');
       
       hilog.info(DOMAIN, 'testTag', 'SQLite DB initialized successfully');
     } catch (error) {

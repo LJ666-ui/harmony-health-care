@@ -1,5 +1,6 @@
 package com.example.medical.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.medical.entity.MedicalRecord;
 import com.example.medical.service.MedicalRecordService;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -25,6 +27,44 @@ public class MedicalRecordController {
         boolean success = medicalRecordService.createMedicalRecord(medicalRecord);
         result.put("success", success);
         result.put("message", success ? "创建成功" : "创建失败");
+        return result;
+    }
+
+    /**
+     * 获取用户的病历列表（家属端/患者端）
+     * GET /medical/record/my
+     */
+    @GetMapping("/my")
+    public Map<String, Object> getMyMedicalRecords(
+            @RequestParam Long userId,
+            @RequestParam(required = false) Integer pageNum,
+            @RequestParam(required = false) Integer pageSize) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            LambdaQueryWrapper<MedicalRecord> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(MedicalRecord::getUserId, userId);
+            wrapper.eq(MedicalRecord::getIsDeleted, 0);
+            wrapper.orderByDesc(MedicalRecord::getRecordTime);
+            
+            if (pageNum != null && pageSize != null && pageNum > 0 && pageSize > 0) {
+                Page<MedicalRecord> page = new Page<>(pageNum, pageSize);
+                Page<MedicalRecord> recordPage = medicalRecordService.page(page, wrapper);
+                result.put("success", true);
+                result.put("data", recordPage.getRecords());
+                result.put("total", recordPage.getTotal());
+            } else {
+                List<MedicalRecord> records = medicalRecordService.list(wrapper);
+                result.put("success", true);
+                result.put("data", records);
+                result.put("total", records.size());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("success", false);
+            result.put("message", "获取病历失败：" + e.getMessage());
+        }
+        
         return result;
     }
 

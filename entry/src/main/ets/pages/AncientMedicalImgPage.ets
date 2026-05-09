@@ -573,8 +573,28 @@ struct AncientMedicalImgPage {
         .width('100%');
 
         Row({ space: 8 }) {
+          Button('🎬 动画演绎')
+            .layoutWeight(1)
+            .height(32)
+            .fontSize(12)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#FF6B35')
+            .borderRadius(16)
+            .onClick(() => {
+              router.pushUrl({
+                url: 'pages/AncientImageVideoPage',
+                params: {
+                  id: image.id,
+                  imageUrl: image.originalUrl || image.restoreUrl,
+                  title: image.title,
+                  desc: image.desc,
+                  source: image.source
+                }
+              });
+            })
+
           if (!image.restoreUrl || image.restoreUrl.length === 0) {
-            Button('\u5F00\u59CB\u590D\u539F')
+            Button('开始复原')
               .layoutWeight(1)
               .height(32)
               .fontSize(12)
@@ -585,7 +605,7 @@ struct AncientMedicalImgPage {
           }
 
           if (image.restoreUrl && image.restoreUrl.length > 0) {
-            Button('\u5BF9\u6BD4\u67E5\u770B')
+            Button('对比查看')
               .layoutWeight(1)
               .height(32)
               .fontSize(12)
@@ -594,7 +614,7 @@ struct AncientMedicalImgPage {
               .borderRadius(16)
               .onClick(() => this.openCompare(image));
 
-            Button('\u5206\u4EAB')
+            Button('分享')
               .layoutWeight(1)
               .height(32)
               .fontSize(12)
@@ -604,7 +624,7 @@ struct AncientMedicalImgPage {
               .onClick(() => this.shareResult(image));
           }
 
-          Button('\u5220\u9664')
+          Button('删除')
             .height(32)
             .fontSize(12)
             .fontColor('#FF4D4F')

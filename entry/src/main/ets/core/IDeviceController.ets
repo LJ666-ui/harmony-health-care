@@ -3,7 +3,7 @@
  * 定义设备控制的标准行为
  */
 
-import { DeviceCommand, DeviceStatus } from '../../models/SmartWardDeviceModels';
+import { DeviceCommand, DeviceStatus } from '../models/SmartWardDeviceModels';
 
 /**
  * 设备控制器接口

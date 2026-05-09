@@ -14,6 +14,13 @@ public class Result<T> {
         r.setData(data);
         return r;
     }
+    
+    public static <T> Result<T> success() {
+        Result<T> r = new Result<>();
+        r.setCode(200);
+        r.setMsg("成功");
+        return r;
+    }
 
     public static <T> Result<T> error(String msg) {
         Result<T> r = new Result<>();

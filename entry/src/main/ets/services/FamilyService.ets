@@ -1,130 +1,193 @@
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
-import { FamilyMember, FamilyMemberHelper, CreateFamilyRequest, UpdateFamilyRequest, QueryFamilyParams } from '../models/FamilyMember';
+import { MedicalService, MedicalRecord } from './MedicalService';
 
-const BASE_URL: string = '/family';
+/**
+ * 家属-患者关系接口
+ */
+export interface FamilyPatientRelation {
+  patientId: string;
+  patientName: string;
+  relationship: string;
+  authorizationLevel: number;
+  authorizedAt: number;
+}
 
+/**
+ * 患者健康摘要接口
+ */
+export interface PatientHealthSummary {
+  patientId: string;
+  patientName: string;
+  currentHealthStatus: string;
+  recentMedicalRecords: string;
+  currentMedications: string;
+  upcomingAppointments: string;
+  lastVisitDate: number;
+}
+
+/**
+ * 家属服务类（符合ArkTS规范）
+ */
 export class FamilyService {
-  static async getMyFamily(): Promise<BaseResponse<FamilyMember[]>> {
-    const response: BaseResponse<Object[]> = await HttpUtil.get<Object[]>(`${BASE_URL}/my`);
-    if (response.success && response.data) {
-      const familyMembers: FamilyMember[] = response.data.map((item: Object) => 
-        FamilyMemberHelper.fromJson(item as Record<string, Object>)
-      );
-      const result: BaseResponse<FamilyMember[]> = new BaseResponse<FamilyMember[]>();
-      result.success = true;
-      result.message = response.message;
-      result.data = familyMembers;
-      return result;
-    }
-    const result: BaseResponse<FamilyMember[]> = new BaseResponse<FamilyMember[]>();
-    result.success = false;
-    result.message = response.message;
-    result.data = [];
-    return result;
+  private static instance: FamilyService | null = null;
+  private medicalService: MedicalService;
+  private relations: Map<string, FamilyPatientRelation> = new Map();
+  private currentFamilyId: string = '';
+  
+  private constructor() {
+    this.medicalService = MedicalService.getInstance();
   }
-
-  static async getAllFamily(params?: QueryFamilyParams): Promise<BaseResponse<FamilyMember[]>> {
-    let url: string = `${BASE_URL}/all`;
-    if (params) {
-      const queryParts: string[] = [];
-      if (params.userId) queryParts.push(`userId=${params.userId}`);
-      if (params.page) queryParts.push(`page=${params.page}`);
-      if (params.pageSize) queryParts.push(`pageSize=${params.pageSize}`);
-      if (params.keyword) queryParts.push(`keyword=${encodeURIComponent(params.keyword)}`);
-      if (queryParts.length > 0) {
-        url += '?' + queryParts.join('&');
+  
+  static getInstance(): FamilyService {
+    if (!FamilyService.instance) {
+      FamilyService.instance = new FamilyService();
+    }
+    return FamilyService.instance;
+  }
+  
+  /**
+   * 初始化家属服务
+   */
+  async init(familyId: string): Promise<void> {
+    this.currentFamilyId = familyId;
+    await this.loadRelations();
+  }
+  
+  /**
+   * 加载家属-患者关系
+   */
+  private async loadRelations(): Promise<void> {
+    try {
+      const params: Record<string, string> = {
+        'familyId': this.currentFamilyId
+      };
+      const response = await HttpUtil.get<FamilyPatientRelation[]>('/family/relations', params);
+      
+      if (response.success && response.data) {
+        response.data.forEach((relation: FamilyPatientRelation) => {
+          this.relations.set(relation.patientId, relation);
+        });
       }
+    } catch (error) {
+      console.error('加载家属关系失败:', error);
+    }
+  }
+  
+  /**
+   * 获取关联患者列表
+   */
+  getRelatedPatients(): FamilyPatientRelation[] {
+    return Array.from(this.relations.values());
+  }
+  
+  /**
+   * 查看患者详情
+   */
+  async viewPatientDetail(patientId: string): Promise<PatientHealthSummary | null> {
+    const relation = this.relations.get(patientId);
+    if (!relation) {
+      console.error('无权查看该患者信息');
+      return null;
     }
     
-    const response: BaseResponse<Object[]> = await HttpUtil.get<Object[]>(url);
-    if (response.success && response.data) {
-      const familyMembers: FamilyMember[] = response.data.map((item: Object) => 
-        FamilyMemberHelper.fromJson(item as Record<string, Object>)
-      );
-      const result: BaseResponse<FamilyMember[]> = new BaseResponse<FamilyMember[]>();
-      result.success = true;
-      result.message = response.message;
-      result.data = familyMembers;
-      return result;
+    try {
+      const params: Record<string, string> = {
+        'familyId': this.currentFamilyId,
+        'authorizationLevel': relation.authorizationLevel.toString()
+      };
+      const response = await HttpUtil.get<PatientHealthSummary>(`/family/patient/${patientId}/detail`, params);
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('查看患者详情失败:', error);
+      return null;
     }
-    const result: BaseResponse<FamilyMember[]> = new BaseResponse<FamilyMember[]>();
-    result.success = false;
-    result.message = response.message;
-    result.data = [];
-    return result;
   }
-
-  static async addFamily(request: CreateFamilyRequest): Promise<BaseResponse<FamilyMember>> {
-    const response: BaseResponse<Object> = await HttpUtil.post<Object>(`${BASE_URL}/add`, request as Object);
-    if (response.success && response.data) {
-      const result: BaseResponse<FamilyMember> = new BaseResponse<FamilyMember>();
-      result.success = true;
-      result.message = response.message;
-      result.data = FamilyMemberHelper.fromJson(response.data as Record<string, Object>);
-      return result;
+  
+  /**
+   * 查看患者病历
+   */
+  async viewPatientMedicalRecord(patientId: string): Promise<MedicalRecord | null> {
+    const relation = this.relations.get(patientId);
+    if (!relation) {
+      console.error('无权查看该患者病历');
+      return null;
     }
-    const result: BaseResponse<FamilyMember> = new BaseResponse<FamilyMember>();
-    result.success = false;
-    result.message = response.message;
-    return result;
-  }
-
-  static async updateFamily(request: UpdateFamilyRequest): Promise<BaseResponse<FamilyMember>> {
-    const response: BaseResponse<Object> = await HttpUtil.put<Object>(`${BASE_URL}/update`, request as Object);
-    if (response.success && response.data) {
-      const result: BaseResponse<FamilyMember> = new BaseResponse<FamilyMember>();
-      result.success = true;
-      result.message = response.message;
-      result.data = FamilyMemberHelper.fromJson(response.data as Record<string, Object>);
-      return result;
+    
+    if (relation.authorizationLevel < 2) {
+      console.error('授权等级不足，无法查看完整病历');
+      return null;
     }
-    const result: BaseResponse<FamilyMember> = new BaseResponse<FamilyMember>();
-    result.success = false;
-    result.message = response.message;
-    return result;
+    
+    return await this.medicalService.getMedicalRecord(patientId);
   }
-
-  static async deleteFamily(id: number): Promise<BaseResponse<void>> {
-    return await HttpUtil.delete<void>(`${BASE_URL}/delete/${id}`);
+  
+  /**
+   * 提交家属健康信息
+   */
+  async submitHealthInfo(infoData: string): Promise<boolean> {
+    return await this.medicalService.submitFamilyHealthInfo(infoData);
   }
-
-  static async setEmergencyContact(id: number, isEmergency: boolean): Promise<BaseResponse<FamilyMember>> {
-    const requestBody: Record<string, Object> = {
-      'isEmergencyContact': isEmergency
-    };
-    const response: BaseResponse<Object> = await HttpUtil.put<Object>(
-      `${BASE_URL}/emergency/${id}`,
-      requestBody
-    );
-    if (response.success && response.data) {
-      const result: BaseResponse<FamilyMember> = new BaseResponse<FamilyMember>();
-      result.success = true;
-      result.message = response.message;
-      result.data = FamilyMemberHelper.fromJson(response.data as Record<string, Object>);
-      return result;
+  
+  /**
+   * 设置患者授权
+   */
+  async setAuthorization(patientId: string, familyId: string, authorizationLevel: number): Promise<boolean> {
+    try {
+      const data: Record<string, string> = {
+        'familyId': familyId,
+        'authorizationLevel': authorizationLevel.toString()
+      };
+      const response = await HttpUtil.post<boolean>(`/patients/${patientId}/authorization`, data);
+      
+      return response.success;
+    } catch (error) {
+      console.error('设置授权失败:', error);
+      return false;
     }
-    const result: BaseResponse<FamilyMember> = new BaseResponse<FamilyMember>();
-    result.success = false;
-    result.message = response.message;
-    return result;
   }
-
-  static async getFamilyById(id: number): Promise<BaseResponse<FamilyMember>> {
-    const response: BaseResponse<Object> = await HttpUtil.get<Object>(`${BASE_URL}/${id}`);
-    if (response.success && response.data) {
-      const result: BaseResponse<FamilyMember> = new BaseResponse<FamilyMember>();
-      result.success = true;
-      result.message = response.message;
-      result.data = FamilyMemberHelper.fromJson(response.data as Record<string, Object>);
-      return result;
+  
+  /**
+   * 获取授权等级说明
+   */
+  getAuthorizationLevelDescription(level: number): string {
+    if (level === 1) {
+      return '基础查看：可查看患者基本健康状态和用药情况';
+    } else if (level === 2) {
+      return '详细查看：可查看患者完整病历、检查报告和诊断记录';
+    } else if (level === 3) {
+      return '完全访问：可查看所有信息并提交健康信息';
+    } else {
+      return '未知授权等级';
     }
-    const result: BaseResponse<FamilyMember> = new BaseResponse<FamilyMember>();
-    result.success = false;
-    result.message = response.message;
-    return result;
   }
-
-  static async deleteUserWithFamily(userId: number): Promise<BaseResponse<void>> {
-    return await HttpUtil.delete<void>(`${BASE_URL}/user/${userId}`);
+  
+  /**
+   * 请求查看授权
+   */
+  async requestAuthorization(patientId: string): Promise<boolean> {
+    try {
+      const data: Record<string, string> = {
+        'familyId': this.currentFamilyId,
+        'patientId': patientId
+      };
+      const response = await HttpUtil.post<boolean>('/family/request-authorization', data);
+      
+      return response.success;
+    } catch (error) {
+      console.error('请求授权失败:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * 销毁
+   */
+  destroy(): void {
+    this.relations.clear();
+    FamilyService.instance = null;
   }
 }

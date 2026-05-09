@@ -78,7 +78,7 @@ export interface LightControlParams {
 export interface LightCommand extends DeviceCommand {
   deviceType: DeviceType.SMART_LIGHT;
   action: 'setBrightness' | 'setColorTemp' | 'toggle';
-  params: LightControlParams;
+  params: Record<string, number | string | boolean>;
 }
 
 /**
@@ -98,7 +98,7 @@ export interface BedControlParams {
 export interface BedCommand extends DeviceCommand {
   deviceType: DeviceType.HOSPITAL_BED;
   action: 'adjustHeadAngle' | 'adjustFootAngle' | 'turnOver' | 'callBell';
-  params: BedControlParams;
+  params: Record<string, number | string | boolean>;
 }
 
 /**
@@ -129,7 +129,7 @@ export interface CurtainControlParams {
 export interface CurtainCommand extends DeviceCommand {
   deviceType: DeviceType.SMART_CURTAIN;
   action: 'setOpenPercentage' | 'toggle';
-  params: CurtainControlParams;
+  params: Record<string, number | string | boolean>;
 }
 
 /**
@@ -148,7 +148,7 @@ export interface TVControlParams {
 export interface TVCommand extends DeviceCommand {
   deviceType: DeviceType.SMART_TV;
   action: 'setVolume' | 'setChannel' | 'toggle' | 'mute';
-  params: TVControlParams;
+  params: Record<string, number | string | boolean>;
 }
 
 /**
@@ -166,7 +166,7 @@ export interface ACControlParams {
 export interface ACCommand extends DeviceCommand {
   deviceType: DeviceType.AIR_CONDITIONER;
   action: 'setTemperature' | 'setMode' | 'toggle';
-  params: ACControlParams;
+  params: Record<string, number | string | boolean>;
 }
 
 /**
@@ -182,7 +182,7 @@ export interface CallButtonControlParams {
 export interface CallButtonCommand extends DeviceCommand {
   deviceType: DeviceType.CALL_BUTTON;
   action: 'press' | 'reset';
-  params: CallButtonControlParams;
+  params: Record<string, number | string | boolean>;
 }
 
 /**
@@ -199,5 +199,5 @@ export interface InfusionPumpControlParams {
 export interface InfusionPumpCommand extends DeviceCommand {
   deviceType: DeviceType.INFUSION_PUMP;
   action: 'setFlowRate' | 'pause' | 'resume';
-  params: InfusionPumpControlParams;
+  params: Record<string, number | string | boolean>;
 }

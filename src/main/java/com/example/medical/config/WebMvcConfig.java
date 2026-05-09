@@ -34,26 +34,33 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + System.getProperty("user.dir") + "/uploads/");
     }
 
+    // 合并所有放行接口，无遗漏、无冲突
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new JwtInterceptor())
                 .addPathPatterns("/**")
                 .excludePathPatterns(
+                        // 用户端
                         "/user/login",
                         "/user/register",
-                        "/user/send-code",  // 验证码接口无需登录
-                        "/admin/login",  // 管理员登录接口无需登录
-                        "/admin/generate-password",  // 生成密码hash（调试用）
-                        "/admin/fix-admin-password",  // 修复管理员密码（调试用）
-                        "/admin/verify-password",  // 验证密码（调试用）
+                        "/user/send-code",
+                        // 管理员端
+                        "/admin/login",
+                        "/admin/generate-password",
+                        "/admin/fix-admin-password",
+                        "/admin/verify-password",
+                        // 家属/护士/医生端
+                        "/family/login",
+                        "/nurse/login",
+                        "/doctor/login",
+                        // 公共开放接口
                         "/ai/**",
-                        "/herbal/**",  // 药材百科接口无需登录
-                        "/medicine/**",  // 药品信息接口无需登录
-                        "/medicine-category/**",  // 药品分类接口无需登录
-                        "/ancient-image/list",  // 古医图库查询无需登录
-                        "/ancient-image/*",  // 古医图库详情无需登录
-                        "/error",
-                        "/uploads/**",
+                        "/herbal/**",
+                        "/medicine/**",
+                        "/medicine-category/**",
+                        "/ancient-image/list",
+                        "/ancient-image/*",
+                        // 康复训练接口
                         "/api/rehab/action/list",
                         "/api/rehab/action/detail/**",
                         "/api/rehab/plan/list",
@@ -61,8 +68,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/rehab/plan/actions/**",
                         "/api/rehab/plan/progress/**",
                         "/api/rehab/plan/recommend/**",
+                        // 支付接口
                         "/pay/notify",
-                        "/pay/return"
+                        "/pay/return",
+                        // 系统通用
+                        "/error",
+                        "/uploads/**"
                 );
     }
 
@@ -70,6 +81,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         @Override
         public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+            // 放行预检请求
             if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
                 return true;
             }
@@ -81,10 +93,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
             }
 
             try {
+                // 校验Token是否有效/过期
                 if (!JwtUtil.validateToken(token)) {
                     handleUnauthorized(response, "Token已过期，请重新登录");
                     return false;
                 }
+                // 解析用户信息存入request
                 Long userId = JwtUtil.getUserId(token);
                 String username = JwtUtil.getUsername(token);
                 request.setAttribute("userId", userId);
@@ -96,6 +110,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
             }
         }
 
+        // 统一返回401未授权JSON格式
         private void handleUnauthorized(HttpServletResponse response, String message) throws IOException {
             response.setStatus(401);
             response.setContentType("application/json;charset=UTF-8");

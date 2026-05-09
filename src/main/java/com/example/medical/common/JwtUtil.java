@@ -42,10 +42,156 @@ public class JwtUtil {
         return parseToken(token).getExpiration().before(new Date());
     }
 
+    /**
+     * 生成家属Token
+     */
+    public static String generateFamilyToken(Long familyId, String phone) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("familyId", familyId);
+        claims.put("phone", phone);
+        claims.put("subject", "FAMILY");
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject("FAMILY")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRE_TIME))
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .compact();
+    }
+
+    /**
+     * 从Token中获取家属ID
+     */
+    public static Long getFamilyId(String token) {
+        Claims claims = parseToken(token);
+        if ("FAMILY".equals(claims.getSubject())) {
+            return claims.get("familyId", Long.class);
+        }
+        return null;
+    }
+
+    /**
+     * 判断是否为家属Token
+     */
+    public static boolean isFamilyToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return "FAMILY".equals(claims.getSubject());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static boolean validateToken(String token) {
         try {
             parseToken(token);
             return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 判断是否为普通用户Token
+     */
+    public static boolean isUserToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            String subject = claims.getSubject();
+            // 普通用户Token没有subject或subject为null
+            return subject == null || "".equals(subject);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 生成护士Token
+     */
+    public static String generateNurseToken(Long nurseId, String phone) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("nurseId", nurseId);
+        claims.put("phone", phone);
+        claims.put("subject", "NURSE");
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject("NURSE")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRE_TIME))
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .compact();
+    }
+
+    /**
+     * 从Token中获取护士ID
+     */
+    public static Long getNurseId(String token) {
+        Claims claims = parseToken(token);
+        if ("NURSE".equals(claims.getSubject())) {
+            return claims.get("nurseId", Long.class);
+        }
+        return null;
+    }
+
+    /**
+     * 判断是否为护士Token
+     */
+    public static boolean isNurseToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return "NURSE".equals(claims.getSubject());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 生成医生Token
+     */
+    public static String generateDoctorToken(Long doctorId, String phone) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("doctorId", doctorId);
+        claims.put("phone", phone);
+        claims.put("subject", "DOCTOR");
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject("DOCTOR")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) // 7天过期
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .compact();
+    }
+
+    /**
+     * 从Token中获取医生ID
+     */
+    public static Long getDoctorId(String token) {
+        Claims claims = parseToken(token);
+        if ("DOCTOR".equals(claims.getSubject())) {
+            return claims.get("doctorId", Long.class);
+        }
+        return null;
+    }
+
+    /**
+     * 判断是否为医生Token
+     */
+    public static boolean isDoctorToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return "DOCTOR".equals(claims.getSubject());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 验证Token角色
+     */
+    public static boolean validateRole(String token, String expectedRole) {
+        try {
+            Claims claims = parseToken(token);
+            return expectedRole.equals(claims.getSubject());
         } catch (Exception e) {
             return false;
         }

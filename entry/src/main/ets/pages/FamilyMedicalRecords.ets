@@ -45,8 +45,8 @@ struct FamilyMedicalRecords {
       console.info('正在加载患者病历，userId:', this.relatedUserId.toString());
       
       const response: BaseResponse<MedicalRecordItem[]> = await HttpUtil.get<MedicalRecordItem[]>('/medical/record/my', {
-        'userId': this.relatedUserId.toString()
-      } as Record<string, string>);
+        'userId': this.relatedUserId
+      } as Record<string, number>);
 
       if (response.success && response.data) {
         console.info('成功获取到', response.data.length.toString(), '条病历记录');

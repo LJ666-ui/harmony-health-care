@@ -262,39 +262,39 @@ export class MusicSyncController {
 }
 
 export class AncientFilterConfig {
-  sepiaIntensity: number = 0.4;
-  vignetteIntensity: number = 0.3;
-  grainIntensity: number = 0.08;
-  warmth: number = 0.1;
-  contrast: number = 1.1;
+  sepiaIntensity: number = 0.12;
+  vignetteIntensity: number = 0.25;
+  grainIntensity: number = 0.05;
+  warmth: number = 0.06;
+  contrast: number = 1.05;
 
   static createClassic(): AncientFilterConfig {
     const config = new AncientFilterConfig();
-    config.sepiaIntensity = 0.4;
-    config.vignetteIntensity = 0.3;
-    config.grainIntensity = 0.08;
-    config.warmth = 0.1;
-    config.contrast = 1.1;
+    config.sepiaIntensity = 0.12;
+    config.vignetteIntensity = 0.25;
+    config.grainIntensity = 0.05;
+    config.warmth = 0.06;
+    config.contrast = 1.05;
     return config;
   }
 
   static createDramatic(): AncientFilterConfig {
     const config = new AncientFilterConfig();
-    config.sepiaIntensity = 0.6;
-    config.vignetteIntensity = 0.5;
-    config.grainIntensity = 0.12;
-    config.warmth = 0.15;
-    config.contrast = 1.3;
+    config.sepiaIntensity = 0.3;
+    config.vignetteIntensity = 0.4;
+    config.grainIntensity = 0.08;
+    config.warmth = 0.1;
+    config.contrast = 1.15;
     return config;
   }
 
   static createSoft(): AncientFilterConfig {
     const config = new AncientFilterConfig();
-    config.sepiaIntensity = 0.2;
+    config.sepiaIntensity = 0.08;
     config.vignetteIntensity = 0.15;
-    config.grainIntensity = 0.04;
-    config.warmth = 0.05;
-    config.contrast = 1.05;
+    config.grainIntensity = 0.03;
+    config.warmth = 0.03;
+    config.contrast = 1.02;
     return config;
   }
 }

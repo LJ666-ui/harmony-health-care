@@ -29,10 +29,10 @@ public class AppointmentController {
     @Autowired
     private AppointmentService appointmentService;
 
-    @Autowired
+    @Autowired(required = false)
     private RedisStockInterface redisStockService;
 
-    @Autowired
+    @Autowired(required = false)
     private RabbitTemplate rabbitTemplate;
 
     @PostMapping("/create")
@@ -67,15 +67,39 @@ public class AppointmentController {
             message.setFee(appointment.getFee());
             message.setTraceId(traceId);
 
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE_NAME,
-                    RabbitMQConfig.STOCK_ROUTING_KEY,
-                    message);
+            if (rabbitTemplate != null) {
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.EXCHANGE_NAME,
+                        RabbitMQConfig.STOCK_ROUTING_KEY,
+                        message);
 
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE_NAME,
-                    RabbitMQConfig.ORDER_ROUTING_KEY,
-                    message);
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.EXCHANGE_NAME,
+                        RabbitMQConfig.ORDER_ROUTING_KEY,
+                        message);
+            } else {
+                if (redisStockService != null) {
+                    boolean grabbed = redisStockService.grabSlot(
+                            appointment.getDoctorId(),
+                            appointment.getScheduleDate(),
+                            appointment.getSchedulePeriod(),
+                            appointment.getUserId());
+
+                    if (!grabbed) {
+                        return Result.error("该时段号源已满或重复挂号");
+                    }
+                }
+
+                Appointment newAppointment = new Appointment();
+                newAppointment.setUserId(appointment.getUserId());
+                newAppointment.setDoctorId(appointment.getDoctorId());
+                newAppointment.setScheduleDate(appointment.getScheduleDate());
+                newAppointment.setSchedulePeriod(appointment.getSchedulePeriod());
+                newAppointment.setFee(appointment.getFee());
+                newAppointment.setStatus(0);
+
+                appointmentService.createAppointment(newAppointment);
+            }
 
             Map<String, Object> result = new HashMap<>();
             result.put("traceId", traceId);

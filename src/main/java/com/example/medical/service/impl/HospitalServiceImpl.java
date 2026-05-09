@@ -53,7 +53,7 @@ public class HospitalServiceImpl extends ServiceImpl<HospitalMapper, Hospital> i
         }
 
         if (queryDTO.getLevel() != null && !queryDTO.getLevel().isEmpty()) {
-            wrapper.eq(Hospital::getLevel, queryDTO.getLevel());
+            wrapper.eq(Hospital::getDepartment, queryDTO.getLevel());
         }
 
         return wrapper;

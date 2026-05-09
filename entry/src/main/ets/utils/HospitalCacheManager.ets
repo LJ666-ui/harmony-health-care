@@ -117,17 +117,21 @@ class HospitalCacheManager {
       await this.init();
     }
 
+    const hospitals: HospitalCacheItem[] = [];
+    let resultSet: relationalStore.ResultSet | null = null;
+
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
-      
+
       if (level && level !== '全部') {
         predicates.equalTo('level', level);
       }
-      
+
       predicates.orderByAsc('name');
-      
-      const resultSet = await rdbHelper.queryByPredicates(predicates);
-      const hospitals: HospitalCacheItem[] = [];
+
+      hilog.info(0x0000, TAG, 'Querying hospitals with level: %{public}s', level || '全部');
+
+      resultSet = await rdbHelper.queryByPredicates(predicates);
 
       while (resultSet.goToNextRow()) {
         const hospital: HospitalCacheItem = {
@@ -146,13 +150,29 @@ class HospitalCacheManager {
         hospitals.push(hospital);
       }
 
-      resultSet.close();
       hilog.info(0x0000, TAG, 'Retrieved %{public}d hospitals from cache', hospitals.length);
-      return hospitals;
     } catch (error) {
-      hilog.error(0x0000, TAG, 'Failed to get hospitals: %{public}s', JSON.stringify(error));
-      return [];
+      const err = error as BusinessError<Record<string, number>>;
+      if (err && err.code) {
+        hilog.error(0x0000, TAG,
+          'Failed to get hospitals. BusinessError: code=%{public}d, message=%{public}s',
+          err.code, err.message);
+      } else {
+        hilog.error(0x0000, TAG,
+          'Failed to get hospitals. err=%{public}s',
+          JSON.stringify(error) ?? '');
+      }
+    } finally {
+      if (resultSet) {
+        try {
+          resultSet.close();
+        } catch (err) {
+          hilog.error(0x0000, TAG, 'close resultSet failed, err=%{public}s', JSON.stringify(err) ?? '');
+        }
+      }
     }
+
+    return hospitals;
   }
 
   public async getHospitalById(id: number): Promise<HospitalCacheItem | null> {

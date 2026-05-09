@@ -20,7 +20,7 @@ import java.util.UUID;
 @Service
 public class AppointmentServiceImpl extends ServiceImpl<AppointmentMapper, Appointment> implements AppointmentService {
 
-    @Autowired
+    @Autowired(required = false)
     private RedisStockInterface redisStockService;
 
     @Override
@@ -31,9 +31,11 @@ public class AppointmentServiceImpl extends ServiceImpl<AppointmentMapper, Appoi
         String requestId = UUID.randomUUID().toString();
 
         try {
-            boolean locked = redisStockService.tryLock(lockKey, requestId, 10);
-            if (!locked) {
-                return false;
+            if (redisStockService != null) {
+                boolean locked = redisStockService.tryLock(lockKey, requestId, 10);
+                if (!locked) {
+                    return false;
+                }
             }
 
             appointment.setStatus(0);
@@ -49,7 +51,9 @@ public class AppointmentServiceImpl extends ServiceImpl<AppointmentMapper, Appoi
 
             return save(appointment);
         } finally {
-            redisStockService.unlock(lockKey, requestId);
+            if (redisStockService != null) {
+                redisStockService.unlock(lockKey, requestId);
+            }
         }
     }
 
@@ -85,14 +89,16 @@ public class AppointmentServiceImpl extends ServiceImpl<AppointmentMapper, Appoi
             return false;
         }
 
-        boolean stockReturned = redisStockService.backStock(
-                appointment.getDoctorId(),
-                appointment.getScheduleDate(),
-                appointment.getSchedulePeriod(),
-                userId);
+        if (redisStockService != null) {
+            boolean stockReturned = redisStockService.backStock(
+                    appointment.getDoctorId(),
+                    appointment.getScheduleDate(),
+                    appointment.getSchedulePeriod(),
+                    userId);
 
-        if (!stockReturned) {
-            return false;
+            if (!stockReturned) {
+                return false;
+            }
         }
 
         LambdaUpdateWrapper<Appointment> wrapper = new LambdaUpdateWrapper<>();

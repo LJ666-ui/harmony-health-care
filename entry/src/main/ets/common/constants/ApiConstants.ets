@@ -12,14 +12,14 @@ interface EnvConfig {
 }
 
 const ENV_MAP: Record<EnvType, EnvConfig> = {
-  [EnvType.DEV]: { BASE_URL: 'http://localhost:8080', UPLOAD_URL: 'http://localhost:8080/upload' },
+  [EnvType.DEV]: { BASE_URL: 'http://192.168.108.1:8080', UPLOAD_URL: 'http://192.168.108.1:8080/upload' },
   [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
-  [EnvType.DEV_DEVICE]: { BASE_URL: 'http://192.168.71.233:8080', UPLOAD_URL: 'http://192.168.71.233:8080/upload' },
+  [EnvType.DEV_DEVICE]: { BASE_URL: 'http://192.168.108.1:8080', UPLOAD_URL: 'http://192.168.108.1:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
 
-let currentEnv: EnvType = EnvType.DEV_EMULATOR;
+let currentEnv: EnvType = EnvType.DEV;
 
 export function setEnv(env: EnvType): void {
   currentEnv = env;
@@ -189,6 +189,10 @@ interface ApiConstantsInterface {
   MEDICAL_RECORD_UPDATE: string;
   MEDICAL_RECORD_DELETE: string;
 
+  PRESCRIPTION_CREATE: string;
+  PRESCRIPTION_DETAIL: string;
+  PRESCRIPTION_PAGE: string;
+
   MEDICINE_LIST: string;
   MEDICINE_PAGE: string;
   MEDICINE_SEARCH: string;
@@ -232,6 +236,10 @@ interface ApiConstantsInterface {
   MESSAGE_CAN_SEND: string;
   DOCTOR_PATIENTS: string;
   MESSAGE_CLEANUP: string;
+
+  PATIENT_INFO: string;
+  PATIENT_HEALTH_PROFILE: string;
+  PATIENT_VISIT_RECORDS: string;
 
   UPLOAD_3D: string;
 
@@ -392,6 +400,10 @@ export const ApiConstants: ApiConstantsInterface = {
   MEDICAL_RECORD_UPDATE: '/medical/record/update',
   MEDICAL_RECORD_DELETE: '/medical/record/delete',
 
+  PRESCRIPTION_CREATE: '/prescription/create',
+  PRESCRIPTION_DETAIL: '/prescription/detail',
+  PRESCRIPTION_PAGE: '/prescription/page',
+
   MEDICINE_LIST: '/medicine/list',
   MEDICINE_PAGE: '/medicine/page',
   MEDICINE_SEARCH: '/medicine/search',
@@ -433,8 +445,12 @@ export const ApiConstants: ApiConstantsInterface = {
   MESSAGE_CONVERSATIONS: '/user/message/conversations',
   MESSAGE_DELETE: '/user/message/delete',
   MESSAGE_CAN_SEND: '/user/message/can-send',
-  DOCTOR_PATIENTS: '/user/doctor/patients',
+  DOCTOR_PATIENTS: '/doctor/patients',
   MESSAGE_CLEANUP: '/user/message/cleanup',
+
+  PATIENT_INFO: '/patient/info/',
+  PATIENT_HEALTH_PROFILE: '/patient/health-profile/',
+  PATIENT_VISIT_RECORDS: '/patient/visit-records/',
 
   UPLOAD_3D: '/api/upload/3d',
 

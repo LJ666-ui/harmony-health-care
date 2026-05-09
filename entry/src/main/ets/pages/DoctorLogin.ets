@@ -5,26 +5,11 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse, RequestOptions } from '../common/utils/HttpUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
+import { DoctorInfo } from '../models/DoctorModel';
 
 interface DoctorLoginResponseData {
   token: string;
   doctorInfo: DoctorInfo;
-}
-
-interface DoctorInfo {
-  id: number;
-  userId: number;
-  doctorNo: string;
-  name: string;
-  gender: number;
-  phone: string;
-  department: string;
-  title: string;
-  specialty: string;
-  certificateNo: string;
-  workYears: number;
-  avatar: string;
-  status: number;
 }
 
 interface DoctorLoginRequestData {
@@ -116,10 +101,17 @@ struct DoctorLogin {
         AppStorage.setOrCreate<DoctorInfo>('doctorInfo', response.data.doctorInfo);
         AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', true);
 
+        // 设置userId供其他页面使用
+        if (response.data.doctorInfo.id) {
+          AppStorage.setOrCreate<number>('userId', response.data.doctorInfo.id);
+        } else if (response.data.doctorInfo.userId) {
+          AppStorage.setOrCreate<number>('userId', response.data.doctorInfo.userId);
+        }
+
         ToastUtil.showSuccess('登录成功');
 
         router.replaceUrl({
-          url: 'pages/DoctorHomePage'
+          url: 'pages/DoctorMainPage'
         });
       } else {
         this.errorMessage = response.message || '登录失败，请重试';

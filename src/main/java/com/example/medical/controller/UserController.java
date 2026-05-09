@@ -11,6 +11,7 @@ import com.example.medical.service.DoctorMessageService;
 import com.example.medical.service.DoctorService;
 import com.example.medical.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +35,9 @@ public class UserController {
 
     @Autowired
     private DoctorMessageService doctorMessageService;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     /**
      * 发送验证码（模拟）
@@ -326,8 +330,52 @@ public class UserController {
             if (doctor == null || doctor.getUserType() != 1) {
                 return Result.error("非医生身份，无权访问");
             }
-            List<Map<String, Object>> conversations = doctorMessageService.getConversationList(doctorId);
-            return Result.success(conversations);
+
+            List<Map<String, Object>> result = new java.util.ArrayList<>();
+
+            com.example.medical.entity.Doctor doctorInfo = doctorService.getByUserId(doctorId);
+            if (doctorInfo != null) {
+                com.example.medical.service.PatientGroupService patientGroupService = null;
+                try {
+                    patientGroupService = applicationContext.getBean(com.example.medical.service.PatientGroupService.class);
+                    if (patientGroupService != null) {
+                        List<com.example.medical.entity.PatientGroup> groups = patientGroupService.getGroupsByDoctorId(doctorInfo.getId());
+                        if (groups != null && !groups.isEmpty()) {
+                            java.util.Set<Long> patientIdSet = new java.util.LinkedHashSet<>();
+                            for (com.example.medical.entity.PatientGroup group : groups) {
+                                List<Long> patientIds = patientGroupService.getPatientIdsByGroupId(group.getId());
+                                if (patientIds != null) {
+                                    patientIdSet.addAll(patientIds);
+                                }
+                            }
+                            for (Long patientId : patientIdSet) {
+                                User patientUser = userService.getById(patientId);
+                                if (patientUser != null) {
+                                    Map<String, Object> patientInfo = new java.util.HashMap<>();
+                                    patientInfo.put("otherUserId", patientId);
+                                    patientInfo.put("otherUserName", patientUser.getUsername());
+                                    patientInfo.put("otherUserType", patientUser.getUserType() != null ? patientUser.getUserType() : 0);
+                                    patientInfo.put("lastMessage", "患者已添加到您的管理列表");
+                                    patientInfo.put("lastTime", new java.util.Date());
+                                    patientInfo.put("unreadCount", 0);
+                                    patientInfo.put("remainHours", 48);
+                                    patientInfo.put("expireTime", new java.util.Date(System.currentTimeMillis() + 48L * 60 * 60 * 1000));
+                                    result.add(patientInfo);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("[getDoctorPatients] 从patient_group获取患者失败，尝试从消息表获取: " + e.getMessage());
+                }
+            }
+
+            if (result.isEmpty()) {
+                List<Map<String, Object>> conversations = doctorMessageService.getConversationList(doctorId);
+                result.addAll(conversations);
+            }
+
+            return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("获取患者列表失败：" + e.getMessage());

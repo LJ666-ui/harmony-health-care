@@ -23,26 +23,27 @@ spring:
   tomcat:
     max-http-post-size: -1
 
-  # Redis配置
-  redis:
-    host: 192.168.149.130  # 你的 Redis 服务器IP
-    port: 6379             # 端口
+  # Redis配置（已禁用 - 服务器不可访问会导致启动异常）
+  # redis:
+  #   host: 192.168.149.130
+  #   port: 6379
 
-  rabbitmq:
-    host: 192.168.149.130
-    port: 5672
-    username: admin
-    password: 123456
-    virtual-host: /
-    listener:
-      type: simple
-      simple:
-        acknowledge-mode: manual
-        prefetch: 1
-        retry:
-          enabled: true
-          max-attempts: 3
-          initial-interval: 3000
+  # RabbitMQ配置（已禁用 - 服务器不可访问会导致启动异常）
+  # rabbitmq:
+  #   host: 192.168.149.130
+  #   port: 5672
+  #   username: admin
+  #   password: 123456
+  #   virtual-host: /
+  #   listener:
+  #     type: simple
+  #     simple:
+  #       acknowledge-mode: manual
+  #       prefetch: 1
+  #       retry:
+  #         enabled: true
+  #         max-attempts: 3
+  #         initial-interval: 3000
 
 
 

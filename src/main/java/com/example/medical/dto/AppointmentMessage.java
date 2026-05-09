@@ -10,6 +10,7 @@ public class AppointmentMessage {
     private Long userId;
     private Long doctorId;
     private Date scheduleDate;
+    private String scheduleDateStr;
     private Integer schedulePeriod;
     private BigDecimal fee;
     private String traceId;

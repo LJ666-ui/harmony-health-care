@@ -6,7 +6,9 @@ import com.example.medical.common.Result;
 import com.example.medical.config.RabbitMQConfig;
 import com.example.medical.dto.AppointmentMessage;
 import com.example.medical.entity.Appointment;
+import com.example.medical.entity.PaymentRecord;
 import com.example.medical.service.AppointmentService;
+import com.example.medical.service.PaymentRecordService;
 import com.example.medical.service.RedisStockInterface;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,9 @@ public class AppointmentController {
 
     @Autowired
     private AppointmentService appointmentService;
+
+    @Autowired
+    private PaymentRecordService paymentRecordService;
 
     @Autowired
     private RedisStockInterface redisStockService;
@@ -105,7 +110,42 @@ public class AppointmentController {
             wrapper.orderByDesc(Appointment::getCreateTime);
             Page<Appointment> pageParam = new Page<>(page, size);
             Page<Appointment> result = appointmentService.page(pageParam, wrapper);
-            return Result.success(result);
+
+            List<Map<String, Object>> records = new java.util.ArrayList<>();
+            for (Appointment apt : result.getRecords()) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", apt.getId());
+                map.put("doctorId", apt.getDoctorId());
+                map.put("userId", apt.getUserId());
+                map.put("scheduleDate", apt.getScheduleDate());
+                map.put("schedulePeriod", apt.getSchedulePeriod());
+                map.put("appointmentNo", apt.getAppointmentNo());
+                map.put("fee", apt.getFee());
+                map.put("status", apt.getStatus());
+                map.put("reason", apt.getReason());
+                map.put("createTime", apt.getCreateTime());
+                map.put("updateTime", apt.getUpdateTime());
+
+                LambdaQueryWrapper<PaymentRecord> payWrapper = new LambdaQueryWrapper<>();
+                payWrapper.eq(PaymentRecord::getUserId, apt.getUserId())
+                          .eq(PaymentRecord::getDoctorId, apt.getDoctorId())
+                          .eq(PaymentRecord::getSchedulePeriod, apt.getSchedulePeriod())
+                          .orderByDesc(PaymentRecord::getCreateTime)
+                          .last("LIMIT 1");
+                PaymentRecord payRecord = paymentRecordService.getOne(payWrapper);
+                map.put("payStatus", payRecord != null ? payRecord.getStatus() : 0);
+
+                records.add(map);
+            }
+
+            Map<String, Object> pageResult = new HashMap<>();
+            pageResult.put("records", records);
+            pageResult.put("total", result.getTotal());
+            pageResult.put("current", result.getCurrent());
+            pageResult.put("size", result.getSize());
+            pageResult.put("pages", result.getPages());
+
+            return Result.success(pageResult);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("查询失败：" + e.getMessage());

@@ -132,6 +132,13 @@
             <version>2.1.9.RELEASE</version>
         </dependency>
 
+        <!-- 添加支付宝沙箱的模块 -->
+        <dependency>
+            <groupId>com.alipay.sdk</groupId>
+            <artifactId>alipay-sdk-java</artifactId>
+            <version>4.34.0.ALL</version>
+        </dependency>
+
 
 
 

@@ -14,6 +14,7 @@
     "pages/AddHealthRecord",
     "pages/HealthRecordDetail",
     "pages/Appointments",
+    "pages/BookingPage",
     "pages/AppointmentManagementPage",
     "pages/HospitalDetailPage",
     "pages/HospitalDepartmentPage",

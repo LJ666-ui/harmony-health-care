@@ -60,7 +60,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/rehab/plan/detail/**",
                         "/api/rehab/plan/actions/**",
                         "/api/rehab/plan/progress/**",
-                        "/api/rehab/plan/recommend/**"
+                        "/api/rehab/plan/recommend/**",
+                        "/pay/notify",
+                        "/pay/return"
                 );
     }
 

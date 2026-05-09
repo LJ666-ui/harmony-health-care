@@ -8,7 +8,7 @@ public interface RedisStockInterface {
 
     void incrStock(Long doctorId, Date scheduleDate, Integer schedulePeriod, int delta);
 
-    boolean grabSlot(Long doctorId, Date scheduleDate, Integer schedulePeriod, Long userId);
+    int grabSlot(Long doctorId, Date scheduleDate, Integer schedulePeriod, Long userId);
 
     boolean backStock(Long doctorId, Date scheduleDate, Integer schedulePeriod, Long userId);
 

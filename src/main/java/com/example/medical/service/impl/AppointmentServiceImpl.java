@@ -45,7 +45,8 @@ public class AppointmentServiceImpl extends ServiceImpl<AppointmentMapper, Appoi
             String dateStr = sdf.format(appointment.getScheduleDate());
             int count = getCountByDoctorAndPeriod(
                     appointment.getDoctorId(), appointment.getScheduleDate(), appointment.getSchedulePeriod());
-            appointment.setAppointmentNo(dateStr + String.format("%04d", count + 1));
+            String timeSuffix = String.valueOf(System.currentTimeMillis());
+            appointment.setAppointmentNo(dateStr + String.format("%04d", count + 1) + timeSuffix.substring(timeSuffix.length() - 4));
 
             return save(appointment);
         } finally {

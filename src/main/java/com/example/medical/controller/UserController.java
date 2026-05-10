@@ -346,4 +346,100 @@ public class UserController {
             return Result.error("清理过期消息失败：" + e.getMessage());
         }
     }
+
+    /**
+     * 获取所有患者列表（user_type=0）
+     * GET /user/patients
+     * 用于护士端显示患者列表
+     */
+    @GetMapping("/patients")
+    public Result<?> getAllPatients() {
+        try {
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(User::getUserType, 0)
+                   .eq(User::getIsDeleted, 0)
+                   .orderByDesc(User::getCreateTime);
+
+            List<User> patients = userService.list(wrapper);
+
+            if (patients != null && !patients.isEmpty()) {
+                patients.forEach(user -> user.setPassword(null));
+                return Result.success(patients);
+            } else {
+                return Result.success(new java.util.ArrayList<>());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取患者列表失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前登录护士负责的患者列表
+     * GET /user/nurse/patients
+     */
+    @GetMapping("/nurse/patients")
+    public Result<?> getNursePatients(@RequestHeader(value = "Token", required = false) String token) {
+        try {
+            System.out.println("[NursePatients] Token received: " + (token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "null"));
+
+            if (token == null || token.isEmpty()) {
+                System.out.println("[NursePatients] Error: No token provided");
+                return Result.error("未提供Token");
+            }
+
+            Long userId = JwtUtil.getUserId(token);
+            if (userId == null) {
+                System.out.println("[NursePatients] Error: Invalid token or cannot extract userId");
+                return Result.error("无效的Token或无法提取用户ID");
+            }
+
+            System.out.println("[NursePatients] UserId from token: " + userId);
+
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(User::getUserType, 0)
+                   .eq(User::getIsDeleted, 0)
+                   .orderByDesc(User::getCreateTime);
+
+            List<User> patients = userService.list(wrapper);
+            System.out.println("[NursePatients] Total patients found: " + (patients != null ? patients.size() : 0));
+
+            if (patients != null && !patients.isEmpty()) {
+                patients.forEach(user -> user.setPassword(null));
+                return Result.success(patients);
+            } else {
+                System.out.println("[NursePatients] Returning empty list");
+                return Result.success(new java.util.ArrayList<>());
+            }
+        } catch (Exception e) {
+            System.err.println("[NursePatients] Exception occurred:");
+            e.printStackTrace();
+            return Result.error("获取护士患者列表失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取患者详情信息
+     * GET /user/patient/{patientId}
+     */
+    @GetMapping("/patient/{patientId}")
+    public Result<?> getPatientDetail(@PathVariable Long patientId) {
+        try {
+            User user = userService.getById(patientId);
+            if (user == null) {
+                return Result.error("患者不存在");
+            }
+            if (user.getUserType() != null && user.getUserType() != 0) {
+                return Result.error("该用户不是患者");
+            }
+            if (user.getIsDeleted() != null && user.getIsDeleted() == 1) {
+                return Result.error("该患者已被删除");
+            }
+            user.setPassword(null);
+            return Result.success(user);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取患者详情失败：" + e.getMessage());
+        }
+    }
 }

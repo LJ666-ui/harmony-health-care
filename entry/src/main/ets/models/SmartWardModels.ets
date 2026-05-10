@@ -4,7 +4,7 @@
  */
 
 import { PatientRiskLevel } from './SmartWardEnums';
-import { DeviceStatus } from './SmartWardDeviceModels';
+import { ExtendedDeviceInfo } from './SmartWardDeviceModels';
 
 /**
  * 环境数据接口
@@ -48,7 +48,7 @@ export interface SmartWardRoom {
   roomNumber: string;                  // 房间号（如"301"）
   bedId: string;                       // 床位ID
   patientInfo: WardPatientInfo;        // 患者信息
-  devices: Map<string, DeviceStatus>;  // 设备状态集合（设备ID→状态）
+  devices: Map<string, ExtendedDeviceInfo>;  // 设备状态集合（设备ID→状态）
   environmentData: EnvironmentData;    // 环境数据
   lastUpdated: number;                 // 最后更新时间戳
 }
@@ -68,16 +68,25 @@ export interface PatientVitalSigns {
  * 用于护士站大屏展示的简化病房信息
  */
 export interface WardOverviewInfo {
-  roomId: string;
-  roomNumber: string;
-  bedId: string;
-  patientName: string;                 // 脱敏姓名
-  patientAge: number;
-  patientGender: 'male' | 'female' | 'other';
-  riskLevel: PatientRiskLevel;
-  vitalSigns: PatientVitalSigns;
-  deviceOnlineCount: number;           // 在线设备数量
-  deviceTotalCount: number;            // 设备总数
+  roomId?: string;
+  roomNumber?: string;
+  bedId?: string;
+  patientName?: string;                 // 脱敏姓名
+  patientAge?: number;
+  patientGender?: 'male' | 'female' | 'other';
+  riskLevel?: PatientRiskLevel;
+  vitalSigns?: PatientVitalSigns;
+  deviceOnlineCount?: number;           // 在线设备数量
+  deviceTotalCount?: number;            // 设备总数
   lastAlertMessage?: string;           // 最近告警消息
   lastAlertTime?: number;              // 最近告警时间
+  totalRooms?: number;                  // 兼容统计接口
+  occupiedRooms?: number;
+  totalPatients?: number;
+  criticalPatients?: number;
+  activeAlerts?: number;
+  onlineDevices?: number;
+  offlineDevices?: number;
+  avgEnvironmentScore?: number;
+  lastUpdated?: number;
 }

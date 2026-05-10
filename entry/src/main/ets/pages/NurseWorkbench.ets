@@ -40,13 +40,12 @@ struct NurseWorkbench {
   @State currentIndex: number = 0;
 
   private quickActions: QuickAction[] = [
-    { id: 'patient_manage', icon: '👥', title: '患者管理', color: '#3498DB', route: 'pages/NursePatientList' },
+    { id: 'patient_list', icon: '👥', title: '患者列表', color: '#3498DB', route: 'pages/PatientListPage' },
     { id: 'health_record', icon: '📋', title: '健康档案', color: '#9B59B6', route: 'pages/NurseHealthRecords' },
     { id: 'medication_manage', icon: '💊', title: '用药管理', color: '#E74C3C', route: 'pages/NurseMedicationPage' },
     { id: 'nursing_record', icon: '📝', title: '护理记录', color: '#2ECC71', route: 'pages/NurseMedicalRecord' },
     { id: 'vital_signs', icon: '📊', title: '生命体征', color: '#F39C12', route: 'pages/NurseHealthPage' },
     { id: 'schedule', icon: '📅', title: '排班查看', color: '#1ABC9C', route: 'pages/NurseStationDashboard' },
-    { id: 'patient_chat', icon: '💬', title: '患者聊天', color: '#13C2C2', route: 'pages/NursePatientList' },
     { id: 'family_chat', icon: '👨‍👩‍👧', title: '家属沟通', color: '#F5A623', route: 'pages/NurseFamilyList' }
   ];
 

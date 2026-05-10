@@ -123,6 +123,14 @@
     "pages/NurseHealthRecords",
     "pages/NurseMedicationPage",
     "pages/NurseMedicalRecord",
-    "pages/NurseHealthPage"
+    "pages/NurseHealthPage",
+    "pages/PatientListPage",
+    "pages/PatientDetailPage",
+    "pages/PatientChatListPage",
+    "pages/PatientDoctorChatPage",
+    "pages/PatientNurseChatPage",
+    "pages/PrescriptionPage",
+    "pages/PrescriptionListPage",
+    "pages/ReportDetailPage"
   ]
 }

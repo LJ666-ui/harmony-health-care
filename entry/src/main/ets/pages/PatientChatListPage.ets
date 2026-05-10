@@ -59,7 +59,9 @@ struct PatientChatListPage {
       const doctorPromise = HttpUtil.get<ChatSession[]>(`/chat/sessions?userId=${this.currentUserId}&targetRole=DOCTOR`);
       const nursePromise = HttpUtil.get<ChatSession[]>(`/chat/sessions?userId=${this.currentUserId}&targetRole=NURSE`);
 
-      const [doctorRes, nurseRes] = await Promise.all([doctorPromise, nursePromise]);
+      const allResults = await Promise.all([doctorPromise, nursePromise]);
+      const doctorRes = allResults[0];
+      const nurseRes = allResults[1];
 
       if (doctorRes.success && doctorRes.data) {
         this.doctorSessions = doctorRes.data;

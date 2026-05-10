@@ -13,25 +13,17 @@ import {
   CREATE_TABLE_SYNC_QUEUE,
   CREATE_TABLE_BROWSE_HISTORY,
   CREATE_TABLE_SEARCH_HISTORY,
-  CREATE_TABLE_COLLECTION_CACHE
+  CREATE_TABLE_COLLECTION_CACHE,
+  CREATE_TABLE_COMMENT_CACHE,
+  CREATE_TABLE_ARTICLE_DRAFT,
+  CREATE_TABLE_HOSPITAL_CACHE,
+  CREATE_TABLE_DOCTOR_CACHE,
+  CREATE_TABLE_APPOINTMENT_CACHE,
+  CREATE_TABLE_MEDICINE_CACHE,
+  CREATE_TABLE_HEALTH_GOAL_CACHE
 } from '../utils/DatabaseConstants';
 
 const DOMAIN = 0x0000;
-const CREATE_TABLE_HOSPITAL_CACHE = `
-  CREATE TABLE IF NOT EXISTS local_hospital_cache (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    address TEXT,
-    phone TEXT,
-    level TEXT,
-    department TEXT,
-    description TEXT,
-    longitude REAL,
-    latitude REAL,
-    cached_time INTEGER NOT NULL,
-    data_source TEXT DEFAULT 'server'
-  )
-`;
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -62,13 +54,21 @@ export default class EntryAbility extends UIAbility {
       await RdbHelper.executeSql(CREATE_TABLE_BROWSE_HISTORY);
       await RdbHelper.executeSql(CREATE_TABLE_SEARCH_HISTORY);
       await RdbHelper.executeSql(CREATE_TABLE_COLLECTION_CACHE);
-      
-      // 创建医院缓存表
+      await RdbHelper.executeSql(CREATE_TABLE_COMMENT_CACHE);
+      await RdbHelper.executeSql(CREATE_TABLE_ARTICLE_DRAFT);
       await RdbHelper.executeSql(CREATE_TABLE_HOSPITAL_CACHE);
+      await RdbHelper.executeSql(CREATE_TABLE_DOCTOR_CACHE);
+      await RdbHelper.executeSql(CREATE_TABLE_APPOINTMENT_CACHE);
+      await RdbHelper.executeSql(CREATE_TABLE_MEDICINE_CACHE);
+      await RdbHelper.executeSql(CREATE_TABLE_HEALTH_GOAL_CACHE);
       
-      // 创建医院缓存表索引
-      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_hospital_level ON local_hospital_cache(level)');
-      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_hospital_name ON local_hospital_cache(name)');
+      // 创建索引
+      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_offline_record_type ON offline_health_record(record_type)');
+      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_offline_record_time ON offline_health_record(record_time)');
+      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_search_keyword ON local_search_history(keyword)');
+      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_collection_target ON local_collection_cache(target_id, collect_type)');
+      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_browse_target ON local_browse_history(target_id, target_type)');
+      await RdbHelper.executeSql('CREATE INDEX IF NOT EXISTS idx_sync_queue_retry ON sync_queue(next_retry_time, retry_count)');
       
       hilog.info(DOMAIN, 'testTag', 'SQLite DB initialized successfully');
     } catch (error) {

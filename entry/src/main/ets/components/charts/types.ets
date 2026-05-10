@@ -55,6 +55,17 @@ export interface ChartData<T> {
 }
 
 /**
+ * 图表事件数据点
+ */
+export interface ChartEventDataPoint {
+  x?: number;
+  y?: number;
+  value?: number | string;
+  label?: string;
+  index?: number;
+}
+
+/**
  * 图表事件接口
  */
 export interface ChartEvent {
@@ -62,7 +73,7 @@ export interface ChartEvent {
   type: 'click' | 'longPress' | 'zoom' | 'pan' | 'hover';
   
   // 数据点（可选）
-  dataPoint?: any;
+  dataPoint?: ChartEventDataPoint;
   
   // 位置坐标（可选）
   position?: [number, number];
@@ -161,7 +172,7 @@ export interface TooltipConfig {
   padding: number;
   
   // 自定义格式化函数
-  formatter?: (data: any) => string;
+  formatter?: (data: number | string) => string;
 }
 
 /**
@@ -215,7 +226,7 @@ export interface DataPoint {
   y: number;
   
   // 值
-  value: any;
+  value: number | string;
   
   // 标签（可选）
   label?: string;

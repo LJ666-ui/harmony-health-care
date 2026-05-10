@@ -25,7 +25,7 @@ spring:
 
   # Redis配置
   redis:
-    host: 192.168.149.130  # 你的 Redis 服务器IP
+    host: localhost  # 修改为本地Redis
     port: 6379             # 端口
 
   rabbitmq:
@@ -56,4 +56,28 @@ mybatis-plus:
 # 文件上传配置（你本地3D模型/视频存放路径）
 file:
   upload-path: D:/harmony-health-care/uploads/
+
+# MinIO对象存储配置
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: medical-images
+  preview-url-expiry: 3600
+
+# AI引擎配置
+ai:
+  engine:
+    url: http://localhost:8000/api/v1
+    timeout: 30000
+    retry-count: 1
+    version: 1.0.0
+
+# 医学影像配置
+medical-image:
+  max-file-size: 20971520
+  supported-formats: JPG,PNG,DICOM
+  compression-quality: 0.5
+  preview-width: 800
+  preview-height: 600
 

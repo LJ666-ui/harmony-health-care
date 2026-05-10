@@ -5,6 +5,8 @@
 
 import { DeviceType } from './SmartWardEnums';
 
+export { DeviceType };
+
 /**
  * 设备基本信息接口
  * 描述设备的基本属性和元数据
@@ -200,4 +202,40 @@ export interface InfusionPumpCommand extends DeviceCommand {
   deviceType: DeviceType.INFUSION_PUMP;
   action: 'setFlowRate' | 'pause' | 'resume';
   params: Record<string, number | string | boolean>;
+}
+
+export enum DeviceStatusEnum {
+  ONLINE = 'ONLINE',
+  OFFLINE = 'OFFLINE',
+  ERROR = 'ERROR'
+}
+
+export interface ExtendedDeviceInfo {
+  deviceId: string;
+  deviceName: string;
+  deviceType: DeviceType;
+  status: DeviceStatusEnum;
+  isControllable: boolean;
+  lastHeartbeat: number;
+  patientId?: string;
+  properties: Map<string, string>;
+  vitalSigns?: VitalSignData;
+  capabilities: string[];
+  location: string;
+  manufacturer: string;
+  model: string;
+  firmwareVersion: string;
+  networkType: string;
+  ipAddress?: string;
+  batteryLevel?: number;
+}
+
+export interface VitalSignData {
+  heartRate: number;
+  spo2: number;
+  systolicBP: number;
+  diastolicBP: number;
+  respiratoryRate: number;
+  temperature: number;
+  timestamp: number;
 }

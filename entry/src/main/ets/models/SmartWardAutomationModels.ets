@@ -46,7 +46,7 @@ export interface RuleAction {
   targetDeviceId?: string;             // 目标设备ID
   deviceType?: DeviceType;             // 目标设备类型
   command?: string;                    // 设备命令
-  params?: Record<string, any>;        // 动作参数
+  params?: Record<string, number | string | boolean>;  // 动作参数
   alertLevel?: AlertLevel;             // 告警等级
   alertType?: string;                  // 告警类型
   message?: string;                    // 告警消息
@@ -90,7 +90,60 @@ export interface RuleTriggerHistory {
   ruleId: string;
   ruleName: string;
   triggeredAt: number;
-  eventData?: any;                     // 触发时的事件数据
+  eventData?: Record<string, number | string | boolean>;  // 触发时的事件数据
   executionStatus: 'success' | 'partial' | 'failed';  // 执行状态
   errorMessage?: string;               // 错误消息
+}
+
+export interface RuleActionItem {
+  action: string;
+  params?: Record<string, number | string | boolean | string[]>;
+}
+
+export interface ActionParamItem {
+  action: string;
+  params?: Record<string, number | string | boolean | string[]>;
+}
+
+export interface ExtendedAutomationRule {
+  ruleId: string;
+  ruleName: string;
+  description: string;
+  isEnabled: boolean;
+  triggerType: 'TIME_BASED' | 'DEVICE_EVENT' | 'CONDITION_BASED';
+  triggerCondition: TriggerConditionData;
+  actions: ActionParamItem[];
+  priority: 'HIGH' | 'CRITICAL' | 'MEDIUM' | 'LOW';
+  targetDeviceIds: string[];
+  executionCount: number;
+  lastExecutionTime: number;
+  cooldownSeconds: number;
+}
+
+export interface TriggerConditionData {
+  timeWindow?: TimeWindow;
+  timezone?: string;
+  repeat?: string[];
+  time?: string;
+  eventType?: string;
+  deviceIdPattern?: string;
+  debounceMs?: number;
+  conditions?: ConditionItem[];
+  logic?: string;
+  durationSeconds?: number;
+}
+
+export interface TimeWindow {
+  start: string;
+  end: string;
+}
+
+export interface ConditionItem {
+  metric?: string;
+  operator?: string;
+  value?: number | string;
+  value2?: number;
+  sensorType?: string;
+  durationMinutes?: number;
+  timeRange?: TimeWindow;
 }

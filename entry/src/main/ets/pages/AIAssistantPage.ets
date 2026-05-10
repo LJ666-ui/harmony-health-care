@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { AIService } from '../services/AIService';
 
 interface ChatMessage {
   id: number;
@@ -15,10 +16,12 @@ interface ChatMessage {
 @Component
 struct AIAssistantPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @StorageLink('userId') userId: number = 0;
   @State messages: ChatMessage[] = [];
   @State inputText: string = '';
   @State isTyping: boolean = false;
   private scroller: Scroller = new Scroller();
+  private aiService: AIService = AIService.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -51,45 +54,47 @@ struct AIAssistantPage {
     const messageToSend = this.inputText;
     this.inputText = '';
     
-    // 滚动到底部
     setTimeout(() => {
       this.scroller.scrollEdge(Edge.Bottom);
     }, 100);
 
-    // 模拟AI回复
     this.isTyping = true;
     setTimeout(() => {
-      this.receiveMessage(messageToSend);
-    }, 1500);
+      this.receiveMessageFromAI(messageToSend);
+    }, 500);
   }
 
-  receiveMessage(userMessage: string): void {
-    let aiResponse = '';
-    
-    // 简单的回复逻辑
-    if (userMessage.includes('头痛') || userMessage.includes('头疼')) {
-      aiResponse = '头痛可能由多种原因引起，如紧张、疲劳、感冒等。建议您：\n1. 保证充足休息\n2. 避免过度用眼\n3. 适当按摩太阳穴\n如果症状持续或加重，建议及时就医检查。';
-    } else if (userMessage.includes('感冒') || userMessage.includes('发烧')) {
-      aiResponse = '感冒发烧期间建议：\n1. 多喝温水，保持充足休息\n2. 监测体温变化\n3. 如体温超过38.5°C，可考虑服用退烧药\n4. 饮食清淡，多吃水果蔬菜\n如症状严重或持续不退，请及时就医。';
-    } else if (userMessage.includes('用药') || userMessage.includes('吃药')) {
-      aiResponse = '用药安全提示：\n1. 请遵医嘱或按说明书用药\n2. 注意药物禁忌和不良反应\n3. 不要随意增减剂量\n4. 如有不适，立即停药并咨询医生\n需要了解具体药品信息，请告诉我药品名称。';
-    } else {
-      aiResponse = '感谢您的咨询。为了给您提供更准确的建议，请详细描述您的症状或问题。您也可以：\n• 描述具体症状\n• 询问用药指导\n• 了解健康知识\n• 查询检查报告解读';
+  async receiveMessageFromAI(userMessage: string): Promise<void> {
+    try {
+      const response = await this.aiService.chat(this.userId, userMessage);
+      
+      const aiMessage: ChatMessage = {
+        id: this.messages.length + 1,
+        content: response,
+        isUser: false,
+        timestamp: this.getCurrentTime()
+      };
+      
+      this.messages.push(aiMessage);
+      this.isTyping = false;
+      
+      setTimeout(() => {
+        this.scroller.scrollEdge(Edge.Bottom);
+      }, 100);
+    } catch (error) {
+      console.error('[AIAssistantPage] AI回复失败:', error);
+      
+      const errorMessage: ChatMessage = {
+        id: this.messages.length + 1,
+        content: '抱歉，AI服务暂时不可用，请稍后重试。',
+        isUser: false,
+        timestamp: this.getCurrentTime()
+      };
+      
+      this.messages.push(errorMessage);
+      this.isTyping = false;
+      ToastUtil.showError('AI服务调用失败');
     }
-
-    const aiMessage: ChatMessage = {
-      id: this.messages.length + 1,
-      content: aiResponse,
-      isUser: false,
-      timestamp: this.getCurrentTime()
-    };
-    
-    this.messages.push(aiMessage);
-    this.isTyping = false;
-    
-    setTimeout(() => {
-      this.scroller.scrollEdge(Edge.Bottom);
-    }, 100);
   }
 
   getCurrentTime(): string {

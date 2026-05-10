@@ -19,7 +19,7 @@ const ENV_MAP: Record<EnvType, EnvConfig> = {
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
 
-let currentEnv: EnvType = EnvType.DEV_EMULATOR;
+let currentEnv: EnvType = EnvType.DEV;
 
 export function setEnv(env: EnvType): void {
   currentEnv = env;
@@ -233,6 +233,12 @@ interface ApiConstantsInterface {
   DOCTOR_PATIENTS: string;
   MESSAGE_CLEANUP: string;
 
+  NURSE_PATIENTS: string;
+  NURSE_PATIENT_ASSIGN: string;
+  NURSE_PATIENT_DETAIL: string;
+  PATIENT_LIST: string;
+  PATIENT_DETAIL: string;
+
   UPLOAD_3D: string;
 
   ADMIN_LOGIN: string;
@@ -435,6 +441,12 @@ export const ApiConstants: ApiConstantsInterface = {
   MESSAGE_CAN_SEND: '/user/message/can-send',
   DOCTOR_PATIENTS: '/user/doctor/patients',
   MESSAGE_CLEANUP: '/user/message/cleanup',
+
+  NURSE_PATIENTS: '/user/nurse/patients',
+  NURSE_PATIENT_ASSIGN: '/user/nurse/patient/assign',
+  NURSE_PATIENT_DETAIL: '/user/nurse/patient/',
+  PATIENT_LIST: '/user/patients',
+  PATIENT_DETAIL: '/user/patient/',
 
   UPLOAD_3D: '/api/upload/3d',
 

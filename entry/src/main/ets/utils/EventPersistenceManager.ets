@@ -251,7 +251,7 @@ class EventPersistenceManager {
     try {
       const values: relationalStore.ValuesBucket = {};
       values[COLUMN_COLLECT_TYPE] = collectType;
-      values[COLUMN_TARGET_ID] = targetId;
+      values[COLUMN_TARGET_ID] = String(targetId);
       values[COLUMN_TARGET_TITLE] = targetTitle;
       values[COLUMN_TARGET_IMAGE] = targetImage || '';
       values[COLUMN_COLLECT_TIME] = Date.now();
@@ -271,7 +271,7 @@ class EventPersistenceManager {
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
       predicates.equalTo(COLUMN_COLLECT_TYPE, collectType);
-      predicates.equalTo(COLUMN_TARGET_ID, targetId);
+      predicates.equalTo(COLUMN_TARGET_ID, String(targetId));
       const deletedCount = await RdbHelper.delete(predicates);
       hilog.info(0x0000, TAG, '本地收藏已删除, count=%{public}d', deletedCount);
       return deletedCount > 0;
@@ -285,7 +285,7 @@ class EventPersistenceManager {
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
       predicates.equalTo(COLUMN_COLLECT_TYPE, collectType);
-      predicates.equalTo(COLUMN_TARGET_ID, targetId);
+      predicates.equalTo(COLUMN_TARGET_ID, String(targetId));
       const resultSet = await RdbHelper.queryByPredicates(predicates, ['COUNT(*) as cnt']);
       let isCollected = false;
       if (resultSet.goToFirstRow()) {

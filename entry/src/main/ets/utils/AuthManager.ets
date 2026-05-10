@@ -6,6 +6,7 @@ import { CurrentAdmin } from '../services/AdminAuthService';
 export enum UserRole {
   GUEST = 'guest',
   USER = 'user',
+  PATIENT = 'patient',  // 患者角色
   DOCTOR = 'doctor',
   FAMILY = 'family',  // 家属角色
   NURSE = 'nurse',     // 护士角色

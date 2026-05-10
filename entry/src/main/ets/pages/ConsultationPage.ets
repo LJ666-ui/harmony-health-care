@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { ConsultationService, OnlineDoctor } from '../services/ConsultationService';
 
 interface Department {
   id: number;
@@ -27,6 +28,7 @@ struct ConsultationPage {
   @State departments: Department[] = [];
   @State recommendedDoctors: Doctor[] = [];
   @State isLoading: boolean = true;
+  private consultationService: ConsultationService = ConsultationService.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -41,31 +43,79 @@ struct ConsultationPage {
     this.isLoading = true;
     
     try {
-      await new Promise<void>(resolve => setTimeout(resolve, 500));
+      const onlineDoctors = await this.consultationService.getOnlineDoctors();
       
-      this.departments = [
-        { id: 1, name: '内科', icon: '🫀', color: '#E74C3C' },
-        { id: 2, name: '外科', icon: '🔪', color: '#3498DB' },
-        { id: 3, name: '儿科', icon: '👶', color: '#F39C12' },
-        { id: 4, name: '妇产科', icon: '🤰', color: '#E91E63' },
-        { id: 5, name: '骨科', icon: '🦴', color: '#9B59B6' },
-        { id: 6, name: '眼科', icon: '👁️', color: '#2ECC71' },
-        { id: 7, name: '耳鼻喉科', icon: '👂', color: '#00BCD4' },
-        { id: 8, name: '皮肤科', icon: '🧴', color: '#FF9800' }
-      ];
-      
-      this.recommendedDoctors = [
-        { id: 1, name: '张医生', title: '主任医师', department: '内科', rating: 4.9, avatar: '👨‍⚕️' },
-        { id: 2, name: '李医生', title: '副主任医师', department: '外科', rating: 4.8, avatar: '👩‍⚕️' },
-        { id: 3, name: '王医生', title: '主治医师', department: '儿科', rating: 4.7, avatar: '👨‍⚕️' },
-        { id: 4, name: '刘医生', title: '主任医师', department: '妇产科', rating: 4.9, avatar: '👩‍⚕️' }
-      ];
+      const doctors: Doctor[] = [];
+      for (let i = 0; i < onlineDoctors.length; i++) {
+        const doc = onlineDoctors[i];
+        const doctor: Doctor = {
+          id: doc.doctorId,
+          name: doc.doctorName,
+          title: doc.title,
+          department: doc.department,
+          rating: doc.rating,
+          avatar: doc.avatar || '👨‍⚕️'
+        };
+        doctors.push(doctor);
+      }
+      this.recommendedDoctors = doctors;
+
+      const deptMap = new Map<number, Department>();
+      for (let i = 0; i < onlineDoctors.length; i++) {
+        const doc = onlineDoctors[i];
+        if (!deptMap.has(doc.doctorId)) {
+          const dept: Department = {
+            id: doc.doctorId,
+            name: doc.department,
+            icon: this.getDepartmentIcon(doc.department),
+            color: this.getDepartmentColor(doc.department)
+          };
+          deptMap.set(doc.doctorId, dept);
+        }
+      }
+      this.departments = Array.from(deptMap.values());
+
+      if (this.departments.length === 0) {
+        const dept1: Department = { id: 1, name: '内科', icon: '🫀', color: '#E74C3C' };
+        const dept2: Department = { id: 2, name: '外科', icon: '🔪', color: '#3498DB' };
+        const dept3: Department = { id: 3, name: '儿科', icon: '👶', color: '#F39C12' };
+        const dept4: Department = { id: 4, name: '妇产科', icon: '🤰', color: '#E91E63' };
+        this.departments = [dept1, dept2, dept3, dept4];
+      }
     } catch (error) {
       console.error('[ConsultationPage] 加载数据异常:', error);
       ToastUtil.showError('加载失败，请重试');
     } finally {
       this.isLoading = false;
     }
+  }
+
+  private getDepartmentIcon(deptName: string): string {
+    const iconMap: Map<string, string> = new Map([
+      ['内科', '🫀'],
+      ['外科', '🔪'],
+      ['儿科', '👶'],
+      ['妇产科', '🤰'],
+      ['骨科', '🦴'],
+      ['眼科', '👁️'],
+      ['耳鼻喉科', '👂'],
+      ['皮肤科', '🧴']
+    ]);
+    return iconMap.get(deptName) || '🏥';
+  }
+
+  private getDepartmentColor(deptName: string): string {
+    const colorMap: Map<string, string> = new Map([
+      ['内科', '#E74C3C'],
+      ['外科', '#3498DB'],
+      ['儿科', '#F39C12'],
+      ['妇产科', '#E91E63'],
+      ['骨科', '#9B59B6'],
+      ['眼科', '#2ECC71'],
+      ['耳鼻喉科', '#00BCD4'],
+      ['皮肤科', '#FF9800']
+    ]);
+    return colorMap.get(deptName) || '#3498DB';
   }
 
   selectDepartment(dept: Department): void {

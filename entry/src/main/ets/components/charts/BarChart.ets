@@ -36,7 +36,10 @@ export struct BarChart {
   
   private drawBarChart(config: BarChartConfig): void {
     const ctx = this.settings;
-    const [top, right, bottom, left] = config.padding;
+    const top = config.padding[0];
+    const right = config.padding[1];
+    const bottom = config.padding[2];
+    const left = config.padding[3];
     
     const plotArea = {
       x: left,

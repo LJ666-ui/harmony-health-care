@@ -15,20 +15,43 @@ export struct HomePage {
   private breakpointSystem: BreakpointSystem = BreakpointSystem.getInstance();
 
   private quickActions: QuickAction[] = [
+    // ===== 第一行：核心医疗服务 =====
     { id: 'appointment', icon: '📅', title: '预约挂号', color: '#3498DB', route: 'pages/HospitalPage' },
+    { id: 'consultation', icon: '👨‍⚕️', title: '在线问诊', color: '#F39C12', route: 'pages/ConsultationPage' },
+    { id: 'chat', icon: '💬', title: '我的聊天', color: '#13C2C2', route: 'pages/PatientChatListPage' },
     { id: 'medical_record', icon: '📋', title: '病历档案', color: '#9B59B6', route: 'pages/MedicalRecord' },
     { id: 'health_report', icon: '📊', title: '体检报告', color: '#2ECC71', route: 'pages/ReportPage' },
     { id: 'medication', icon: '💊', title: '用药提醒', color: '#E74C3C', route: 'pages/MedicationPage' },
-    { id: 'chat', icon: '💬', title: '我的聊天', color: '#13C2C2', route: 'pages/PatientChatListPage' },
-    { id: 'consultation', icon: '👨‍⚕️', title: '在线问诊', color: '#F39C12', route: 'pages/ConsultationPage' },
-    { id: 'emergency', icon: '🚑', title: '急救指南', color: '#E67E22', route: 'pages/EmergencyPage' },
-    { id: 'health_edu', icon: '📚', title: '健康科普', color: '#1ABC9C', route: 'pages/SciencePage' },
     { id: 'family_doctor', icon: '🏥', title: '家庭医生', color: '#34495E', route: 'pages/FamilyDoctorPage' },
-    { id: 'insurance', icon: '🛡️', title: '医保服务', color: '#8E44AD', route: 'pages/InsurancePage' },
+
+    // ===== 第二行：健康管理 =====
+    { id: 'health_records', icon: '📝', title: '健康档案', color: '#1ABC9C', route: 'pages/HealthRecords' },
     { id: 'rehabilitation', icon: '🧘', title: '康复训练', color: '#16A085', route: 'pages/RehabilitationPage' },
+    { id: 'ar_navigation', icon: '🗺️', title: 'AR导航', color: '#E67E22', route: 'pages/DestinationSelectPage' },
+    { id: 'digital_twin', icon: '🫀', title: '数字孪生', color: '#C0392B', route: 'pages/DigitalTwinPage' },
     { id: 'ai_assistant', icon: '🤖', title: 'AI助手', color: '#2980B9', route: 'pages/AIAssistantPage' },
     { id: 'distributed', icon: '🔗', title: '跨院协同', color: '#D35400', route: 'pages/DistributedCollaborationPage' },
-    { id: 'digital_twin', icon: '🫀', title: '数字孪生', color: '#C0392B', route: 'pages/DigitalTwinPage' }
+    { id: 'insurance', icon: '🛡️', title: '医保服务', color: '#8E44AD', route: 'pages/InsurancePage' },
+
+    // ===== 第三行：智能应用 ⭐真实数据 =====
+    { id: 'parking', icon: '🅿️', title: '智慧停车', color: '#34495E', route: 'pages/ParkingListPage' },
+    { id: 'smart_ward', icon: '🏨', title: '智慧病房', color: '#27AE60', route: 'pages/SmartWardDevicesSimple' },
+    { id: 'health_edu', icon: '📚', title: '健康科普', color: '#1ABC9C', route: 'pages/SciencePage' },
+    { id: 'emergency', icon: '🚑', title: '急救指南', color: '#E67E22', route: 'pages/EmergencyPage' },
+    { id: 'herbal', icon: '🌿', title: '中医百科', color: '#27AE60', route: 'pages/HerbalListPage' },
+    { id: 'food', icon: '🍎', title: '食物营养', color: '#E74C3C', route: 'pages/FoodEncyclopediaPage' },
+    { id: 'prescription', icon: '💉', title: '处方管理', color: '#9B59B6', route: 'pages/PrescriptionListPage' },
+    { id: 'transfer', icon: '🔄', title: '转院申请', color: '#F39C12', route: 'pages/TransferApplyPage' },
+
+    // ===== 第四行：工具与服务 =====
+    { id: 'knowledge', icon: '🧠', title: '知识图谱', color: '#3498DB', route: 'pages/KnowledgeGraphPage' },
+    { id: 'device_manage', icon: '📱', title: '设备管理', color: '#95A5A6', route: 'pages/DeviceManagePage' },
+    { id: 'data_auth', icon: '🔐', title: '数据授权', color: '#2C3E50', route: 'pages/DataAuthPage' },
+    { id: 'statistics', icon: '📈', title: '统计分析', color: '#16A085', route: 'pages/StatisticsPage' },
+    { id: 'browse_history', icon: '🕐', title: '浏览历史', color: '#7F8C8D', route: 'pages/BrowseHistoryPage' },
+    { id: 'daily_recommend', icon: '⭐', title: '每日推荐', color: '#F1C40F', route: 'pages/DailyRecommendPage' },
+    { id: 'ancient_img', icon: '📜', title: '古医图谱', color: '#1ABC9C', route: 'pages/AncientMedicalImgPage' },
+    { id: 'imaging', icon: '🔬', title: '医学影像', color: '#8E44AD', route: 'pages/ImageAnalysisPage' }
   ];
 
   aboutToAppear(): void {

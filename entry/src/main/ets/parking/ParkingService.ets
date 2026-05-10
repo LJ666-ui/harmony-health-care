@@ -5,7 +5,7 @@ import {
   getMockParkingSpaces,
   getMockParkingRecord,
   getMockFeeRates
-} from '../mock/parkingMock';
+} from '../mock/parkingMock_realdata';  // 切换到真实数据版本
 import {
   CacheConstants,
   FeeConstants,

@@ -92,6 +92,20 @@ public class JwtUtil {
     }
 
     /**
+     * 判断是否为普通用户Token
+     */
+    public static boolean isUserToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            String subject = claims.getSubject();
+            // 普通用户Token没有subject或subject为null
+            return subject == null || "".equals(subject);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
      * 生成护士Token
      */
     public static String generateNurseToken(Long nurseId, String phone) {
@@ -126,6 +140,58 @@ public class JwtUtil {
         try {
             Claims claims = parseToken(token);
             return "NURSE".equals(claims.getSubject());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 生成医生Token
+     */
+    public static String generateDoctorToken(Long doctorId, String phone) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("doctorId", doctorId);
+        claims.put("phone", phone);
+        claims.put("subject", "DOCTOR");
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject("DOCTOR")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000)) // 7天过期
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .compact();
+    }
+
+    /**
+     * 从Token中获取医生ID
+     */
+    public static Long getDoctorId(String token) {
+        Claims claims = parseToken(token);
+        if ("DOCTOR".equals(claims.getSubject())) {
+            return claims.get("doctorId", Long.class);
+        }
+        return null;
+    }
+
+    /**
+     * 判断是否为医生Token
+     */
+    public static boolean isDoctorToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return "DOCTOR".equals(claims.getSubject());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 验证Token角色
+     */
+    public static boolean validateRole(String token, String expectedRole) {
+        try {
+            Claims claims = parseToken(token);
+            return expectedRole.equals(claims.getSubject());
         } catch (Exception e) {
             return false;
         }

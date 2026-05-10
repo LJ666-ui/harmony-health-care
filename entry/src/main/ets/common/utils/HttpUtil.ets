@@ -174,7 +174,7 @@ export class HttpUtil {
     console.log('[HttpUtil] ' + method + ' ' + fullUrl + ' (timeout: ' + timeoutValue + 'ms)', data ? JSON.stringify(data) : '');
 
     // 自动检测当前登录角色并选择对应的Token
-    // 优先级：家属 > 护士 > 管理员 > 普通用户
+    // 优先级：家属 > 护士 > 医生 > 管理员 > 普通用户
     let token: string | null = null;
     
     if (options && options.skipAuth) {
@@ -187,6 +187,7 @@ export class HttpUtil {
       // 自动检测当前登录角色
       const isFamilyLoggedIn: boolean = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
       const isNurseLoggedIn: boolean = AppStorage.get<boolean>('isNurseLoggedIn') || false;
+      const isDoctorLoggedIn: boolean = AppStorage.get<boolean>('isDoctorLoggedIn') || false;
       const isAdminLoggedIn: boolean = AppStorage.get<boolean>('isAdminLoggedIn') || false;
       const isLoggedIn: boolean = AppStorage.get<boolean>('isLoggedIn') || false;
       
@@ -194,6 +195,8 @@ export class HttpUtil {
         token = HttpUtil.getFamilyToken();
       } else if (isNurseLoggedIn) {
         token = HttpUtil.getNurseToken();
+      } else if (isDoctorLoggedIn) {
+        token = HttpUtil.getDoctorToken();
       } else if (isAdminLoggedIn) {
         token = HttpUtil.getAdminToken();
       } else if (isLoggedIn) {
@@ -377,54 +380,59 @@ export class HttpUtil {
       if (!isHandling401) {
         isHandling401 = true;
         
-        // 检测当前登录角色（优先级：家属 > 护士 > 管理员 > 普通用户）
+        // 检测当前登录角色（优先级：家属 > 护士 > 医生 > 管理员 > 普通用户）
         const isFamilyLoggedIn: boolean = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
         const isNurseLoggedIn: boolean = AppStorage.get<boolean>('isNurseLoggedIn') || false;
+        const isDoctorLoggedIn: boolean = AppStorage.get<boolean>('isDoctorLoggedIn') || false;
         const isAdminLoggedIn: boolean = AppStorage.get<boolean>('isAdminLoggedIn') || false;
         const isLoggedIn: boolean = AppStorage.get<boolean>('isLoggedIn') || false;
         
         if (isFamilyLoggedIn) {
-          // 家属Token过期
+          // 家属Token过期，先清除状态再跳转
           HttpUtil.clearFamilyToken();
           AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', false);
-          HttpUtil.showToast('登录已过期，请重新登录');
           setTimeout(() => {
             router.replaceUrl({ url: 'pages/FamilyLogin' });
             isHandling401 = false;
-          }, 1500);
+          }, 500);
         } else if (isNurseLoggedIn) {
-          // 护士Token过期
+          // 护士Token过期，先清除状态再跳转
           HttpUtil.clearNurseToken();
           AppStorage.setOrCreate<boolean>('isNurseLoggedIn', false);
-          HttpUtil.showToast('登录已过期，请重新登录');
           setTimeout(() => {
             router.replaceUrl({ url: 'pages/NurseLogin' });
             isHandling401 = false;
-          }, 1500);
+          }, 500);
+        } else if (isDoctorLoggedIn) {
+          // 医生Token过期，先清除状态再跳转
+          HttpUtil.clearDoctorToken();
+          AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', false);
+          setTimeout(() => {
+            router.replaceUrl({ url: 'pages/DoctorLogin' });
+            isHandling401 = false;
+          }, 500);
         } else if (isAdminLoggedIn) {
-          // 管理员Token过期
+          // 管理员Token过期，先清除状态再跳转
           HttpUtil.clearAdminToken();
           AppStorage.setOrCreate<boolean>('isAdminLoggedIn', false);
-          HttpUtil.showToast('登录已过期，请重新登录');
           setTimeout(() => {
             router.replaceUrl({ url: 'pages/AdminLogin' });
             isHandling401 = false;
-          }, 1500);
+          }, 500);
         } else if (isLoggedIn) {
-          // 普通用户Token过期
+          // 普通用户Token过期，先清除状态再跳转
           HttpUtil.clearToken();
           AppStorage.setOrCreate<boolean>('isLoggedIn', false);
-          HttpUtil.showToast('登录已过期，请重新登录');
           setTimeout(() => {
             router.replaceUrl({ url: 'pages/Login' });
             isHandling401 = false;
-          }, 1500);
+          }, 500);
         } else {
           // 未登录状态，不做处理
           isHandling401 = false;
         }
       }
-      return new BaseResponse<T>(false, '登录已过期，请重新登录', undefined, 401);
+      return new BaseResponse<T>(false, '请先登录', undefined, 401);
     }
 
     if (response.responseCode >= 500) {
@@ -677,6 +685,57 @@ export class HttpUtil {
       await settings.clearNurseAuth();
     } catch (error) {
       console.error('[HttpUtil] 清除护士Token失败:', error);
+    }
+  }
+
+  // ==================== 医生相关方法 ====================
+
+  /**
+   * 获取医生Token
+   */
+  static getDoctorToken(): string | null {
+    try {
+      const tokenFromAppStorage: string | undefined = AppStorage.get<string>('doctorToken');
+      if (tokenFromAppStorage && tokenFromAppStorage.length > 0) {
+        return tokenFromAppStorage;
+      }
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      const tokenFromPrefs: string = settings.getDoctorTokenSync();
+      if (tokenFromPrefs && tokenFromPrefs.length > 0) {
+        AppStorage.setOrCreate<string>('doctorToken', tokenFromPrefs);
+        return tokenFromPrefs;
+      }
+      return null;
+    } catch (error) {
+      console.error('[HttpUtil] 获取医生Token失败:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 保存医生Token
+   */
+  static async saveDoctorToken(token: string): Promise<void> {
+    try {
+      AppStorage.setOrCreate<string>('doctorToken', token);
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.saveDoctorToken(token);
+    } catch (error) {
+      console.error('[HttpUtil] 保存医生Token失败:', error);
+    }
+  }
+
+  /**
+   * 清除医生Token
+   */
+  static async clearDoctorToken(): Promise<void> {
+    try {
+      AppStorage.setOrCreate<string>('doctorToken', '');
+      AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', false);
+      const settings: SettingsUtil = SettingsUtil.getInstance();
+      await settings.clearDoctorAuth();
+    } catch (error) {
+      console.error('[HttpUtil] 清除医生Token失败:', error);
     }
   }
 }

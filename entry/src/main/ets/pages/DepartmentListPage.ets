@@ -6,6 +6,7 @@ import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { Appointment } from '../models/HealthData';
+import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
 import { GlobalTheme } from '../global';
 
 interface DepartmentInfo {
@@ -41,6 +42,10 @@ struct DepartmentListPage {
   @State isInitialized: boolean = false;
   @State appointments: Appointment[] = [];
   @State bookedDepartments: number[] = [];
+  @State showDoctorPicker: boolean = false;
+  @State deptDoctors: DoctorInfo[] = [];
+  @State selectedDeptForBooking: DepartmentInfo | null = null;
+  @State isLoadingDoctors: boolean = false;
 
   aboutToAppear(): void {
     console.log('DepartmentListPage aboutToAppear 开始');
@@ -121,28 +126,71 @@ struct DepartmentListPage {
   }
 
   onBookAppointment(department: DepartmentInfo): void {
-    console.log('开始跳转到预约时间选择页面');
-    console.log('医院名称:', this.hospitalName);
-    console.log('科室名称:', department.deptName);
-    console.log('科室位置:', department.location);
+    this.selectedDeptForBooking = department;
+    this.showDoctorPicker = true;
+    this.loadDoctorsForDepartment(department);
+  }
 
+  async loadDoctorsForDepartment(department: DepartmentInfo): Promise<void> {
+    this.isLoadingDoctors = true;
+    this.deptDoctors = [];
+    try {
+      const queryParams: Record<string, string> = { 'department': department.deptName };
+      const res: BaseResponse<Object[]> = await HttpUtil.request<Object[]>(
+        HttpMethod.GET,
+        ApiConstants.DOCTOR_LIST,
+        undefined,
+        queryParams as Object,
+        { showLoading: false }
+      );
+      if (res.code === 200 && res.data && res.data.length > 0) {
+        const list: DoctorInfo[] = [];
+        for (let i = 0; i < res.data.length; i++) {
+          list.push(DoctorInfoHelper.fromJson(res.data[i] as Record<string, Object>));
+        }
+        this.deptDoctors = list;
+      } else {
+        const fallback: DoctorInfo = new DoctorInfo();
+        fallback.realName = department.deptName + '医生';
+        fallback.department = department.deptName;
+        fallback.title = '主治医师';
+        fallback.hospital = this.hospitalName;
+        fallback.id = -1;
+        this.deptDoctors = [fallback];
+      }
+    } catch (e) {
+      console.error('加载医生列表失败:', e);
+      const fallback: DoctorInfo = new DoctorInfo();
+      fallback.realName = department.deptName + '医生';
+      fallback.department = department.deptName;
+      fallback.title = '主治医师';
+      fallback.hospital = this.hospitalName;
+      fallback.id = -1;
+      this.deptDoctors = [fallback];
+    } finally {
+      this.isLoadingDoctors = false;
+    }
+  }
+
+  onDoctorSelected(doctor: DoctorInfo): void {
+    this.showDoctorPicker = false;
     try {
       router.pushUrl({
-        url: 'pages/AppointmentTimeSelectPage',
+        url: 'pages/BookingPage',
         params: {
-          hospitalName: this.hospitalName,
-          departmentName: department.deptName,
-          departmentLocation: department.location || `${department.deptName}诊室`
+          doctorId: doctor.id || 0,
+          doctorName: doctor.realName || '医生',
+          fee: 10
         }
       }).then(() => {
-        console.log('成功跳转到预约时间选择页面');
-      }).catch((error: Error) => {
-        console.error('跳转失败:', error.message);
-        ToastUtil.showError('页面跳转失败，请重试', 2000);
+        console.log('跳转到挂号页面成功');
+      }).catch((err: Error) => {
+        console.error('跳转失败:', err.message);
+        ToastUtil.showError('页面跳转失败', 1500);
       });
     } catch (error) {
       console.error('路由异常:', error);
-      ToastUtil.showError('系统错误，请稍后重试', 2000);
+      ToastUtil.showError('系统错误', 1500);
     }
   }
 
@@ -362,24 +410,25 @@ struct DepartmentListPage {
   }
 
   build() {
-    Column() {
-      Header({ title: this.hospitalName + ' - 科室' })
+    Stack() {
+      Column() {
+        Header({ title: this.hospitalName + ' - 科室' })
 
-      if (this.isLoading) {
-        Loading({ text: '加载中...' })
-          .layoutWeight(1)
-      } else if (this.departments.length === 0 && this.hasError) {
-        EmptyState({
-          icon: '🏥',
-          title: '暂无科室',
-          description: this.errorMessage || '该医院暂无可用科室',
-          buttonText: '重新加载',
-          onAdd: () => {
-            this.loadDepartments();
-          }
-        })
-          .layoutWeight(1)
-      } else {
+        if (this.isLoading) {
+          Loading({ text: '加载中...' })
+            .layoutWeight(1)
+        } else if (this.departments.length === 0 && this.hasError) {
+          EmptyState({
+            icon: '🏥',
+            title: '暂无科室',
+            description: this.errorMessage || '该医院暂无可用科室',
+            buttonText: '重新加载',
+            onAdd: () => {
+              this.loadDepartments();
+            }
+          })
+            .layoutWeight(1)
+        } else {
         Column() {
           Row() {
             Text(`${this.hospitalName}`)
@@ -440,9 +489,104 @@ struct DepartmentListPage {
           .layoutWeight(1)
         }
         .layoutWeight(1)
+        }
+      }
+      .width('100%')
+      .height('100%')
+
+      if (this.showDoctorPicker) {
+        this.buildDoctorPickerDialog();
       }
     }
+    .width('100%')
     .height('100%')
     .backgroundColor(GlobalTheme.BG_COLOR)
+  }
+
+  @Builder
+  buildDoctorPickerDialog() {
+    Stack() {
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor('#00000080')
+        .onClick(() => { this.showDoctorPicker = false; });
+
+      Column({ space: 16 }) {
+        Text('选择医生')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333');
+
+        if (this.isLoadingDoctors) {
+          Text('加载医生列表...')
+            .fontSize(14)
+            .fontColor('#999999')
+            .padding({ top: 20, bottom: 20 })
+            .width('100%')
+            .textAlign(TextAlign.Center);
+        } else {
+          Scroll() {
+            Column({ space: 10 }) {
+              ForEach(this.deptDoctors, (doctor: DoctorInfo) => {
+                Row() {
+                  Column() {
+                    Text(doctor.realName || '未知医生')
+                      .fontSize(16)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor('#333333');
+                    if (doctor.title) {
+                      Text(doctor.title)
+                        .fontSize(12)
+                        .fontColor('#999999')
+                        .margin({ top: 2 });
+                    }
+                    if (doctor.specialty) {
+                      Text('擅长: ' + doctor.specialty)
+                        .fontSize(11)
+                        .fontColor('#BBBBBB')
+                        .margin({ top: 2 })
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis });
+                    }
+                  }
+                  .alignItems(HorizontalAlign.Start)
+                  .layoutWeight(1);
+
+                  Text('选择 >')
+                    .fontSize(14)
+                    .fontColor('#1677FF')
+                    .fontWeight(FontWeight.Medium);
+                }
+                .width('100%')
+                .padding(14)
+                .backgroundColor('#F8F9FA')
+                .borderRadius(10)
+                .onClick(() => this.onDoctorSelected(doctor));
+              }, (doc: DoctorInfo) => '' + doc.id);
+            }
+            .width('100%')
+            .constraintSize({ maxHeight: 300 });
+          }
+
+          Button('取消')
+            .width('100%')
+            .height(40)
+            .fontSize(14)
+            .fontColor('#666666')
+            .backgroundColor('#F5F5F5')
+            .borderRadius(20)
+            .onClick(() => { this.showDoctorPicker = false; });
+        }
+      }
+      .width('85%')
+      .constraintSize({ maxHeight: '70%' })
+      .padding(20)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(16);
+    }
+    .width('100%')
+    .height('100%')
+    .position({ x: 0, y: 0 });
   }
 }

@@ -14,6 +14,7 @@ interface FamilyLoginResponseData {
 
 interface FamilyInfo {
   id: number;
+  userId: number;
   name: string;
   phone: string;
   relation: string;

@@ -2,15 +2,15 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "module description"
+      "value": "健康护理主模块"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "description"
+      "value": "健康护理应用主入口"
     },
     {
       "name": "EntryAbility_label",
-      "value": "label"
+      "value": "健康护理"
     },
     {
       "name": "read_media_reason",

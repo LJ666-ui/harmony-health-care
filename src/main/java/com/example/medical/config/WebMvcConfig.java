@@ -49,9 +49,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/admin/generate-password",
                         "/admin/fix-admin-password",
                         "/admin/verify-password",
-                        // 家属/护士端
+                        // 家属/护士/医生端
                         "/family/login",
                         "/nurse/login",
+                        "/doctor/login",
                         // 公共开放接口
                         "/ai/**",
                         "/herbal/**",
@@ -67,6 +68,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/rehab/plan/actions/**",
                         "/api/rehab/plan/progress/**",
                         "/api/rehab/plan/recommend/**",
+                        // 支付接口
+                        "/pay/notify",
+                        "/pay/return",
                         // 系统通用
                         "/error",
                         "/uploads/**"

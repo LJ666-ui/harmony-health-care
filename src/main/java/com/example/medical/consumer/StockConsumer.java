@@ -29,25 +29,23 @@ public class StockConsumer {
         log.info("[减库存队列] 收到消息: {}", JSON.toJSONString(message));
 
         try {
-            boolean grabbed = redisStockService.grabSlot(
+            int grabResult = redisStockService.grabSlot(
                     message.getDoctorId(),
                     message.getScheduleDate(),
                     message.getSchedulePeriod(),
                     message.getUserId());
 
-            if (grabbed) {
+            if (grabResult == 1) {
                 log.info("[减库存队列] 抢号成功 traceId={}", message.getTraceId());
             } else {
-                int remaining = redisStockService.getRemainingStock(
-                        message.getDoctorId(), message.getScheduleDate(), message.getSchedulePeriod());
-                log.warn("[减库存队列] 抢号失败 traceId={} remaining={} (0=已满, -1=重复)",
-                        message.getTraceId(), remaining);
+                log.warn("[减库存队列] 抢号失败 traceId={} result={} (1=成功 0=已满 -1=重复)",
+                        message.getTraceId(), grabResult);
             }
 
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("[减库存队列] 处理异常 traceId={} error={}", message.getTraceId(), e.getMessage());
-            channel.basicNack(deliveryTag, false, true);
+            channel.basicAck(deliveryTag, false);
         }
     }
 }

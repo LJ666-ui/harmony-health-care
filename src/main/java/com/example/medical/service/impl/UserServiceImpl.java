@@ -12,4 +12,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public User findByUsername(String username) {
         return lambdaQuery().eq(User::getUsername, username).one();
     }
+
+    @Override
+    public User findByPhone(String phone) {
+        return lambdaQuery().eq(User::getPhone, phone).one();
+    }
 }

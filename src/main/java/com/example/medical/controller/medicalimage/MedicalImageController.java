@@ -2,13 +2,13 @@ package com.example.medical.controller.medicalimage;
 
 import com.example.medical.dto.medicalimage.*;
 import com.example.medical.service.medicalimage.*;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-@Api(tags = "医学影像AI识别")
+@Tag(name = "医学影像AI识别")
 @RestController
 @RequestMapping("/api/v1/medical-image")
 public class MedicalImageController {
@@ -19,7 +19,7 @@ public class MedicalImageController {
     @Autowired
     private AIDiagnosisService aiDiagnosisService;
 
-    @ApiOperation("上传医学影像")
+    @Operation(summary = "上传医学影像")
     @PostMapping("/upload")
     public ApiResponse<UploadImageResponse> uploadImage(
             @RequestParam("file") MultipartFile file,
@@ -45,7 +45,7 @@ public class MedicalImageController {
         }
     }
 
-    @ApiOperation("AI诊断分析")
+    @Operation(summary = "AI诊断分析")
     @PostMapping("/analyze")
     public ApiResponse<AnalyzeImageResponse> analyzeImage(
             @RequestParam("imageId") String imageId,
@@ -74,25 +74,25 @@ public class MedicalImageController {
         }
     }
 
-    @ApiOperation("查询诊断结果")
+    @Operation(summary = "查询诊断结果")
     @GetMapping("/result/{resultId}")
     public ApiResponse<Object> getResult(@PathVariable String resultId) {
         return ApiResponse.error(40403, "结果不存在");
     }
 
-    @ApiOperation("查询病灶详情")
+    @Operation(summary = "查询病灶详情")
     @GetMapping("/lesion/{lesionId}")
     public ApiResponse<Object> getLesionDetail(@PathVariable String lesionId) {
         return ApiResponse.error(40404, "病灶不存在");
     }
 
-    @ApiOperation("生成诊断报告")
+    @Operation(summary = "生成诊断报告")
     @GetMapping("/report/{resultId}")
     public ApiResponse<Object> generateReport(@PathVariable String resultId) {
         return ApiResponse.error(40403, "结果不存在");
     }
 
-    @ApiOperation("查询历史记录")
+    @Operation(summary = "查询历史记录")
     @GetMapping("/history")
     public ApiResponse<Object> getHistory(
             @RequestParam("userId") Long userId,

@@ -27,16 +27,24 @@ struct DoctorListPage {
   @State showDeleteDialog: boolean = false;
   @State deleteTarget: ConversationItem | null = null;
   @State shareMessage: string = '';
+  @State fromFamily: boolean = false;
+  @State familyId: number = 0;
 
   private scroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     const params: Object | undefined = router.getParams();
     if (params) {
-      const p: Object = params;
-      const shareMsg: string = (p as Record<string, string>)['shareMessage'] || '';
+      const p: Record<string, Object> = params as Record<string, Object>;
+      const shareMsg: string = p['shareMessage'] as string || '';
       if (shareMsg && shareMsg.trim() !== '') {
         this.shareMessage = shareMsg;
+      }
+      
+      const fromFam: boolean = p['fromFamily'] as boolean || false;
+      if (fromFam) {
+        this.fromFamily = true;
+        this.familyId = p['familyId'] as number || 0;
       }
     }
     this.loadData();
@@ -165,6 +173,41 @@ struct DoctorListPage {
   private maskPhone(phone: string): string {
     if (!phone || phone.length < 7) { return phone; }
     return phone.substring(0, 3) + '****' + phone.substring(phone.length - 4);
+  }
+
+  private navigateToDoctorChat(doctorId: number, doctorName: string): void {
+    if (this.fromFamily) {
+      router.push({
+        url: 'pages/FamilyDoctorChatPage',
+        params: {
+          familyId: this.familyId || this.currentUserId,
+          doctorId: doctorId,
+          doctorName: doctorName,
+          relatedPatientName: ''
+        }
+      });
+    } else {
+      if (this.shareMessage && this.shareMessage.trim() !== '') {
+        router.push({
+          url: 'pages/DoctorChatPage',
+          params: {
+            doctorId: doctorId,
+            doctorName: doctorName,
+            currentUserId: this.currentUserId,
+            prefillMessage: this.shareMessage
+          }
+        });
+      } else {
+        router.push({
+          url: 'pages/DoctorChatPage',
+          params: {
+            doctorId: doctorId,
+            doctorName: doctorName,
+            currentUserId: this.currentUserId
+          }
+        });
+      }
+    }
   }
 
   build() {
@@ -392,26 +435,7 @@ struct DoctorListPage {
             .margin({ bottom: 10 })
             .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 3 })
             .onClick(() => {
-              if (this.shareMessage && this.shareMessage.trim() !== '') {
-                router.push({
-                  url: 'pages/DoctorChatPage',
-                  params: {
-                    doctorId: conv.otherUserId,
-                    doctorName: conv.otherUserName,
-                    currentUserId: this.currentUserId,
-                    prefillMessage: this.shareMessage
-                  }
-                });
-              } else {
-                router.push({
-                  url: 'pages/DoctorChatPage',
-                  params: {
-                    doctorId: conv.otherUserId,
-                    doctorName: conv.otherUserName,
-                    currentUserId: this.currentUserId
-                  }
-                });
-              }
+              this.navigateToDoctorChat(conv.otherUserId, conv.otherUserName);
             });
           }, (conv: ConversationItem) => conv.otherUserId.toString());
         }
@@ -504,26 +528,7 @@ struct DoctorListPage {
                   .backgroundColor('#E8F0FF')
                   .borderRadius(17)
                   .onClick(() => {
-                    if (this.shareMessage && this.shareMessage.trim() !== '') {
-                      router.push({
-                        url: 'pages/DoctorChatPage',
-                        params: {
-                          doctorId: doctor.userId,
-                          doctorName: DoctorInfoHelper.getDisplayName(doctor),
-                          currentUserId: this.currentUserId,
-                          prefillMessage: this.shareMessage
-                        }
-                      });
-                    } else {
-                      router.push({
-                        url: 'pages/DoctorChatPage',
-                        params: {
-                          doctorId: doctor.userId,
-                          doctorName: DoctorInfoHelper.getDisplayName(doctor),
-                          currentUserId: this.currentUserId
-                        }
-                      });
-                    }
+                    this.navigateToDoctorChat(doctor.userId, DoctorInfoHelper.getDisplayName(doctor));
                   });
               }
               .width('100%')

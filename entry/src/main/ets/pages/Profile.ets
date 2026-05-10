@@ -54,6 +54,7 @@ struct Profile {
   @State displayPhone: string = '';
 
   @State menuItems: MenuItem[] = [
+    { icon: '📋', title: '我的挂号', color: '#1677FF', url: 'pages/Appointments' },
     { icon: '📱', title: '设备绑定', color: '#1677FF', url: 'pages/DeviceDiscoveryPage' },
     { icon: '👥', title: '家属管理', color: '#52C41A', url: 'pages/FamilyPage' },
     { icon: '🎤', title: '语音助手', color: '#1677FF', url: 'pages/VoiceAssistantPage' },

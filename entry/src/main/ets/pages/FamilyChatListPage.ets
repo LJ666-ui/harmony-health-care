@@ -189,6 +189,24 @@ struct FamilyChatListPage {
                 Text('暂无关联医生')
                   .fontSize(16)
                   .fontColor('#999999')
+                  .margin({ bottom: 20 })
+                
+                Button('查看医生列表')
+                  .height(40)
+                  .padding({ left: 24, right: 24 })
+                  .fontSize(14)
+                  .fontColor('#FFFFFF')
+                  .backgroundColor('#3498DB')
+                  .borderRadius(20)
+                  .onClick(() => {
+                    router.pushUrl({
+                      url: 'pages/DoctorListPage',
+                      params: {
+                        fromFamily: true,
+                        familyId: this.currentUserId
+                      }
+                    });
+                  })
               }
               .width('100%')
               .layoutWeight(1)
@@ -271,6 +289,23 @@ struct FamilyChatListPage {
                 Text('暂无关联护士')
                   .fontSize(16)
                   .fontColor('#999999')
+                  .margin({ bottom: 20 })
+                
+                Button('联系护士站')
+                  .height(40)
+                  .padding({ left: 24, right: 24 })
+                  .fontSize(14)
+                  .fontColor('#FFFFFF')
+                  .backgroundColor('#52C41A')
+                  .borderRadius(20)
+                  .onClick(() => {
+                    router.pushUrl({
+                      url: 'pages/FamilyNurseListPage',
+                      params: {
+                        familyId: this.currentUserId
+                      }
+                    });
+                  })
               }
               .width('100%')
               .layoutWeight(1)

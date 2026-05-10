@@ -48,6 +48,14 @@ struct DoctorLogin {
   private phoneRegex: RegExp = /^1[3-9]\d{9}$/;
 
   async aboutToAppear(): Promise<void> {
+    // 清除之前的登录状态和错误信息
+    this.errorMessage = '';
+    this.phoneError = '';
+    this.passwordError = '';
+    
+    // 清除医生登录状态标记，避免在登录页显示"登录已过期"
+    AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', false);
+    
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }

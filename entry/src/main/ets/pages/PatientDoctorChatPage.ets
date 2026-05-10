@@ -21,11 +21,15 @@ class SendMessageRequest {
   senderId: number = 0;
   receiverId: number = 0;
   content: string = '';
+  senderType: string = '';
+  receiverType: string = '';
 
-  constructor(senderId?: number, receiverId?: number, content?: string) {
+  constructor(senderId?: number, receiverId?: number, content?: string, senderType?: string, receiverType?: string) {
     if (senderId !== undefined) this.senderId = senderId;
     if (receiverId !== undefined) this.receiverId = receiverId;
     if (content !== undefined) this.content = content;
+    if (senderType !== undefined) this.senderType = senderType;
+    if (receiverType !== undefined) this.receiverType = receiverType;
   }
 }
 
@@ -257,7 +261,7 @@ struct PatientDoctorChatPage {
     this.pendingLocalMsgs = [...this.pendingLocalMsgs, localMsg];
     this.refreshDisplay();
 
-    const sendRequest: SendMessageRequest = new SendMessageRequest(this.currentUserId, this.doctorId, text);
+    const sendRequest: SendMessageRequest = new SendMessageRequest(this.currentUserId, this.doctorId, text, 'patient', 'doctor');
 
     HttpUtil.post<Record<string, Object>>(ApiConstants.MESSAGE_SEND, sendRequest as object)
       .then((response) => {

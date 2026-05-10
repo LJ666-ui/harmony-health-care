@@ -12,6 +12,16 @@ interface HealthRecord {
   unit: string;
   recordTime: string;
   remark?: string;
+  userId?: number;
+}
+
+interface FamilyInfo {
+  id: number;
+  name: string;
+  phone: string;
+  relation: string;
+  userId: number;
+  isEmergencyContact: number;
 }
 
 @Entry
@@ -22,42 +32,119 @@ struct FamilyHealthRecords {
   @State isLoading: boolean = false;
   @State records: HealthRecord[] = [];
   @State selectedType: string = '全部';
+  @State relatedUserId: number = 0;
 
   private recordTypes: string[] = ['全部', '血压', '血糖', '心率', '体重', '体温'];
 
   async aboutToAppear(): Promise<void> {
+    await this.initData();
     await this.loadRecords();
+  }
+
+  private async initData(): Promise<void> {
+    try {
+      const storedFamilyInfo: FamilyInfo | undefined = AppStorage.get<FamilyInfo>('familyInfo');
+      if (storedFamilyInfo) {
+        this.relatedUserId = storedFamilyInfo.userId || 0;
+        
+        if (this.relatedUserId === 0) {
+          console.warn('未找到关联用户ID，尝试从接口获取');
+          await this.loadFamilyInfo();
+        }
+      } else {
+        console.warn('未找到家属信息，尝试从接口获取');
+        await this.loadFamilyInfo();
+      }
+    } catch (e) {
+      console.error('初始化数据失败:', e);
+    }
+  }
+
+  private async loadFamilyInfo(): Promise<void> {
+    try {
+      const response = await HttpUtil.get<FamilyInfo>('/family/info');
+      if (response.success && response.data) {
+        this.relatedUserId = response.data.userId || 0;
+        AppStorage.setOrCreate<FamilyInfo>('familyInfo', response.data);
+      }
+    } catch (e) {
+      console.error('加载家属信息失败:', e);
+    }
   }
 
   private async loadRecords(): Promise<void> {
     this.isLoading = true;
     try {
-      // 获取家属的健康记录
-      const response = await HttpUtil.get<HealthRecord[]>('/family/health-records');
+      if (this.relatedUserId === 0) {
+        ToastUtil.showError('未找到关联患者信息');
+        this.records = [];
+        return;
+      }
+
+      console.info('正在加载患者健康记录，userId:', this.relatedUserId.toString());
+      
+      const params: Record<string, string> = {
+        'userId': this.relatedUserId.toString()
+      };
+      const response = await HttpUtil.get<HealthRecord[]>('/healthRecord/my', params as Object);
       
       if (response.success && response.data) {
-        this.records = response.data;
+        console.info('成功获取到', response.data.length.toString(), '条健康记录');
+        this.records = response.data.map((record: HealthRecord) => {
+          const result: HealthRecord = {
+            id: record.id || 0,
+            recordType: this.mapRecordType(record.recordType || ''),
+            value: record.value || '',
+            unit: this.getUnitByType(record.recordType || ''),
+            recordTime: record.recordTime || new Date().toISOString(),
+            remark: record.remark || '',
+            userId: record.userId || 0
+          };
+          return result;
+        });
+        
+        if (this.records.length === 0) {
+          ToastUtil.showInfo('暂无健康记录');
+        }
       } else {
-        // 如果接口不存在，使用模拟数据
-        this.records = this.getMockRecords();
+        console.error('获取健康记录失败:', response.message);
+        ToastUtil.showError(response.message || '获取健康记录失败');
+        this.records = [];
       }
     } catch (error) {
-      console.error('加载健康记录失败:', error);
-      // 使用模拟数据
-      this.records = this.getMockRecords();
+      console.error('加载健康记录异常:', error);
+      ToastUtil.showError('加载健康记录失败，请检查网络连接');
+      this.records = [];
     } finally {
       this.isLoading = false;
     }
   }
 
-  private getMockRecords(): HealthRecord[] {
-    return [
-      { id: 1, recordType: '血压', value: '120/80', unit: 'mmHg', recordTime: '2026-05-08 09:30', remark: '正常' },
-      { id: 2, recordType: '血糖', value: '5.6', unit: 'mmol/L', recordTime: '2026-05-08 08:00', remark: '空腹血糖' },
-      { id: 3, recordType: '心率', value: '72', unit: 'bpm', recordTime: '2026-05-07 18:00', remark: '静息心率' },
-      { id: 4, recordType: '体重', value: '65', unit: 'kg', recordTime: '2026-05-07 07:00', remark: '' },
-      { id: 5, recordType: '体温', value: '36.5', unit: '℃', recordTime: '2026-05-06 20:00', remark: '正常' }
-    ];
+  private mapRecordType(type: string): string {
+    const typeMap: Record<string, string> = {
+      'BLOOD_PRESSURE': '血压',
+      'BLOOD_SUGAR': '血糖',
+      'HEART_RATE': '心率',
+      'WEIGHT': '体重',
+      'BODY_TEMPERATURE': '体温',
+      '血压': '血压',
+      '血糖': '血糖',
+      '心率': '心率',
+      '体重': '体重',
+      '体温': '体温'
+    };
+    return typeMap[type] || type || '其他';
+  }
+
+  private getUnitByType(type: string): string {
+    const unitMap: Record<string, string> = {
+      '血压': 'mmHg',
+      '血糖': 'mmol/L',
+      '心率': 'bpm',
+      '体重': 'kg',
+      '体温': '℃'
+    };
+    return unitMap[type] || '';
   }
 
   private getFilteredRecords(): HealthRecord[] {

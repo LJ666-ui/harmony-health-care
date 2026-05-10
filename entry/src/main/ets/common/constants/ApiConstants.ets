@@ -241,6 +241,22 @@ interface ApiConstantsInterface {
 
   UPLOAD_3D: string;
 
+  APPOINTMENT_CREATE: string;
+  APPOINTMENT_LIST: string;
+  APPOINTMENT_DETAIL: string;
+  APPOINTMENT_CANCEL: string;
+  APPOINTMENT_USER_LIST: string;
+  APPOINTMENT_CHECK_AVAILABILITY: string;
+  APPOINTMENT_STATISTICS: string;
+
+  PAY_CREATE: string;
+  PAY_STATUS: string;
+  PAY_NOTIFY: string;
+
+  SCHEDULE_ADD: string;
+  SCHEDULE_LIST: string;
+  SCHEDULE_DOCTOR_DATE: string;
+
   ADMIN_LOGIN: string;
   ADMIN_INFO: string;
   ADMIN_LOGOUT: string;
@@ -449,6 +465,22 @@ export const ApiConstants: ApiConstantsInterface = {
   PATIENT_DETAIL: '/user/patient/',
 
   UPLOAD_3D: '/api/upload/3d',
+
+  APPOINTMENT_CREATE: '/appointment/create',
+  APPOINTMENT_LIST: '/appointment/list',
+  APPOINTMENT_DETAIL: '/appointment/',
+  APPOINTMENT_CANCEL: '/appointment/',
+  APPOINTMENT_USER_LIST: '/appointment/user/',
+  APPOINTMENT_CHECK_AVAILABILITY: '/appointment/check-availability',
+  APPOINTMENT_STATISTICS: '/appointment/statistics/',
+
+  PAY_CREATE: '/pay/create',
+  PAY_STATUS: '/pay/status',
+  PAY_NOTIFY: '/pay/notify',
+
+  SCHEDULE_ADD: '/schedule/add',
+  SCHEDULE_LIST: '/schedule/list',
+  SCHEDULE_DOCTOR_DATE: '/schedule/doctor/',
 
   ADMIN_LOGIN: '/admin/login',
   ADMIN_INFO: '/admin/info',

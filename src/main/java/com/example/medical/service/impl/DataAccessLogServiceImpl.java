@@ -14,20 +14,22 @@ import java.util.List;
 public class DataAccessLogServiceImpl extends ServiceImpl<DataAccessLogMapper, DataAccessLog> implements DataAccessLogService {
     @Override
     public DataAccessLog recordAccessLog(Long userId, Long accessUserId, String dataType, Long dataId, Integer isAuthorized, String accessIp) {
-        // 创建访问日志记录
         DataAccessLog log = new DataAccessLog();
         log.setUserId(userId);
         log.setAccessUserId(accessUserId);
         log.setDataType(dataType);
-        log.setDataId(dataId);
+        log.setDataId(dataId != null ? dataId : 0L);
         log.setAccessTime(new Date());
-        log.setAccessIp(accessIp);
-        log.setIsAuthorized(isAuthorized);
+        log.setAccessIp(accessIp != null ? accessIp : "unknown");
+        log.setIsAuthorized(isAuthorized != null ? isAuthorized : 0);
         log.setIsDeleted(0);
         log.setCreateTime(new Date());
 
-        // 保存到数据库
-        save(log);
+        try {
+            save(log);
+        } catch (Exception e) {
+            System.err.println("记录访问日志失败（非关键错误）: " + e.getMessage());
+        }
         return log;
     }
 

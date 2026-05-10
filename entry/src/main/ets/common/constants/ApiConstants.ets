@@ -19,7 +19,7 @@ const ENV_MAP: Record<EnvType, EnvConfig> = {
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
 
-let currentEnv: EnvType = EnvType.DEV;
+let currentEnv: EnvType = EnvType.DEV_EMULATOR;
 
 export function setEnv(env: EnvType): void {
   currentEnv = env;

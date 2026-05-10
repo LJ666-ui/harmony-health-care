@@ -60,6 +60,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/medicine-category/**",
                         "/ancient-image/list",
                         "/ancient-image/*",
+                        // 健康食材接口（无需登录）
+                        "/healthFood/**",
+                        "/health_food/**",
                         // 康复训练接口
                         "/api/rehab/action/list",
                         "/api/rehab/action/detail/**",

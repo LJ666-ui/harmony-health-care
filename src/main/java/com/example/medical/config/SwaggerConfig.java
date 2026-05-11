@@ -1,41 +1,24 @@
 package com.example.medical.config;
 
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.info.Info;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import springfox.documentation.builders.PathSelectors;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.oas.annotations.EnableOpenApi;
-import springfox.documentation.service.ApiInfo;
-import springfox.documentation.service.Contact;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-
-import java.util.Collections;
 
 @Configuration
-@EnableOpenApi
 public class SwaggerConfig {
 
     @Bean
-    public Docket api() {
-        return new Docket(DocumentationType.OAS_30)
-                .apiInfo(apiInfo())
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("com.example.medical.controller"))
-                .paths(PathSelectors.any())
-                .build();
-    }
-
-    private ApiInfo apiInfo() {
-        return new ApiInfo(
-                "医疗健康管理系统API",
-                "harmony-health-care项目接口文档",
-                "1.0",
-                "Terms of service",
-                new Contact("Developer", "https://example.com", "developer@example.com"),
-                "License of API",
-                "API license URL",
-                Collections.emptyList()
-        );
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("医疗健康管理系统API")
+                        .description("harmony-health-care项目接口文档")
+                        .version("1.0")
+                        .contact(new Contact()
+                                .name("Developer")
+                                .url("https://example.com")
+                                .email("developer@example.com")));
     }
 }

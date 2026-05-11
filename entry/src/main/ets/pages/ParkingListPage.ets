@@ -1,6 +1,7 @@
-import { ParkingLot, ParkingSpace } from '../models/ParkingModels';
+import { ParkingLot, ParkingSpace, Location } from '../models/ParkingModels';
 import { ParkingService } from '../parking/ParkingService';
 import { router } from '@kit.ArkUI';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 @Entry
 @Component
@@ -19,10 +20,23 @@ struct ParkingListPage {
     this.isLoading = true;
     try {
       await this.parkingService.init();
-      const userLocation = await this.parkingService.getCurrentLocation();
+      
+      let userLocation: Location;
+      try {
+        userLocation = await this.parkingService.getCurrentLocation();
+      } catch (locationError) {
+        console.warn('获取位置失败，使用默认位置:', locationError);
+        const defaultLocation: Location = {
+          latitude: 39.913889,
+          longitude: 116.417778
+        };
+        userLocation = defaultLocation;
+      }
+      
       this.parkingLots = await this.parkingService.getParkingLots(userLocation.latitude, userLocation.longitude);
     } catch (error) {
       console.error('Failed to load parking lots:', error);
+      ToastUtil.showError('加载停车场失败');
     } finally {
       this.isLoading = false;
     }
@@ -47,6 +61,19 @@ struct ParkingListPage {
           LoadingProgress()
             .width(50)
             .height(50)
+        } else if (this.parkingLots.length === 0) {
+          Column() {
+            Text('🅿️')
+              .fontSize(64)
+              .margin({ bottom: 16 });
+            
+            Text('暂无停车场数据')
+              .fontSize(16)
+              .fontColor('#999999');
+          }
+          .width('100%')
+          .height('100%')
+          .justifyContent(FlexAlign.Center);
         } else {
           List({ space: 12 }) {
             ForEach(this.parkingLots, (lot: ParkingLot) => {

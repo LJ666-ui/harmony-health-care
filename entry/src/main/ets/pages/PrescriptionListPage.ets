@@ -1,9 +1,12 @@
-import { router } from '@kit.ArkUI';
+import { router, Color } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { ToastUtil } from '../common/utils/ToastUtil';
+import { ConsultationService, Prescription } from '../services/ConsultationService';
+import { getMockPrescriptions } from '../mock/prescriptionMock';
 import { PrescriptionFormData, PrescriptionFormDataHelper, PrescriptionMedication } from '../models/DoctorPatientModels';
 
 @Entry
@@ -16,6 +19,8 @@ struct PrescriptionListPage {
   @State isLoading: boolean = true;
   @State errorMessage: string = '';
 
+  private consultationService: ConsultationService = ConsultationService.getInstance();
+
   aboutToAppear(): void {
     this.loadPrescriptions();
   }
@@ -25,28 +30,82 @@ struct PrescriptionListPage {
     this.errorMessage = '';
 
     try {
-      const params: Record<string, string> = {
-        'patientId': this.currentUserId.toString()
-      };
-      const response = await HttpUtil.get<PrescriptionFormData[]>(ApiConstants.PRESCRIPTION_PAGE, params);
+      const userId = this.currentUserId || 1;
+      let dataLoaded = false;
 
-      if (response.success && response.data) {
-        const rawData: Object[] = response.data as Object[];
-        const list: PrescriptionFormData[] = [];
-        for (let i: number = 0; i < rawData.length; i++) {
-          const item: PrescriptionFormData = PrescriptionFormDataHelper.fromJson(rawData[i] as Record<string, Object>);
-          list.push(item);
+      try {
+        const params: Record<string, string> = {
+          'patientId': userId.toString()
+        };
+        const response = await HttpUtil.get<PrescriptionFormData[]>(ApiConstants.PRESCRIPTION_PAGE, params);
+
+        if (response.success && response.data) {
+          const rawData: Object[] = response.data as Object[];
+          const list: PrescriptionFormData[] = [];
+          for (let i: number = 0; i < rawData.length; i++) {
+            const item: PrescriptionFormData = PrescriptionFormDataHelper.fromJson(rawData[i] as Record<string, Object>);
+            list.push(item);
+          }
+          this.prescriptions = list;
+          dataLoaded = true;
         }
-        this.prescriptions = list;
-      } else {
-        this.errorMessage = response.message || '加载处方失败';
+      } catch (apiError) {
+        console.warn('[PrescriptionListPage] API调用失败，尝试使用Mock数据:', apiError);
       }
+
+      if (!dataLoaded) {
+        try {
+          const mockPrescriptions = await this.consultationService.getUserPrescriptions(userId);
+          if (mockPrescriptions && mockPrescriptions.length > 0) {
+            this.prescriptions = this.convertToFormData(mockPrescriptions);
+          } else {
+            this.prescriptions = this.convertToFormData(getMockPrescriptions());
+          }
+        } catch (mockError) {
+          this.prescriptions = [];
+          this.errorMessage = '加载处方失败，请稍后重试';
+        }
+      }
+
     } catch (error) {
       console.error('[PrescriptionListPage] 加载处方失败:', error);
       this.errorMessage = '网络错误，请稍后重试';
+      ToastUtil.showError('加载处方列表失败');
     } finally {
       this.isLoading = false;
     }
+  }
+
+  /**
+   * Mock Prescription 转换为业务 PrescriptionFormData
+   */
+  private convertToFormData(prescriptions: Prescription[]): PrescriptionFormData[] {
+    return prescriptions.map(p => {
+      const data = new PrescriptionFormData();
+      data.id = p.prescriptionId;
+      data.doctorId = p.doctorId;
+      data.doctorName = `医生 ${p.doctorId}`;
+      data.createTime = p.createTime;
+      data.medications = [];
+      return data;
+    });
+  }
+
+  onPrescriptionClick(prescription: PrescriptionFormData): void {
+    router.pushUrl({
+      url: 'pages/PrescriptionDetailPage',
+      params: {
+        prescriptionId: prescription.id
+      }
+    });
+  }
+
+  private getTitleFontSize(): number {
+    return this.isElderMode ? 18 : 16;
+  }
+
+  private getBodyFontSize(): number {
+    return this.isElderMode ? 14 : 12;
   }
 
   build() {
@@ -55,23 +114,26 @@ struct PrescriptionListPage {
 
       if (this.isLoading) {
         Column() {
-          Text('⏳')
-            .fontSize(48)
-            .margin({ bottom: 16 });
+          LoadingProgress()
+            .width(50)
+            .height(50)
+            .color('#1677FF');
           Text('加载中...')
-            .fontSize(16)
-            .fontColor('#666666');
+            .fontSize(this.getBodyFontSize())
+            .fontColor('#999999')
+            .margin({ top: 16 });
         }
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center);
+
       } else if (this.errorMessage) {
         Column() {
           Text('💊')
             .fontSize(48)
             .margin({ bottom: 16 });
           Text(this.errorMessage)
-            .fontSize(16)
+            .fontSize(this.getBodyFontSize())
             .fontColor('#666666')
             .margin({ bottom: 8 });
           Button('重新加载')
@@ -83,41 +145,42 @@ struct PrescriptionListPage {
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center);
+
       } else if (this.prescriptions.length === 0) {
         Column() {
           Text('💊')
             .fontSize(56)
             .margin({ bottom: 16 });
           Text('暂无处方')
-            .fontSize(18)
+            .fontSize(this.getTitleFontSize())
             .fontWeight(FontWeight.Bold)
             .fontColor('#333333')
             .margin({ bottom: 8 });
           Text('医生开具的处方将在此显示')
-            .fontSize(14)
+            .fontSize(this.getBodyFontSize())
             .fontColor('#999999')
             .textAlign(TextAlign.Center)
-            .width('75%')
-            .lineHeight(20);
+            .width('75%');
         }
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center);
+
       } else {
         Scroll() {
           Column() {
             ForEach(this.prescriptions, (prescription: PrescriptionFormData) => {
               Column() {
                 Row() {
-                  Text(prescription.doctorName)
-                    .fontSize(16)
+                  Text(prescription.doctorName || `医生 ${prescription.doctorId}`)
+                    .fontSize(this.getTitleFontSize())
                     .fontWeight(FontWeight.Bold)
                     .fontColor('#333333');
 
                   Blank();
 
                   Text(prescription.createTime?.split(' ')[0] || '')
-                    .fontSize(12)
+                    .fontSize(this.getBodyFontSize())
                     .fontColor('#999999');
                 }
                 .width('100%')
@@ -125,7 +188,7 @@ struct PrescriptionListPage {
 
                 if (prescription.diagnosis) {
                   Text('诊断：' + prescription.diagnosis)
-                    .fontSize(13)
+                    .fontSize(this.getBodyFontSize())
                     .fontColor('#666666')
                     .margin({ top: 8 })
                     .maxLines(2)
@@ -135,18 +198,18 @@ struct PrescriptionListPage {
                 if (prescription.medications && prescription.medications.length > 0) {
                   Column({ space: 8 }) {
                     Text('处方药品：')
-                      .fontSize(13)
+                      .fontSize(this.getBodyFontSize())
                       .fontColor('#999999')
                       .width('100%');
 
                     ForEach(prescription.medications.slice(0, 3), (med: PrescriptionMedication) => {
                       Row() {
                         Text('•')
-                          .fontSize(12)
+                          .fontSize(this.getBodyFontSize())
                           .fontColor('#13C2C2')
                           .margin({ right: 4 });
                         Text(med.medicineName || '未知药品')
-                          .fontSize(13)
+                          .fontSize(this.getBodyFontSize())
                           .fontColor('#333333')
                           .layoutWeight(1)
                           .maxLines(1)
@@ -157,7 +220,7 @@ struct PrescriptionListPage {
 
                     if (prescription.medications.length > 3) {
                       Text(`等 ${prescription.medications.length} 味药`)
-                        .fontSize(12)
+                        .fontSize(this.getBodyFontSize())
                         .fontColor('#999999')
                         .width('100%');
                     }
@@ -172,16 +235,28 @@ struct PrescriptionListPage {
                 if (prescription.remarks) {
                   Row() {
                     Text('备注：')
-                      .fontSize(12)
+                      .fontSize(this.getBodyFontSize())
                       .fontColor('#999999');
                     Text(prescription.remarks)
-                      .fontSize(12)
+                      .fontSize(this.getBodyFontSize())
                       .fontColor('#333333')
                       .layoutWeight(1);
                   }
                   .width('100%')
                   .margin({ top: 8 });
                 }
+
+                Row() {
+                  Text('查看详情')
+                    .fontSize(this.getBodyFontSize())
+                    .fontColor('#1677FF');
+                  Text(' →')
+                    .fontSize(this.getBodyFontSize())
+                    .fontColor('#1677FF');
+                }
+                .width('100%')
+                .justifyContent(FlexAlign.End)
+                .margin({ top: 8 });
               }
               .width('100%')
               .padding(16)
@@ -189,12 +264,7 @@ struct PrescriptionListPage {
               .borderRadius(12)
               .margin({ bottom: 12 })
               .shadow({ radius: 6, color: '#00000008', offsetX: 0, offsetY: 2 })
-              .onClick(() => {
-                router.pushUrl({
-                  url: 'pages/PrescriptionDetailPage',
-                  params: { prescriptionId: prescription.id }
-                });
-              });
+              .onClick(() => this.onPrescriptionClick(prescription));
             }, (prescription: PrescriptionFormData) => prescription.id?.toString() || '');
           }
           .width('100%')

@@ -54,7 +54,10 @@ export class LineChartRenderer {
    */
   private calculateLayout(): void {
     // 计算绘图区域
-    const [top, right, bottom, left] = this.config.padding;
+    const top = this.config.padding[0];
+    const right = this.config.padding[1];
+    const bottom = this.config.padding[2];
+    const left = this.config.padding[3];
     this.plotArea = {
       x: left,
       y: top,

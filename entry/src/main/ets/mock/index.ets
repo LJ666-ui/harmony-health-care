@@ -1,8 +1,14 @@
 import { BaseResponse } from '../common/utils/HttpUtil';
 
-export * from './parkingMock';
+// ==================== 真实数据模式（基于数据库） ====================
+export * from './parkingMock_realdata';
+export * from './smartwardMock_realdata';
 
-export const USE_MOCK: boolean = false;
+// ==================== 原始模拟数据（如需回退可使用） ====================
+// export * from './parkingMock';
+// export * from './smartwardMock';
+
+export const USE_MOCK: boolean = true;
 
 let mockEnabled: boolean = true;
 

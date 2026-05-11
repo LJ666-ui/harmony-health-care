@@ -46,24 +46,6 @@ public class HealthArticleServiceImpl extends ServiceImpl<HealthArticleMapper, H
 
     @Override
     public boolean addArticle(HealthArticle healthArticle) {
-        if (healthArticle.getPublishTime() == null) {
-            healthArticle.setPublishTime(new java.util.Date());
-        }
-        if (healthArticle.getCreateTime() == null) {
-            healthArticle.setCreateTime(new java.util.Date());
-        }
-        if (healthArticle.getUpdateTime() == null) {
-            healthArticle.setUpdateTime(new java.util.Date());
-        }
-        if (healthArticle.getViewCount() == null) {
-            healthArticle.setViewCount(0);
-        }
-        if (healthArticle.getCollectCount() == null) {
-            healthArticle.setCollectCount(0);
-        }
-        if (healthArticle.getIsDeleted() == null) {
-            healthArticle.setIsDeleted(0);
-        }
         return super.save(healthArticle);
     }
 

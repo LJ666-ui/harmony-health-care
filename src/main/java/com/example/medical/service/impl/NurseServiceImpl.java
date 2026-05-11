@@ -90,9 +90,6 @@ public class NurseServiceImpl extends ServiceImpl<NurseMapper, Nurse> implements
         if (request.getName() != null) {
             nurse.setName(request.getName());
         }
-        if (request.getGender() != null) {
-            nurse.setGender(request.getGender());
-        }
         if (request.getPhone() != null) {
             nurse.setPhone(request.getPhone());
         }
@@ -101,15 +98,6 @@ public class NurseServiceImpl extends ServiceImpl<NurseMapper, Nurse> implements
         }
         if (request.getTitle() != null) {
             nurse.setTitle(request.getTitle());
-        }
-        if (request.getCertificateNo() != null) {
-            nurse.setCertificateNo(request.getCertificateNo());
-        }
-        if (request.getWorkYears() != null) {
-            nurse.setWorkYears(request.getWorkYears());
-        }
-        if (request.getAvatar() != null) {
-            nurse.setAvatar(request.getAvatar());
         }
 
         nurse.setUpdateTime(new Date());

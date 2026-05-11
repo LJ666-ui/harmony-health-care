@@ -44,6 +44,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/user/login",
                         "/user/register",
                         "/user/send-code",
+                        // 护士端患者相关（临时放行用于调试）
+                        "/user/nurse/patients/debug",
+                        "/user/nurse/patients",
+                        "/user/all-patients",
+                        "/user/patients",
                         // 管理员端
                         "/admin/login",
                         "/admin/generate-password",

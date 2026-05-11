@@ -61,7 +61,8 @@ struct Profile {
     { icon: '📊', title: '健康统计报告', color: '#52C41A', url: 'pages/StatisticsPage' },
     { icon: '🏆', title: '社区排行榜', color: '#FAAD14', url: 'pages/RankingPage' },
     { icon: '📋', title: '我的病历', color: '#1677FF', url: 'pages/MedicalRecord' },
-    { icon: '❤️', title: '我的收藏', color: '#FF4757', url: 'pages/MyCollectPage' }
+    { icon: '❤️', title: '我的收藏', color: '#FF4757', url: 'pages/MyCollectPage' },
+    { icon: '📖', title: '浏览历史', color: '#1677FF', url: 'pages/BrowseHistoryPage' }
   ];
 
   @State settingsItems: MenuItem[] = [

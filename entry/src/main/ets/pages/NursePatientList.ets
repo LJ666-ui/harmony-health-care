@@ -42,7 +42,8 @@ struct NursePatientList {
   @State hasError: boolean = false;
 
   async aboutToAppear(): Promise<void> {
-    hilog.info(0x0000, TAG, 'aboutToAppear start');
+    hilog.info(0x0000, TAG, '========== NursePatientList aboutToAppear START ==========');
+    console.log('[NursePatientList] ========== aboutToAppear START ==========');
     try {
       const settings = SettingsUtil.getInstance();
       const isLoggedIn = await settings.isNurseLoggedIn();
@@ -70,20 +71,47 @@ struct NursePatientList {
       if (this.nurseInfo !== null && this.nurseInfo !== undefined) {
         nurseId = this.nurseInfo.id;
       }
-      hilog.info(0x0000, TAG, 'nurseId=%{public}d', nurseId);
       
-      const url = `${ApiConstants.NURSE_PATIENTS}?nurseId=${nurseId}`;
-      hilog.info(0x0000, TAG, 'request url=%{public}s', url);
+      const isNurseLoggedIn: boolean = AppStorage.get<boolean>('isNurseLoggedIn') || false;
+      const nurseToken: string | undefined = AppStorage.get<string>('nurseToken');
+      
+      hilog.info(0x0000, TAG, 'nurseId=%{public}d', nurseId);
+      hilog.info(0x0000, TAG, 'isNurseLoggedIn=%{public}b', isNurseLoggedIn);
+      hilog.info(0x0000, TAG, 'nurseToken exists=%{public}b', nurseToken !== undefined && nurseToken.length > 0);
+      if (nurseToken && nurseToken.length > 0) {
+        hilog.info(0x0000, TAG, 'nurseToken prefix=%{public}s', nurseToken.substring(0, Math.min(20, nurseToken.length)));
+      }
+      
+      const baseUrl: string = ApiConstants.BASE_URL;
+      
+      // 临时测试：直接调用 all-patients 接口（已放行，无需Token）
+      const url: string = '/user/all-patients';
+      const fullUrl: string = `${baseUrl}${url}`;
+      
+      hilog.info(0x0000, TAG, 'baseUrl=%{public}s', baseUrl);
+      hilog.info(0x0000, TAG, 'request path=%{public}s', url);
+      hilog.info(0x0000, TAG, 'fullUrl=%{public}s', fullUrl);
+      hilog.info(0x0000, TAG, '使用临时测试接口：/user/all-patients');
       
       const response = await HttpUtil.get<PatientInfo[]>(url);
       hilog.info(0x0000, TAG, 'response success=%{public}b', response.success);
+      hilog.info(0x0000, TAG, 'response message=%{public}s', response.message !== undefined ? response.message : 'null');
+      hilog.info(0x0000, TAG, 'response data length=%{public}d', response.data !== undefined && response.data !== null ? response.data.length : -1);
+      hilog.info(0x0000, TAG, 'response code=%{public}d', response.code !== undefined ? response.code : -1);
       
       if (response.success && response.data !== null && response.data !== undefined) {
         this.patients = response.data;
         hilog.info(0x0000, TAG, '加载患者列表成功，共%{public}d个患者', this.patients.length);
+        
+        if (this.patients.length > 0) {
+          const first = this.patients[0];
+          hilog.info(0x0000, TAG, '第一个患者信息：id=%{public}d, username=%{public}s, realName=%{public}s',
+            first.id, first.username, first.realName);
+        }
       } else {
         this.patients = [];
         const message = response.message !== undefined ? response.message : '暂无分配的患者';
+        hilog.error(0x0000, TAG, '加载失败：%{public}s', message);
         ToastUtil.showError(message);
       }
     } catch (error) {
@@ -116,11 +144,48 @@ struct NursePatientList {
 
   private handleViewHealthRecord(patient: PatientInfo): void {
     const patientName = patient.realName !== undefined ? patient.realName : patient.username;
+    const targetId = patient.userId || patient.id;
+    
+    hilog.info(0x0000, TAG, 'handleViewHealthRecord - patient.id=%{public}d, patient.userId=%{public}d, targetId=%{public}d', 
+      patient.id, patient.userId, targetId);
+    
     router.pushUrl({
       url: 'pages/NurseHealthRecords',
       params: {
-        patientId: patient.id,
+        patientId: targetId,
         patientName: patientName
+      }
+    });
+  }
+
+  private handleViewPatientDetail(patient: PatientInfo): void {
+    const patientName = patient.realName !== undefined ? patient.realName : patient.username;
+    
+    hilog.info(0x0000, TAG, 'handleViewPatientDetail - patientId=%{public}d, name=%{public}s', patient.id, patientName);
+    
+    const patientDataObj = {
+      id: patient.id,
+      username: patient.username || '',
+      realName: patient.realName || '',
+      phone: patient.phone || '',
+      age: patient.age || 0,
+      gender: patient.gender || 0,
+      idCard: patient.idCard || '',
+      hospital: patient.hospital || '',
+      department: patient.department || '',
+      bedNumber: patient.bedNumber || '',
+      diagnosis: patient.diagnosis || ''
+    };
+    
+    const dataJson = JSON.stringify(patientDataObj);
+    hilog.info(0x0000, TAG, 'Sending JSON data: %{public}s', dataJson);
+    
+    router.pushUrl({
+      url: 'pages/PatientDetailPage',
+      params: {
+        patientId: patient.id.toString(),
+        patientName: patientName,
+        patientDataJson: dataJson
       }
     });
   }
@@ -150,6 +215,14 @@ struct NursePatientList {
 
   build() {
     Column() {
+      // 调试信息（临时）
+      Text(`[DEBUG] isLoading=${this.isLoading}, hasError=${this.hasError}, patients=${this.patients.length}`)
+        .fontSize(12)
+        .fontColor('#FF0000')
+        .backgroundColor('#FFFF00')
+        .width('100%')
+        .padding(8)
+      
       Header({ title: '患者列表' })
 
       Column({ space: 12 }) {
@@ -297,6 +370,17 @@ struct NursePatientList {
                       .layoutWeight(1)
                       .onClick(() => {
                         this.handleViewHealthRecord(patient);
+                      })
+
+                    Button('👤 详情')
+                      .fontSize(14)
+                      .height(36)
+                      .fontColor('#9B59B6')
+                      .backgroundColor('#F5EEF8')
+                      .borderRadius(8)
+                      .layoutWeight(1)
+                      .onClick(() => {
+                        this.handleViewPatientDetail(patient);
                       })
                   }
                   .width('100%')

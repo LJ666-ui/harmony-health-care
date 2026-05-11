@@ -28,21 +28,26 @@ export class PatientDetailViewModel {
 
   async loadPatientDetail(): Promise<void> {
     this.state.loadingState = LoadingState.LOADING;
+    console.log('PatientDetailViewModel - loadPatientDetail start, patientId:', this.patientId);
     
     try {
       const cacheKey = `${PATIENT_DETAIL_CACHE_KEY_PREFIX}${this.patientId}`;
       const isFromCache = this.cacheManager.hasCache(cacheKey);
       
       const detail = await this.patientService.getPatientDetail(this.patientId, DataSource.AUTO);
+      console.log('PatientDetailViewModel - Got detail:', detail ? 'exists' : 'null');
       
       if (detail) {
+        console.log('PatientDetailViewModel - Detail patientName:', detail.patientName);
         this.state.rawDetail = detail;
         this.state.displayDetail = await this.patientService.desensitizePatientDetail(detail);
         this.state.isFromCache = isFromCache;
         this.state.loadingState = LoadingState.SUCCESS;
+        console.log('PatientDetailViewModel - State: SUCCESS');
       } else {
         this.state.loadingState = LoadingState.EMPTY;
         this.state.errorMessage = '患者信息不存在';
+        console.log('PatientDetailViewModel - State: EMPTY');
       }
     } catch (e) {
       console.error('PatientDetailViewModel - loadPatientDetail failed:', e);

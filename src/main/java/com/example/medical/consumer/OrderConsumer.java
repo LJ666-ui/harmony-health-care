@@ -16,6 +16,7 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 
 @Component
 @Profile("rabbitmq")
@@ -35,7 +36,12 @@ public class OrderConsumer {
             Appointment appointment = new Appointment();
             appointment.setUserId(message.getUserId());
             appointment.setDoctorId(message.getDoctorId());
-            appointment.setScheduleDate(message.getScheduleDate());
+            if (message.getScheduleDate() != null) {
+                appointment.setScheduleDate(message.getScheduleDate());
+            } else if (message.getScheduleDateStr() != null && !message.getScheduleDateStr().isEmpty()) {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+                appointment.setScheduleDate(sdf.parse(message.getScheduleDateStr()));
+            }
             appointment.setSchedulePeriod(message.getSchedulePeriod());
             appointment.setFee(message.getFee());
 
@@ -51,7 +57,7 @@ public class OrderConsumer {
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("[生成订单队列] 处理异常 traceId={} error={}", message.getTraceId(), e.getMessage());
-            channel.basicNack(deliveryTag, false, true);
+            channel.basicAck(deliveryTag, false);
         }
     }
 }

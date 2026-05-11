@@ -21,6 +21,11 @@ import {
 import { PathPlanner } from '../ar/PathPlanner';
 import { LoadingView } from '../components/ARNavigationComponents';
 
+interface RouterParams {
+  destinationId?: string;
+  destinationName?: string;
+}
+
 @Entry
 @Component
 struct NavigationSummaryPage {
@@ -49,7 +54,7 @@ struct NavigationSummaryPage {
    * 解析路由参数
    */
   private parseRouteParams() {
-    const params = router.getParams() as any;
+    const params = router.getParams() as RouterParams;
     
     if (params) {
       this.destinationId = params.destinationId || '';
@@ -438,7 +443,7 @@ struct NavigationSummaryPage {
       if (this.navigationPath) {
         ForEach(
           this.navigationPath.waypoints.slice(0, 5),
-          (waypoint: any, index: number) => {
+          (waypoint: Position3D, index: number) => {
             Row() {
               // 序号
               Column() {

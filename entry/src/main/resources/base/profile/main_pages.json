@@ -14,6 +14,7 @@
     "pages/AddHealthRecord",
     "pages/HealthRecordDetail",
     "pages/Appointments",
+    "pages/BookingPage",
     "pages/AppointmentManagementPage",
     "pages/HospitalDetailPage",
     "pages/HospitalDepartmentPage",
@@ -55,6 +56,7 @@
     "pages/TransferApplyPage",
     "pages/MedicalRecord",
     "pages/MyCollectPage",
+    "pages/BrowseHistoryPage",
     "pages/FoodEncyclopediaPage",
     "pages/FoodDetailPage",
     "pages/MedicationDetailPage",
@@ -92,7 +94,9 @@
     "pages/ParkingSpacePage",
     "pages/FindCarPage",
     "pages/ReportPage",
+    "pages/ReportDetailPage",
     "pages/MedicationPage",
+    "pages/PrescriptionPage",
     "pages/PrescriptionListPage",
     "pages/PrescriptionDetailPage",
     "pages/ConsultationPage",
@@ -131,6 +135,7 @@
     "pages/FamilyPrescription",
     "pages/FamilyFollowUp",
     "pages/NursePatientList",
+    "pages/NursePatientListTest",
     "pages/NurseFamilyList",
     "pages/NurseStationDashboard",
     "pages/NurseChatPage",
@@ -143,6 +148,11 @@
     "pages/PrescriptionTemplatePage",
     "pages/MedicalRecordTemplatePage",
     "pages/ConsultationManagementPage",
-    "pages/PatientGroupPage"
+    "pages/PatientGroupPage",
+    "pages/PatientListPage",
+    "pages/PatientDetailPage",
+    "pages/PatientChatListPage",
+    "pages/PatientDoctorChatPage",
+    "pages/PatientNurseChatPage"
   ]
 }

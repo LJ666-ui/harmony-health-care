@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.medical.common.Result;
 import com.example.medical.entity.MonitoringData;
 import com.example.medical.service.MonitoringDataService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +24,7 @@ import java.util.Map;
  * @version 1.0
  * @since 2026-04-27
  */
-@Api(tags = "智慧病房监控")
+@Tag(name = "智慧病房监控")
 @RestController
 @RequestMapping("/monitoring")
 @CrossOrigin
@@ -40,7 +40,7 @@ public class MonitoringController {
      * @param data 监控数据
      * @return 记录结果
      */
-    @ApiOperation(value = "记录监控数据", notes = "设备上报监控数据，系统自动检测异常")
+    @Operation(summary = "记录监控数据", description = "设备上报监控数据，系统自动检测异常")
     @PostMapping("/record")
     public Result<?> recordData(@Valid @RequestBody MonitoringData data) {
         try {
@@ -76,9 +76,9 @@ public class MonitoringController {
      * @param deviceId 设备ID
      * @return 最新数据
      */
-    @ApiOperation(value = "获取设备最新数据", notes = "查询指定设备的最新监控数据")
+    @Operation(summary = "获取设备最新数据", description = "查询指定设备的最新监控数据")
     @GetMapping("/latest/{deviceId}")
-    public Result<?> getLatestData(@ApiParam("设备ID") @PathVariable Long deviceId) {
+    public Result<?> getLatestData(@Parameter(description = "设备ID") @PathVariable Long deviceId) {
         try {
             MonitoringData data = monitoringDataService.getLatestData(deviceId);
             if (data == null) {
@@ -99,12 +99,12 @@ public class MonitoringController {
      * @param limit 限制数量（可选）
      * @return 历史数据列表
      */
-    @ApiOperation(value = "获取患者监控历史", notes = "查询患者的监控数据历史记录")
+    @Operation(summary = "获取患者监控历史", description = "查询患者的监控数据历史记录")
     @GetMapping("/history/{patientId}")
     public Result<?> getPatientHistory(
-            @ApiParam("患者ID") @PathVariable Long patientId,
-            @ApiParam("数据类型") @RequestParam(required = false) String dataType,
-            @ApiParam("限制数量") @RequestParam(required = false) Integer limit) {
+            @Parameter(description = "患者ID") @PathVariable Long patientId,
+            @Parameter(description = "数据类型") @RequestParam(required = false) String dataType,
+            @Parameter(description = "限制数量") @RequestParam(required = false) Integer limit) {
         try {
             if (limit == null) {
                 limit = 100; // 默认返回最近100条
@@ -123,10 +123,10 @@ public class MonitoringController {
      * @param abnormalLevel 异常等级（可选）
      * @return 异常数据列表
      */
-    @ApiOperation(value = "获取异常数据列表", notes = "查询所有或指定等级的异常数据")
+    @Operation(summary = "获取异常数据列表", description = "查询所有或指定等级的异常数据")
     @GetMapping("/abnormal")
     public Result<?> getAbnormalData(
-            @ApiParam("异常等级") @RequestParam(required = false) Integer abnormalLevel) {
+            @Parameter(description = "异常等级") @RequestParam(required = false) Integer abnormalLevel) {
         try {
             List<MonitoringData> abnormalData = monitoringDataService.getAbnormalData(abnormalLevel);
             return Result.success(abnormalData);
@@ -142,9 +142,9 @@ public class MonitoringController {
      * @param patientId 患者ID
      * @return 统计信息
      */
-    @ApiOperation(value = "获取监控统计", notes = "统计患者的监控数据情况")
+    @Operation(summary = "获取监控统计", description = "统计患者的监控数据情况")
     @GetMapping("/statistics/{patientId}")
-    public Result<?> getStatistics(@ApiParam("患者ID") @PathVariable Long patientId) {
+    public Result<?> getStatistics(@Parameter(description = "患者ID") @PathVariable Long patientId) {
         try {
             Map<String, Object> stats = monitoringDataService.getStatistics(patientId);
             return Result.success(stats);
@@ -160,7 +160,7 @@ public class MonitoringController {
      * @param dataList 监控数据列表
      * @return 记录结果
      */
-    @ApiOperation(value = "批量记录监控数据", notes = "一次上报多个监控数据")
+    @Operation(summary = "批量记录监控数据", description = "一次上报多个监控数据")
     @PostMapping("/batch-record")
     public Result<?> batchRecordData(@Valid @RequestBody List<MonitoringData> dataList) {
         try {
@@ -195,9 +195,9 @@ public class MonitoringController {
      * @param bedId 病床ID
      * @return 监控概览
      */
-    @ApiOperation(value = "获取病床监控概览", notes = "查询病床的所有监控数据概览")
+    @Operation(summary = "获取病床监控概览", description = "查询病床的所有监控数据概览")
     @GetMapping("/bed-overview/{bedId}")
-    public Result<?> getBedOverview(@ApiParam("病床ID") @PathVariable Long bedId) {
+    public Result<?> getBedOverview(@Parameter(description = "病床ID") @PathVariable Long bedId) {
         try {
             LambdaQueryWrapper<MonitoringData> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(MonitoringData::getBedId, bedId)
@@ -237,9 +237,9 @@ public class MonitoringController {
      * @param days 保留天数
      * @return 清理结果
      */
-    @ApiOperation(value = "清理过期数据", notes = "删除指定天数之前的监控数据")
+    @Operation(summary = "清理过期数据", description = "删除指定天数之前的监控数据")
     @DeleteMapping("/cleanup")
-    public Result<?> cleanupOldData(@ApiParam("保留天数") @RequestParam(defaultValue = "30") Integer days) {
+    public Result<?> cleanupOldData(@Parameter(description = "保留天数") @RequestParam(defaultValue = "30") Integer days) {
         try {
             // 计算截止时间
             long cutoffTime = System.currentTimeMillis() - (days * 24L * 60 * 60 * 1000);

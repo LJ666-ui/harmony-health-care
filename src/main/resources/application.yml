@@ -23,29 +23,27 @@ spring:
   tomcat:
     max-http-post-size: -1
 
-  # Redis配置（已禁用 - 服务器不可访问会导致启动异常）
-  # redis:
-  #   host: 192.168.149.130
-  #   port: 6379
+  # Redis配置（本地启用）
+  redis:
+    host: localhost
+    port: 6379
 
-  # RabbitMQ配置（已禁用 - 服务器不可访问会导致启动异常）
-  # rabbitmq:
-  #   host: 192.168.149.130
-  #   port: 5672
-  #   username: admin
-  #   password: 123456
-  #   virtual-host: /
-  #   listener:
-  #     type: simple
-  #     simple:
-  #       acknowledge-mode: manual
-  #       prefetch: 1
-  #       retry:
-  #         enabled: true
-  #         max-attempts: 3
-  #         initial-interval: 3000
-
-
+  # RabbitMQ配置
+  rabbitmq:
+    host: 192.168.149.130
+    port: 5672
+    username: admin
+    password: 123456
+    virtual-host: /
+    listener:
+      type: simple
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 3000
 
 # MyBatis-Plus
 mybatis-plus:
@@ -54,7 +52,30 @@ mybatis-plus:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-# 文件上传配置（你本地3D模型/视频存放路径）
+# 文件上传配置（本地3D模型/视频存放路径）
 file:
   upload-path: D:/harmony-health-care/uploads/
 
+# MinIO对象存储配置
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: medical-images
+  preview-url-expiry: 3600
+
+# AI引擎配置
+ai:
+  engine:
+    url: http://localhost:8000/api/v1
+    timeout: 30000
+    retry-count: 1
+    version: 1.0.0
+
+# 医学影像配置
+medical-image:
+  max-file-size: 20971520
+  supported-formats: JPG,PNG,DICOM
+  compression-quality: 0.5
+  preview-width: 800
+  preview-height: 600

@@ -40,10 +40,11 @@ export interface WardAlert {
   sourceDeviceId?: string;             // 触发设备ID
   vitalSigns?: VitalSignSnapshot;      // 生命体征快照
   triggeredAt: number;                 // 触发时间戳
-  acknowledgedAt?: number;             // 确认时间戳
-  acknowledgedBy?: string;             // 确认人
-  resolvedAt?: number;                 // 解决时间戳
-  resolutionNote?: string;             // 解决说明
+  acknowledgedAt?: number | null;      // 确认时间戳
+  acknowledgedBy?: string | null;      // 确认人
+  resolvedAt?: number | null;          // 解决时间戳
+  resolvedBy?: string | null;          // 解决人
+  resolutionNote?: string | null;      // 解决说明
   isAcknowledged: boolean;             // 是否已确认
   isResolved: boolean;                 // 是否已解决
 }
@@ -59,4 +60,21 @@ export interface AlertStatistics {
   infoCount: number;                   // 信息告警数
   unacknowledgedCount: number;         // 未确认告警数
   unresolvedCount: number;             // 未解决告警数
+}
+
+export interface ExtendedWardAlert {
+  alertId: string;
+  deviceId: string;
+  deviceName: string;
+  category: AlertCategory;
+  level: AlertLevel;
+  title: string;
+  message: string;
+  timestamp: number;
+  status: 'ACTIVE' | 'IN_PROGRESS' | 'ACKNOWLEDGED' | 'RESOLVED' | 'CLOSED';
+  acknowledgedBy?: string | null;
+  acknowledgedAt?: number | null;
+  resolvedAt?: number | null;
+  resolvedBy?: string | null;
+  resolutionNote?: string | null;
 }

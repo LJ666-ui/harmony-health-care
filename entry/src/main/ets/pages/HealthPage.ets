@@ -4,6 +4,8 @@ import { Footer } from '../components/Footer';
 import { CarouselBanner, BannerItem, GradientColorStop } from '../components/CarouselBanner';
 import { HealthOverviewCard, HealthOverviewData } from '../components/HealthOverviewCard';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
+import { HealthService, HealthData } from '../services/HealthService';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 interface ServiceCard {
   id: number;
@@ -37,7 +39,12 @@ interface OrganStatusItem {
 @Component
 struct HealthPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @StorageLink('userId') userId: number = 0;
   @State currentTab: number = 0;
+  @State isLoading: boolean = true;
+  @State vitalSigns: VitalSignItem[] = [];
+  
+  private healthService: HealthService = HealthService.getInstance();
 
   healthBanners: BannerItem[] = [
     {
@@ -97,13 +104,6 @@ struct HealthPage {
     { label: '如果控制饮食...', impact: '-10%', color: '#4CAF50' }
   ];
 
-  vitalSigns: VitalSignItem[] = [
-    { name: '心率', value: '72 bpm', unit: '正常范围: 60-100', color: '#E74C3C' },
-    { name: '血压', value: '120/80 mmHg', unit: '正常范围: 90-140/60-90', color: '#3498DB' },
-    { name: '血糖', value: '5.6 mmol/L', unit: '正常范围: 3.9-6.1', color: '#9B59B6' },
-    { name: '血氧', value: '98 %', unit: '正常范围: 95-100', color: '#27AE60' }
-  ];
-
   organStatuses: OrganStatusItem[] = [
     { name: '心脏', status: '正常', color: '#E74C3C', percent: 95 },
     { name: '肺部', status: '良好', color: '#3498DB', percent: 88 },
@@ -114,6 +114,78 @@ struct HealthPage {
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
+    }
+    this.loadHealthData();
+  }
+
+  async loadHealthData(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const healthDataMap = await this.healthService.getLatestHealthData(this.userId);
+      
+      this.vitalSigns = [];
+      
+      const bloodPressure = healthDataMap.get('blood_pressure');
+      if (bloodPressure) {
+        this.vitalSigns.push({
+          name: '血压',
+          value: `${bloodPressure.systolic || bloodPressure.value}/${bloodPressure.diastolic || 80} mmHg`,
+          unit: '正常范围: 90-140/60-90',
+          color: '#3498DB'
+        });
+      } else {
+        this.vitalSigns.push({
+          name: '血压',
+          value: '-- mmHg',
+          unit: '暂无数据',
+          color: '#999'
+        });
+      }
+
+      const bloodSugar = healthDataMap.get('blood_sugar');
+      if (bloodSugar) {
+        this.vitalSigns.push({
+          name: '血糖',
+          value: `${bloodSugar.value} mmol/L`,
+          unit: '正常范围: 3.9-6.1',
+          color: '#9B59B6'
+        });
+      } else {
+        this.vitalSigns.push({
+          name: '血糖',
+          value: '-- mmol/L',
+          unit: '暂无数据',
+          color: '#999'
+        });
+      }
+
+      const heartRate = healthDataMap.get('heart_rate');
+      if (heartRate) {
+        this.vitalSigns.push({
+          name: '心率',
+          value: `${heartRate.value} bpm`,
+          unit: '正常范围: 60-100',
+          color: '#E74C3C'
+        });
+      } else {
+        this.vitalSigns.push({
+          name: '心率',
+          value: '-- bpm',
+          unit: '暂无数据',
+          color: '#999'
+        });
+      }
+    } catch (error) {
+      console.error('[HealthPage] 加载健康数据失败:', error);
+      ToastUtil.showError('加载数据失败');
+      
+      this.vitalSigns = [
+        { name: '心率', value: '-- bpm', unit: '暂无数据', color: '#999' },
+        { name: '血压', value: '-- mmHg', unit: '暂无数据', color: '#999' },
+        { name: '血糖', value: '-- mmol/L', unit: '暂无数据', color: '#999' }
+      ];
+    } finally {
+      this.isLoading = false;
     }
   }
 

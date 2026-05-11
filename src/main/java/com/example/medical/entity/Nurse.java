@@ -59,11 +59,6 @@ public class Nurse {
     private String title;
 
     /**
-     * 头像URL
-     */
-    private String avatar;
-
-    /**
      * 状态：0-离职，1-在职
      */
     private Integer status;

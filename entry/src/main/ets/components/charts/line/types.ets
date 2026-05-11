@@ -105,7 +105,7 @@ export interface LineChartData {
   metadata?: {
     title?: string;
     unit?: string;
-    [key: string]: any;
+    [key: string]: string | number | boolean;
   };
 }
 

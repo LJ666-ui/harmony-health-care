@@ -79,7 +79,7 @@ public class RedisStockServiceImpl implements RedisStockInterface {
     }
 
     @Override
-    public boolean grabSlot(Long doctorId, Date scheduleDate, Integer schedulePeriod, Long userId) {
+    public int grabSlot(Long doctorId, Date scheduleDate, Integer schedulePeriod, Long userId) {
         String dateStr = DATE_FORMAT.format(scheduleDate);
         String stockKey = buildStockKey(doctorId, dateStr, schedulePeriod);
         String bookedKey = buildBookedKey(doctorId, dateStr, schedulePeriod);
@@ -89,12 +89,9 @@ public class RedisStockServiceImpl implements RedisStockInterface {
                 String.valueOf(userId));
         System.out.println("[Redis调试] grabSlot → 返回值=" + result + " (1=成功 0=已满 -1=重复)");
         if (result == null) {
-            return false;
+            return 0;
         }
-        if (result == -1) {
-            return false;
-        }
-        return result == 1;
+        return result.intValue();
     }
 
     @Override

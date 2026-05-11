@@ -99,9 +99,6 @@ public class NurseServiceImpl extends ServiceImpl<NurseMapper, Nurse> implements
         if (request.getTitle() != null) {
             nurse.setTitle(request.getTitle());
         }
-        if (request.getAvatar() != null) {
-            nurse.setAvatar(request.getAvatar());
-        }
 
         nurse.setUpdateTime(new Date());
         nurseMapper.updateById(nurse);

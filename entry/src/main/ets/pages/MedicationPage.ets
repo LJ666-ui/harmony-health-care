@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { MedicationService, MedicationPlan } from '../services/MedicationService';
 
 interface MedicationReminder {
   id: number;
@@ -18,8 +19,10 @@ interface MedicationReminder {
 @Component
 struct MedicationPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
+  @StorageLink('userId') userId: number = 0;
   @State reminderList: MedicationReminder[] = [];
   @State isLoading: boolean = true;
+  private medicationService: MedicationService = MedicationService.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -34,15 +37,23 @@ struct MedicationPage {
     this.isLoading = true;
     
     try {
-      await new Promise<void>(resolve => setTimeout(resolve, 500));
+      const plans = await this.medicationService.getMedicationPlans(this.userId);
       
-      this.reminderList = [
-        { id: 1, name: '阿莫西林胶囊', dosage: '0.5g', frequency: '每日3次', time: '08:00, 14:00, 20:00', enabled: true, nextTime: '今天 14:00' },
-        { id: 2, name: '布洛芬缓释胶囊', dosage: '0.3g', frequency: '每日2次', time: '09:00, 21:00', enabled: true, nextTime: '今天 21:00' },
-        { id: 3, name: '维生素C片', dosage: '100mg', frequency: '每日1次', time: '08:00', enabled: false, nextTime: '已停用' },
-        { id: 4, name: '奥美拉唑肠溶胶囊', dosage: '20mg', frequency: '每日1次', time: '07:00', enabled: true, nextTime: '明天 07:00' },
-        { id: 5, name: '氯雷他定片', dosage: '10mg', frequency: '每日1次', time: '20:00', enabled: true, nextTime: '今天 20:00' }
-      ];
+      const reminders: MedicationReminder[] = [];
+      for (let i = 0; i < plans.length; i++) {
+        const plan = plans[i];
+        const reminder: MedicationReminder = {
+          id: plan.id,
+          name: plan.medicationName,
+          dosage: plan.dosage,
+          frequency: plan.frequency,
+          time: plan.times.join(', '),
+          enabled: plan.reminderEnabled,
+          nextTime: this.calculateNextTime(plan.times, plan.reminderEnabled)
+        };
+        reminders.push(reminder);
+      }
+      this.reminderList = reminders;
     } catch (error) {
       console.error('[MedicationPage] 加载提醒数据异常:', error);
       ToastUtil.showError('加载失败，请重试');
@@ -51,12 +62,45 @@ struct MedicationPage {
     }
   }
 
-  toggleReminder(reminder: MedicationReminder): void {
-    const index = this.reminderList.findIndex(r => r.id === reminder.id);
-    if (index !== -1) {
-      this.reminderList[index].enabled = !this.reminderList[index].enabled;
-      ToastUtil.showSuccess(this.reminderList[index].enabled ? '已启用提醒' : '已停用提醒');
+  async toggleReminder(reminder: MedicationReminder): Promise<void> {
+    try {
+      const success = await this.medicationService.toggleReminder(reminder.id, !reminder.enabled);
+      
+      if (success) {
+        const index = this.reminderList.findIndex(r => r.id === reminder.id);
+        if (index !== -1) {
+          this.reminderList[index].enabled = !this.reminderList[index].enabled;
+          this.reminderList[index].nextTime = this.calculateNextTime(
+            this.reminderList[index].time.split(', '),
+            this.reminderList[index].enabled
+          );
+        }
+      }
+    } catch (error) {
+      console.error('[MedicationPage] 切换提醒状态失败:', error);
     }
+  }
+
+  private calculateNextTime(times: string[], enabled: boolean): string {
+    if (!enabled) {
+      return '已停用';
+    }
+
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+
+    for (const timeStr of times) {
+      const parts = timeStr.split(':');
+      const hours = Number(parts[0]);
+      const minutes = Number(parts[1]);
+      const timeInMinutes = hours * 60 + minutes;
+      
+      if (timeInMinutes > currentTime) {
+        return `今天 ${timeStr}`;
+      }
+    }
+
+    return `明天 ${times[0]}`;
   }
 
   addReminder(): void {

@@ -7,7 +7,7 @@ const TAG = 'RdbHelper';
 class RdbHelper {
   private static instance: RdbHelper;
   private rdbStore: relationalStore.RdbStore | null = null;
-  private dbPath: string = 'local.db';
+  private dbPath: string = 'harmony_medical.db';  // 使用现有数据库
 
   private constructor() {}
 
@@ -20,31 +20,48 @@ class RdbHelper {
 
   public async init(context: common.UIAbilityContext): Promise<void> {
     try {
+      hilog.info(0x0000, TAG, '开始初始化数据库...');
+      hilog.info(0x0000, TAG, '数据库名称: %{public}s', this.dbPath);
+      hilog.info(0x0000, TAG, '数据库路径: %{public}s', context.databaseDir);
+      
       const config: relationalStore.StoreConfig = {
         name: this.dbPath,
         securityLevel: relationalStore.SecurityLevel.S1
       };
       this.rdbStore = await relationalStore.getRdbStore(context, config);
+      
       hilog.info(0x0000, TAG, 'SQLite DB initialized successfully');
+      hilog.info(0x0000, TAG, '数据库文件位置: %{public}s/%{public}s', context.databaseDir, this.dbPath);
     } catch (error) {
-      hilog.error(0x0000, TAG, 'Failed to initialize database');
-      throw new Error('Failed to initialize database');
+      hilog.error(0x0000, TAG, 'Failed to initialize database: %{public}s', JSON.stringify(error));
+      throw new Error('Failed to initialize database: ' + JSON.stringify(error));
     }
   }
 
   public getRdb(): relationalStore.RdbStore {
     if (!this.rdbStore) {
+      hilog.error(0x0000, TAG, 'Database not initialized! rdbStore is null');
       throw new Error('Database not initialized');
     }
     return this.rdbStore;
   }
 
+  public isInitialized(): boolean {
+    return this.rdbStore !== null;
+  }
+
   public async executeSql(sql: string, bindArgs?: Array<string | number | null>): Promise<void> {
     try {
+      hilog.info(0x0000, TAG, '执行SQL: %{public}s', sql);
+      if (bindArgs && bindArgs.length > 0) {
+        hilog.info(0x0000, TAG, '参数: %{public}s', JSON.stringify(bindArgs));
+      }
       await this.getRdb().executeSql(sql, bindArgs);
+      hilog.info(0x0000, TAG, 'SQL执行成功');
     } catch (error) {
-      hilog.error(0x0000, TAG, 'Failed to execute SQL');
-      throw new Error('Failed to execute SQL');
+      hilog.error(0x0000, TAG, 'Failed to execute SQL: %{public}s', sql);
+      hilog.error(0x0000, TAG, 'Error: %{public}s', JSON.stringify(error));
+      throw new Error('Failed to execute SQL: ' + JSON.stringify(error));
     }
   }
 
@@ -59,10 +76,15 @@ class RdbHelper {
 
   public async insert(table: string, values: relationalStore.ValuesBucket): Promise<number> {
     try {
-      return await this.getRdb().insert(table, values);
+      hilog.info(0x0000, TAG, 'Inserting into table: %{public}s', table);
+      hilog.info(0x0000, TAG, 'Values: %{public}s', JSON.stringify(values));
+      const result = await this.getRdb().insert(table, values);
+      hilog.info(0x0000, TAG, 'Insert successful, row id: %{public}d', result);
+      return result;
     } catch (error) {
       hilog.error(0x0000, TAG, 'Failed to insert into %{public}s', table);
-      throw new Error('Failed to insert');
+      hilog.error(0x0000, TAG, 'Error: %{public}s', JSON.stringify(error));
+      throw new Error('Failed to insert into ' + table + ': ' + JSON.stringify(error));
     }
   }
 

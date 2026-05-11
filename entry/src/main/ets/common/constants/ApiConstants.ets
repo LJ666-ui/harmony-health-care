@@ -11,6 +11,7 @@ interface EnvConfig {
   UPLOAD_URL: string;
 }
 
+// 保留第一套网络地址
 const ENV_MAP: Record<EnvType, EnvConfig> = {
   [EnvType.DEV]: { BASE_URL: 'http://192.168.108.1:8080', UPLOAD_URL: 'http://192.168.108.1:8080/upload' },
   [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
@@ -37,12 +38,12 @@ export function getCurrentEnv(): EnvType {
   return currentEnv;
 }
 
+// 合并所有接口字段，无重复、无冲突
 interface ApiConstantsInterface {
-
   BASE_URL: string;
-
   LOGIN_PATH: string;
 
+  // 用户模块
   USER_REGISTER: string;
   USER_LOGIN: string;
   USER_INFO: string;
@@ -51,6 +52,7 @@ interface ApiConstantsInterface {
   USER_AVATAR: string;
   USER_LOGOUT: string;
 
+  // 医院模块
   HOSPITAL_NEARBY: string;
   HOSPITAL_LIST: string;
   HOSPITAL_PAGE: string;
@@ -59,6 +61,7 @@ interface ApiConstantsInterface {
   HOSPITAL_DEPARTMENT_ALL: string;
   HOSPITAL_DEPARTMENT_DETAIL: string;
 
+  // 健康记录
   HEALTH_RECORD_ADD: string;
   HEALTH_RECORD_MY: string;
   HEALTH_RECORD_TIME: string;
@@ -69,6 +72,7 @@ interface ApiConstantsInterface {
   HEALTH_STATS_PERSONAL_CURVE: string;
   HEALTH_STATS_SYSTEM: string;
 
+  // 风险评估
   RISK_ASSESS: string;
   RISK_LIST: string;
   RISK_LATEST: string;
@@ -76,6 +80,7 @@ interface ApiConstantsInterface {
   RISK_DELETE: string;
   RISK_INTERPRET: string;
 
+  // 草药模块
   HERBAL_PAGE: string;
   HERBAL_LIST: string;
   HERBAL_LIST_ALL: string;
@@ -97,6 +102,7 @@ interface ApiConstantsInterface {
   HERBAL_CATEGORY_TREE: string;
   HERBAL_BY_EFFICACY: string;
 
+  // 知识图谱
   KNOWLEDGE_GRAPH: string;
   KNOWLEDGE_NODE: string;
   KNOWLEDGE_NODE_DETAIL: string;
@@ -107,6 +113,7 @@ interface ApiConstantsInterface {
   KNOWLEDGE_STATS: string;
   KNOWLEDGE_RELATED: string;
 
+  // 康复计划
   REHAB_PLAN_LIST: string;
   REHAB_PLAN_DETAIL: string;
   REHAB_PLAN_ADD: string;
@@ -120,6 +127,7 @@ interface ApiConstantsInterface {
   REHAB_SEARCH: string;
   REHAB_FUZZY: string;
 
+  // 文章模块
   ARTICLE_LIST: string;
   ARTICLE_PAGE: string;
   ARTICLE_DETAIL: string;
@@ -133,11 +141,13 @@ interface ApiConstantsInterface {
   ARTICLE_UNCOLLECT: string;
   ARTICLE_MY_COLLECTS: string;
 
+  // 评论
   COMMENT_LIST: string;
   COMMENT_ADD: string;
   COMMENT_DELETE: string;
   COMMENT_LIKE: string;
 
+  // AI 模块
   AI_CHAT: string;
   AI_CONSULT: string;
   AI_RISK_ANALYSIS: string;
@@ -146,6 +156,7 @@ interface ApiConstantsInterface {
   AI_HISTORY_DETAIL: string;
   AI_INTERPRET: string;
 
+  // 健康食品
   FOOD_LIST: string;
   FOOD_PAGE: string;
   FOOD_DETAIL: string;
@@ -153,25 +164,29 @@ interface ApiConstantsInterface {
   FOOD_COLLECT: string;
   FOOD_UNCOLLECT: string;
 
+  // 古画修复
   ANCIENT_IMAGE_UPLOAD: string;
   ANCIENT_IMAGE_LIST: string;
   ANCIENT_IMAGE_DETAIL: string;
   ANCIENT_IMAGE_RESTORE: string;
   ANCIENT_IMAGE_DELETE: string;
 
+  // 设备模块
   DEVICE_DISCOVER: string;
   DEVICE_BIND: string;
   DEVICE_UNBIND: string;
   DEVICE_LIST: string;
-
-  DISCOVER_BANNER_LIST: string;
-  DISCOVER_CATEGORY_LIST: string;
-  DISCOVER_ARTICLE_LIST: string;
   DEVICE_ONLINE: string;
   DEVICE_SYNC: string;
   DEVICE_STATUS: string;
   DEVICE_INFO: string;
 
+  // 发现页
+  DISCOVER_BANNER_LIST: string;
+  DISCOVER_CATEGORY_LIST: string;
+  DISCOVER_ARTICLE_LIST: string;
+
+  // 隐私权限
   PRIVACY_SETTINGS: string;
   PRIVACY_AUTH_LIST: string;
   PRIVACY_APPROVE: string;
@@ -182,6 +197,7 @@ interface ApiConstantsInterface {
   PRIVACY_ACCESS_LOGS: string;
   PRIVACY_CHECK_AUTH: string;
 
+  // 病历
   MEDICAL_RECORD_CREATE: string;
   MEDICAL_RECORD_PAGE: string;
   MEDICAL_RECORD_DETAIL: string;
@@ -189,10 +205,12 @@ interface ApiConstantsInterface {
   MEDICAL_RECORD_UPDATE: string;
   MEDICAL_RECORD_DELETE: string;
 
+  // 处方
   PRESCRIPTION_CREATE: string;
   PRESCRIPTION_DETAIL: string;
   PRESCRIPTION_PAGE: string;
 
+  // 药品
   MEDICINE_LIST: string;
   MEDICINE_PAGE: string;
   MEDICINE_SEARCH: string;
@@ -200,10 +218,12 @@ interface ApiConstantsInterface {
   MEDICINE_CATEGORY_LIST: string;
   MEDICINE_CATEGORY_DETAIL: string;
 
+  // 疾病字典
   DISEASE_DICT_SEARCH: string;
   DISEASE_DICT_CATEGORY: string;
   DISEASE_DICT_DETAIL: string;
 
+  // 转诊
   TRANSFER_APPLY: string;
   TRANSFER_MY: string;
   TRANSFER_PENDING: string;
@@ -212,23 +232,27 @@ interface ApiConstantsInterface {
   TRANSFER_HISTORY: string;
   TRANSFER_SYNC: string;
 
+  // 操作日志
   LOG_OPER_LIST: string;
   LOG_OPER_USER: string;
   LOG_OPER_TIME: string;
   LOG_OPER_STATISTICS: string;
 
+  // 健康标准
   HEALTH_STANDARD_CHECK: string;
   HEALTH_STANDARD_LIST: string;
   HEALTH_STANDARD_DETAIL: string;
   HEALTH_STANDARD_AGE_GROUP: string;
   HEALTH_STANDARD_GENDER: string;
 
+  // 医生
   DOCTOR_LIST: string;
   DOCTOR_DETAIL: string;
   DOCTOR_REGISTER: string;
   DOCTOR_INFO: string;
   DOCTOR_UPDATE: string;
 
+  // 消息
   MESSAGE_SEND: string;
   MESSAGE_HISTORY: string;
   MESSAGE_CONVERSATIONS: string;
@@ -237,21 +261,47 @@ interface ApiConstantsInterface {
   DOCTOR_PATIENTS: string;
   MESSAGE_CLEANUP: string;
 
+  // 护士 & 患者
+  NURSE_PATIENTS: string;
+  NURSE_PATIENT_ASSIGN: string;
+  NURSE_PATIENT_DETAIL: string;
+  PATIENT_LIST: string;
+  PATIENT_DETAIL: string;
   PATIENT_INFO: string;
   PATIENT_HEALTH_PROFILE: string;
   PATIENT_VISIT_RECORDS: string;
 
+  // 上传
   UPLOAD_3D: string;
 
+  // 预约
+  APPOINTMENT_CREATE: string;
+  APPOINTMENT_LIST: string;
+  APPOINTMENT_DETAIL: string;
+  APPOINTMENT_CANCEL: string;
+  APPOINTMENT_USER_LIST: string;
+  APPOINTMENT_CHECK_AVAILABILITY: string;
+  APPOINTMENT_STATISTICS: string;
+
+  // 支付
+  PAY_CREATE: string;
+  PAY_STATUS: string;
+  PAY_NOTIFY: string;
+
+  // 排班
+  SCHEDULE_ADD: string;
+  SCHEDULE_LIST: string;
+  SCHEDULE_DOCTOR_DATE: string;
+
+  // 管理员
   ADMIN_LOGIN: string;
   ADMIN_INFO: string;
   ADMIN_LOGOUT: string;
 }
 
+// 完整接口实现
 export const ApiConstants: ApiConstantsInterface = {
-
   BASE_URL: getBaseUrl(),
-
   LOGIN_PATH: '/user/login',
 
   USER_REGISTER: '/user/register',
@@ -374,14 +424,14 @@ export const ApiConstants: ApiConstantsInterface = {
   DEVICE_BIND: '/device/bind',
   DEVICE_UNBIND: '/device/unbind',
   DEVICE_LIST: '/device/list',
-
-  DISCOVER_BANNER_LIST: '/discover/banners',
-  DISCOVER_CATEGORY_LIST: '/discover/categories',
-  DISCOVER_ARTICLE_LIST: '/healthArticle/page',
   DEVICE_ONLINE: '/device/online',
   DEVICE_SYNC: '/device/sync',
   DEVICE_STATUS: '/device/status',
   DEVICE_INFO: '/device/info',
+
+  DISCOVER_BANNER_LIST: '/discover/banners',
+  DISCOVER_CATEGORY_LIST: '/discover/categories',
+  DISCOVER_ARTICLE_LIST: '/healthArticle/page',
 
   PRIVACY_SETTINGS: '/privacy/settings',
   PRIVACY_AUTH_LIST: '/privacy/myAuths',
@@ -445,14 +495,35 @@ export const ApiConstants: ApiConstantsInterface = {
   MESSAGE_CONVERSATIONS: '/user/message/conversations',
   MESSAGE_DELETE: '/user/message/delete',
   MESSAGE_CAN_SEND: '/user/message/can-send',
-  DOCTOR_PATIENTS: '/doctor/patients',
+  DOCTOR_PATIENTS: '/user/doctor/patients',
   MESSAGE_CLEANUP: '/user/message/cleanup',
 
+  NURSE_PATIENTS: '/user/nurse/patients',
+  NURSE_PATIENT_ASSIGN: '/user/nurse/patient/assign',
+  NURSE_PATIENT_DETAIL: '/user/nurse/patient/',
+  PATIENT_LIST: '/user/patients',
+  PATIENT_DETAIL: '/user/patient/',
   PATIENT_INFO: '/patient/info/',
   PATIENT_HEALTH_PROFILE: '/patient/health-profile/',
   PATIENT_VISIT_RECORDS: '/patient/visit-records/',
 
   UPLOAD_3D: '/api/upload/3d',
+
+  APPOINTMENT_CREATE: '/appointment/create',
+  APPOINTMENT_LIST: '/appointment/list',
+  APPOINTMENT_DETAIL: '/appointment/',
+  APPOINTMENT_CANCEL: '/appointment/',
+  APPOINTMENT_USER_LIST: '/appointment/user/',
+  APPOINTMENT_CHECK_AVAILABILITY: '/appointment/check-availability',
+  APPOINTMENT_STATISTICS: '/appointment/statistics/',
+
+  PAY_CREATE: '/pay/create',
+  PAY_STATUS: '/pay/status',
+  PAY_NOTIFY: '/pay/notify',
+
+  SCHEDULE_ADD: '/schedule/add',
+  SCHEDULE_LIST: '/schedule/list',
+  SCHEDULE_DOCTOR_DATE: '/schedule/doctor/',
 
   ADMIN_LOGIN: '/admin/login',
   ADMIN_INFO: '/admin/info',

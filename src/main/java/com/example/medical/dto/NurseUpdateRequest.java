@@ -18,11 +18,6 @@ public class NurseUpdateRequest {
     private String name;
 
     /**
-     * 性别：0-女，1-男
-     */
-    private Integer gender;
-
-    /**
      * 手机号
      */
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
@@ -37,19 +32,4 @@ public class NurseUpdateRequest {
      * 职称
      */
     private String title;
-
-    /**
-     * 资质证书编号
-     */
-    private String certificateNo;
-
-    /**
-     * 工作年限
-     */
-    private Integer workYears;
-
-    /**
-     * 头像URL
-     */
-    private String avatar;
 }

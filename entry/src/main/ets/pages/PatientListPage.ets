@@ -5,6 +5,7 @@ import { SearchBar, StateComponent } from '../components/CommonComponents';
 import { PatientListItem } from '../components/PatientListItem';
 import { RouterUtil } from '../utils/RouterUtil';
 import { AuditLogger } from '../utils/AuditLogger';
+import { SimplePatientData } from '../utils/PatientDataCache';
 
 @Entry
 @Component
@@ -13,6 +14,7 @@ struct PatientListPage {
   @State searchText: string = '';
   @State loadingState: LoadingState = LoadingState.IDLE;
   @State errorMessage: string = '';
+  @State patients: PatientInfo[] = [];
   private auditLogger: AuditLogger = AuditLogger.getInstance();
 
   async aboutToAppear() {
@@ -30,6 +32,7 @@ struct PatientListPage {
     const state = this.viewModel.getState();
     this.loadingState = state.loadingState;
     this.errorMessage = state.errorMessage || '';
+    this.patients = [...state.filteredPatients];
   }
 
   build() {
@@ -58,6 +61,7 @@ struct PatientListPage {
         searchText: $searchText,
         onSearch: (keyword: string) => {
           this.viewModel.searchPatient(keyword);
+          this.updateState();
           if (keyword.length > 0) {
             this.auditLogger.logSearchAction(keyword);
           }
@@ -78,7 +82,7 @@ struct PatientListPage {
       } else {
         Refresh({ refreshing: false }) {
           List() {
-            ForEach(this.viewModel.getState().filteredPatients, (patient: PatientInfo) => {
+            ForEach(this.patients, (patient: PatientInfo) => {
               ListItem() {
                 PatientListItem({
                   patient: patient,
@@ -86,9 +90,28 @@ struct PatientListPage {
                   onItemClick: (p: PatientInfo) => {
                     console.log('PatientListPage - onItemClick:', p.patientId, p.patientName);
                     this.viewModel.markAsViewed(p.patientId);
+                    
+                    const patientDataObj: SimplePatientData = {
+                      id: Number(p.patientId) || 0,
+                      username: p.patientName || '',
+                      realName: p.patientName || '',
+                      phone: p.phoneNumber || '',
+                      age: p.age || 0,
+                      gender: (p.gender as string) === 'MALE' ? 1 : ((p.gender as string) === 'FEMALE' ? 2 : 0),
+                      idCard: p.idCardNumber || '',
+                      hospital: '',
+                      department: p.department || '',
+                      bedNumber: p.bedNumber || '',
+                      diagnosis: p.diagnosis || ''
+                    };
+                    
+                    const dataJson = JSON.stringify(patientDataObj);
+                    console.log('PatientListPage - Sending dataJson length:', dataJson.length);
+                    
                     const params: Record<string, Object> = {
                       'patientId': p.patientId,
-                      'patientName': p.patientName
+                      'patientName': p.patientName,
+                      'patientDataJson': dataJson
                     };
                     RouterUtil.pushUrlSync('pages/PatientDetailPage', params);
                   }

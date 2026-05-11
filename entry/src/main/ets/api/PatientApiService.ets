@@ -181,8 +181,8 @@ export class PatientApiService {
       const token: string = await SettingsUtil.getInstance().getNurseToken();
       const httpRequest: http.HttpRequest = http.createHttp();
 
-      // 使用患者详情API
-      const url = `${ApiConstants.BASE_URL}${ApiConstants.PATIENT_DETAIL}${request.patientId}`;
+      // 使用护士专属患者详情API
+      const url = `${ApiConstants.BASE_URL}${ApiConstants.NURSE_PATIENT_DETAIL}${request.patientId}`;
 
       console.log('PatientApiService - Detail URL:', url);
       console.log('PatientApiService - Token:', token ? 'exists' : 'empty');
@@ -207,13 +207,7 @@ export class PatientApiService {
         if (result.code === 200 && result.data) {
           const user: BackendUser = result.data as BackendUser;
 
-          if (user.user_type !== 0) {
-            return {
-              success: false,
-              code: 403,
-              message: '该用户不是患者'
-            };
-          }
+          console.log('PatientApiService - Detail user_type:', user.user_type);
 
           const patient = this.convertUserToPatient(user);
           const detail: PatientDetail = {

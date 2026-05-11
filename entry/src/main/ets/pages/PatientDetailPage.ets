@@ -1,9 +1,10 @@
-import { PatientDetail, GenderDisplayText, PatientStatusText } from '../model/PatientModel';
+import { PatientDetail, GenderDisplayText, PatientStatusText, PatientGender, PatientStatus } from '../model/PatientModel';
 import { LoadingState } from '../model/StateModel';
 import { PatientDetailViewModel } from '../viewmodel/PatientDetailViewModel';
 import { StateComponent } from '../components/CommonComponents';
 import { RouterUtil } from '../utils/RouterUtil';
 import { AuditLogger } from '../utils/AuditLogger';
+import { SimplePatientData } from '../utils/PatientDataCache';
 
 @Entry
 @Component
@@ -13,18 +14,108 @@ struct PatientDetailPage {
   @State errorMessage: string = '';
   @State patientName: string = '';
   @State displayDetail: PatientDetail | null = null;
+  @State simplePatientData: SimplePatientData | null = null;
   private auditLogger: AuditLogger = AuditLogger.getInstance();
 
   async aboutToAppear() {
     const params = RouterUtil.getParams();
     const patientId = params['patientId'] as string;
     const patientName = params['patientName'] as string;
+    const patientDataJson = params['patientDataJson'] as string;
+    
+    console.log('========== PatientDetailPage START ==========');
+    console.log('PatientDetailPage - aboutToAppear');
+    console.log('PatientDetailPage - patientId:', patientId);
+    console.log('PatientDetailPage - patientName:', patientName);
+    console.log('PatientDetailPage - patientDataJson:', patientDataJson);
+    console.log('PatientDetailPage - All params:', JSON.stringify(params));
     
     if (patientId) {
       this.patientName = patientName || '';
+      
+      let patientData: SimplePatientData | null = null;
+      
+      if (patientDataJson && patientDataJson.length > 0) {
+        try {
+          console.log('PatientDetailPage - Parsing JSON data...');
+          patientData = JSON.parse(patientDataJson) as SimplePatientData;
+          console.log('PatientDetailPage - ✅ Parsed successfully, ID:', patientData.id);
+        } catch (e) {
+          console.error('PatientDetailPage - Failed to parse JSON:', e);
+        }
+      }
+      
+      if (patientData && patientData.id > 0) {
+        console.log('PatientDetailPage - ✅ Using parsed data, no API call');
+        this.simplePatientData = patientData;
+        this.displayDetail = this.convertSimpleToDetail(patientData);
+        this.loadingState = LoadingState.SUCCESS;
+        console.log('========== PatientDetailPage SUCCESS ==========');
+        return;
+      }
+      
+      console.log('PatientDetailPage - ⚠️ No valid data from JSON');
+      
+      if (params['patientData']) {
+        console.log('PatientDetailPage - Trying to read patientData object...');
+        try {
+          const rawData = params['patientData'];
+          console.log('PatientDetailPage - rawData type:', typeof rawData);
+          console.log('PatientDetailPage - rawData value:', JSON.stringify(rawData));
+          
+          if (typeof rawData === 'object' && rawData !== null) {
+            const dataObj = rawData as Record<string, Object>;
+            patientData = {
+              id: Number(dataObj['id']) || 0,
+              username: String(dataObj['username'] || ''),
+              realName: String(dataObj['realName'] || ''),
+              phone: String(dataObj['phone'] || ''),
+              age: Number(dataObj['age']) || 0,
+              gender: Number(dataObj['gender']) || 0,
+              idCard: String(dataObj['idCard'] || ''),
+              hospital: String(dataObj['hospital'] || ''),
+              department: String(dataObj['department'] || ''),
+              bedNumber: String(dataObj['bedNumber'] || ''),
+              diagnosis: String(dataObj['diagnosis'] || '')
+            };
+            
+            if (patientData.id > 0) {
+              console.log('PatientDetailPage - ✅ Got data from object, ID:', patientData.id);
+              this.displayDetail = this.convertSimpleToDetail(patientData);
+              this.loadingState = LoadingState.SUCCESS;
+              console.log('========== PatientDetailPage SUCCESS FROM OBJECT ==========');
+              return;
+            }
+          }
+        } catch (e) {
+          console.error('PatientDetailPage - Failed to read object:', e);
+        }
+      }
+      
+      console.log('PatientDetailPage - ❌ All methods failed, using API');
       this.viewModel = new PatientDetailViewModel(patientId);
       await this.loadPatientDetail();
+    } else {
+      console.error('PatientDetailPage - No patientId provided');
+      this.loadingState = LoadingState.ERROR;
+      this.errorMessage = '未提供患者ID';
     }
+  }
+
+  private convertSimpleToDetail(data: SimplePatientData): PatientDetail {
+    return {
+      patientId: String(data.id),
+      patientName: data.realName || data.username || '未知',
+      gender: data.gender === 1 ? PatientGender.MALE : (data.gender === 2 ? PatientGender.FEMALE : PatientGender.UNKNOWN),
+      age: data.age || 0,
+      phoneNumber: data.phone,
+      idCardNumber: data.idCard,
+      department: data.department,
+      bedNumber: data.bedNumber,
+      diagnosis: data.diagnosis,
+      status: PatientStatus.IN_HOSPITAL,
+      updateTime: Date.now()
+    };
   }
 
   async loadPatientDetail() {

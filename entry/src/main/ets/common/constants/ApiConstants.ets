@@ -13,9 +13,9 @@ interface EnvConfig {
 
 // 保留第一套网络地址
 const ENV_MAP: Record<EnvType, EnvConfig> = {
-  [EnvType.DEV]: { BASE_URL: 'http://192.168.108.1:8080', UPLOAD_URL: 'http://192.168.108.1:8080/upload' },
-  [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
-  [EnvType.DEV_DEVICE]: { BASE_URL: 'http://192.168.108.1:8080', UPLOAD_URL: 'http://192.168.108.1:8080/upload' },
+  [EnvType.DEV]: { BASE_URL: 'http://localhost:8080', UPLOAD_URL: 'http://localhost:8080/upload' },
+  [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://localhost:8080', UPLOAD_URL: 'http://localhost:8080/upload' },
+  [EnvType.DEV_DEVICE]: { BASE_URL: 'http://10.0.9.202:8080', UPLOAD_URL: 'http://10.0.9.202:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };

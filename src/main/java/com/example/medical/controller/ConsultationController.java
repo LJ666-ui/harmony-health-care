@@ -6,8 +6,8 @@ import com.example.medical.entity.Consultation;
 import com.example.medical.entity.ConsultationParticipant;
 import com.example.medical.entity.ConsultationRecord;
 import com.example.medical.service.ConsultationService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * 会诊控制器
  */
-@Api(tags = "会诊管理")
+@Tag(name = "会诊管理")
 @RestController
 @RequestMapping("/api/doctor")
 public class ConsultationController {
@@ -27,7 +27,7 @@ public class ConsultationController {
     /**
      * 发起会诊
      */
-    @ApiOperation("发起会诊")
+    @Operation(summary = "发起会诊")
     @PostMapping("/consultation")
     public Result<Consultation> initiate(@RequestBody Consultation consultation,
                                           @RequestParam List<Long> doctorIds,
@@ -39,7 +39,7 @@ public class ConsultationController {
     /**
      * 获取医生的会诊列表
      */
-    @ApiOperation("获取医生的会诊列表")
+    @Operation(summary = "获取医生的会诊列表")
     @GetMapping("/{doctorId}/consultations")
     public Result<Page<Consultation>> getByDoctorId(@PathVariable Long doctorId,
                                                      @RequestParam(required = false) String status,
@@ -52,7 +52,7 @@ public class ConsultationController {
     /**
      * 获取会诊详情
      */
-    @ApiOperation("获取会诊详情")
+    @Operation(summary = "获取会诊详情")
     @GetMapping("/consultation/{id}")
     public Result<Consultation> getById(@PathVariable Long id) {
         Consultation result = consultationService.getById(id);
@@ -62,7 +62,7 @@ public class ConsultationController {
     /**
      * 开始会诊
      */
-    @ApiOperation("开始会诊")
+    @Operation(summary = "开始会诊")
     @PutMapping("/consultation/{id}/start")
     public Result<Consultation> start(@PathVariable Long id) {
         Consultation result = consultationService.start(id);
@@ -72,7 +72,7 @@ public class ConsultationController {
     /**
      * 结束会诊
      */
-    @ApiOperation("结束会诊")
+    @Operation(summary = "结束会诊")
     @PutMapping("/consultation/{id}/end")
     public Result<Consultation> end(@PathVariable Long id) {
         Consultation result = consultationService.end(id);
@@ -82,7 +82,7 @@ public class ConsultationController {
     /**
      * 取消会诊
      */
-    @ApiOperation("取消会诊")
+    @Operation(summary = "取消会诊")
     @PutMapping("/consultation/{id}/cancel")
     public Result<Consultation> cancel(@PathVariable Long id) {
         Consultation result = consultationService.cancel(id);
@@ -92,7 +92,7 @@ public class ConsultationController {
     /**
      * 添加会诊记录
      */
-    @ApiOperation("添加会诊记录")
+    @Operation(summary = "添加会诊记录")
     @PostMapping("/consultation/{consultationId}/record")
     public Result<ConsultationRecord> addRecord(@PathVariable Long consultationId,
                                                  @RequestBody ConsultationRecord record) {
@@ -104,7 +104,7 @@ public class ConsultationController {
     /**
      * 获取会诊记录列表
      */
-    @ApiOperation("获取会诊记录列表")
+    @Operation(summary = "获取会诊记录列表")
     @GetMapping("/consultation/{consultationId}/records")
     public Result<List<ConsultationRecord>> getRecords(@PathVariable Long consultationId) {
         List<ConsultationRecord> result = consultationService.getRecords(consultationId);
@@ -114,7 +114,7 @@ public class ConsultationController {
     /**
      * 获取会诊参与人列表
      */
-    @ApiOperation("获取会诊参与人列表")
+    @Operation(summary = "获取会诊参与人列表")
     @GetMapping("/consultation/{consultationId}/participants")
     public Result<List<ConsultationParticipant>> getParticipants(@PathVariable Long consultationId) {
         List<ConsultationParticipant> result = consultationService.getParticipants(consultationId);
@@ -124,7 +124,7 @@ public class ConsultationController {
     /**
      * 接受会诊邀请
      */
-    @ApiOperation("接受会诊邀请")
+    @Operation(summary = "接受会诊邀请")
     @PutMapping("/consultation/{consultationId}/accept")
     public Result<ConsultationParticipant> acceptInvitation(@PathVariable Long consultationId,
                                                             @RequestParam Long doctorId) {

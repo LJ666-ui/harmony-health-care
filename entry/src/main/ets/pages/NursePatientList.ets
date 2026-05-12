@@ -163,8 +163,9 @@ struct NursePatientList {
     
     hilog.info(0x0000, TAG, 'handleViewPatientDetail - patientId=%{public}d, name=%{public}s', patient.id, patientName);
     
-    const patientDataObj = {
+    const patientDataObj: PatientInfo = {
       id: patient.id,
+      userId: patient.userId || patient.id,
       username: patient.username || '',
       realName: patient.realName || '',
       phone: patient.phone || '',

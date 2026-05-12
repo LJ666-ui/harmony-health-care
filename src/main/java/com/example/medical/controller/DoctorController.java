@@ -143,8 +143,22 @@ public class DoctorController {
      * 获取医生的患者列表
      */
     @GetMapping("/patients")
-    public Result getPatients(@RequestHeader("Token") String token) {
+    public Result getPatients(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = "Token", required = false) String tokenHeader) {
         try {
+            // 支持两种Token格式：标准Bearer Token和自定义Token头
+            String token = null;
+            if (authorization != null && authorization.startsWith("Bearer ")) {
+                token = authorization.substring(7);
+            } else if (tokenHeader != null) {
+                token = tokenHeader;
+            }
+
+            if (token == null || token.isEmpty()) {
+                return Result.error("未提供认证信息");
+            }
+
             if (!JwtUtil.isDoctorToken(token)) {
                 return Result.error("非医生Token");
             }
@@ -154,7 +168,6 @@ public class DoctorController {
                 return Result.error("无效的Token");
             }
 
-            // 获取医生的患者列表
             List<Map<String, Object>> patients = doctorService.getPatientsByDoctorId(doctorId);
             return Result.success(patients);
         } catch (Exception e) {

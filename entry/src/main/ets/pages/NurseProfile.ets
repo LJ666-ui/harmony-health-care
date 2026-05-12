@@ -10,12 +10,9 @@ interface NurseInfo {
   userId: number;
   nurseNo: string;
   name: string;
-  gender: number;
   phone: string;
   department: string;
   title: string;
-  certificateNo: string;
-  workYears: number;
   avatar: string;
   status: number;
 }
@@ -87,10 +84,6 @@ struct NurseProfile {
     });
   }
 
-  private getGenderText(gender: number): string {
-    return gender === 1 ? '男' : '女';
-  }
-
   build() {
     Column() {
       // 顶部导航栏
@@ -126,12 +119,9 @@ struct NurseProfile {
             Column() {
               this.InfoItem('工号', this.nurseInfo?.nurseNo || '-')
               this.InfoItem('姓名', this.nurseInfo?.name || '-')
-              this.InfoItem('性别', this.getGenderText(this.nurseInfo?.gender || 0))
               this.InfoItem('手机号', this.nurseInfo?.phone || '-')
               this.InfoItem('科室', this.nurseInfo?.department || '-')
               this.InfoItem('职称', this.nurseInfo?.title || '-')
-              this.InfoItem('资质证书', this.nurseInfo?.certificateNo || '-')
-              this.InfoItem('工作年限', `${this.nurseInfo?.workYears || 0}年`)
             }
             .width('100%')
             .padding({ left: 20, right: 20, bottom: 20 })

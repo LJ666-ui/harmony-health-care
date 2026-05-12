@@ -1,9 +1,12 @@
 package com.example.medical.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.medical.entity.Prescription;
 import com.example.medical.entity.MedicationReminder;
 import com.example.medical.mapper.PrescriptionMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -13,29 +16,49 @@ import java.util.*;
  */
 @Service
 public class PrescriptionService extends ServiceImpl<PrescriptionMapper, Prescription> {
-    
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     /**
      * 创建处方
      */
     public Prescription createPrescription(Map<String, Object> prescriptionData) {
         Prescription prescription = new Prescription();
-        
+
         prescription.setPatientId(Long.valueOf(prescriptionData.get("patientId").toString()));
         prescription.setDoctorId(Long.valueOf(prescriptionData.get("doctorId").toString()));
+
+        if (prescriptionData.get("patientName") != null) {
+            prescription.setPatientName(prescriptionData.get("patientName").toString());
+        }
+        if (prescriptionData.get("doctorName") != null) {
+            prescription.setDoctorName(prescriptionData.get("doctorName").toString());
+        }
+
         prescription.setDiagnosis((String) prescriptionData.get("diagnosis"));
         prescription.setNotes((String) prescriptionData.get("notes"));
-        prescription.setStatus("ACTIVE");
+        prescription.setStatus((String) prescriptionData.getOrDefault("status", "ACTIVE"));
         prescription.setCreatedAt(new Date());
-        
-        // 设置有效期（默认30天）
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DAY_OF_MONTH, 30);
-        prescription.setValidUntil(calendar.getTime());
-        
-        // 处理药品信息
-        List<Map<String, Object>> medications = (List<Map<String, Object>>) prescriptionData.get("medications");
-        prescription.setMedications(toJsonString(medications));
-        
+
+        if (prescriptionData.get("validUntil") != null) {
+            try {
+                prescription.setValidUntil(new Date(Long.valueOf(prescriptionData.get("validUntil").toString())));
+            } catch (Exception e) {
+                Calendar calendar = Calendar.getInstance();
+                calendar.add(Calendar.DAY_OF_MONTH, 30);
+                prescription.setValidUntil(calendar.getTime());
+            }
+        } else {
+            Calendar calendar = Calendar.getInstance();
+            calendar.add(Calendar.DAY_OF_MONTH, 30);
+            prescription.setValidUntil(calendar.getTime());
+        }
+
+        Object medicationsObj = prescriptionData.get("medications");
+        if (medicationsObj != null) {
+            prescription.setMedications(medicationsObj.toString());
+        }
+
         this.save(prescription);
         return prescription;
     }
@@ -131,8 +154,10 @@ public class PrescriptionService extends ServiceImpl<PrescriptionMapper, Prescri
      * 获取患者处方列表
      */
     public List<Prescription> getPatientPrescriptions(String patientId) {
-        // TODO: 实现查询逻辑
-        return this.list();
+        QueryWrapper<Prescription> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("patient_id", patientId);
+        queryWrapper.orderByDesc("created_at");
+        return this.list(queryWrapper);
     }
     
     /**

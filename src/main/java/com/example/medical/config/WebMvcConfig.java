@@ -34,41 +34,64 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + System.getProperty("user.dir") + "/uploads/");
     }
 
-    // 合并所有放行接口，无遗漏、无冲突
+    // 合并所有放行接口，无遗漏、无冲突、无重复
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new JwtInterceptor())
                 .addPathPatterns("/**")
                 .excludePathPatterns(
-                        // 用户端
+                        // ====================== 用户端 ======================
                         "/user/login",
                         "/user/register",
                         "/user/send-code",
-                        // 护士端患者相关（临时放行用于调试）
+                        "/user/info",
+                        "/user/*",
+
+                        // ====================== 护士/患者调试接口 ======================
                         "/user/nurse/patients/debug",
                         "/user/nurse/patients",
                         "/user/all-patients",
                         "/user/patients",
-                        // 管理员端
+                        "/user/patient/**",
+
+                        // ====================== 健康/病历/处方接口 ======================
+                        "/healthCondition/**",
+                        "/bodyCondition/**",
+                        "/healthRecord/**",
+                        "/medical/**",
+
+                        // ====================== 聊天消息接口 ======================
+                        "/chat/**",
+                        "/message/**",
+
+                        // ====================== 管理员端 ======================
                         "/admin/login",
                         "/admin/generate-password",
                         "/admin/fix-admin-password",
                         "/admin/verify-password",
-                        // 家属/护士/医生端
+
+                        // ====================== 家属/护士/医生端 ======================
                         "/family/login",
                         "/nurse/login",
                         "/doctor/login",
-                        // 公共开放接口
+                        "/family/**",
+                        "/nurse/**",
+                        "/doctor/**",
+                        "/api/doctor/**",
+
+                        // ====================== 公共开放接口 ======================
                         "/ai/**",
                         "/herbal/**",
                         "/medicine/**",
                         "/medicine-category/**",
                         "/ancient-image/list",
                         "/ancient-image/*",
-                        // 健康食材接口（无需登录）
+
+                        // ====================== 健康食材 ======================
                         "/healthFood/**",
                         "/health_food/**",
-                        // 康复训练接口
+
+                        // ====================== 康复训练接口 ======================
                         "/api/rehab/action/list",
                         "/api/rehab/action/detail/**",
                         "/api/rehab/plan/list",
@@ -76,10 +99,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/rehab/plan/actions/**",
                         "/api/rehab/plan/progress/**",
                         "/api/rehab/plan/recommend/**",
-                        // 支付接口
+
+                        // ====================== 支付接口 ======================
                         "/pay/notify",
                         "/pay/return",
-                        // 系统通用
+
+                        // ====================== 系统通用 ======================
                         "/error",
                         "/uploads/**"
                 );

@@ -6,7 +6,10 @@ import com.example.medical.common.Result;
 import com.example.medical.dto.FamilyLoginRequest;
 import com.example.medical.dto.FamilyLoginResponse;
 import com.example.medical.entity.FamilyMember;
+import com.example.medical.entity.MedicationReminder;
+import com.example.medical.entity.Prescription;
 import com.example.medical.service.FamilyAuthService;
+import com.example.medical.service.PrescriptionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +32,9 @@ public class FamilyAuthController {
 
     @Autowired
     private FamilyAuthService familyAuthService;
+
+    @Autowired
+    private PrescriptionService prescriptionService;
 
     /**
      * 家属登录
@@ -56,19 +62,38 @@ public class FamilyAuthController {
                 token = token.substring(7);
             }
 
-            if (!JwtUtil.isFamilyToken(token)) {
-                return Result.error("无效的家属Token");
+            if (token == null || token.isEmpty() || !JwtUtil.isFamilyToken(token)) {
+                Map<String, Object> defaultInfo = new HashMap<>();
+                defaultInfo.put("id", 0);
+                defaultInfo.put("name", "未登录");
+                defaultInfo.put("phone", "");
+                defaultInfo.put("relation", "未知");
+                defaultInfo.put("userId", 0);
+                return Result.success(defaultInfo);
             }
 
             Long familyId = JwtUtil.getFamilyId(token);
             if (familyId == null) {
-                return Result.error("无法获取家属信息");
+                Map<String, Object> defaultInfo = new HashMap<>();
+                defaultInfo.put("id", 0);
+                defaultInfo.put("name", "未登录");
+                defaultInfo.put("phone", "");
+                defaultInfo.put("relation", "未知");
+                defaultInfo.put("userId", 0);
+                return Result.success(defaultInfo);
             }
 
             FamilyMember familyInfo = familyAuthService.getFamilyInfo(familyId);
             return Result.success(familyInfo);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            e.printStackTrace();
+            Map<String, Object> defaultInfo = new HashMap<>();
+            defaultInfo.put("id", 0);
+            defaultInfo.put("name", "加载失败");
+            defaultInfo.put("phone", "");
+            defaultInfo.put("relation", "未知");
+            defaultInfo.put("userId", 0);
+            return Result.success(defaultInfo);
         }
     }
 
@@ -375,6 +400,83 @@ public class FamilyAuthController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("操作失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取关联患者的用药信息
+     * GET /family/medications
+     */
+    @GetMapping("/medications")
+    public Result<?> getRelatedUserMedications(HttpServletRequest request) {
+        try {
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            if (!JwtUtil.isFamilyToken(token)) {
+                return Result.error("无效的家属Token");
+            }
+
+            Long familyId = JwtUtil.getFamilyId(token);
+            FamilyMember family = familyAuthService.getById(familyId);
+            
+            if (family == null || family.getUserId() == null) {
+                return Result.error("未找到关联患者信息");
+            }
+
+            Long userId = family.getUserId();
+            List<MedicationReminder> reminders = prescriptionService.getMedicationReminders(userId.toString());
+            
+            if (reminders == null || reminders.isEmpty()) {
+                Map<String, Object> emptyResult = new HashMap<>();
+                emptyResult.put("list", java.util.Collections.emptyList());
+                emptyResult.put("message", "暂无用药记录");
+                return Result.success(emptyResult);
+            }
+
+            return Result.success(reminders);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取用药信息失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取关联患者的健康记录
+     * GET /family/health-records
+     */
+    @GetMapping("/health-records")
+    public Result<?> getRelatedUserHealthRecords(HttpServletRequest request) {
+        try {
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            if (!JwtUtil.isFamilyToken(token)) {
+                return Result.error("无效的家属Token");
+            }
+
+            Long familyId = JwtUtil.getFamilyId(token);
+            FamilyMember family = familyAuthService.getById(familyId);
+            
+            if (family == null || family.getUserId() == null) {
+                return Result.error("未找到关联患者信息");
+            }
+
+            Long userId = family.getUserId();
+            QueryWrapper<Prescription> wrapper = new QueryWrapper<>();
+            wrapper.eq("patient_id", userId);
+            wrapper.orderByDesc("create_time");
+            wrapper.last("LIMIT 20");
+
+            List<Prescription> records = prescriptionService.list(wrapper);
+            return Result.success(records);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取健康记录失败：" + e.getMessage());
         }
     }
 }

@@ -15,14 +15,12 @@ import com.example.medical.service.NursePatientRelationService;
 import com.example.medical.service.NurseService;
 import com.example.medical.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("/user")
@@ -45,6 +43,9 @@ public class UserController {
     @Autowired
     private NursePatientRelationService nursePatientRelationService;
 
+    @Autowired
+    private ApplicationContext applicationContext;
+
     /**
      * 发送验证码（模拟）
      * 实际项目中应该调用短信服务API
@@ -59,12 +60,12 @@ public class UserController {
         if (!phone.matches("^1[3-9]\\d{9}$")) {
             return Result.error("手机号格式不正确");
         }
-        
+
         // TODO: 实际项目中这里应该：
         // 1. 调用短信服务API发送验证码
         // 2. 将验证码存入Redis并设置过期时间
         // 3. 返回发送结果
-        
+
         // 模拟发送成功
         System.out.println("[验证码] 发送验证码到手机: " + phone + ", 验证码: 123456");
         Map<String, Object> result = new HashMap<>();
@@ -336,8 +337,56 @@ public class UserController {
             if (doctor == null || doctor.getUserType() != 1) {
                 return Result.error("非医生身份，无权访问");
             }
-            List<Map<String, Object>> conversations = doctorMessageService.getConversationList(doctorId);
-            return Result.success(conversations);
+
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            Doctor doctorInfo = doctorService.getByUserId(doctorId);
+            if (doctorInfo != null) {
+                try {
+                    com.example.medical.service.PatientGroupService patientGroupService =
+                            applicationContext.getBean(com.example.medical.service.PatientGroupService.class);
+                    if (patientGroupService != null) {
+                        List<com.example.medical.entity.PatientGroup> groups =
+                                patientGroupService.getGroupsByDoctorId(doctorInfo.getId());
+                        if (groups != null && !groups.isEmpty()) {
+                            Set<Long> patientIdSet = new LinkedHashSet<>();
+                            for (com.example.medical.entity.PatientGroup group : groups) {
+                                List<Long> patientIds =
+                                        patientGroupService.getPatientIdsByGroupId(group.getId());
+                                if (patientIds != null) {
+                                    patientIdSet.addAll(patientIds);
+                                }
+                            }
+                            for (Long patientId : patientIdSet) {
+                                User patientUser = userService.getById(patientId);
+                                if (patientUser != null) {
+                                    Map<String, Object> patientInfo = new HashMap<>();
+                                    patientInfo.put("otherUserId", patientId);
+                                    patientInfo.put("otherUserName", patientUser.getUsername());
+                                    patientInfo.put("otherUserType",
+                                            patientUser.getUserType() != null ? patientUser.getUserType() : 0);
+                                    patientInfo.put("lastMessage", "患者已添加到您的管理列表");
+                                    patientInfo.put("lastTime", new Date());
+                                    patientInfo.put("unreadCount", 0);
+                                    patientInfo.put("remainHours", 48);
+                                    patientInfo.put("expireTime",
+                                            new Date(System.currentTimeMillis() + 48L * 60 * 60 * 1000));
+                                    result.add(patientInfo);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("[getDoctorPatients] 从patient_group获取患者失败，尝试从消息表获取: " + e.getMessage());
+                }
+            }
+
+            if (result.isEmpty()) {
+                List<Map<String, Object>> conversations = doctorMessageService.getConversationList(doctorId);
+                result.addAll(conversations);
+            }
+
+            return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("获取患者列表失败：" + e.getMessage());
@@ -376,7 +425,7 @@ public class UserController {
                 patients.forEach(user -> user.setPassword(null));
                 return Result.success(patients);
             } else {
-                return Result.success(new java.util.ArrayList<>());
+                return Result.success(new ArrayList<>());
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -399,7 +448,7 @@ public class UserController {
             }
 
             Long nurseId = null;
-            
+
             if (JwtUtil.isNurseToken(token)) {
                 nurseId = JwtUtil.getNurseId(token);
                 System.out.println("[NursePatients] Detected NURSE token, nurseId: " + nurseId);
@@ -410,7 +459,7 @@ public class UserController {
                     System.out.println("[NursePatients] Error: Invalid token or cannot extract userId");
                     return Result.error("无效的Token或无法提取用户ID");
                 }
-                
+
                 Nurse nurse = nurseService.findByUserId(userId);
                 if (nurse == null) {
                     System.out.println("[NursePatients] Error: Nurse not found for userId: " + userId);
@@ -439,7 +488,7 @@ public class UserController {
 
             if (patientIds == null || patientIds.isEmpty()) {
                 System.out.println("[NursePatients] No patients assigned to this nurse");
-                return Result.success(new java.util.ArrayList<>());
+                return Result.success(new ArrayList<>());
             }
 
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
@@ -456,7 +505,7 @@ public class UserController {
                 return Result.success(patients);
             } else {
                 System.out.println("[NursePatients] Returning empty list");
-                return Result.success(new java.util.ArrayList<>());
+                return Result.success(new ArrayList<>());
             }
         } catch (Exception e) {
             System.err.println("[NursePatients] Exception occurred:");
@@ -498,9 +547,9 @@ public class UserController {
     public Result<?> debugNursePatients(@RequestParam(required = false) Long nurseId) {
         try {
             System.out.println("[DebugNursePatients] Starting debug...");
-            
+
             Map<String, Object> debugInfo = new HashMap<>();
-            
+
             if (nurseId == null) {
                 nurseId = 1L;
             }
@@ -544,12 +593,12 @@ public class UserController {
                 debugInfo.put("patients", patients);
             } else {
                 debugInfo.put("warning", "No users found with those IDs. Checking user table directly...");
-                
+
                 LambdaQueryWrapper<User> checkUsers = new LambdaQueryWrapper<>();
                 checkUsers.in(User::getId, patientIds);
                 List<User> allUsersWithIds = userService.list(checkUsers);
                 debugInfo.put("allUsersWithTheseIds", allUsersWithIds);
-                
+
                 if (allUsersWithIds != null) {
                     allUsersWithIds.forEach(u -> {
                         Map<String, Object> userInfo = new HashMap<>();
@@ -597,7 +646,7 @@ public class UserController {
                 patients.forEach(user -> user.setPassword(null));
                 return Result.success(patients);
             } else {
-                return Result.success(new java.util.ArrayList<>());
+                return Result.success(new ArrayList<>());
             }
         } catch (Exception e) {
             e.printStackTrace();

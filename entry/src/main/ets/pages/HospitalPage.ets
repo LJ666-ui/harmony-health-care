@@ -8,6 +8,8 @@ import { ApiConstants } from '../common/constants/ApiConstants';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { GlobalTheme } from '../global';
 import hospitalCacheManager, { HospitalCacheItem } from '../utils/HospitalCacheManager';
+import { convertLevelToDbValue } from '../constants/DataDictionary';
+import type { Hospital, HospitalPageData } from '../models/Hospital';
 
 class HospitalItem {
   id: number = 0;
@@ -17,10 +19,6 @@ class HospitalItem {
   level: string = '';
   department: string = '';
   description: string = '';
-}
-
-interface HospitalPageData {
-  records: HospitalItem[];
 }
 
 @Entry
@@ -49,9 +47,9 @@ struct HospitalPage {
 
     try {
       // 先尝试从缓存读取
-      const cachedHospitals = await hospitalCacheManager.getHospitalsByLevel(filterLevel || '全部');
+      const cachedHospitals = await hospitalCacheManager.getHospitalsByLevel(this.convertLevelToDbValue(filterLevel || '全部'));
       const isCacheValid = await hospitalCacheManager.isCacheValid();
-      
+
       if (cachedHospitals.length > 0 && isCacheValid) {
         console.log('[HospitalPage] 使用缓存数据，数量：', cachedHospitals.length);
         this.hospitals = cachedHospitals.map((item: HospitalCacheItem): HospitalItem => {
@@ -73,14 +71,14 @@ struct HospitalPage {
 
       // 缓存无效或为空，从服务器获取
       console.log('[HospitalPage] 缓存无效，从服务器获取数据');
-      
+
       let url: string = ApiConstants.HOSPITAL_LIST;
       let queryParams: Record<string, string> | undefined = undefined;
-      
+
       if (filterLevel && filterLevel !== '全部') {
         url = ApiConstants.HOSPITAL_PAGE;
         queryParams = {
-          'level': filterLevel,
+          'level': this.convertLevelToDbValue(filterLevel),
           'page': '1',
           'size': '500'
         };
@@ -166,6 +164,12 @@ struct HospitalPage {
   onLevelSelect(level: string): void {
     this.selectedLevel = level;
     this.loadHospitalList(level);
+  }
+
+  // 将前端显示的筛选标签转换为数据库中实际存储的值
+  // 注意：数据库中使用 level 字段存储医院等级，值为完整字符串（如"三级甲等医院"）
+  private convertLevelToDbValue(level: string): string {
+    return convertLevelToDbValue(level);
   }
 
   aboutToAppear(): void {

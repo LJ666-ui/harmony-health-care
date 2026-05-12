@@ -4,7 +4,7 @@ export struct EmptyState {
   @Prop title: string = '暂无数据';
   @Prop description: string = '点击下方按钮添加内容';
   @Prop buttonText: string = '添加';
-  @Prop onAdd: () => void = () => {};
+  onAdd: () => void = () => {};
 
   build() {
     Column({ space: 20 }) {

@@ -37,36 +37,11 @@ public class PrescriptionController {
     @PostMapping("/prescriptions")
     public Result<Prescription> createPrescription(@RequestBody Map<String, Object> prescriptionData) {
         try {
-            // 创建处方
             Prescription prescription = prescriptionService.createPrescription(prescriptionData);
-            
-            // 生成用药提醒
-            List<MedicationReminder> reminders = prescriptionService.generateMedicationReminders(prescription);
-            
-            // 通过WebSocket推送提醒到患者端
-            String patientId = prescription.getPatientId().toString();
-            for (MedicationReminder reminder : reminders) {
-                messagingTemplate.convertAndSendToUser(
-                    patientId,
-                    "/queue/medication",
-                    reminder
-                );
-            }
-            
-            // 广播处方创建事件
-            Map<String, Object> broadcastData = new HashMap<>();
-            broadcastData.put("type", "PRESCRIPTION_CREATED");
-            broadcastData.put("prescription", prescription);
-            broadcastData.put("reminders", reminders);
-            
-            messagingTemplate.convertAndSend(
-                "/topic/prescription/" + patientId,
-                broadcastData
-            );
-            
             return Result.success(prescription);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            e.printStackTrace();
+            return Result.error("开具处方失败: " + e.getMessage());
         }
     }
 

@@ -39,14 +39,16 @@ struct AdminDashboard {
   @State recentUsers: UserInfo[] = [];
   @State isLoadingStats: boolean = false;
 
-  private tabs: string[] = ['仪表盘', '数据大屏', '用户管理', '家属管理', '管理员管理'];
-  private tabIcons: string[] = ['📊', '🖥️', '👥', '👨‍👩‍👧', '🛡️'];
+  private tabs: string[] = ['仪表盘', '数据大屏', '用户管理', '家属管理', '管理员管理', '数据审批', '安全监控'];
+  private tabIcons: string[] = ['📊', '🖥️', '👥', '👨‍👩‍👧', '🛡️', '🔐', '⚠️'];
   private tabRoutes: string[] = [
     'pages/AdminDashboard',
     'pages/AdminDataDashboard',
     'pages/AdminUsers',
     'pages/AdminFamily',
-    'pages/AdminManage'
+    'pages/AdminManage',
+    'pages/DataAccessApprovalPage',
+    'pages/AbnormalLoginPage'
   ];
 
   aboutToAppear(): void {

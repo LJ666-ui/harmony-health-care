@@ -16,11 +16,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/appointment")
@@ -34,10 +30,10 @@ public class AppointmentController {
     @Autowired
     private PaymentRecordService paymentRecordService;
 
-    @Autowired
+    @Autowired(required = false)
     private RedisStockInterface redisStockService;
 
-    @Autowired
+    @Autowired(required = false)
     private RabbitTemplate rabbitTemplate;
 
     @PostMapping("/create")
@@ -59,10 +55,10 @@ public class AppointmentController {
             String traceId = UUID.randomUUID().toString().replace("-", "");
 
             System.out.println("[挂号调试] doctorId=" + appointment.getDoctorId()
-                + " scheduleDate=" + appointment.getScheduleDate()
-                + " period=" + appointment.getSchedulePeriod()
-                + " userId=" + appointment.getUserId()
-                + " traceId=" + traceId);
+                    + " scheduleDate=" + appointment.getScheduleDate()
+                    + " period=" + appointment.getSchedulePeriod()
+                    + " userId=" + appointment.getUserId()
+                    + " traceId=" + traceId);
 
             AppointmentMessage message = new AppointmentMessage();
             message.setUserId(appointment.getUserId());
@@ -72,15 +68,39 @@ public class AppointmentController {
             message.setFee(appointment.getFee());
             message.setTraceId(traceId);
 
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE_NAME,
-                    RabbitMQConfig.STOCK_ROUTING_KEY,
-                    message);
+            if (rabbitTemplate != null) {
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.EXCHANGE_NAME,
+                        RabbitMQConfig.STOCK_ROUTING_KEY,
+                        message);
 
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE_NAME,
-                    RabbitMQConfig.ORDER_ROUTING_KEY,
-                    message);
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.EXCHANGE_NAME,
+                        RabbitMQConfig.ORDER_ROUTING_KEY,
+                        message);
+            } else {
+                if (redisStockService != null) {
+                    boolean grabbed = redisStockService.grabSlot(
+                            appointment.getDoctorId(),
+                            appointment.getScheduleDate(),
+                            appointment.getSchedulePeriod(),
+                            appointment.getUserId());
+
+                    if (!grabbed) {
+                        return Result.error("该时段号源已满或重复挂号");
+                    }
+                }
+
+                Appointment newAppointment = new Appointment();
+                newAppointment.setUserId(appointment.getUserId());
+                newAppointment.setDoctorId(appointment.getDoctorId());
+                newAppointment.setScheduleDate(appointment.getScheduleDate());
+                newAppointment.setSchedulePeriod(appointment.getSchedulePeriod());
+                newAppointment.setFee(appointment.getFee());
+                newAppointment.setStatus(0);
+
+                appointmentService.createAppointment(newAppointment);
+            }
 
             Map<String, Object> result = new HashMap<>();
             result.put("traceId", traceId);
@@ -111,7 +131,7 @@ public class AppointmentController {
             Page<Appointment> pageParam = new Page<>(page, size);
             Page<Appointment> result = appointmentService.page(pageParam, wrapper);
 
-            List<Map<String, Object>> records = new java.util.ArrayList<>();
+            List<Map<String, Object>> records = new ArrayList<>();
             for (Appointment apt : result.getRecords()) {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id", apt.getId());

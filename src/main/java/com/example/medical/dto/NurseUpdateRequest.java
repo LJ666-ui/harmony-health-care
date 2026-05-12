@@ -32,4 +32,9 @@ public class NurseUpdateRequest {
      * 职称
      */
     private String title;
+
+    /**
+     * 头像URL
+     */
+    private String avatar;
 }

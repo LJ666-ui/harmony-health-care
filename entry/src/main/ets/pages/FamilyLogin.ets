@@ -109,6 +109,9 @@ struct FamilyLogin {
       const response = await HttpUtil.post<FamilyLoginResponseData>('/family/login', requestData, options);
 
       if (response.success && response.data) {
+        console.log('[FamilyLogin] 登录成功,Token:', response.data.token.substring(0, 20) + '...');
+        console.log('[FamilyLogin] 家属信息:', JSON.stringify(response.data.familyInfo));
+
         // 保存Token和家属信息
         const settings = SettingsUtil.getInstance();
         await settings.saveFamilyToken(response.data.token);
@@ -119,12 +122,18 @@ struct FamilyLogin {
         AppStorage.setOrCreate<FamilyInfo>('familyInfo', response.data.familyInfo);
         AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', true);
 
+        console.log('[FamilyLogin] Token已保存到AppStorage');
+        console.log('[FamilyLogin] isFamilyLoggedIn已设置为true');
+
         ToastUtil.showSuccess('登录成功');
 
-        // 跳转到家属主页
-        router.replaceUrl({
-          url: 'pages/FamilyHome'
-        });
+        // 延迟跳转,确保状态完全同步
+        setTimeout(() => {
+          console.log('[FamilyLogin] 准备跳转到FamilyHome');
+          router.replaceUrl({
+            url: 'pages/FamilyHome'
+          });
+        }, 300);
       } else {
         this.errorMessage = response.message || '登录失败，请重试';
         ToastUtil.showError(this.errorMessage);

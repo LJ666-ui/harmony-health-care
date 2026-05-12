@@ -20,6 +20,7 @@ export struct HomePage {
     { id: 'consultation', icon: '👨‍⚕️', title: '在线问诊', color: '#F39C12', route: 'pages/ConsultationPage' },
     { id: 'chat', icon: '💬', title: '我的聊天', color: '#13C2C2', route: 'pages/PatientChatListPage' },
     { id: 'medical_record', icon: '📋', title: '病历档案', color: '#9B59B6', route: 'pages/MedicalRecord' },
+    { id: 'follow_up', icon: '🔔', title: '复诊通知', color: '#E74C3C', route: 'pages/PatientFollowUpPage' },
     { id: 'health_report', icon: '📊', title: '体检报告', color: '#2ECC71', route: 'pages/ReportPage' },
     { id: 'medication', icon: '💊', title: '用药提醒', color: '#E74C3C', route: 'pages/MedicationPage' },
     { id: 'family_doctor', icon: '🏥', title: '家庭医生', color: '#34495E', route: 'pages/FamilyDoctorPage' },

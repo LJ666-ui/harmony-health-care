@@ -109,7 +109,7 @@ class EventPersistenceManager {
     try {
       const resultSet = await RdbHelper.query(
         'SELECT * FROM ' + TABLE_OFFLINE_HEALTH_RECORD + ' ORDER BY ' + COLUMN_CREATE_TIME + ' DESC LIMIT ?',
-        [limit]
+        [String(limit)]
       );
       const records: OfflineHealthRecord[] = [];
       while (resultSet.goToNextRow()) {
@@ -426,7 +426,7 @@ class EventPersistenceManager {
       const sql = 'SELECT * FROM ' + TABLE_BROWSE_HISTORY +
         ' WHERE ' + COLUMN_BROWSE_DURATION + ' >= 2000' +
         ' ORDER BY ' + COLUMN_CREATE_TIME + ' DESC LIMIT ?';
-      const resultSet = await RdbHelper.query(sql, [limit]);
+      const resultSet = await RdbHelper.query(sql, [String(limit)]);
       const items: BrowseHistoryItem[] = [];
       while (resultSet.goToNextRow()) {
         const item: BrowseHistoryItem = {

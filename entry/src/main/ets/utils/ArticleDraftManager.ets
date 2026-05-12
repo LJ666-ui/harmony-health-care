@@ -85,9 +85,9 @@ class ArticleDraftManager {
           title,
           content,
           String(categoryId),
-          Date.now(),
-          existingDraft.id as number
-        ]);
+          String(Date.now()),
+          String(existingDraft.id)
+        ] as string[]);
         
         hilog.info(0x0000, this.TAG, '草稿更新成功');
         return existingDraft.id!;
@@ -101,13 +101,13 @@ class ArticleDraftManager {
         
         hilog.info(0x0000, this.TAG, '完整SQL: %{public}s', sql);
         
-        const params: Array<string | number | null> = [
+        const params: string[] = [
           draftId,
           title || '',
           content || '',
           String(categoryId),
-          now,
-          now
+          String(now),
+          String(now)
         ];
         
         hilog.info(0x0000, this.TAG, '参数: %{public}s', JSON.stringify(params));

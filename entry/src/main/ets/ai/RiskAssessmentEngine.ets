@@ -1,5 +1,12 @@
 import { HealthInputData, RiskAssessmentResult, RiskItem, RiskLevel, RiskRisksMap, getRiskLevel, getRiskColor, getRiskLabel } from '../models/AIModels';
 import { HealthFeatureExtractor } from './HealthFeatureExtractor';
+import { MindSporeLiteAdapter } from './MindSporeLiteAdapter';
+import { InferenceOrchestrator } from './InferenceOrchestrator';
+import { FallbackEngine } from './FallbackEngine';
+import { ResultCache } from './ResultCache';
+import { ModelType } from './types/ModelTypes';
+import { InferenceScene, InferencePriority } from './types/EngineTypes';
+import { InferenceRequestBuilder, HealthDataInput } from './types/InferenceTypes';
 
 class SuggestionRule {
   riskKey: string = '';
@@ -18,7 +25,11 @@ class SuggestionRule {
 export class RiskAssessmentEngine {
   private static instance: RiskAssessmentEngine | null = null;
   private isModelLoaded: boolean = false;
-  private useFallback: boolean = true;
+  private useFallback: boolean = false;
+  private mindsporeAdapter: MindSporeLiteAdapter;
+  private orchestrator: InferenceOrchestrator;
+  private fallbackEngine: FallbackEngine;
+  private resultCache: ResultCache;
 
   private readonly WEIGHTS: number[] = [0.25, 0.25, 0.15, 0.20, 0.15];
 
@@ -102,6 +113,13 @@ export class RiskAssessmentEngine {
     ])
   ];
 
+  private constructor() {
+    this.mindsporeAdapter = MindSporeLiteAdapter.getInstance();
+    this.orchestrator = InferenceOrchestrator.getInstance();
+    this.fallbackEngine = FallbackEngine.getInstance();
+    this.resultCache = ResultCache.getInstance();
+  }
+
   static getInstance(): RiskAssessmentEngine {
     if (RiskAssessmentEngine.instance === null) {
       RiskAssessmentEngine.instance = new RiskAssessmentEngine();
@@ -109,19 +127,42 @@ export class RiskAssessmentEngine {
     return RiskAssessmentEngine.instance;
   }
 
+  async initialize(): Promise<void> {
+    try {
+      if (!this.mindsporeAdapter.isInitialized()) {
+        await this.mindsporeAdapter.initialize();
+      }
+      if (!this.mindsporeAdapter.isModelLoaded(ModelType.HEALTH_RISK_ASSESSMENT)) {
+        await this.mindsporeAdapter.loadModel(ModelType.HEALTH_RISK_ASSESSMENT);
+      }
+      this.isModelLoaded = true;
+      this.useFallback = false;
+      console.info('RiskAssessmentEngine: MindSpore Lite集成完成');
+    } catch (error) {
+      console.error('RiskAssessmentEngine: MindSpore Lite初始化失败，使用降级引擎', error);
+      this.useFallback = true;
+    }
+  }
+
   async assessRisk(healthData: HealthInputData, historyData?: HealthInputData[]): Promise<RiskAssessmentResult> {
     const startTime: number = Date.now();
     const features: number[] = HealthFeatureExtractor.extractFeatures(healthData);
 
     let probabilities: number[];
+    let engineVersion: string = 'mindspore-v1.0.0';
+
     try {
-      if (!this.useFallback && this.isModelLoaded) {
-        probabilities = await this.runInference(features);
+      if (!this.useFallback && this.isModelLoaded && this.mindsporeAdapter.isInitialized()) {
+        probabilities = await this.assessWithMindSpore(healthData);
+        engineVersion = 'mindspore-v1.0.0';
       } else {
-        probabilities = this.ruleBasedAssess(healthData, features);
+        probabilities = this.assessWithFallback(healthData, features);
+        engineVersion = 'fallback-v1';
       }
     } catch (e) {
-      probabilities = this.ruleBasedAssess(healthData, features);
+      console.error('RiskAssessmentEngine: MindSpore推理失败，降级到规则引擎', e);
+      probabilities = this.assessWithFallback(healthData, features);
+      engineVersion = 'fallback-v1';
     }
 
     const overallScore: number = this.calculateOverallScore(probabilities);
@@ -141,11 +182,43 @@ export class RiskAssessmentEngine {
       overallScore,
       overallLevel,
       suggestions,
-      this.useFallback ? 'rule-based-v1' : 'mindspore-v1.0.0',
+      engineVersion,
       Date.now() - startTime
     );
 
     return result;
+  }
+
+  private async assessWithMindSpore(data: HealthInputData): Promise<number[]> {
+    const healthData: HealthDataInput = {
+      age: data.age,
+      bmi: data.bmi,
+      systolic: data.systolic,
+      diastolic: data.diastolic,
+      fastingGlucose: data.fastingGlucose,
+      totalCholesterol: 0
+    };
+    const result = await this.mindsporeAdapter.infer(ModelType.HEALTH_RISK_ASSESSMENT, healthData);
+    if (result && result.probabilities) {
+      return result.probabilities;
+    }
+    throw new Error('MindSpore推理结果无效');
+  }
+
+  private assessWithFallback(data: HealthInputData, features: number[]): number[] {
+    const healthData: HealthDataInput = {
+      age: data.age,
+      bmi: data.bmi,
+      systolic: data.systolic,
+      diastolic: data.diastolic,
+      fastingGlucose: data.fastingGlucose,
+      totalCholesterol: 0
+    };
+    const result = this.fallbackEngine.assessHealthRisk(healthData);
+    if (result && result.probabilities) {
+      return result.probabilities;
+    }
+    return this.ruleBasedAssess(data, features);
   }
 
   private ruleBasedAssess(data: HealthInputData, features: number[]): number[] {

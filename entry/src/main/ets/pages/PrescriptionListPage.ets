@@ -1,4 +1,4 @@
-import { router, Color } from '@kit.ArkUI';
+import { router, Colors } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';

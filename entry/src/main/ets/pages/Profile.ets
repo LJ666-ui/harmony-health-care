@@ -109,7 +109,7 @@ struct Profile {
   }
 
   loadBanners() {
-    HttpUtil.get<BannerItem[]>('api/profile/banner/list').then((res: BaseResponse<BannerItem[]>) => {
+    HttpUtil.get<BannerItem[]>('/api/profile/banner/list').then((res: BaseResponse<BannerItem[]>) => {
       if (res.code === 200 && res.data) {
         this.banners = res.data;
       } else {
@@ -121,7 +121,7 @@ struct Profile {
   }
 
   loadHealthStats() {
-    HttpUtil.get<HealthStats>('api/profile/healthStats').then((res: BaseResponse<HealthStats>) => {
+    HttpUtil.get<HealthStats>('/api/profile/healthStats').then((res: BaseResponse<HealthStats>) => {
       if (res.code === 200 && res.data) {
         this.healthStats = res.data;
       } else {

@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.medical.common.Result;
 import com.example.medical.entity.AbnormalLogin;
 import com.example.medical.service.AbnormalLoginService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -13,10 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 异常登录检测控制器
- */
-@Api(tags = "异常登录检测管理")
+@Tag(name = "异常登录检测管理")
 @RestController
 @RequestMapping("/api/security")
 public class AbnormalLoginController {
@@ -24,20 +21,14 @@ public class AbnormalLoginController {
     @Autowired
     private AbnormalLoginService abnormalLoginService;
 
-    /**
-     * 记录异常登录
-     */
-    @ApiOperation("记录异常登录")
+    @Operation(summary = "记录异常登录")
     @PostMapping("/abnormal-login")
     public Result<AbnormalLogin> record(@RequestBody AbnormalLogin abnormalLogin) {
         AbnormalLogin result = abnormalLoginService.record(abnormalLogin);
         return Result.success(result);
     }
 
-    /**
-     * 获取异常登录列表
-     */
-    @ApiOperation("获取异常登录列表")
+    @Operation(summary = "获取异常登录列表")
     @GetMapping("/abnormal-logins")
     public Result<Page<AbnormalLogin>> getList(@RequestParam(required = false) Long userId,
                                                 @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
@@ -48,30 +39,21 @@ public class AbnormalLoginController {
         return Result.success(result);
     }
 
-    /**
-     * 处理异常登录
-     */
-    @ApiOperation("处理异常登录")
+    @Operation(summary = "处理异常登录")
     @PutMapping("/abnormal-login/{id}/handle")
     public Result<AbnormalLogin> handle(@PathVariable Long id) {
         AbnormalLogin result = abnormalLoginService.handle(id);
         return Result.success(result);
     }
 
-    /**
-     * 获取未处理的异常登录数量
-     */
-    @ApiOperation("获取未处理的异常登录数量")
+    @Operation(summary = "获取未处理的异常登录数量")
     @GetMapping("/abnormal-login/unhandled-count")
     public Result<Long> getUnhandledCount() {
         long result = abnormalLoginService.getUnhandledCount();
         return Result.success(result);
     }
 
-    /**
-     * 获取高风险异常登录列表
-     */
-    @ApiOperation("获取高风险异常登录列表")
+    @Operation(summary = "获取高风险异常登录列表")
     @GetMapping("/abnormal-login/high-risk")
     public Result<List<AbnormalLogin>> getHighRiskList() {
         List<AbnormalLogin> result = abnormalLoginService.getHighRiskList();

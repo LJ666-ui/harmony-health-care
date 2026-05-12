@@ -80,13 +80,13 @@ public class AppointmentController {
                         message);
             } else {
                 if (redisStockService != null) {
-                    boolean grabbed = redisStockService.grabSlot(
+                    int grabResult = redisStockService.grabSlot(
                             appointment.getDoctorId(),
                             appointment.getScheduleDate(),
                             appointment.getSchedulePeriod(),
                             appointment.getUserId());
 
-                    if (!grabbed) {
+                    if (grabResult != 1) {
                         return Result.error("该时段号源已满或重复挂号");
                     }
                 }

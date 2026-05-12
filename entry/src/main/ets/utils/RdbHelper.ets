@@ -50,7 +50,7 @@ class RdbHelper {
     return this.rdbStore !== null;
   }
 
-  public async executeSql(sql: string, bindArgs?: Array<string | number | null>): Promise<void> {
+  public async executeSql(sql: string, bindArgs?: string[]): Promise<void> {
     try {
       hilog.info(0x0000, TAG, '执行SQL: %{public}s', sql);
       if (bindArgs && bindArgs.length > 0) {
@@ -65,7 +65,7 @@ class RdbHelper {
     }
   }
 
-  public async query(sql: string, bindArgs?: Array<string | number | null>): Promise<relationalStore.ResultSet> {
+  public async query(sql: string, bindArgs?: string[]): Promise<relationalStore.ResultSet> {
     try {
       return await this.getRdb().querySql(sql, bindArgs);
     } catch (error) {

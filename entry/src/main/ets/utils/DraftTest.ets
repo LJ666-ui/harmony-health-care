@@ -61,13 +61,13 @@ class DraftTest {
 
       hilog.info(0x0000, DraftTest.TAG, '插入SQL: %{public}s', insertSql);
       
-      const params: Array<string | number | null> = [
+      const params: string[] = [
         testDraftId,
         testTitle,
         testContent,
         String(testCategoryId),
-        testTime,
-        testTime
+        String(testTime),
+        String(testTime)
       ];
       
       hilog.info(0x0000, DraftTest.TAG, '参数数量: %{public}d', params.length);
@@ -82,7 +82,7 @@ class DraftTest {
 
       // 4. 查询验证
       const selectSql = `SELECT * FROM ${TABLE_ARTICLE_DRAFT} WHERE ${COLUMN_DRAFT_ID} = ?`;
-      const selectResult = await RdbHelper.query(selectSql, [testDraftId]);
+      const selectResult = await RdbHelper.query(selectSql, [testDraftId] as string[]);
       
       if (selectResult.goToFirstRow()) {
         hilog.info(0x0000, DraftTest.TAG, '查询结果:');

@@ -4,13 +4,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.medical.common.Result;
 import com.example.medical.entity.Medicine;
 import com.example.medical.service.MedicineService;
+import com.example.medical.service.PatientMedicationRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/medicine")
@@ -18,6 +17,9 @@ public class MedicineController {
 
     @Autowired
     private MedicineService medicineService;
+
+    @Autowired
+    private PatientMedicationRecordService patientMedicationRecordService;
 
     @GetMapping("/list")
     public Result<List<Medicine>> list(@RequestParam(required = false) String categoryCode) {
@@ -29,6 +31,54 @@ public class MedicineController {
         }
         System.out.println("数据库数据：" + dataList);
         return Result.success(dataList);
+    }
+
+    @GetMapping("/medication-list")
+    public Result<List<Map<String, Object>>> getMedicationList(
+            @RequestParam(required = false) Long nurseId,
+            @RequestParam(required = false) Long patientId) {
+        
+        try {
+            List<Map<String, Object>> result;
+            
+            if (nurseId != null) {
+                result = patientMedicationRecordService.getMedicationListByNurseId(nurseId);
+            } else if (patientId != null) {
+                result = patientMedicationRecordService.getMedicationListByPatientId(patientId);
+            } else {
+                return Result.error("请提供nurseId或patientId参数");
+            }
+            
+            System.out.println("用药记录数据：" + result);
+            return Result.success(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取用药记录失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/medication-confirm/{id}")
+    public Result<Boolean> confirmMedication(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> requestBody) {
+        
+        try {
+            Long nurseId = requestBody.get("nurseId");
+            if (nurseId == null) {
+                return Result.error("缺少nurseId参数");
+            }
+            
+            boolean success = patientMedicationRecordService.confirmMedication(id, nurseId);
+            
+            if (success) {
+                return Result.success(true);
+            } else {
+                return Result.error("确认失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("确认失败：" + e.getMessage());
+        }
     }
 
     @GetMapping("/page")

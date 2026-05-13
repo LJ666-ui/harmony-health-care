@@ -99,15 +99,27 @@ struct NurseLogin {
     this.errorMessage = '';
 
     try {
+      console.log('[NurseLogin] 开始登录请求...');
+      console.log('[NurseLogin] 手机号:', this.phone);
+      
       const requestData: NurseLoginRequestData = {
         phone: this.phone,
         password: this.password
       };
 
       const options: RequestOptions = { skipAuth: true };
+      
+      console.log('[NurseLogin] 发送POST请求到 /nurse/login');
       const response = await HttpUtil.post<NurseLoginResponseData>('/nurse/login', requestData, options);
+      
+      console.log('[NurseLogin] 收到响应:', JSON.stringify(response));
+      console.log('[NurseLogin] success:', response.success);
+      console.log('[NurseLogin] data:', response.data ? '存在' : '不存在');
+      console.log('[NurseLogin] message:', response.message);
 
       if (response.success && response.data) {
+        console.log('[NurseLogin] 登录成功，保存Token和护士信息...');
+        
         // 保存Token和护士信息
         const settings = SettingsUtil.getInstance();
         await settings.saveNurseToken(response.data.token);
@@ -118,21 +130,34 @@ struct NurseLogin {
         AppStorage.setOrCreate<NurseInfo>('nurseInfo', response.data.nurseInfo);
         AppStorage.setOrCreate<boolean>('isNurseLoggedIn', true);
 
+        // 保存护士ID（nurse表的主键）和用户ID（user表的主键）到AppStorage
+        const nurseId: number = response.data.nurseInfo.id || 0;
+        const userId: number = response.data.nurseInfo.userId || 0;
+        console.log('[NurseLogin] 护士信息 - nurseId:', nurseId, ', userId:', userId);
+        
+        // 存储nurseId供用药管理等API使用
+        AppStorage.setOrCreate<number>('userId', nurseId);
+        AppStorage.setOrCreate<number>('nurseId', nurseId);
+        AppStorage.setOrCreate<number>('userAccountId', userId);
+
         ToastUtil.showSuccess('登录成功');
+        console.log('[NurseLogin] 准备跳转到护士工作台...');
 
         // 跳转到护士工作台
         router.replaceUrl({
           url: 'pages/NurseWorkbench'
         });
       } else {
+        console.error('[NurseLogin] 登录失败:', response.message);
         this.errorMessage = response.message || '登录失败，请重试';
         ToastUtil.showError(this.errorMessage);
       }
     } catch (error) {
-      console.error('护士登录失败:', error);
+      console.error('[NurseLogin] 护士登录异常:', error);
       this.errorMessage = '登录失败，请检查网络连接';
       ToastUtil.showError(this.errorMessage);
     } finally {
+      console.log('[NurseLogin] 登录请求结束，isLoading设为false');
       this.isLoading = false;
     }
   }

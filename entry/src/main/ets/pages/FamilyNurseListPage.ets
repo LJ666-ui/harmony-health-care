@@ -20,10 +20,16 @@ struct FamilyNurseListPage {
   private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
+    console.info('[FamilyNurseListPage] aboutToAppear currentUserId:', this.currentUserId);
+    
     const params: Object | undefined = router.getParams();
     if (params) {
       const p: Record<string, Object> = params as Record<string, Object>;
       this.familyId = p['familyId'] as number || this.currentUserId;
+      console.info('[FamilyNurseListPage] 从参数获取familyId:', this.familyId);
+    } else {
+      this.familyId = this.currentUserId;
+      console.info('[FamilyNurseListPage] 无参数，使用currentUserId:', this.familyId);
     }
     this.loadNurses();
   }
@@ -52,14 +58,39 @@ struct FamilyNurseListPage {
   }
 
   private handleNurseClick(nurse: Nurse): void {
+    console.info('[FamilyNurseList] handleNurseClick 开始');
+    console.info('[FamilyNurseList] familyId:', this.familyId);
+    console.info('[FamilyNurseList] currentUserId:', this.currentUserId);
+    console.info('[FamilyNurseList] nurse.id:', nurse.id);
+    console.info('[FamilyNurseList] nurse.name:', nurse.name);
+
+    if (this.familyId === 0 && this.currentUserId === 0) {
+      console.error('[FamilyNurseList] 用户ID无效');
+      ToastUtil.showError('用户信息异常，请重新登录');
+      return;
+    }
+
+    if (!nurse.id || nurse.id === 0) {
+      console.error('[FamilyNurseList] nurse.id 无效');
+      ToastUtil.showError('护士信息异常');
+      return;
+    }
+
+    const targetFamilyId: number = this.familyId || this.currentUserId;
+
     router.pushUrl({
       url: 'pages/FamilyNurseChatPage',
       params: {
-        familyId: this.familyId,
+        familyId: targetFamilyId,
         nurseId: nurse.id,
         nurseName: nurse.name,
         relatedPatientName: ''
       }
+    }).then(() => {
+      console.info('[FamilyNurseList] 跳转成功');
+    }).catch((err: Error) => {
+      console.error('[FamilyNurseList] 跳转失败:', err.message);
+      ToastUtil.showError('页面跳转失败：' + err.message);
     });
   }
 
@@ -159,7 +190,7 @@ struct FamilyNurseListPage {
         .justifyContent(FlexAlign.Center)
       } else {
         List({ space: 10 }) {
-          ForEach(this.nurses, (nurse: Nurse) => {
+          ForEach(this.nurses, (nurse: Nurse, index: number) => {
             ListItem() {
               Row() {
                 // 头像
@@ -221,11 +252,13 @@ struct FamilyNurseListPage {
               .backgroundColor('#FFFFFF')
               .borderRadius(12)
               .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
-              .onClick(() => {
-                this.handleNurseClick(nurse);
-              })
             }
-          })
+            .width('100%')
+            .onClick(() => {
+              console.info('[FamilyNurseList] 点击护士:', nurse.name, 'ID:', nurse.id);
+              this.handleNurseClick(nurse);
+            })
+          }, (nurse: Nurse) => nurse.id.toString())
         }
         .width('95%')
         .layoutWeight(1)

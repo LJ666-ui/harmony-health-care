@@ -175,13 +175,18 @@ struct AppointmentManagementPage {
       if (this.isLoading) {
         Loading({ text: '加载中...' })
       } else if (this.hasError) {
-        EmptyState({
-          title: '加载失败',
-          description: this.errorMessage,
-          buttonText: '重新加载',
-          onAdd: () => {
-            this.loadHospitalList();
-          }
+        Column() {
+          EmptyState({
+            title: '加载失败',
+            description: this.errorMessage,
+            buttonText: '重新加载',
+            showButton: true
+          })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .onClick(() => {
+          this.loadHospitalList();
         })
       } else if (this.hospitals.length === 0) {
         EmptyState({

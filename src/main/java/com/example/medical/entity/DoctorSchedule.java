@@ -20,7 +20,7 @@ public class DoctorSchedule {
     private Long doctorId;
 
     @TableField("schedule_date")
-    @JsonFormat(pattern = "yyyyMMdd", timezone = "GMT+8")
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
     private Date scheduleDate;
 
     @TableField("schedule_period")

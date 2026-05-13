@@ -6,9 +6,11 @@ import com.example.medical.common.Result;
 import com.example.medical.entity.Doctor;
 import com.example.medical.entity.Hospital;
 import com.example.medical.entity.MedicalRecord;
+import com.example.medical.entity.User;
 import com.example.medical.service.DoctorService;
 import com.example.medical.service.HospitalService;
 import com.example.medical.service.MedicalRecordService;
+import com.example.medical.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +31,9 @@ public class MedicalRecordController {
 
     @Autowired
     private HospitalService hospitalService;
+
+    @Autowired
+    private UserService userService;
 
     /**
      * 创建病历
@@ -106,7 +111,10 @@ public class MedicalRecordController {
                 if (record.getDoctorId() != null) {
                     Doctor doctor = doctorService.getById(record.getDoctorId());
                     if (doctor != null) {
-                        doctorName = doctor.getRealName();
+                        User docUser = userService.getById(doctor.getUserId());
+                        if (docUser != null && docUser.getRealName() != null) {
+                            doctorName = docUser.getRealName();
+                        }
                         if (doctor.getDepartment() != null && !doctor.getDepartment().isEmpty()) {
                             department = doctor.getDepartment();
                             formattedRecord.put("department", department);

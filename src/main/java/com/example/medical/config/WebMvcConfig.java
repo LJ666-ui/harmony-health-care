@@ -79,6 +79,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/nurse/**",
                         "/doctor/**",
                         "/api/doctor/**",
+                        "/api/nursing-record/**",
 
                         // ====================== 公共开放接口 ======================
                         "/ai/**",

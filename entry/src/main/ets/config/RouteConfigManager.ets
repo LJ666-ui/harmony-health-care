@@ -72,6 +72,8 @@ export class RouteConfigManager {
       'pages/Appointments',
       'pages/AppointmentManagementPage',
       'pages/HospitalDetailPage',
+      'pages/DepartmentDoctorsPage',
+      'pages/DoctorDetailPage',
       'pages/HospitalDepartmentPage',
       'pages/DepartmentListPage',
       'pages/Medications',

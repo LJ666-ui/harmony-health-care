@@ -94,7 +94,7 @@ struct NurseHealthPage {
   private async loadHealthRecords(): Promise<void> {
     this.isLoadingRecords = true;
     try {
-      const url = `${ApiConstants.HEALTH_RECORD_PAGE}?userId=${this.selectedPatientId}&pageSize=100`;
+      const url = `${ApiConstants.HEALTH_RECORD_PAGE}?page=1&size=100&userId=${this.selectedPatientId}`;
       hilog.info(0x0000, TAG, '请求URL: %{public}s', url);
 
       const response = await HttpUtil.get<Object>(url);

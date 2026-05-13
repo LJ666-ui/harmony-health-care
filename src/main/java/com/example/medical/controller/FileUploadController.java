@@ -27,9 +27,13 @@ public class FileUploadController {
     private static final Logger log = LoggerFactory.getLogger(FileUploadController.class);
     
     // 允许的3D文件扩展名
-    private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("stl", "obj", "3ds", "fbx", "gltf", "glb");
-    // 最大文件大小（50MB）
-    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024;
+    private static final List<String> ALLOWED_3D_EXTENSIONS = Arrays.asList("stl", "obj", "3ds", "fbx", "gltf", "glb");
+    // 允许的视频文件扩展名
+    private static final List<String> ALLOWED_VIDEO_EXTENSIONS = Arrays.asList("mp4", "avi", "mov", "mkv", "wmv", "flv");
+    // 3D文件最大大小（50MB）
+    private static final long MAX_3D_FILE_SIZE = 50 * 1024 * 1024;
+    // 视频文件最大大小（200MB）
+    private static final long MAX_VIDEO_FILE_SIZE = 200 * 1024 * 1024;
     
     @Value("${file.upload.dir:./uploads}")
     private String uploadDir;
@@ -97,18 +101,17 @@ public class FileUploadController {
         return userId != null && authorizedUsers.contains(userId);
     }
 
-    // 文件类型校验
     private boolean isValidFileExtension(String filename) {
         if (filename == null || !filename.contains(".")) {
             return false;
         }
         String extension = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
-        return ALLOWED_EXTENSIONS.contains(extension);
+        return ALLOWED_3D_EXTENSIONS.contains(extension);
     }
 
     // 文件大小校验
     private boolean isValidFileSize(MultipartFile file) {
-        return file.getSize() <= MAX_FILE_SIZE;
+        return file.getSize() <= MAX_3D_FILE_SIZE;
     }
 
     // 公共文件上传逻辑
@@ -213,6 +216,92 @@ public class FileUploadController {
         } catch (Exception e) {
             log.error("上传失败", e);
             return Result.error("上传失败：" + e.getMessage());
+        }
+    }
+
+    private boolean isValidVideoFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return false;
+        }
+        String extension = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+        return ALLOWED_VIDEO_EXTENSIONS.contains(extension);
+    }
+
+    private boolean isValidVideoFileSize(MultipartFile file) {
+        return file.getSize() <= MAX_VIDEO_FILE_SIZE;
+    }
+
+    private String uploadVideoFile(MultipartFile file) throws IOException {
+        String originalFilename = file.getOriginalFilename();
+        String fileExtension = originalFilename != null ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
+        String newFilename = UUID.randomUUID() + fileExtension;
+
+        File uploadDirFile = new File(uploadDir);
+        if (!uploadDirFile.isAbsolute()) {
+            String projectRoot = System.getProperty("user.dir");
+            uploadDir = projectRoot + File.separator + uploadDir;
+        }
+
+        String uploadPath = uploadDir + "/video/";
+        File dir = new File(uploadPath);
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                throw new IOException("无法创建视频上传目录：" + uploadPath);
+            }
+        }
+
+        File dest = new File(uploadPath + newFilename);
+        file.transferTo(dest);
+
+        return "/uploads/video/" + newFilename;
+    }
+
+    @PostMapping("/rehab/video")
+    public Result uploadRehabVideo(@RequestParam("file") MultipartFile file,
+                                   @RequestParam(value = "actionId", required = false) Long actionId,
+                                   HttpServletRequest request) {
+        if (file.isEmpty()) {
+            return Result.error("视频文件不能为空");
+        }
+
+        try {
+            String token = request.getHeader("Token");
+            if (token == null || token.isEmpty()) {
+                return Result.error("未登录，请先登录");
+            }
+            if (!JwtUtil.validateToken(token)) {
+                return Result.error("登录已过期，请重新登录");
+            }
+
+            Long userId = JwtUtil.getUserId(token);
+
+            if (!isValidVideoFileExtension(file.getOriginalFilename())) {
+                return Result.error("不支持的视频格式，请上传MP4、AVI、MOV、MKV、WMV或FLV格式的视频");
+            }
+
+            if (!isValidVideoFileSize(file)) {
+                return Result.error("视频大小超过限制（最大200MB）");
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            String filePath = uploadVideoFile(file);
+            log.info("康复训练视频上传成功：{}（原始文件名：{}），用户ID：{}，关联动作ID：{}", 
+                    filePath, originalFilename, userId, actionId);
+
+            java.util.HashMap<String, Object> result = new java.util.HashMap<>();
+            result.put("originalFilename", originalFilename);
+            result.put("filePath", filePath);
+            result.put("actionId", actionId);
+            result.put("url", "http://localhost:8080" + filePath);
+
+            return Result.success(result);
+
+        } catch (IOException e) {
+            log.error("康复训练视频保存失败", e);
+            return Result.error("视频文件保存失败：" + e.getMessage());
+        } catch (Exception e) {
+            log.error("康复训练视频上传失败", e);
+            return Result.error("视频上传失败：" + e.getMessage());
         }
     }
 }

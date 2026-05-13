@@ -16,15 +16,20 @@ import java.util.Map;
 public class RehabActionServiceImpl extends ServiceImpl<RehabActionMapper, RehabAction> implements RehabActionService {
 
     @Override
-    public Page<RehabAction> getActionList(int pageNum, int pageSize) {
-        // 默认每页10条数据
+    public Page<RehabAction> getActionList(int pageNum, int pageSize, String keyword) {
         if (pageSize <= 0) {
-            pageSize = 10;
+            pageSize = 20;
         }
 
         QueryWrapper<RehabAction> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("is_deleted", 0)
-                .orderByDesc("create_time");
+        queryWrapper.eq("is_deleted", 0);
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            queryWrapper.and(w -> w.like("action_name", keyword.trim())
+                    .or().like("action_desc", keyword.trim()));
+        }
+
+        queryWrapper.orderByAsc("id");
 
         return this.page(new Page<>(pageNum, pageSize), queryWrapper);
     }

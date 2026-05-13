@@ -12,25 +12,28 @@ interface NursingRecord {
   patientName?: string;
   nurseId: number;
   nurseName?: string;
-  recordType: string;
+  recordType: number;
   recordContent: string;
-  recordTime: string;
+  remark?: string;
   vitalSigns?: string;
-  notes?: string;
+  careTime: string;
   createTime: string;
+  updateTime: string;
+  isDeleted: number;
 }
 
 interface NurseInfoForRecord {
+  id: number;
   name: string;
+  userId?: number;
 }
 
 interface CreateNursingRecordRequest {
-  nurseId: number;
-  nurseName: string;
-  recordType: string;
+  patientId: number;
+  recordType: number;
   recordContent: string;
-  recordTime: string;
-  notes: string;
+  remark?: string;
+  vitalSigns?: string;
 }
 
 @Entry
@@ -42,17 +45,31 @@ struct NurseMedicalRecord {
   @State isLoading: boolean = true;
   @State records: NursingRecord[] = [];
   @State showAddDialog: boolean = false;
-  @State newRecordType: string = '';
+  @State selectedPatientId: number = 0;
+  @State newRecordType: number = 1;
   @State newRecordContent: string = '';
-  @State newNotes: string = '';
+  @State newRemark: string = '';
+  @State recordTypes: string[] = ['生命体征监测', '用药护理', '伤口护理', '日常护理', '术后护理', '康复护理'];
+
+  private getNurseId(): number {
+    // 优先使用nurseInfo中的id
+    if (this.nurseInfo !== null && this.nurseInfo.id !== undefined) {
+      return this.nurseInfo.id;
+    }
+    // 其次使用userId
+    return this.currentUserId;
+  }
 
   async aboutToAppear(): Promise<void> {
-    const settings = SettingsUtil.getInstance();
-    const isLoggedIn = await settings.isNurseLoggedIn();
-    if (!isLoggedIn) {
-      ToastUtil.showError('请先登录');
-      router.replaceUrl({ url: 'pages/NurseLogin' });
-      return;
+    console.info('[NurseMedicalRecord] 初始化，userId:', this.currentUserId, 'nurseInfo:', JSON.stringify(this.nurseInfo));
+    
+    const params = router.getParams();
+    if (params !== null && params !== undefined) {
+      const paramRecord = params as Record<string, Object>;
+      const patientIdParam = paramRecord['patientId'];
+      if (patientIdParam !== null && patientIdParam !== undefined) {
+        this.selectedPatientId = patientIdParam as number;
+      }
     }
 
     await this.loadRecords();
@@ -61,17 +78,40 @@ struct NurseMedicalRecord {
   private async loadRecords(): Promise<void> {
     this.isLoading = true;
     try {
-      const response = await HttpUtil.get<NursingRecord[]>(
-        `${ApiConstants.MEDICAL_RECORD_PAGE}?nurseId=${this.currentUserId}`
-      );
-
-      if (response.success && response.data !== null && response.data !== undefined) {
-        this.records = response.data.sort((a: NursingRecord, b: NursingRecord) =>
-          new Date(b.recordTime).getTime() - new Date(a.recordTime).getTime()
+      const nurseId = this.getNurseId();
+      console.info('[NurseMedicalRecord] 查询护士ID:', nurseId);
+      
+      if (nurseId <= 0) {
+        console.warn('NurseMedicalRecord - 护士ID无效，尝试加载所有记录');
+        // 如果护士ID无效，尝试加载所有记录
+        const response = await HttpUtil.get<NursingRecord[]>(
+          ApiConstants.NURSING_RECORD_LIST
         );
+        
+        if (response.success && response.data !== null && response.data !== undefined) {
+          this.records = response.data.sort((a: NursingRecord, b: NursingRecord) =>
+            new Date(b.careTime).getTime() - new Date(a.careTime).getTime()
+          );
+        } else {
+          this.records = [];
+        }
       } else {
-        this.records = [];
+        const response = await HttpUtil.get<NursingRecord[]>(
+          `${ApiConstants.NURSING_RECORD_BY_NURSE}${nurseId}`
+        );
+
+        console.info('[NurseMedicalRecord] 查询结果:', JSON.stringify(response));
+
+        if (response.success && response.data !== null && response.data !== undefined) {
+          this.records = response.data.sort((a: NursingRecord, b: NursingRecord) =>
+            new Date(b.careTime).getTime() - new Date(a.careTime).getTime()
+          );
+        } else {
+          this.records = [];
+        }
       }
+      
+      console.info('[NurseMedicalRecord] 加载记录数:', this.records.length);
     } catch (error) {
       console.error('加载护理记录失败:', error);
       this.records = [];
@@ -81,33 +121,41 @@ struct NurseMedicalRecord {
   }
 
   private async addRecord(): Promise<void> {
-    if (!this.newRecordType || !this.newRecordContent) {
-      ToastUtil.showError('请填写记录类型和内容');
+    if (!this.newRecordContent || this.newRecordContent.trim() === '') {
+      ToastUtil.showError('请填写记录内容');
+      return;
+    }
+
+    if (this.selectedPatientId === 0) {
+      ToastUtil.showError('请选择患者');
       return;
     }
 
     try {
-      const nurseName = this.nurseInfo !== null ? this.nurseInfo.name : '护士';
       const requestBody: CreateNursingRecordRequest = {
-        nurseId: this.currentUserId,
-        nurseName: nurseName,
+        patientId: this.selectedPatientId,
         recordType: this.newRecordType,
         recordContent: this.newRecordContent,
-        recordTime: new Date().toISOString(),
-        notes: this.newNotes
+        remark: this.newRemark
       };
 
+      console.info('[NurseMedicalRecord] 保存护理记录，患者ID:', this.selectedPatientId, '护士ID:', this.currentUserId);
+
       const response = await HttpUtil.post<NursingRecord>(
-        ApiConstants.MEDICAL_RECORD_CREATE,
-        requestBody
+        ApiConstants.NURSING_RECORD_CREATE,
+        requestBody,
+        { skipAuth: false }
       );
+
+      console.info('[NurseMedicalRecord] 保存结果:', JSON.stringify(response));
 
       if (response.success) {
         ToastUtil.showSuccess('记录添加成功');
         this.showAddDialog = false;
-        this.newRecordType = '';
+        this.newRecordType = 1;
         this.newRecordContent = '';
-        this.newNotes = '';
+        this.newRemark = '';
+        this.selectedPatientId = 0;
         await this.loadRecords();
       } else {
         ToastUtil.showError(response.message !== undefined ? response.message : '添加失败');
@@ -123,16 +171,20 @@ struct NurseMedicalRecord {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   }
 
-  private getRecordTypeColor(type: string): string {
-    const colors: Record<string, string> = {
-      '生命体征监测': '#3498DB',
-      '用药护理': '#27AE60',
-      '伤口护理': '#E74C3C',
-      '康复训练': '#9B59B6',
-      '日常护理': '#F39C12',
-      '其他': '#95A5A6'
+  private getRecordTypeColor(type: number): string {
+    const colors: Record<number, string> = {
+      1: '#3498DB',
+      2: '#27AE60',
+      3: '#E74C3C',
+      4: '#F39C12',
+      5: '#9B59B6',
+      6: '#16A085'
     };
     return colors[type] || '#95A5A6';
+  }
+
+  private getRecordTypeName(type: number): string {
+    return this.recordTypes[type - 1] || '其他';
   }
 
   @Builder
@@ -142,21 +194,39 @@ struct NurseMedicalRecord {
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
 
+      Column({ space: 8 }) {
+        Text('患者ID')
+          .fontSize(14)
+          .width('100%')
+
+        TextInput({ placeholder: '请输入患者ID', text: this.selectedPatientId > 0 ? String(this.selectedPatientId) : '' })
+          .width('100%')
+          .height(40)
+          .backgroundColor('#F5F5F5')
+          .borderRadius(8)
+          .type(InputType.Number)
+          .onChange((value: string) => {
+            this.selectedPatientId = parseInt(value) || 0;
+          })
+      }
+      .width('100%')
+
       Column({ space: 12 }) {
         Text('记录类型')
           .fontSize(14)
           .width('100%')
 
-        Row({ space: 8 }) {
-          ForEach(['生命体征监测', '用药护理', '伤口护理', '日常护理'], (type: string) => {
+        Flex({ wrap: FlexWrap.Wrap }) {
+          ForEach(this.recordTypes, (type: string, index: number) => {
             Button(type)
               .fontSize(12)
               .height(32)
-              .fontColor(this.newRecordType === type ? '#FFFFFF' : '#3498DB')
-              .backgroundColor(this.newRecordType === type ? '#3498DB' : '#EBF5FB')
+              .margin({ right: 8, bottom: 8 })
+              .fontColor(this.newRecordType === (index + 1) ? '#FFFFFF' : '#3498DB')
+              .backgroundColor(this.newRecordType === (index + 1) ? '#3498DB' : '#EBF5FB')
               .borderRadius(6)
               .onClick(() => {
-                this.newRecordType = type;
+                this.newRecordType = index + 1;
               })
           })
         }
@@ -185,13 +255,13 @@ struct NurseMedicalRecord {
           .fontSize(14)
           .width('100%')
 
-        TextInput({ placeholder: '备注信息', text: this.newNotes })
+        TextInput({ placeholder: '备注信息', text: this.newRemark })
           .width('100%')
           .height(40)
           .backgroundColor('#F5F5F5')
           .borderRadius(8)
           .onChange((value: string) => {
-            this.newNotes = value;
+            this.newRemark = value;
           })
       }
       .width('100%')
@@ -285,7 +355,7 @@ struct NurseMedicalRecord {
               ListItem() {
                 Column() {
                   Row() {
-                    Text(record.recordType)
+                    Text(this.getRecordTypeName(record.recordType))
                       .fontSize(12)
                       .fontColor('#FFFFFF')
                       .backgroundColor(this.getRecordTypeColor(record.recordType))
@@ -294,7 +364,7 @@ struct NurseMedicalRecord {
 
                     Blank()
 
-                    Text(this.formatDate(record.recordTime))
+                    Text(this.formatDate(record.careTime))
                       .fontSize(12)
                       .fontColor('#999999')
                   }
@@ -320,8 +390,8 @@ struct NurseMedicalRecord {
                       .margin({ top: 8 })
                   }
 
-                  if (record.notes) {
-                    Text(`备注：${record.notes}`)
+                  if (record.remark) {
+                    Text(`备注：${record.remark}`)
                       .fontSize(13)
                       .fontColor(GlobalTheme.TEXT_SECONDARY)
                       .margin({ top: 8 })

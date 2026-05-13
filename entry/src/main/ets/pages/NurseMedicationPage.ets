@@ -49,17 +49,32 @@ struct NurseMedicationPage {
   private async loadMedications(): Promise<void> {
     this.isLoading = true;
     try {
-      const response = await HttpUtil.get<MedicationPlan[]>(
-        `${ApiConstants.MEDICINE_LIST}?nurseId=${this.currentUserId}`
-      );
+      console.log('[NurseMedication] 开始加载用药记录...');
+      console.log('[NurseMedication] 当前护士ID (userId):', this.currentUserId);
+      
+      const apiUrl = `${ApiConstants.MEDICATION_LIST}?nurseId=${this.currentUserId}`;
+      console.log('[NurseMedication] 请求URL:', apiUrl);
+
+      const response = await HttpUtil.get<MedicationPlan[]>(apiUrl);
+      
+      console.log('[NurseMedication] API响应:', JSON.stringify(response));
+      console.log('[NurseMedication] success:', response.success);
+      console.log('[NurseMedication] data类型:', typeof response.data);
+      console.log('[NurseMedication] data长度:', response.data ? response.data.length : 'null/undefined');
 
       if (response.success && response.data !== null && response.data !== undefined) {
         this.medications = response.data;
+        console.log('[NurseMedication] 成功加载', this.medications.length, '条用药记录');
+        
+        if (this.medications.length > 0) {
+          console.log('[NurseMedication] 第一条数据示例:', JSON.stringify(this.medications[0]));
+        }
       } else {
         this.medications = [];
+        console.log('[NurseMedication] API返回空数据或失败, message:', response.message);
       }
     } catch (error) {
-      console.error('加载用药计划失败:', error);
+      console.error('[NurseMedication] 加载用药计划失败:', error);
       this.medications = [];
     } finally {
       this.isLoading = false;
@@ -70,7 +85,7 @@ struct NurseMedicationPage {
     try {
       const requestBody: ConfirmMedicationRequest = { nurseId: this.currentUserId };
       const response = await HttpUtil.post<void>(
-        `${ApiConstants.MEDICINE_DETAIL}${medId}/confirm`,
+        `${ApiConstants.MEDICATION_CONFIRM}${medId}`,
         requestBody
       );
 
@@ -89,7 +104,6 @@ struct NurseMedicationPage {
   private getStatusText(status: number): string {
     switch (status) {
       case 0: return '待执行';
-      case 1: return '进行中';
       case 2: return '已完成';
       case 3: return '已取消';
       default: return '未知';
@@ -99,7 +113,6 @@ struct NurseMedicationPage {
   private getStatusColor(status: number): string {
     switch (status) {
       case 0: return '#F39C12';
-      case 1: return '#3498DB';
       case 2: return '#27AE60';
       case 3: return '#95A5A6';
       default: return '#999999';
@@ -122,7 +135,7 @@ struct NurseMedicationPage {
               this.selectedStatus = -1;
             })
 
-          ForEach([0, 1, 2], (status: number) => {
+          ForEach([0, 2], (status: number) => {
             Button(this.getStatusText(status))
               .fontSize(13)
               .height(32)

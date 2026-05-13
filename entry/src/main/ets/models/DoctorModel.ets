@@ -21,21 +21,21 @@ export class DoctorInfo {
 export class DoctorInfoHelper {
   static fromJson(raw: Record<string, Object>): DoctorInfo {
     const info: DoctorInfo = new DoctorInfo();
-    if (raw['id'] !== undefined) { info.id = raw['id'] as number; }
-    if (raw['userId'] !== undefined) { info.userId = raw['userId'] as number; }
-    if (raw['realName'] !== undefined) { info.realName = raw['realName'] as string; }
-    if (raw['phone'] !== undefined) { info.phone = raw['phone'] as string; }
-    if (raw['hospital'] !== undefined) { info.hospital = raw['hospital'] as string; }
-    if (raw['department'] !== undefined) { info.department = raw['department'] as string; }
-    if (raw['licenseNumber'] !== undefined) { info.licenseNumber = raw['licenseNumber'] as string; }
-    if (raw['title'] !== undefined) { info.title = raw['title'] as string; }
-    if (raw['specialty'] !== undefined) { info.specialty = raw['specialty'] as string; }
-    if (raw['avatar'] !== undefined) { info.avatar = raw['avatar'] as string; }
-    if (raw['description'] !== undefined) { info.description = raw['description'] as string; }
-    if (raw['rating'] !== undefined) { info.rating = raw['rating'] as number; }
-    if (raw['status'] !== undefined) { info.status = raw['status'] as number; }
-    if (raw['createTime'] !== undefined) { info.createTime = raw['createTime'] as string; }
-    if (raw['updateTime'] !== undefined) { info.updateTime = raw['updateTime'] as string; }
+    if (raw['id'] !== undefined && raw['id'] !== null) { info.id = raw['id'] as number; }
+    if (raw['userId'] !== undefined && raw['userId'] !== null) { info.userId = raw['userId'] as number; }
+    if (raw['realName'] !== undefined && raw['realName'] !== null) { info.realName = raw['realName'] as string; }
+    if (raw['phone'] !== undefined && raw['phone'] !== null) { info.phone = raw['phone'] as string; }
+    if (raw['hospital'] !== undefined && raw['hospital'] !== null) { info.hospital = raw['hospital'] as string; }
+    if (raw['department'] !== undefined && raw['department'] !== null) { info.department = raw['department'] as string; }
+    if (raw['licenseNumber'] !== undefined && raw['licenseNumber'] !== null) { info.licenseNumber = raw['licenseNumber'] as string; }
+    if (raw['title'] !== undefined && raw['title'] !== null) { info.title = raw['title'] as string; }
+    if (raw['specialty'] !== undefined && raw['specialty'] !== null) { info.specialty = raw['specialty'] as string; }
+    if (raw['avatar'] !== undefined && raw['avatar'] !== null) { info.avatar = raw['avatar'] as string; }
+    if (raw['description'] !== undefined && raw['description'] !== null) { info.description = raw['description'] as string; }
+    if (raw['rating'] !== undefined && raw['rating'] !== null) { info.rating = raw['rating'] as number; }
+    if (raw['status'] !== undefined && raw['status'] !== null) { info.status = raw['status'] as number; }
+    if (raw['createTime'] !== undefined && raw['createTime'] !== null) { info.createTime = raw['createTime'] as string; }
+    if (raw['updateTime'] !== undefined && raw['updateTime'] !== null) { info.updateTime = raw['updateTime'] as string; }
     return info;
   }
 

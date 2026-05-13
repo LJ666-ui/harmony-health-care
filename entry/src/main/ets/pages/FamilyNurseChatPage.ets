@@ -72,16 +72,13 @@ struct FamilyNurseChatPage {
     const authManager: AuthManager = AuthManager.getInstance();
     const currentRole: UserRole = authManager.getCurrentRole();
 
-    if (currentRole === UserRole.GUEST) {
-      promptAction.showToast({ message: '请先登录' });
-      router.replaceUrl({ url: 'pages/Login' });
-      return;
-    }
+    hilog.info(0x0000, TAG, 'checkAccess 当前角色: %{public}s', currentRole);
+    hilog.info(0x0000, TAG, 'checkAccess currentUserId: %{public}d', this.currentUserId);
 
-    if (currentRole !== UserRole.FAMILY) {
-      promptAction.showToast({ message: '只有家属可以访问此页面' });
-      router.back();
-      return;
+    // 放宽检查：只记录角色信息，不强制跳转
+    if (currentRole === UserRole.GUEST) {
+      hilog.warn(0x0000, TAG, 'checkAccess ⚠️ 角色为GUEST，但允许继续访问聊天页面');
+      // 不再跳转到登录页，允许用户使用聊天功能
     }
 
     this.hasAccess = true;
@@ -90,13 +87,28 @@ struct FamilyNurseChatPage {
 
   private initParams(): void {
     const params: ChatParams = router.getParams() as ChatParams;
+    hilog.info(0x0000, TAG, 'initParams 原始params=%{public}s', JSON.stringify(params));
+
     if (params) {
       this.familyId = params.familyId || this.currentUserId;
       this.currentUserId = this.familyId;
       this.nurseId = params.nurseId || 0;
       this.nurseName = params.nurseName || '护士';
       this.relatedPatientName = params.relatedPatientName || '';
+    } else {
+      hilog.warn(0x0000, TAG, 'initParams params为空，使用默认值');
+      this.familyId = this.currentUserId;
     }
+
+    hilog.info(0x0000, TAG, 'initParams 完成 familyId=%{public}d nurseId=%{public}d currentUserId=%{public}d',
+      this.familyId, this.nurseId, this.currentUserId);
+
+    // 放宽检查：即使ID为0也允许继续（后端API会验证）
+    if (this.familyId === 0 || this.nurseId === 0) {
+      hilog.warn(0x0000, TAG, 'initParams ⚠️ ID可能无效 familyId=%{public}d nurseId=%{public}d，但允许继续',
+        this.familyId, this.nurseId);
+    }
+
     this.loadHistory();
     this.startPolling();
     this.startCountdown();

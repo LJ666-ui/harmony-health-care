@@ -63,6 +63,18 @@
             <version>1.7.0</version>
         </dependency>
 
+        <!-- Swagger2 API文档注解支持（兼容旧代码） -->
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-swagger2</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-swagger-ui</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+
         <!-- MySQL 驱动 -->
         <dependency>
             <groupId>mysql</groupId>
@@ -82,7 +94,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.30</version>
+            <version>1.18.24</version>
             <optional>true</optional>
         </dependency>
 
@@ -172,7 +184,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.13.0</version>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
@@ -180,7 +192,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>1.18.30</version>
+                            <version>1.18.24</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

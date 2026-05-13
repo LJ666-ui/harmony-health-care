@@ -7,6 +7,7 @@ import com.example.medical.mapper.HealthRecordMapper;
 import com.example.medical.service.HealthRecordService;
 import com.example.medical.service.DataShareAuthService;
 import com.example.medical.service.DataAccessLogService;
+import com.example.medical.service.NursePatientRelationService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,27 +23,56 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
     @Autowired
     private DataAccessLogService dataAccessLogService;
 
+    @Autowired
+    private NursePatientRelationService nursePatientRelationService;
+
     @Override
     public boolean addHealthRecord(HealthRecord healthRecord) {
-        // 自动填充创建/更新时间（由MyBatis-Plus全局配置处理）
-        // 保存到数据库
         return save(healthRecord);
+    }
+
+    /**
+     * 检查访问权限（支持多种角色）
+     * 1. 用户自己访问自己的数据 → 通过
+     * 2. 有data_share_auth授权记录 → 通过
+     * 3. 护士通过nurse_patient_relation关系访问负责的患者 → 通过
+     */
+    private boolean checkAccessPermission(Long accessUserId, Long targetUserId) {
+        if (accessUserId == null || targetUserId == null) {
+            return false;
+        }
+
+        // 1. 自己访问自己的数据
+        if (accessUserId.equals(targetUserId)) {
+            return true;
+        }
+
+        // 2. 检查data_share_auth表的显式授权
+        if (dataShareAuthService.checkAuth(accessUserId, targetUserId, "health_record")) {
+            return true;
+        }
+
+        // 3. 护士通过护患关系访问患者数据
+        try {
+            List<Long> patientIds = nursePatientRelationService.getPatientIdsByNurseId(accessUserId);
+            if (patientIds != null && !patientIds.isEmpty() && patientIds.contains(targetUserId)) {
+                return true;
+            }
+        } catch (Exception e) {
+            // 忽略异常，继续后续检查
+        }
+
+        return false;
     }
 
     @Override
     public List<HealthRecord> findByUserId(Long userId, Long accessUserId, String accessIp) {
-        // 数据授权校验
-        if (!userId.equals(accessUserId)) {
-            boolean hasAuth = dataShareAuthService.checkAuth(accessUserId, userId, "health_record");
-            if (!hasAuth) {
-                throw new RuntimeException("无权限访问该用户的健康记录");
-            }
+        if (!checkAccessPermission(accessUserId, userId)) {
+            throw new RuntimeException("无权限访问该用户的健康记录");
         }
 
-        // 记录数据访问日志
         dataAccessLogService.recordAccessLog(userId, accessUserId, "health_record", null, 1, accessIp);
 
-        // 必须带上userId做数据隔离
         return lambdaQuery()
                 .eq(HealthRecord::getUserId, userId)
                 .orderByDesc(HealthRecord::getRecordTime)
@@ -51,18 +81,12 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
 
     @Override
     public List<HealthRecord> findByUserIdAndTimeRange(Long userId, Date startTime, Date endTime, Long accessUserId, String accessIp) {
-        // 数据授权校验
-        if (!userId.equals(accessUserId)) {
-            boolean hasAuth = dataShareAuthService.checkAuth(accessUserId, userId, "health_record");
-            if (!hasAuth) {
-                throw new RuntimeException("无权限访问该用户的健康记录");
-            }
+        if (!checkAccessPermission(accessUserId, userId)) {
+            throw new RuntimeException("无权限访问该用户的健康记录");
         }
 
-        // 记录数据访问日志
         dataAccessLogService.recordAccessLog(userId, accessUserId, "health_record", null, 1, accessIp);
 
-        // 必须带上userId做数据隔离
         return lambdaQuery()
                 .eq(HealthRecord::getUserId, userId)
                 .ge(HealthRecord::getRecordTime, startTime)
@@ -73,27 +97,19 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
 
     @Override
     public PageResult<HealthRecord> findByUserIdWithPage(Long userId, Integer page, Integer size, Long accessUserId, String accessIp) {
-        // 数据授权校验
-        if (!userId.equals(accessUserId)) {
-            boolean hasAuth = dataShareAuthService.checkAuth(accessUserId, userId, "health_record");
-            if (!hasAuth) {
-                throw new RuntimeException("无权限访问该用户的健康记录");
-            }
+        if (!checkAccessPermission(accessUserId, userId)) {
+            throw new RuntimeException("无权限访问该用户的健康记录");
         }
 
-        // 记录数据访问日志
         dataAccessLogService.recordAccessLog(userId, accessUserId, "health_record", null, 1, accessIp);
 
-        // 构建分页对象
         Page<HealthRecord> pageInfo = new Page<>(page, size);
         
-        // 必须带上userId做数据隔离
         pageInfo = lambdaQuery()
                 .eq(HealthRecord::getUserId, userId)
                 .orderByDesc(HealthRecord::getRecordTime)
                 .page(pageInfo);
         
-        // 构建分页结果
         return new PageResult<>(pageInfo.getTotal(), pageInfo.getRecords(), page, size);
     }
 

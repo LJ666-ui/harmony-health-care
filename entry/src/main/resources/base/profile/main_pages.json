@@ -142,9 +142,11 @@
     "pages/NurseHealthRecords",
     "pages/NurseMedicationPage",
     "pages/NurseMedicalRecord",
+    "pages/MedicalRecordDetailPage",
     "pages/NurseHealthPage",
     "pages/DoctorPatientManagementPage",
     "pages/DoctorSchedulePage",
+    "pages/NurseSchedulePage",
     "pages/PrescriptionTemplatePage",
     "pages/MedicalRecordTemplatePage",
     "pages/ConsultationManagementPage",
@@ -153,6 +155,8 @@
     "pages/PatientDetailPage",
     "pages/PatientChatListPage",
     "pages/PatientDoctorChatPage",
-    "pages/PatientNurseChatPage"
+    "pages/PatientNurseChatPage",
+    "pages/NurseFamilyChatPage",
+    "pages/FamilyNurseChatPage"
   ]
 }

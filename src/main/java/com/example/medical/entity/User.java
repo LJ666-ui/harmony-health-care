@@ -31,6 +31,12 @@ public class User {
 
     private Integer age;
 
+    @TableField("real_name")
+    private String realName;
+
+    @TableField("avatar")
+    private String avatar;
+
     @Pattern(regexp = "^[1-9]\\d{5}(18|19|20)\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])\\d{3}[0-9Xx]$", message = "身份证号格式不正确")
     @TableField("id_card")
     private String idCard;
@@ -38,8 +44,13 @@ public class User {
     @TableField("user_type")
     private Integer userType;
 
+    private Integer status;
+
     @TableField("create_time")
     private Date createTime;
+
+    @TableField("update_time")
+    private Date updateTime;
 
     @TableField("is_deleted")
     private Integer isDeleted;

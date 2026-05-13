@@ -210,6 +210,30 @@ export class HttpUtil {
       } else if (isLoggedIn) {
         token = HttpUtil.getToken();
         console.log('[HttpUtil] 使用用户Token:', token ? '已获取' : '未获取');
+      } else {
+        // 如果所有登录状态都为false，尝试从存储中获取各个Token
+        const nurseToken = HttpUtil.getNurseToken();
+        const doctorToken = HttpUtil.getDoctorToken();
+        const familyToken = HttpUtil.getFamilyToken();
+        const userToken = HttpUtil.getToken();
+        
+        if (nurseToken) {
+          token = nurseToken;
+          AppStorage.setOrCreate<boolean>('isNurseLoggedIn', true);
+          console.log('[HttpUtil] 检测到护士Token，自动设置登录状态');
+        } else if (doctorToken) {
+          token = doctorToken;
+          AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', true);
+          console.log('[HttpUtil] 检测到医生Token，自动设置登录状态');
+        } else if (familyToken) {
+          token = familyToken;
+          AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', true);
+          console.log('[HttpUtil] 检测到家属Token，自动设置登录状态');
+        } else if (userToken) {
+          token = userToken;
+          AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+          console.log('[HttpUtil] 检测到用户Token，自动设置登录状态');
+        }
       }
     }
     
@@ -227,7 +251,7 @@ export class HttpUtil {
     };
 
     const response: HttpResponse = await HttpUtil.fetch(fullUrl, requestOptions, timeoutValue);
-    return HttpUtil.handleResponse<T>(response);
+    return HttpUtil.handleResponse<T>(response, url);
   }
 
   static async get<T>(
@@ -372,7 +396,7 @@ export class HttpUtil {
     });
   }
 
-  private static handleResponse<T>(response: HttpResponse): BaseResponse<T> {
+  private static handleResponse<T>(response: HttpResponse, url: string = ''): BaseResponse<T> {
     let raw: Object = response.result;
 
     if (typeof raw === 'string') {
@@ -385,6 +409,19 @@ export class HttpUtil {
     }
 
     if (response.responseCode === 401) {
+      // 检查是否是需要忽略401的API（不跳转登录页）
+      const isNursingRecordApi: boolean = url.includes('/api/nursing-record');
+      const isMessageApi: boolean = url.includes('/message/') || url.includes('message/history') || url.includes('message/send');
+      const isFamiliesApi: boolean = url.includes('/nurse/families') || url.includes('/family/nurses');
+      
+      if (isNursingRecordApi || isMessageApi || isFamiliesApi) {
+        const apiType: string = isNursingRecordApi ? '护理记录' : (isMessageApi ? '消息' : '家属/护士');
+        console.warn('[HttpUtil] ⚠️ ' + apiType + 'API返回401，不跳转登录页，仅返回错误');
+        return new BaseResponse<T>(false, apiType + '操作失败（可能需要重新登录）', undefined, 401);
+      }
+      
+      console.error('[HttpUtil] 🔒 检测到401未授权错误，准备跳转登录页 URL:', url);
+      
       // 防止重复处理
       if (!isHandling401) {
         isHandling401 = true;
@@ -396,10 +433,13 @@ export class HttpUtil {
         const isAdminLoggedIn: boolean = AppStorage.get<boolean>('isAdminLoggedIn') || false;
         const isLoggedIn: boolean = AppStorage.get<boolean>('isLoggedIn') || false;
         
+        console.log('[HttpUtil] 当前登录状态: 家属=' + isFamilyLoggedIn + ', 护士=' + isNurseLoggedIn + ', 医生=' + isDoctorLoggedIn + ', 管理员=' + isAdminLoggedIn + ', 用户=' + isLoggedIn);
+        
         if (isFamilyLoggedIn) {
           // 家属Token过期，先清除状态再跳转
           HttpUtil.clearFamilyToken();
           AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', false);
+          console.warn('[HttpUtil] 清除家属Token，500ms后跳转到家属登录页');
           setTimeout(() => {
             router.replaceUrl({ url: 'pages/FamilyLogin' });
             isHandling401 = false;
@@ -408,6 +448,7 @@ export class HttpUtil {
           // 护士Token过期，先清除状态再跳转
           HttpUtil.clearNurseToken();
           AppStorage.setOrCreate<boolean>('isNurseLoggedIn', false);
+          console.warn('[HttpUtil] 清除护士Token，500ms后跳转到护士登录页');
           setTimeout(() => {
             router.replaceUrl({ url: 'pages/NurseLogin' });
             isHandling401 = false;
@@ -438,8 +479,11 @@ export class HttpUtil {
           }, 500);
         } else {
           // 未登录状态，不做处理
+          console.warn('[HttpUtil] 未检测到任何登录状态，不执行跳转');
           isHandling401 = false;
         }
+      } else {
+        console.warn('[HttpUtil] 正在处理401跳转，避免重复执行');
       }
       return new BaseResponse<T>(false, '请先登录', undefined, 401);
     }

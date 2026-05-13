@@ -87,11 +87,17 @@ public class NurseServiceImpl extends ServiceImpl<NurseMapper, Nurse> implements
         }
 
         // 更新字段
-        if (request.getName() != null) {
-            nurse.setName(request.getName());
-        }
-        if (request.getPhone() != null) {
-            nurse.setPhone(request.getPhone());
+        if (request.getName() != null || request.getPhone() != null) {
+            User user = userMapper.selectById(nurse.getUserId());
+            if (user != null) {
+                if (request.getName() != null) {
+                    user.setRealName(request.getName());
+                }
+                if (request.getPhone() != null) {
+                    user.setPhone(request.getPhone());
+                }
+                userMapper.updateById(user);
+            }
         }
         if (request.getDepartment() != null) {
             nurse.setDepartment(request.getDepartment());
@@ -102,6 +108,14 @@ public class NurseServiceImpl extends ServiceImpl<NurseMapper, Nurse> implements
 
         nurse.setUpdateTime(new Date());
         nurseMapper.updateById(nurse);
+
+        if (nurse.getUserId() != null) {
+            User updatedUser = userMapper.selectById(nurse.getUserId());
+            if (updatedUser != null) {
+                nurse.setName(updatedUser.getRealName());
+                nurse.setPhone(updatedUser.getPhone());
+            }
+        }
 
         return nurse;
     }

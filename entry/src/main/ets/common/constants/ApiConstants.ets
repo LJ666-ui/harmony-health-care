@@ -20,7 +20,7 @@ const ENV_MAP: Record<EnvType, EnvConfig> = {
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
 
-let currentEnv: EnvType = EnvType.DEV;
+let currentEnv: EnvType = EnvType.DEV_EMULATOR;
 
 export function setEnv(env: EnvType): void {
   currentEnv = env;
@@ -212,6 +212,8 @@ interface ApiConstantsInterface {
 
   // 药品
   MEDICINE_LIST: string;
+  MEDICATION_LIST: string;
+  MEDICATION_CONFIRM: string;
   MEDICINE_PAGE: string;
   MEDICINE_SEARCH: string;
   MEDICINE_DETAIL: string;
@@ -297,6 +299,15 @@ interface ApiConstantsInterface {
   ADMIN_LOGIN: string;
   ADMIN_INFO: string;
   ADMIN_LOGOUT: string;
+
+  // 护理记录
+  NURSING_RECORD_CREATE: string;
+  NURSING_RECORD_LIST: string;
+  NURSING_RECORD_BY_PATIENT: string;
+  NURSING_RECORD_BY_NURSE: string;
+  NURSING_RECORD_DETAIL: string;
+  NURSING_RECORD_UPDATE: string;
+  NURSING_RECORD_DELETE: string;
 }
 
 // 完整接口实现
@@ -455,6 +466,8 @@ export const ApiConstants: ApiConstantsInterface = {
   PRESCRIPTION_PAGE: '/prescription/page',
 
   MEDICINE_LIST: '/medicine/list',
+  MEDICATION_LIST: '/medicine/medication-list',
+  MEDICATION_CONFIRM: '/medicine/medication-confirm/',
   MEDICINE_PAGE: '/medicine/page',
   MEDICINE_SEARCH: '/medicine/search',
   MEDICINE_DETAIL: '/medicine/detail/',
@@ -527,5 +540,13 @@ export const ApiConstants: ApiConstantsInterface = {
 
   ADMIN_LOGIN: '/admin/login',
   ADMIN_INFO: '/admin/info',
-  ADMIN_LOGOUT: '/admin/logout'
+  ADMIN_LOGOUT: '/admin/logout',
+
+  NURSING_RECORD_CREATE: '/api/nursing-record',
+  NURSING_RECORD_LIST: '/api/nursing-record/list',
+  NURSING_RECORD_BY_PATIENT: '/api/nursing-record/patient/',
+  NURSING_RECORD_BY_NURSE: '/api/nursing-record/nurse/',
+  NURSING_RECORD_DETAIL: '/api/nursing-record/',
+  NURSING_RECORD_UPDATE: '/api/nursing-record/',
+  NURSING_RECORD_DELETE: '/api/nursing-record/'
 };

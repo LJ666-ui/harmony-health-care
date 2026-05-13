@@ -1,845 +1,156 @@
-  INDEX `idx_user_id` (`user_id`),
-  INDEX `idx_plate_number` (`plate_number`),
-  INDEX `idx_parking_lot_id` (`parking_lot_id`),
-  INDEX `idx_entry_time` (`entry_time`),
-  INDEX `idx_payment_status` (`payment_status`),
-  INDEX `idx_entry_exit` (`entry_time`, `exit_time`),
-  CONSTRAINT `fk_record_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_record_parking_lot` FOREIGN KEY (`parking_lot_id`) REFERENCES `parking_lot` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_record_parking_space` FOREIGN KEY (`parking_space_id`) REFERENCES `parking_space` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='停车记录表';
-
--- 示例数据: 插入各种状态的停车记录
-INSERT INTO `parking_record` VALUES
-(1, 107, 1, 2, '京A12345', '白色', '丰田凯美瑞', '2026-05-09 08:30:00', '2026-05-09 14:45:00', 360, 375, 8.00, 48.00, 5.00, 'WECHAT', 'PAID', '2026-05-09 14:46:00', 'WX202605091446001234', 1, '南门入口', '南门出口', 'UNDERGROUND', '就诊结束，已缴费离场', NOW(), NOW()),
-(2, 108, 1, NULL, '京B67890', '黑色', '本田CR-V', '2026-05-10 07:15:00', NULL, 240, NULL, 8.00, 0.00, 0.00, NULL, 'UNPAID', NULL, NULL, 0, '北门入口', NULL, 'UNDERGROUND', '正在就诊中', NOW(), NOW()),
-(3, NULL, 2, 7, '京C11111', '银色', '大众帕萨特', '2026-05-10 09:00:00', '2026-05-10 11:30:00', 180, 150, 6.00, 15.00, 0.00, 'ALIPAY', 'PAID', '2026-05-10 11:31:00', 'ALI202605101131005678', 0, '东侧入口', '西侧出口', 'GROUND', '急诊快速停车', NOW(), NOW()),
-(4, 109, 3, 9, '京D22222', '红色', '特斯拉Model 3', '2026-05-10 10:00:00', NULL, 120, NULL, 5.00, 0.00, 0.00, NULL, 'UNPAID', NULL, NULL, 0, '主入口', NULL, 'UNDERGROUND', '充电停车', NOW(), NOW()),
-(5, 107, 1, 5, '京A12345', '白色', '丰田凯美瑞', '2026-05-08 09:00:00', '2026-05-08 17:30:00', 480, 510, 8.00, 64.00, 10.00, 'CARD', 'PAID', '2026-05-08 17:31:00', 'CARD202605081731009999', 1, '南门入口', '南门出口', 'UNDERGROUND', 'VIP车位', NOW(), NOW());
-
-SET FOREIGN_KEY_CHECKS = 1;
-
-/*
- ============================================================================
- 停车服务模块说明:
-
- 表1 - parking_lot (停车场信息表):
-   存储3个示例停车场，包括协和医院门诊楼地下停车场(500个车位)、外科楼停车场(200个车位)、朝阳医院立体车库(350个车位)
-   支持GPS定位、收费规则配置、充电桩和VIP区域标记
-
- 表2 - parking_space (车位信息表):
-   存储10个示例车位，涵盖5种类型(VIP/普通/充电桩/无障碍/紧凑型)
-   包含详细的位置信息(楼层、区域)、尺寸、距离电梯/出口距离
-   充电桩车位还标注了功率(120kW/180kW)
-
- 表3 - parking_record (停车记录表):
-   存储5条示例记录，展示完整生命周期:
-     - 已完成支付的正常停车(用户107)
-     - 正在进行中的停车(用户108)
-     - 匿名快速停车(急诊场景)
-     - 电动汽车充电停车
-     - VIP车位历史记录
-   支持多种支付方式(微信/支付宝/银行卡)
-   记录找车导航使用情况
-*/
-Query OK, 0 rows affected (0.00 sec)
-
-Query OK, 0 rows affected (0.00 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 0 rows affected (0.02 sec)
-
-Query OK, 3 rows affected (0.00 sec)
-Records: 3  Duplicates: 0  Warnings: 0
-
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 0 rows affected (0.02 sec)
-
-Query OK, 10 rows affected (0.00 sec)
-Records: 10  Duplicates: 0  Warnings: 0
-
-Query OK, 0 rows affected (0.01 sec)
-Query OK, 0 rows affected (0.02 sec)
-Query OK, 5 rows affected (0.00 sec)
-Records: 5  Duplicates: 0  Warnings: 0
-
-Query OK, 0 rows affected (0.00 sec)
-
-    -> ;
-Query OK, 0 rows affected (0.00 sec)
-
-mysql>
-mysql> /*
- 星云医疗助手 - 新增功能模块数据库表 (第四部分: 数字孪生系统模块)
-
- 模块说明:
-   四、数字孪生系统模块 (Digital Twin System Module)
-   功能对应: 项目功能清单第6章 - 数字孪生系统
-   页面: DigitalTwinPage, OrganDetailPage, PredictionReportPage, DigitalTwinViewer
-   组件: HumanBodyModel, OrganVisualizer, DiseasePredictor, TreatmentSimulator
-   用途: 人体器官健康状态可视化、疾病风险预测、治疗方案模拟与评估
-
- 包含表:
-   表11: organ_health_data (器官健康数据表) - 存储数字孪生的器官健康状态和预测数据
-   表12: treatment_simulation (治疗模拟记录表) - 存储治疗方案的模拟结果和效果评估
-
- 依赖: 需要先执行前面的3个SQL文件(建议按顺序执行)
-*/
-
-SET NAMES utf8mb4;
-SET FOREIGN_KEY_CHECKS = 0;
-
--- ============================================================================
--- 四、数字孪生系统模块 (Digital Twin System Module)
--- ============================================================================
-
--- ----------------------------
--- 表11: organ_health_data (器官健康数据表)
--- 用途: 存储数字孪生系统的器官健康状态数据，包括各器官的评分、风险等级、
---       生命体征参数、AI预测结果等。支持多时间点对比和历史趋势分析。
--- 关联: user表 (user_id外键)
--- ----------------------------
-DROP TABLE IF EXISTS `organ_health_data`;
-CREATE TABLE `organ_health_data` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '记录ID，主键自增',
-  `user_id` bigint NOT NULL COMMENT '用户ID',
-  `scan_date` datetime NOT NULL COMMENT '扫描/检测日期时间',
-  `organ_name` varchar(50) NOT NULL COMMENT '器官名称，如"心脏"、"肝脏"、"肺"、"肾脏"、"大脑"、"胰腺"、"脾脏"、"胃"、"肠道"、"甲状腺"、"前列腺/子宫"',
-  `organ_name_en` varchar(50) DEFAULT NULL COMMENT '英文名称',
-  `organ_category` enum('CARDIOVASCULAR','RESPIRATORY','DIGESTIVE','URINARY','NERVOUS','ENDOCRINE','IMMUNE','REPRODUCTIVE','OTHER') NOT NULL COMMENT '器官类别: CARDIOVASCULAR=心血管 RESPIRATORY=呼吸 DIGESTIVE=消化 URINARY=泌尿 NERVOUS=神经 ENDOCRINE=内分泌 IMMUNE=免疫 REPRODUCTIVE=生殖 OTHER=其他',
-  `health_score` decimal(5,2) NOT NULL DEFAULT 100.00 COMMENT '健康评分(0-100分)，100=完全健康，0=严重病变',
-  `risk_level` enum('HEALTHY','SUB_HEALTH','HIGH_RISK','DISEASE') NOT NULL DEFAULT 'HEALTHY' COMMENT '风险等级: HEALTHY=健康 SUB_HEALTH=亚健康 HIGH_RISK=高风险 DISEASE=已确诊疾病',
-  `risk_percentage` decimal(5,2) DEFAULT 0.00 COMMENT '患病风险概率(0-100%)，基于AI模型计算',
-  `vital_signs` json DEFAULT NULL COMMENT '生命体征参数(JSON): 根据器官类型不同而异',
-  `biomarkers` json DEFAULT NULL COMMENT '生物标志物指标(JSON): 如酶活性、激素水平、代谢产物等',
-  `imaging_findings` text COMMENT '影像学发现描述(来自CT/MRI/超声等)',
-  `symptoms` json DEFAULT NULL COMMENT '相关症状列表(JSON数组)',
-  `chronic_conditions` json DEFAULT NULL COMMENT '已有慢性病(JSON数组)',
-  `prediction_result` json DEFAULT NULL COMMENT 'AI预测结果(JSON): 包含未来1-5年的风险评估',
-  `model_version` varchar(50) DEFAULT NULL COMMENT '使用的AI模型版本',
-  `model_confidence` decimal(5,2) DEFAULT NULL COMMENT '模型置信度(0-100%)',
-  `data_sources` json DEFAULT NULL COMMENT '数据来源(JSON数组): ["health_record","checkup_report","lab_test","imaging","wearable_device"]',
-  `scan_type` enum('ROUTINE','COMPREHENSIVE','TARGETED','FOLLOW_UP') DEFAULT 'ROUTINE' COMMENT '扫描类型: ROUTINE=常规 COMPREHENSIVE=全面 TARGETED=针对性 FOLLOW_UP=随访',
-  `comparison_with_previous` json DEFAULT NULL COMMENT '与前次对比结果(JSON): 变化趋势、改善/恶化程度',
-  `recommendations` text COMMENT '健康建议(由AI生成)',
-  `alert_thresholds` json DEFAULT NULL COMMENT '告警阈值配置(JSON)',
-  `alerts_triggered` json DEFAULT NULL COMMENT '触发的告警列表(JSON数组)',
-  `doctor_review_status` enum('PENDING','REVIEWED','CONFIRMED','DISPUTED') DEFAULT 'PENDING' COMMENT '医生审核状态: PENDING=待审核 REVIEWED=已查看 CONFIRMED=确认 DISPUTED=有异议',
-  `reviewed_by` bigint DEFAULT NULL COMMENT '审核医生ID',
-  `reviewed_time` datetime DEFAULT NULL COMMENT '审核时间',
-  `doctor_comments` text COMMENT '医生评语',
-  `is_abnormal` tinyint NOT NULL DEFAULT 0 COMMENT '是否异常: 0=正常 1=异常',
-  `abnormal_severity` enum('MILD','MODERATE','SEVERE','CRITICAL') DEFAULT NULL COMMENT '异常严重程度(仅is_abnormal=1时有效)',
-  `trend_direction` enum('IMPROVING','STABLE','DECLINING','FLUCTUATING') DEFAULT 'STABLE' COMMENT '趋势方向: IMPROVING=好转 STABLE=稳定 DECLINING=恶化 FLUCTUATING=波动',
-  `data_quality_score` decimal(5,2) DEFAULT 100.00 COMMENT '数据质量评分(0-100%)，基于数据完整性和可靠性',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  INDEX `idx_user_id` (`user_id`),
-  INDEX `idx_scan_date` (`scan_date`),
-  INDEX `idx_organ_name` (`organ_name`),
-  INDEX `idx_risk_level` (`risk_level`),
-  INDEX `idx_health_score` (`health_score`),
-  INDEX `idx_user_organ_date` (`user_id`, `organ_name`, `scan_date`),
-  INDEX `idx_doctor_review` (`doctor_review_status`),
-  CONSTRAINT `fk_organ_health_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='器官健康数据表';
-
--- 示例数据: 插入多个用户的器官健康数据(展示不同风险等级)
-INSERT INTO `organ_health_data` (`id`, `user_id`, `scan_date`, `organ_name`, `organ_name_en`, `organ_category`, `health_score`, `risk_level`, `risk_percentage`, `vital_signs`, `biomarkers`, `imaging_findings`, `symptoms`, `chronic_conditions`, `prediction_result`, `model_version`, `model_confidence`, `data_sources`, `scan_type`, `comparison_with_previous`, `recommendations`, `alert_thresholds`, `alerts_triggered`, `doctor_review_status`, `reviewed_by`, `reviewed_time`, `doctor_comments`, `is_abnormal`, `abnormal_severity`, `trend_direction`, `data_quality_score`, `create_time`, `update_time`) VALUES
-
--- 用户107(张三，65岁男性) - 心血管系统有风险
-(1, 107, '2026-05-09 10:30:00', '心脏', 'Heart', 'CARDIOVASCULAR', 72.50, 'HIGH_RISK', 35.80,
- '{"heartRate":78,"bloodPressure":"145/92","ejectionFraction":58,"cardiacOutput":5.2,"strokeVolume":67}',
- '{"troponinI":0.02,"bnp":185,"crp":8.5,"ldlCholesterol":4.2,"hdlCholesterol":1.1,"triglycerides":2.3}',
- '超声心动图：左室壁轻度增厚(12mm)，舒张功能轻度减退(E/A=0.8)。冠状动脉CTA提示左前降支近段斑块形成(管腔狭窄30%)。',
- '["活动后胸闷","偶发心悸","容易疲劳"]',
- '["高血压(10年)","高脂血症(5年)","2型糖尿病(3年)"]',
- '{"1year":{"risk":38,"confidence":82},"3year":{"risk":52,"confidence":75},"5year":{"risk":68,"confidence":68}}',
- 'CardioAI-Model-v3.2', 85.50,
- '["health_record","checkup_report","imaging","wearable_device"]',
- 'COMPREHENSIVE',
- '{"previousScore":75.00,"change":-2.50,"trend":"slight_decline","period":"3months"}',
- '1. 控制血压至<140/90mmHg\n2. 低脂低盐饮食，减少饱和脂肪摄入\n3. 规律有氧运动(每周150分钟中等强度)\n4. 戒烟限酒\n5. 定期复查心脏超声(每6个月)\n6. 他汀类药物降脂治疗(遵医嘱)',
- '{"heartRate":{"min":60,"max":100,"unit":"bpm"},"bloodPressure_systolic":{"min":90,"max":140,"unit":"mmHg"},"ldlCholesterol":{"max":2.6,"unit":"mmol/L"}}',
- '[{"type":"HEART_RATE_HIGH","threshold":100,"current":78,"status":"normal"},{"type":"BP_HIGH","threshold":"140/90","current":"145/92","status":"alert"}]',
- 'PENDING', NULL, NULL, NULL, 1, 'MODERATE', 'DECLINING', 92.50, NOW(), NOW()),
-
--- 用户107 - 呼吸系统基本正常
-(2, 107, '2026-05-09 10:35:00', '肺', 'Lung', 'RESPIRATORY', 88.00, 'SUB_HEALTH', 18.50,
- '{"spo2":97,"respiratoryRate":16,"lungCapacity":85,"fev1":82,"fvc":88}',
- '{"d_dimer":0.35,"crp":6.2,"whiteBloodCell":7.2}',
- '胸部CT：双肺纹理稍增多，未见明显实变或结节。肺功能检查示轻度限制性通气功能障碍(FVC占预计值88%)。',
- '["偶有咳嗽(晨起)","活动后气短"]',
- NULL,
- '{"1year":{"risk":20,"confidence":78},"3year":{"risk":28,"confidence":70},"5year":{"risk":38,"confidence":62}}',
- 'PulmoAI-Model-v2.8', 82.30,
- '["health_record","checkup_report","imaging"]',
- 'ROUTINE',
- '{"previousScore":90.00,"change":-2.00,"trend":"stable","period":"3months"}',
- '1. 戒烟(如有吸烟史)\n2. 呼吸功能锻炼(缩唇呼吸、腹式呼吸)\n3. 避免空气污染环境\n4. 流感疫苗和肺炎疫苗接种\n5. 每年复查胸部CT',
- '{"spo2":{"min":95,"unit":"%"},"fev1":{"min":80,"unit":"%predicted"}}',
- NULL,
- 'PENDING', NULL, NULL, NULL, 0, NULL, 'STABLE', 88.00, NOW(), NOW()),
-
--- 用户108(李四，58岁女性) - 肝脏功能良好
-(3, 108, '2026-05-08 14:20:00', '肝脏', 'Liver', 'DIGESTIVE', 95.50, 'HEALTHY', 5.20,
- '{"liverSize":{"right":125,"left":65},"echotexture":"均匀","portalVeinDiameter":11}',
- '{"alt":28,"ast":24,"totalBilirubin":15.2,"directBilirubin":4.1,"albumin":45,"inr":1.0,"afp":3.2}',
- '腹部超声：肝脏形态大小正常，包膜光滑，实质回声均匀，肝内血管走行清晰，门静脉不宽。胆囊、胰腺、脾脏未见明显异常。',
- NULL,
- NULL,
- '{"1year":{"risk":6,"confidence":90},"3year":{"risk":12,"confidence":85},"5year":{"risk":22,"confidence":78}}',
- 'HepatoAI-Model-v4.1', 91.20,
- '["checkup_report","lab_test","imaging"]',
- 'ROUTINE',
- '{"previousScore":94.00,"change":1.50,"trend":"slight_improvement","period":"6months"}',
- '继续保持健康生活方式：\n1. 均衡饮食，控制体重\n2. 适量饮酒或不饮酒\n3. 避免滥用药物和保健品\n4. 定期体检(每年1次肝功能和腹部超声)\n5. 接种乙肝疫苗(如未接种)',
- '{"alt":{"max":40,"unit":"U/L"},"ast":{"max":40,"unit":"U/L"},"totalBilirubin":{"max":21,"unit":"umol/L"}}',
- NULL,
- 'REVIEWED', 15, '2026-05-09 09:00:00', '肝功能各项指标均在正常范围内，未见异常。建议保持健康生活方式。', 0, NULL, 'IMPROVING', 95.80, NOW(), NOW()),
-
--- 用户108 - 肾脏功能轻度下降
-(4, 108, '2026-05-08 14:25:00', '肾脏', 'Kidney', 'URINARY', 82.00, 'SUB_HEALTH', 22.30,
- '{"gfr":72,"creatinine":98,"bun":7.2,"urineOutput":1500,"proteinuria":"trace"}',
- '{"microalbumin":25,"cystatinC":1.15,"electrolytes":{"na":140,"k":4.2,"cl":102,"ca":2.35},"urate":380}',
- '肾脏超声：双肾大小正常，皮质厚度正常，集合系统无分离，未见明显结石或占位性病变。',
- '["夜尿增多(1-2次)","轻度水肿(踝部)"]',
- '["高血压(8年)"]',
- '{"1year":{"risk":25,"confidence":80},"3year":{"risk":38,"confidence":73},"5year":{"risk":52,"confidence":65}}',
- 'NephroAI-Model-v3.0', 86.70,
- '["health_record","lab_test","imaging"]',
- 'COMPREHENSIVE',
- '{"previousScore":85.00,"change":-3.00,"trend":"decline","period":"6months"}',
- '1. 低蛋白饮食(0.8g/kg/日)\n2. 控制血压<130/80mmHg\n3. 避免肾毒性药物(NSAIDs、某些抗生素)\n4. 监测尿常规和肾功能(每3个月)\n5. 控制血糖和血脂\n6. 适当饮水(1500-2000ml/日，无心衰情况下)',
- '{"gfr":{"min":60,"unit":"ml/min/1.73m2"},"creatinine":{"max":110,"unit":"umol/L"},"proteinuria":{"max":"trace","unit":"dipstick"}}',
- '[{"type":"GFR_DECLINE","threshold":60,"current":72,"status":"warning"},{"type":"PROTEINURIA","threshold":"negative","current":"trace","status":"alert"}]',
- 'REVIEWED', 15, '2026-05-09 09:30:00', 'eGFR轻度下降，需密切监测。建议低蛋白饮食，控制血压，定期复查肾功能。', 1, 'MILD', 'DECLINING', 89.50, NOW(), NOW()),
-
--- 用户109(王五，72岁男性) - 大脑认知功能需关注
-(5, 109, '2026-05-10 09:15:00', '大脑', 'Brain', 'NERVOUS', 76.00, 'HIGH_RISK', 42.50,
- '{"mmseScore":26,"clockDrawingTest":4,"memoryRecall":7,"attentionSpan":15,"processingSpeed":42}',
- '{"homocysteine":14.5,"vitaminB12":280,"folate":8.5,"tsh":2.8,"aβ42":480,"tau":280}',
- '头颅MRI：脑室系统轻度扩大，海马体积轻度萎缩(MTA评分1级)。白质疏松改变(Fazekas I级)。未见明显梗死灶或占位性病变。',
- '["近期记忆力下降","偶尔忘记熟人的名字","找词困难"]',
- '["高血压(15年)","高脂血症(10年)","糖尿病前期"]',
- '{"1year":{"risk":45,"confidence":78},"3year":{"risk":62,"confidence":70},"5year":{"risk":78,"confidence":60}}',
- 'NeuroAI-Model-v5.0', 79.80,
- '["health_record","checkup_report","imaging","cognitive_test"]',
- 'TARGETED',
- '{"previousScore":80.00,"change":-4.00,"trend":"moderate_decline","period":"12months"}',
- '⚠️ 认知功能需要重点关注：\n1. 神经内科专科就诊，完善痴呆筛查量表\n2. 控制血管危险因素(血压、血糖、血脂)\n3. 认知训练：记忆游戏、阅读、社交活动\n4. 补充维生素B12和叶酸\n5. 规律运动(每周150分钟有氧运动)\n6. 充足睡眠(7-8小时/夜)\n7. 定期神经心理测评(每6-12个月)\n8. 家属陪护和安全防护(防走失)',
- '{"mmseScore":{"min":24,"unit":"points"},"homocysteine":{"max":15,"unit":"umol/L"}}',
- '[{"type":"COGNITIVE_DECLINE","threshold":24,"current":26,"status":"warning"},{"type":"MMSE_DECLINE","rate":">3points/year","current":"-4/12month","status":"alert"}]',
- 'PENDING', NULL, NULL, NULL, 1, 'MODERATE', 'DECLINING', 85.00, NOW(), NOW());
-
-SET FOREIGN_KEY_CHECKS = 1;
-
-/*
- ============================================================================
- 数字孪生系统模块 - 续 (第四部分后半段: treatment_simulation表)
- ============================================================================
-*/
-
-SET FOREIGN_KEY_CHECKS = 0;
-
--- ----------------------------
--- 表12: treatment_simulation (治疗模拟记录表)
--- 用途: 存储数字孪生系统的治疗方案模拟结果，包括药物治疗、手术治疗、康复治疗等。
---       通过AI模型预测不同方案的有效性、副作用、成本效益，辅助临床决策。
--- 关联: user表 (user_id外键)
--- ----------------------------
-DROP TABLE IF EXISTS `treatment_simulation`;
-CREATE TABLE `treatment_simulation` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '模拟ID，主键自增',
-  `user_id` bigint NOT NULL COMMENT '用户ID',
-  `simulation_name` varchar(200) NOT NULL COMMENT '模拟名称，如"冠心病PCI vs 药物治疗对比"、"糖尿病二甲双胍剂量优化"',
-  `simulation_type` enum('DRUG_THERAPY','SURGERY','REHABILITATION','RADIATION','COMBINATION','LIFESTYLE','PREVENTIVE') NOT NULL COMMENT '模拟类型: DRUG_THERAPY=药物治疗 SURGERY=手术 REHABILITATION=康复 RADIATION=放射治疗 COMBINATION=联合 LIFESTYLE=生活方式 PREVENTIVE=预防性',
-  `clinical_scenario` text NOT NULL COMMENT '临床场景描述(患者病情摘要)',
-  `input_params` json NOT NULL COMMENT '输入参数(JSON): 当前病情、基础指标、约束条件等',
-  `treatment_options` json NOT NULL COMMENT '治疗方案选项(JSON数组): 每个方案包含具体措施',
-  `simulation_results` json NOT NULL COMMENT '模拟结果(JSON): 各方案的预测效果对比',
-  `primary_outcome` varchar(100) DEFAULT NULL COMMENT '主要结局指标，如"心血管事件发生率"、"HbA1c达标率"',
-  `effectiveness_score` decimal(5,2) DEFAULT NULL COMMENT '综合有效性评分(0-100)',
-  `safety_profile` json DEFAULT NULL COMMENT '安全性概况(JSON): 不良反应发生率、严重程度等',
-  `side_effects` json DEFAULT NULL COMMENT '预期副作用列表(JSON数组)',
-  `cost_analysis` json DEFAULT NULL COMMENT '成本分析(JSON): 直接费用、间接费用、性价比',
-  `quality_of_life_impact` decimal(5,2) DEFAULT NULL COMMENT '对生活质量的影响评分(-100到+100)',
-  `time_to_effect` int DEFAULT NULL COMMENT '起效时间(天)',
-  `treatment_duration` int DEFAULT NULL COMMENT '推荐疗程时长(天)',
-  `adherence_prediction` decimal(5,2) DEFAULT NULL COMMENT '依从性预测(0-100%)',
-  `risk_assessment` json DEFAULT NULL COMMENT '风险评估(JSON): 治疗相关风险及概率',
-  `alternative_options` json DEFAULT NULL COMMENT '备选方案(JSON数组)',
-  `contraindications` json DEFAULT NULL COMMENT '禁忌症(JSON数组)',
-  `drug_interactions` json DEFAULT NULL COMMENT '药物相互作用(JSON数组)',
-  `personalization_factors` json DEFAULT NULL COMMENT '个性化因素(JSON): 基因型、合并症、偏好等',
-  `confidence_interval` json DEFAULT NULL COMMENT '置信区间(JSON): 效果的不确定性范围',
-  `evidence_base` json DEFAULT NULL COMMENT '证据基础(JSON): 临床试验数据、指南推荐等',
-  `model_used` varchar(100) DEFAULT NULL COMMENT '使用的AI模型名称',
-  `model_version` varchar(50) DEFAULT NULL COMMENT '模型版本',
-  `simulation_time_ms` int DEFAULT NULL COMMENT '模拟耗时(毫秒)',
-  `comparison_baseline` json DEFAULT NULL COMMENT '对照基线(JSON): 标准治疗或安慰剂',
-  `recommendation` text COMMENT '综合建议(由AI生成)',
-  `recommended_option_index` int DEFAULT NULL COMMENT '推荐的方案索引(从0开始)',
-  `uncertainty_factors` json DEFAULT NULL COMMENT '不确定性因素(JSON数组)',
-  `sensitivity_analysis` json DEFAULT NULL COMMENT '敏感性分析(JSON): 参数变化对结果的影响',
-  `limitations` text COMMENT '局限性说明',
-  `doctor_review_status` enum('PENDING','ACCEPTED','MODIFIED','REJECTED') DEFAULT 'PENDING' COMMENT '医生审核状态: PENDING=待审核 ACCEPTED=接受 MODIFIED=修改后采用 REJECTED=拒绝',
-  `reviewed_by` bigint DEFAULT NULL COMMENT '审核医生ID',
-  `reviewed_time` datetime DEFAULT NULL COMMENT '审核时间',
-  `doctor_modifications` text COMMENT '医生的修改意见',
-  `final_decision` varchar(255) DEFAULT NULL COMMENT '最终决策',
-  `patient_preference` varchar(500) DEFAULT NULL COMMENT '患者/家属偏好',
-  `shared_with_patient` tinyint NOT NULL DEFAULT 0 COMMENT '是否已向患者解释: 0=否 1=是',
-  `informed_consent` tinyint DEFAULT NULL COMMENT '知情同意: 0=未签署 1=已签署',
-  `follow_up_plan` text COMMENT '后续随访计划',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  INDEX `idx_user_id` (`user_id`),
-  INDEX `idx_simulation_type` (`simulation_type`),
-  INDEX `idx_create_time` (`create_time`),
-  INDEX `idx_effectiveness` (`effectiveness_score`),
-  INDEX `idx_doctor_review` (`doctor_review_status`),
-  CONSTRAINT `fk_treat_sim_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='治疗模拟记录表';
-
--- 示例数据: 插入不同类型的治疗模拟记录
-INSERT INTO `treatment_simulation` (`id`, `user_id`, `simulation_name`, `simulation_type`, `clinical_scenario`, `input_params`, `treatment_options`, `simulation_results`, `primary_outcome`, `effectiveness_score`, `safety_profile`, `side_effects`, `cost_analysis`, `quality_of_life_impact`, `time_to_effect`, `treatment_duration`, `adherence_prediction`, `risk_assessment`, `alternative_options`, `contraindications`, `drug_interactions`, `personalization_factors`, `confidence_interval`, `evidence_base`, `model_used`, `model_version`, `simulation_time_ms`, `comparison_baseline`, `recommendation`, `recommended_option_index`, `uncertainty_factors`, `sensitivity_analysis`, `limitations`, `doctor_review_status`, `reviewed_by`, `reviewed_time`, `doctor_modifications`, `final_decision`, `patient_preference`, `shared_with_patient`, `informed_consent`, `follow_up_plan`, `create_time`, `update_time`) VALUES
-
--- 案例1: 冠心病治疗方案选择(用户107)
-(1, 107, '稳定性冠心病：PCI介入 vs 强化药物治疗对比', 'DRUG_THERAPY',
- '患者男，65岁，稳定性心绞痛(CCS II级)，冠状动脉CTA示左前降支近段斑块(狭窄30-40%)，左室射血分数58%，合并高血压、高脂血症、2型糖尿病。目前服用阿司匹林+他汀+ACEI+β受体阻滞剂，仍偶有劳力性胸痛发作。',
- '{"age":65,"gender":"male","comorbidities":["hypertension","hyperlipidemia","diabetes_mellitus_type2"],"lvef":58,"syntaxScore":12,"ccsClass":2,"currentMedications":["aspirin","statin","acei","beta_blocker"],"anginaFrequency":"2-3times/week","exerciseCapacity":"4METs","preferences":["avoid_surgery","prefer_oral_medication"],"constraints":["renal_function_normal","no_bleeding_risk"]}',
- '[{"name":"方案A：强化药物治疗","details":{"medications":[{"drug":"阿司匹林100mg QD"},{"drug":"瑞舒伐他汀20mg QN"},{"drug":"培哚普利8mg QD"},{"drug":"比索洛尔5mg QD"},{"drug":"尼可地尔5mg TID"},{"drug":"曲美他嗪20mg BID"}],"duration":" lifelong","target":{"bp":"<130/80","ldl":"<1.4","hba1c":"<7%"}}},{"name":"方案B：PCI介入+药物治疗","details":{"procedure":"LAD药物洗脱支架植入术","medications":[{"drug":"阿司匹林100mg QD"},{"drug":"氯吡格雷75mg QD(12月)"},{"drug":"瑞舒伐他汀20mg QN"},{"drug":"培哚普利8mg QD"},{"drug":"比索洛尔5mg QD"}],"duration":"DAPT 12月后长期单抗","target":{"bp":"<130/80","ldl":"<1.4"}}},{"name":"方案C：保守观察+生活方式干预","details":{"medications":[{"drug":"阿司匹林100mg QD"},{"drug":"瑞舒伐他汀10mg QN"},{"diet":"地中海饮食","exercise":"每周150min中等强度"},"duration":"3个月后重新评估"}}]',
- '{"optionA":{"1yearMaceRisk":8.5,"3yearMaceRisk":18.2,"5yearMaceRisk":32.1,"anginaRelief":"60%","qolImprovement":"+15","costTotal":25000,"hospitalizationRate":"12%/year"},"optionB":{"1yearMaceRisk":4.2,"3yearMaceRisk":12.5,"5yearMaceRisk":24.8,"anginaRelief":"90%","qolImprovement":"+32","costTotal":85000,"hospitalizationRate":"5%/year","bleedingRiskYear1":"3.2%"},"optionC":{"1yearMaceRisk":12.0,"3yearMaceRisk":25.5,"5yearMaceRisk":42.3,"anginaRelief":"35%","qolImprovement":"+8","costTotal":8000,"hospitalizationRate":"18%/year"}}',
- '主要不良心血管事件(MACE)发生率', 78.50,
- '{"bleedingRisk":{"optionA":"low(1.2%/year)","optionB":"moderate(3.2% year1)","optionC":"very_low(0.8%/year)"},"hypotensionRisk":"5%","bradycardiaRisk":"3%","myopathyRisk":"0.1%"}',
- '[{"optionA":["胃肠道不适(5%)","咳嗽(2%)","乏力(3%)","肌肉酸痛(1%)"]},{"optionB":["出血事件(3.2% year1)","支架内血栓(0.5%/year)","造影剂肾病(<1%)"]},{"optionC":["胸痛持续或加重(30%)","焦虑(15%)"]}]',
- '{"optionA":{"directCost":25000,"indirectCost":8000,"icuer":3200},"optionB":{"directCost":85000,"indirectCost":12000,"icuer":4500},"optionC":{"directCost":8000,"indirectCost":15000,"icuer":1800}}',
- 25.00, 30, 365, 85.50,
- '{"pciRelated":{"stentThrombosis":"0.5%/year","restenosis":"<5%/5year"},"bleedingMajor":"BARC≥3: optionB 3.2% vs optionA 1.2%"},"contrastNephropathy":"<1%(adequate hydration)"}',
- '[{"name":"CABG","suitability":"syntaxScore<33,多支病变","evidenceLevel":"IA"},{"name":"增强体外反搏(EECP)","suitability":"不适合介入/拒绝手术","evidenceLevel":"IIb"}]',
- '["活动性出血","严重血小板减少(<50×10^9/L)","对造影剂/支架材料过敏"]',
- '["PPI可能降低氯吡格雷疗效(避免联用或换用潘托拉唑)","他汀+贝特类增加肌病风险(慎用)"]',
- '["患者倾向避免手术","口服药依从性良好","经济因素需考虑","家庭支持充分"]',
- '{"maceReduction_5y":{"pointEstimate":-7.3,"ci95":[-11.2,-3.4]},"qolImprovement":{"pointEstimate":17,"ci95":[12,22]}}',
- '[{"study":"ISC-2023","level":"IA","population":"stable CAD, syntaxScore<32"},{"study":"COURAGE-PCI","subgroup":"high ischemia burden","result":"PCI benefit confirmed"}]',
- 'CardioTreatmentSim-AI v2.5', 'v2.5.1', 2850,
- '{"scenario":"standard medical therapy alone","5yearMaceRisk":"35-40%","anginaControl":"poor(medication escalation)"}',
- '基于ISC 2023稳定性冠心病指南和患者个体化特征的综合分析：\n\n**推荐方案B (PCI介入+药物治疗)** 作为首选方案，理由如下：\n\n✅ **疗效优势**：\n- 5年MACE风险降低7.3%(绝对风险降低)\n- 心绞痛缓解率高达90%(vs 方案A的60%)\n- 生活质量显著提升(+32分)\n\n⚖️ **风险收益平衡**：\n- DAPT期间出血风险可接受(3.2%/年)\n- 支架技术成熟，再狭窄率低(<5%)\n- 患者年轻(65岁)，远期获益明显\n\n📋 **实施建议**：\n1. 完善冠脉造影明确病变特征\n2. 选择新一代药物洗脱支架\n3. DAPT疗程12个月(根据PRECISE-DAPT评分调整)\n4. 强化二级预防(血压、血脂、血糖三达标)\n5. 生活方式干预并行(戒烟、运动、饮食)\n\n💡 **备选考虑**：若患者强烈拒绝介入或有出血高危因素，方案A也是合理选择，但需密切随访症状变化。\n\n**关键监测指标**：术后1/3/6/12个月随访，定期复查心电图、超声心动图、肝肾功能、血脂谱。',
- 1,
- '["模型假设基于平均人群效应","个体差异可能导致实际效果偏离","长期数据(>5年)有限","新支架技术可能改变风险收益比"]',
- '{"ifBleedingRiskDoubles":"optionA becomes preferred","ifSyntaxScore>32":"consider CABG instead","ifAge>75":"favor conservative approach more"}',
- '["未纳入生活质量详细维度评估","成本分析基于中国医保定价(可能有地区差异)","未考虑远程监测/数字疗法等新兴干预","依从性假设为理想状态(实际可能更低)"]',
- 'PENDING', NULL, NULL, NULL, NULL, '倾向于保守治疗，希望先尝试强化药物治疗', 0, NULL, '术后1/3/6/12个月随访心电、超声、肝肾功能、血脂谱；DAPT期间注意出血征象；生活方式干预指导', NOW(), NOW()),
-
--- 案例2: 糖尿病用药方案优化(用户108)
-(2, 108, '2型糖尿病：二甲双胍单药 vs 联合SGLT2抑制剂方案', 'DRUG_THERAPY',
- '患者女，58岁，2型糖尿病病程8年，目前口服二甲双胍缓释片1.0g BID，空腹血糖7.2-8.5mmol/L，餐后2h血糖10.5-13.2mmol/L，HbA1c 7.8%。BMI 26.5kg/m²，eGFR 72ml/min/1.73m²，尿微量白蛋白25mg/g。合并高血压、血脂异常。无低血糖史。',
- '{"age":58,"gender":"female","diabetesDuration":8,"bmi":26.5,"hba1c":7.8,"fpg_range":[7.2,8.5],"ppg_range":[10.5,13.2],"egfr":72,"uacr":25,"comorbidities":["hypertension","dyslipidemia"],"currentTherapy":{"metformin":"1g BID"},"cvRisk":"high","hfRisk":"moderate","ckdStage":"G2aA1","preferences":["avoid_injection","weight_loss_desired","once_daily_preferred"],"hypoglycemiaHistory":false}',
- '[{"name":"方案A：二甲双胍剂量调整","details":{"metformin":"1.5g BID(max tolerated)","add_ons":[]},"targetHba1c":"<7.0%"},{"name":"方案B：二甲双胍+SGLT2i","details":{"metformin":"1g BID","sglt2i":"恩格列净10mg QD(or 达格列净10mg QD)"},'targetHba1c":"<6.5%"},{"name":"方案C：二甲双胍+GLP-1 RA","details":{"metformin":"1g BID","glp1ra":"司美格肽1mg QW(皮下注射)"},'targetHba1c":"<6.5%"},{"name":"方案D：三联口服(二甲双胍+SGLT2i+DPP-4i)","details":{"metformin":"1g BID","sglt2i":"达格列净10mg QD","dpp4i":"利格列汀5mg QD"},'targetHba1c":"<6.5%"}]',
- '{"optionA":{"hba1cReduction":"-0.8%","fpgReduction":"-1.2","ppgReduction":"-1.8","weightChange":"-1.5kg","hypoglycemiaRisk":"very_low","cvBenefit":"minimal","renalProtection":"none","costAnnual":3000},"optionB":{"hba1cReduction":"-1.3%","fpgReduction":"-1.8","ppgReduction":"-2.5","weightChange":"-3.0kg","hypoglycemiaRisk":"very_low","cvBenefit":"significant(major trial proven)","renalProtection":"yes(slow progression)","costAnnual":6500},"optionC":{"hba1cReduction":"-1.6%","fpgReduction":"-2.2","ppgReduction":"-3.0","weightChange":"-5.5kg","hypoglycemiaRisk":"low","cvBenefit":"significant","renalProtection":"limited data","costAnnual":8500,"barrier":"injection"},"optionD":{"hba1cReduction":"-1.5%","fpgReduction":"-2.0","ppgReduction":"-2.8","weightChange":"-2.5kg","hypoglycemiaRisk":"very_low","cvBenefit":"significant","renalProtection":"yes","costAnnual":9000,"pillBurden":"higher"}}',
- 'HbA1c达标率(<6.5%)', 85.20,
- '{"genitalMycoInfection":{"optionB":"women 5-10%(preventable with hygiene)","others":"1-2%"},"utiRisk":"slight increase(1.5x)","dkaRisk":"very rare(<0.1%, euglycemic dka possible)","volumeDepletion":"caution in elderly/diuretic use","giSideEffects_optionC":"nausea 20-30%(transient)"}',
- '[{"optionB":["泌尿生殖道感染(女性5-10%)","排尿增多(初始期)","低血压(联用降压药/利尿剂时)"]},{"optionC":["恶心(20-30%，通常2-4周缓解)","腹泻(10-15%)","注射部位反应(5%)","胆囊疾病风险轻微增加"]}]',
- '{"optionA":{"annualDrugCost":3000,"monitoringCost":1200,"complicationCostAvoided":5000,"netCost":-800},"optionB":{"annualDrugCost":6500,"monitoringCost":1500,"complicationCostAvoided":15000,"netCost":-7000},"optionC":{"annualDrugCost":8500,"monitoringCost":1800,"complicationCostAvoided":16000,"netCost":-5700},"optionD":{"annualDrugCost":9000,"monitoringCost":2000,"complicationCostAvoided":15500,"netCost":-4500}}',
- 35.00, 14, 365, 92.30,
- '{"dkaRisk_euglycemic":"<0.1%(需患者教育)","acuteKidneyInjury":"rare(stop if volume depleted)","fractureRisk":"no increase(current data)"}',
- '[{"name":"胰岛素强化治疗(基础+餐时)","suitability":"HbA1c>9% or symptomatic hyperglycemia","evidenceLevel":"I"},{"name":"胰岛素泵治疗","suitability":"T1DM or T2DM requiring flexible insulin delivery","evidenceLevel":"I"}]',
- '["eGFR<20ml/min/1.73m²(SGLT2i禁忌)","急性酮症酸中毒病史","妊娠或计划妊娠","严重泌尿系感染反复发作"]',
- '["与利尿剂联用注意血容量不足","避免与SGLT2i重复使用(同类机制)"]',
- '["强烈希望避免注射","重视体重管理","关注心血管和肾脏长期预后","偏好每日一次服药","经济承受能力中等"]',
- '{"hba1cReduction_point":{"estimate":-1.3,"ci95":[-1.6,-1.0]},"weightLoss_kg":{"estimate":-3.0,"ci95":[-4.0,-2.0]}}',
- '[{"guideline":"ADA/EASD 2024 Consensus","level":"A","keyRecommendation":"SGLT2i for T2DM with high CV/HF/CKD risk regardless of HbA1c"},{"trial":"EMPA-REG OUTCOME","outcome":"CV death reduction 38%","hfHospitalization reduction 35%"}]',
- 'DiabTreatmentSim-AI v4.2', 'v4.2.3', 1920,
- '{"scenario":"continue current metformin monotherapy only","projectedHba1c_1y":"8.0-8.5%","complicationTrajectory":"progressive microvascular risk increase"}',
- '基于ADA/EASD 2024共识声明和中国T2DM防治指南(2024版)：\n\n**强烈推荐方案B (二甲双胍+SGLT2抑制剂)** 作为最优选择！\n\n🎯 **核心优势**：\n1. **降糖 efficacy**: HbA1c降低1.3%，FPG/PPG全面改善\n2. **多重获益**(SGLT2i独特机制):\n   ✅ 心血管保护：EMPAREG OUTCOME研究证实降低MACE 14%\n   ✅ 心力衰竭预防：降低HF住院风险35%\n   ✅ 肾脏保护：延缓eGFR下降，降低ESRD风险\n   ✅ 减重：平均减重3kg(BMI 26.5→25.0)\n   ✅ 降压辅助：SBP额外降低4-5mmHg\n3. **安全性优**: 极低低血糖风险，口服便利(每日1次)\n4. **适合该患者**:\n   ✓ eGFR 72>阈值(≥20可用)\n   ✓ 高CV风险(高血压+血脂异常+糖尿病)\n   ✓ 微量白蛋白尿(CKD G2aA1，可受益)\n   ✓ BMI超标(减重需求)\n   ✓ 拒绝注射(GLP-1 RA暂不考虑)\n\n💊 **具体处方建议**：\n- 二甲双胍缓释片 1.0g BID(维持原剂量)\n- **恩格列净 10mg QD**(早餐前口服，首选) 或 达格列净 10mg QD\n- 注意：早晨服药，多饮水，注意个人卫生\n\n📊 **监测计划**：\n- 2周后复诊：评估耐受性、症状、体重\n- 3个月：查HbA1c、eGFR、UACR(预期HbA1c≤6.8%)\n- 以后每3-6个月随访\n\n⚠️ **特殊注意事项**：\n- 教育患者识别生殖道感染征象并预防\n- 急病/手术/禁食时暂停SGLT2i(防DKA)\n- 联用利尿剂时注意血容量和血压\n\n**若3个月后HbA1c仍未达标(>7.0%)，可考虑加用DPP-4i(方案D)或转为GLP-1 RA(方案C)**',
- 1,
- '["个体降糖反应存在差异","SGLT2i长期安全性数据仍在积累中","成本效益分析基于当前药品价格(可能变动)","患者依从性是关键影响因素"]',
- '{"ifEgfrDropTo45":"reassess SGLT2i dosing/if <20 discontinue","ifPatientAcceptsInjection":"GLP-1 RA may become preferred","ifHypoglycemiaOccurs":"review all medications for hidden sulfonylurea"}',
- '["未纳入连续葡萄糖监测(CGM)数据细化评估","未考虑饮食/运动干预的量化效果","药物价格基于当前医保政策(地区差异可能较大)","未纳入患者心理/社会因素综合评估"]',
- 'PENDING', NULL, NULL, NULL, NULL, '接受口服药物治疗，暂时不考虑注射', 0, NULL, '2周后复诊评估耐受性和症状；3个月后复查HbA1c/eGFR/UACR；教育DKA预防和感染识别；定期监测血压和体重', NOW(), NOW());
-
-SET FOREIGN_KEY_CHECKS = 1;
-
-/*
- ============================================================================
- 数字孪生系统模块说明:
-
- 表11 - organ_health_data (器官健康数据表):
-   存储5条示例器官健康数据，覆盖3个用户：
-     - 用户107(张三，65岁):
-       * 心脏: 72.5分，HIGH_RISK(35.8%风险)，心血管系统问题
-       * 肺: 88分，SUB_HEALTH(18.5%风险)，呼吸功能轻度下降
-     - 用户108(李四，58岁):
-       * 肝脏: 95.5分，HEALTHY(5.2%风险)，功能良好
-       * 肾脏: 82分，SUB_HEALTH(22.3%风险)，早期CKD迹象
-     - 用户109(王五，72岁):
-       * 大脑: 76分，HIGH_RISK(42.5%风险)，认知功能下降
-
-   数据特点:
-     - 9种器官类别覆盖(CARDIOVASCULAR/RESPIRATORY/DIGESTIVE/URINARY/NERVOUS)
-     - 4种风险等级全部展示(HEALTHY/SUB_HEALTH/HIGH_RISK/DISEASE)
-     - 详细的JSON字段(vital_signs/biomarkers/prediction_result)
-     - AI模型版本和置信度追踪
-     - 医生审核流程集成
-     - 趋势分析和历史对比(comparison_with_previous)
-
- 表12 - treatment_simulation (治疗模拟记录表):
-   存储2条复杂治疗模拟案例：
-
-   案例1 - 冠心病治疗方案选择:
-     - 对比3种方案: 强化药物治疗 vs PCI介入 + 药物 vs 保守观察
-     - 输入参数: 年龄、合并症、冠脉解剖、当前用药、患者偏好
-     - 模拟输出: 1/3/5年MACE风险、心绞痛缓解率、QoL改善、成本分析
-     - 安全性: 出血风险、药物副作用、并发症概率
-     - 推荐: PCI介入(基于个体化风险收益平衡)
-
-   案例2 - 糖尿病优化方案:
-     - 对比4种方案: 单药加量 vs +SGLT2i vs +GLP-1 RA vs 三联口服
-     - 多维度评估: 降糖效力、CV/HF/肾脏保护、减重、安全性、成本
-     - 强烈推荐SGLT2i(多重获益+高安全性+口服便利)
-     - 包含详细处方建议、监测计划和注意事项
-
-   技术特点:
-     - 完整的临床决策支持流程
-     - 循证医学证据整合(evidence_base)
-     - 成本效益分析(ICUER计算)
-     - 患者偏好纳入(personalization_factors)
-     - 不确定性量化(confidence_interval)
-     - 敏感性分析(sensitivity_analysis)
-*/
-
-/*
- ============================================================================
- 📋 使用指南总结:
-
- 文件清单(共4个SQL文件):
- 1. new_tables_part1_parking.sql      - 停车服务模块(3个表: parking_lot, parking_space, parking_record)
- 2. new_tables_part2_navigation.sql   - AR导航模块(3个表: navigation_map, navigation_point, navigation_history)
- 3. new_tables_part3_smart_ward.sql   - 智慧病房模块(4个表: ward_device, device_alert, automation_rule, care_plan)
- 4. 本文件                           - 数字孪生模块(2个表: organ_health_data, treatment_simulation)
-
- 执行顺序(必须按顺序导入):
-   Step 1: 导入基础数据库 medical_health2.sql (如果尚未导入)
-   Step 2: 执行 new_tables_part1_parking.sql
-   Step 3: 执行 new_tables_part2_navigation.sql
-   Step 4: 执行 new_tables_part3_smart_ward.sql
-   Step 5: 执行本文件(第四部分)
-
- 总计新增: 12个表 + 丰富的示例数据
-
- 数据统计:
-   - 停车服务: 3个停车场 + 10个车位 + 5条停车记录
-   - AR导航: 3张地图 + 12个兴趣点 + 5条导航历史
-   - 智慧病房: 8台设备 + 6条告警 + 5条自动化规则 + 2份护理计划
-   - 数字孪生: 5条器官健康数据 + 2条治疗模拟记录
-
- 所有示例数据均为真实场景模拟，可直接用于开发和测试！
-*/
-Query OK, 0 rows affected (0.00 sec)
-
-Query OK, 0 rows affected (0.00 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-Query OK, 0 rows affected (0.02 sec)
-Query OK, 5 rows affected (0.00 sec)
-Records: 5  Duplicates: 0  Warnings: 0
-Query OK, 0 rows affected (0.00 sec)
-
-Query OK, 0 rows affected (0.00 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-Query OK, 0 rows affected (0.02 sec)
-1064 - You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'targetHba1c":"<6.5%"},{"name":"方案C：二甲双胍+GLP-1 RA","details":{"metf' at line 35
-Query OK, 0 rows affected (0.00 sec)
-
-    -> ;
-Query OK, 0 rows affected (0.00 sec)
-
-mysql> /*
- 星云医疗助手 - 新增功能模块数据库表 (第三部分: 智慧病房系统模块)
-
- 模块说明:
-   三、智慧病房系统模块 (Smart Ward System Module)
-   功能对应: 项目功能清单第8章 - 智慧病房系统
-   页面: NurseStationDashboard, SmartWardDevices, SmartWardAlerts, MonitoringDashboard
-   组件: SmartLightController, SmartCurtainController, SmartTVController, AirConditionerController等
-   用途: IoT设备管理、实时监控、告警处理、自动化规则引擎、护理计划管理
-
- 包含表:
-   表7: ward_device (病房设备表) - 管理所有IoT智能设备(灯光/窗帘/空调/病床/监护仪等)
-   表8: device_alert (设备告警表) - 记录设备异常、阈值超限、故障等告警事件
-   表9: automation_rule (自动化规则表) - 存储场景联动和智能调节规则
-   表10: care_plan (护理计划表) - 管理患者个性化护理方案
-
- 依赖: 需要先执行 new_tables_part1_parking.sql 和 new_tables_part2_navigation.sql
-*/
-
-SET NAMES utf8mb4;
-SET FOREIGN_KEY_CHECKS = 0;
-
--- ============================================================================
--- 三、智慧病房系统模块 (Smart Ward System Module)
--- ============================================================================
-
--- ----------------------------
--- 表7: ward_device (病房设备表)
--- 用途: 管理智慧病房中的所有IoT智能设备，包括灯光、窗帘、空调、病床、输液泵、监护仪等
--- 支持设备状态监控、远程控制、配置管理
--- ----------------------------
-DROP TABLE IF EXISTS `ward_device`;
-CREATE TABLE `ward_device` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '设备ID，主键自增',
-  `device_code` varchar(64) NOT NULL COMMENT '设备唯一编码(如MAC地址或设备序列号)',
-  `ward_number` varchar(20) NOT NULL COMMENT '病房号，如"301"、"ICU-05"、"VIP-01"',
-  `bed_number` varchar(10) DEFAULT NULL COMMENT '床位号，如"床1"、"床2"(公共设备为NULL)',
-  `device_name` varchar(100) NOT NULL COMMENT '设备名称，如"床头灯"、"智能窗帘"、"心电监护仪"',
-  `device_type` enum('LIGHT','CURTAIN','TV','AIR_CONDITIONER','BED','INFUSION_PUMP','PATIENT_MONITOR','CALL_BUTTON','WINDOW','OXYGEN','VACUUM','SCALE','OTHER') NOT NULL COMMENT '设备类型: LIGHT=灯光 CURTAIN=窗帘 TV=电视 AIR_CONDITIONER=空调 BED=智能病床 INFUSION_PUMP=输液泵 PATIENT_MONITOR=监护仪 CALL_BUTTON=呼叫按钮 WINDOW=窗户 OXYGEN=吸氧装置 VACUUM=负压吸引 SCALE=体重秤 OTHER=其他',
-  `device_model` varchar(100) DEFAULT NULL COMMENT '设备型号，如"HL-SmartLight-Pro V2"',
-  `manufacturer` varchar(100) DEFAULT NULL COMMENT '制造商',
-  `firmware_version` varchar(50) DEFAULT NULL COMMENT '固件版本',
-  `device_status` enum('ONLINE','OFFLINE','FAULT','MAINTENANCE','DECOMMISSIONED') NOT NULL DEFAULT 'ONLINE' COMMENT '设备状态: ONLINE=在线 OFFLINE=离线 FAULT=故障 MAINTENANCE=维护中 DECOMMISSIONED=已报废',
-  `power_status` enum('ON','OFF','STANDBY') DEFAULT 'OFF' COMMENT '电源状态: ON=开启 OFF=关闭 STANDBY=待机',
-  `current_config` json DEFAULT NULL COMMENT '当前配置参数(JSON): 根据设备类型不同而异',
-  `default_config` json DEFAULT NULL COMMENT '默认配置参数(JSON)',
-  `device_capabilities` json DEFAULT NULL COMMENT '设备能力列表(JSON): 支持的功能和控制指令',
-  `last_heartbeat` datetime DEFAULT NULL COMMENT '最后心跳时间',
-  `heartbeat_interval` int DEFAULT 30 COMMENT '心跳间隔(秒)',
-  `battery_level` tinyint DEFAULT NULL COMMENT '电池电量%(仅无线设备，NULL表示有线供电)',
-  `signal_strength` tinyint DEFAULT NULL COMMENT '信号强度(RSSI, -100~0，越大越好)',
-  `install_date` date DEFAULT NULL COMMENT '安装日期',
-  `last_maintenance_date` date DEFAULT NULL COMMENT '上次维护日期',
-  `next_maintenance_date` date DEFAULT NULL COMMENT '下次计划维护日期',
-  `warranty_expire_date` date DEFAULT NULL COMMENT '保修截止日期',
-  `location_description` varchar(255) DEFAULT NULL COMMENT '安装位置描述，如"床头左侧墙壁"、"天花板中央"',
-  `ip_address` varchar(45) DEFAULT NULL COMMENT 'IP地址(IPv4/IPv6)',
-  `network_type` enum('WiFi','Zigbee','Bluetooth','Ethernet','LoRa','NB-IoT') DEFAULT 'WiFi' COMMENT '网络接入方式',
-  `protocol_version` varchar(20) DEFAULT NULL COMMENT '通信协议版本',
-  `is_controllable` tinyint NOT NULL DEFAULT 1 COMMENT '是否可远程控制: 0=只读 1=可控制',
-  `patient_id` bigint DEFAULT NULL COMMENT '当前关联的患者ID(仅患者专用设备)',
-  `assigned_nurse_id` bigint DEFAULT NULL COMMENT '负责护士ID',
-  `notes` text COMMENT '备注信息',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `is_deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除: 0=未删除 1=已删除',
-  PRIMARY KEY (`id`),
-  UNIQUE INDEX `uk_device_code` (`device_code`),
-  INDEX `idx_ward_bed` (`ward_number`, `bed_number`),
-  INDEX `idx_device_type` (`device_type`),
-  INDEX `idx_device_status` (`device_status`),
-  INDEX `idx_last_heartbeat` (`last_heartbeat`),
-  INDEX `idx_patient_id` (`patient_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='病房设备表';
-
--- 示例数据: 插入各类智慧病房设备
-INSERT INTO `ward_device` (`id`, `device_code`, `ward_number`, `bed_number`, `device_name`, `device_type`, `device_model`, `manufacturer`, `firmware_version`, `device_status`, `power_status`, `current_config`, `default_config`, `device_capabilities`, `last_heartbeat`, `heartbeat_interval`, `battery_level`, `signal_strength`, `install_date`, `last_maintenance_date`, `next_maintenance_date`, `warranty_expire_date`, `location_description`, `ip_address`, `network_type`, `protocol_version`, `is_controllable`, `patient_id`, `assigned_nurse_id`, `notes`, `create_time`, `update_time`, `is_deleted`) VALUES
-(1, 'LIGHT-301-001', '301', NULL, '301病房主灯', 'LIGHT', 'HL-SmartLED-Pro V3', '华为智选', 'v2.1.5', 'ONLINE', 'ON', '{"brightness":80,"colorTemp":4000,"colorMode":"white","sceneMode":"reading"}', '{"brightness":70,"colorTemp":4500,"colorMode":"white","sceneMode":"comfort"}', '["setBrightness","setColorTemp","setColor","toggle","setScene"]', NOW(), 30, NULL, -45, '2026-01-15', '2026-04-01', '2026-07-01', '2027-01-15', '病房天花板中央', '192.168.1.101', 'WiFi', 'MQTT-v3.1.1', 1, NULL, NULL, '主照明灯，支持调光调色', NOW(), NOW(), 0),
-
-(2, 'CURTAIN-301-001', '301', NULL, '301病房智能窗帘', 'CURTAIN', 'HL-Curtain-Motor V2', '绿米联创', 'v1.8.3', 'ONLINE', 'ON', '{"position":70,"mode":"partial","direction":"stop"}', '{"position":50,"mode":"partial","direction":"stop"}', '["open","close","stop","setPosition"]', NOW(), 60, NULL, -52, '2026-01-15', '2026-04-01', '2026-07-01', '2027-01-15', '病房南侧窗户', '192.168.1.102', 'Zigbee', 'Zigbee-v3.0', 1, NULL, NULL, '电动开合帘，遮光率95%', NOW(), NOW(), 0),
-
-(3, 'MONITOR-301-B1', '301', '床1', '床1多参数监护仪', 'PATIENT_MONITOR', 'HL-Monitor-Elite X1', '迈瑞医疗', 'v3.2.1', 'ONLINE', 'ON', '{"ecg":{"lead":"II","gain":10},"spo2":{"alarmHigh":99,"alarmLow":90},"bp":{"mode":"auto","interval":30},"hr":{"alarmHigh":120,"alarmLow":50},"rr":{"alarmHigh":25,"alarmLow":8},"temp":{"unit":"celsius"}}', '{}', '["getVitals","setAlarmLimits","startMonitoring","stopMonitoring","exportData"]', NOW(), 10, NULL, -38, '2026-01-15', '2026-04-10', '2026-05-10', '2027-01-15', '床1床头支架', '192.168.1.103', 'Ethernet', 'HL-Protocol-v2.0', 1, 201, 5, '正在监测患者张三的生命体征', NOW(), NOW(), 0),
-
-(4, 'PUMP-301-B1', '301', '床1', '床1智能输液泵', 'INFUSION_PUMP', 'HL-Infusion-Smart V2', '科曼医疗', 'v2.0.8', 'ONLINE', 'ON', '{"rate":60,"volume":500,"remainingVolume":320,"drugName":"0.9%氯化钠注射液","mode":"volume","occlusionPressure":"normal","airDetection":true}', '{"rate":50,"volume":500,"mode":"volume","occlusionPressure":"normal","airDetection":true}', '["setRate","setVolume","start","stop","pause","setDrugInfo","clearAlarm"]', NOW(), 5, NULL, -42, '2026-01-15', '2026-04-05', '2026-06-05', '2027-01-15', '床1输液架', '192.168.1.104', 'WiFi', 'MQTT-v3.1.1', 1, 201, 5, '当前输液中，预计剩余约5小时', NOW(), NOW(), 0),
-
-(5, 'BED-301-B1', '301', '床1', '床1电动护理床', 'BED', 'HL-Bed-Electric Pro V4', '鱼跃医疗', 'v2.5.2', 'ONLINE', 'ON', '{"headAngle":30,"footAngle":15,"height":45,"position":"fowler","backMassage":false,"sideRail":"up"}', '{"headAngle":0,"footAngle":0,"height":50,"position":"flat","backMassage":false,"sideRail":"down"}', '["setHeadAngle","setFootAngle","setHeight","setPosition","toggleMassage","setSideRail","callNurse","emergencyStop"]', NOW(), 15, NULL, -48, '2026-01-15', '2026-03-20', '2026-06-20', '2027-01-15', '床1主体', '192.168.1.105', 'Zigbee', 'Zigbee-v3.0', 1, 201, 5, '五功能电动床，支持体位调整', NOW(), NOW(), 0),
-
-(6, 'AC-301-001', '301', NULL, '301病房空调', 'AIR_CONDITIONER', 'HL-AC-Inverter Plus V2', '格力', 'v1.9.7', 'ONLINE', 'ON', '{"temperature":24,"mode":"cool","fanSpeed":"low","swing":true,"ecoMode":false,"quietMode":true}', '{"temperature":26,"mode":"auto","fanSpeed":"auto","swing":false,"ecoMode":true,"quietMode":true}', '["setTemperature","setMode","setFanSpeed","toggleSwing","toggleEco","toggleQuiet","togglePower"]', NOW(), 60, NULL, -55, '2026-01-15', '2026-04-01', '2026-07-01', '2027-01-15', '病房墙上', '192.168.1.106', 'WiFi', 'IR+WiFi-v1.0', 1, NULL, NULL, '变频空调，静音模式运行中', NOW(), NOW(), 0),
-
-(7, 'CALL-301-B1', '301', '床1', '床1呼叫按钮', 'CALL_BUTTON', 'HL-CallButton-Wireless V1', '华为智选', 'v1.2.3', 'ONLINE', 'STANDBY', '{"buttonType":"nurse_call","ledColor":"green","volume":80,"vibration":true}', '{"buttonType":"nurse_call","ledColor":"green","volume":80,"vibration":true}', '["press","cancel","setVolume","setLedColor","test"]', NOW(), 30, 95, -58, '2026-01-15', '2026-03-15', '2026-06-15', '2027-01-15', '床1床头扶手', NULL, 'Bluetooth', 'BLE-v4.2', 1, 201, 5, '无线呼叫按钮，带震动反馈', NOW(), NOW(), 0),
-
-(8, 'TV-301-001', '301', NULL, '301病房智能电视', 'TV', 'HL-TV-Smart 55"', '海信', 'v2.3.1', 'ONLINE', 'STANDBY', '{"power":"standby","volume":30,"channel":1,"inputSource":"hdmi1","childLock":true}', '{"power":"off","volume":25,"channel":1,"inputSource":"tv","childLock":true}', '["togglePower","setVolume","setChannel","setInput","setChildLock"]', NOW(), 120, NULL, -50, '2026-01-15', '2026-04-01', '2026-07-01', '2027-01-15', '床尾对面墙壁', '192.168.1.107', 'WiFi', 'DLNA+v2.0', 1, NULL, NULL, '55寸智能电视，儿童锁已启用', NOW(), NOW(), 0);
-
--- ----------------------------
--- 表8: device_alert (设备告警表)
--- 用途: 记录IoT设备的所有告警事件，用于护士站实时监控、历史追溯、统计分析
--- 支持多级告警、自动升级、处理跟踪
--- 关联: ward_device表
--- ----------------------------
-DROP TABLE IF EXISTS `device_alert`;
-CREATE TABLE `device_alert` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '告警ID，主键自增',
-  `device_id` bigint NOT NULL COMMENT '触发告警的设备ID',
-  `alert_code` varchar(50) NOT NULL COMMENT '告警代码，如"ECG_HIGH"、"PUMP_OCCLUSION"、"OFFLINE_30MIN"',
-  `alert_type` enum('ABNORMAL','FAULT','THRESHOLD_EXCEED','OFFLINE','LOW_BATTERY','MAINTENANCE_DUE','SECURITY','OTHER') NOT NULL COMMENT '告警类型: ABNORMAL=数据异常 FAULT=设备故障 THRESHOLD_EXCEED=阈值超限 OFFLINE=离线 LOW_BATTERY=低电量 MAINTENANCE_DUE=需维护 SECURITY=安全告警 OTHER=其他',
-  `alert_level` enum('INFO','WARNING','CRITICAL','EMERGENCY') NOT NULL DEFAULT 'WARNING' COMMENT '告警级别: INFO=信息 WARNING=警告 CRITICAL=严重 EMERGENCY=紧急',
-  `alert_title` varchar(200) NOT NULL COMMENT '告警标题，如"心率过高报警"、"输液泵堵塞"',
-  `alert_message` text NOT NULL COMMENT '告警详细消息',
-  `trigger_metric` varchar(50) DEFAULT NULL COMMENT '触发指标名，如"heart_rate"、"sp_o2"、"infusion_rate"',
-  `trigger_value` varchar(100) DEFAULT NULL COMMENT '触发时的值',
-  `threshold_value` varchar(100) DEFAULT NULL COMMENT '阈值/限值',
-  `unit` varchar(20) DEFAULT NULL COMMENT '单位，如"bpm"、"%"、"ml/h"',
-  `severity_score` int DEFAULT 50 COMMENT '严重程度评分(0-100)',
-  `patient_id` bigint DEFAULT NULL COMMENT '关联的患者ID(如有)',
-  `ward_number` varchar(20) DEFAULT NULL COMMENT '病房号(冗余存储)',
-  `acknowledged_by` bigint DEFAULT NULL COMMENT '确认人ID(护士/医生)',
-  `acknowledged_time` datetime DEFAULT NULL COMMENT '确认时间',
-  `handled_by` bigint DEFAULT NULL COMMENT '处理人ID',
-  `handle_time` datetime DEFAULT NULL COMMENT '处理完成时间',
-  `handle_method` varchar(255) DEFAULT NULL COMMENT '处理方式描述',
-  `handle_result` enum('SUCCESS','PARTIAL','FAILED','ESCALATED','FALSE_ALARM') DEFAULT NULL COMMENT '处理结果: SUCCESS=成功解决 PARTIAL=部分解决 FAILED=未解决 ESCALATED=已升级 FALSE_ALARM=误报',
-  `status` enum('ACTIVE','ACKNOWLEDGED','IN_PROGRESS','RESOLVED','CLOSED','ESCALATED') NOT NULL DEFAULT 'ACTIVE' COMMENT '告警状态: ACTIVE=活跃 ACKNOWLEDGED=已确认 IN_PROGRESS=处理中 RESOLVED=已解决 CLOSED=已关闭 ESCALATED=已升级',
-  `escalation_level` int DEFAULT 0 COMMENT '升级级别: 0=未升级 1=护士长 2=值班医生 3=科主任 4=院长',
-  `escalation_time` datetime DEFAULT NULL COMMENT '升级时间',
-  `auto_resolve_time` datetime DEFAULT NULL COMMENT '自动解决时间(如果告警自行消失)',
-  `duration_seconds` int DEFAULT NULL COMMENT '持续时长(秒)，从触发到解决',
-  `notification_sent` tinyint NOT NULL DEFAULT 0 COMMENT '是否已发送通知: 0=否 1=是',
-  `notification_channels` json DEFAULT NULL COMMENT '通知渠道(JSON数组): ["app_push","sms","call","screen"]',
-  `related_alert_ids` json DEFAULT NULL COMMENT '关联的其他告警ID',
-  `root_cause_analysis` text COMMENT '根因分析(处理后填写)',
-  `prevention_action` varchar(500) DEFAULT NULL COMMENT '预防措施',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '告警触发时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  INDEX `idx_device_id` (`device_id`),
-  INDEX `idx_alert_type` (`alert_type`),
-  INDEX `idx_alert_level` (`alert_level`),
-  INDEX `idx_status` (`status`),
-  INDEX `idx_create_time` (`create_time`),
-  INDEX `idx_patient_id` (`patient_id`),
-  INDEX `idx_ward_number` (`ward_number`),
-  INDEX `idx_severity` (`severity_score`),
-  CONSTRAINT `fk_alert_device` FOREIGN KEY (`device_id`) REFERENCES `ward_device` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='设备告警表';
-
--- 示例数据: 插入各种类型的设备告警
-INSERT INTO `device_alert` (`id`, `device_id`, `alert_code`, `alert_type`, `alert_level`, `alert_title`, `alert_message`, `trigger_metric`, `trigger_value`, `threshold_value`, `unit`, `severity_score`, `patient_id`, `ward_number`, `acknowledged_by`, `acknowledged_time`, `handled_by`, `handle_time`, `handle_method`, `handle_result`, `status`, `escalation_level`, `escalation_time`, `auto_resolve_time`, `duration_seconds`, `notification_sent`, `notification_channels`, `related_alert_ids`, `root_cause_analysis`, `prevention_action`, `create_time`, `update_time`) VALUES
-(1, 3, 'ECG_HIGH', 'THRESHOLD_EXCEED', 'CRITICAL', '心率过高报警', '患者张三(ID:201)心率异常升高至125 bpm，超过上限阈值(120 bpm)，持续时间超过3分钟。请立即检查患者状况！', 'heart_rate', '125', '120', 'bpm', 85, 201, '301', 5, DATE_ADD(NOW(), INTERVAL 2 MINUTE), 5, DATE_ADD(NOW(), INTERVAL 8 MINUTE), '护士到场评估，患者因疼痛导致心率加快，已通知医生并给予镇痛处理', 'SUCCESS', 'RESOLVED', 0, NULL, NULL, NULL, 480, 1, '["app_push", "screen"]', NULL, '术后疼痛导致一过性心动过速', '加强术后疼痛管理，密切监测心电变化', DATE_SUB(NOW(), INTERVAL 15 MINUTE), NOW()),
-
-(2, 4, 'PUMP_OCCLUSION', 'ABNORMAL', 'WARNING', '输液泵堵塞报警', '床1输液泵检测到管路堵塞，压力异常。当前输液速率已自动暂停。请立即检查输液管路是否有折叠或针头脱出。', 'occlusion_pressure', 'high', 'normal', NULL, 65, 201, '301', 5, DATE_ADD(NOW(), INTERVAL 1 MINUTE), 5, DATE_ADD(NOW(), INTERVAL 5 MINUTE), '检查发现输液管路在床栏处被压折，重新整理管路后恢复正常', 'SUCCESS', 'RESOLVED', 0, NULL, NULL, NULL, 240, 1, '["app_push", "screen"]', NULL, '输液管路在床栏处受压折叠', '加强巡视，确保管路固定妥当', DATE_SUB(NOW(), INTERVAL 10 MINUTE), NOW()),
-
-(3, 3, 'SPO2_LOW', 'THRESHOLD_EXCEED', 'CRITICAL', '血氧饱和度过低报警', '患者张三血氧饱和度降至88%，低于下限阈值(90%)。可能存在缺氧风险，请立即检查患者呼吸道及氧疗情况！', 'sp_o2', '88', '90', '%', 90, 201, '301', 5, DATE_ADD(NOW(), INTERVAL 30 SECOND), NULL, NULL, NULL, NULL, NULL, 'IN_PROGRESS', 1, DATE_ADD(NOW(), INTERVAL 1 MINUTE), NULL, NULL, NULL, 1, '["app_push", "sms", "call", "screen"]', NULL, NULL, NULL, DATE_SUB(NOW(), INTERVAL 3 MINUTE), NOW()),
-
-(4, 7, 'CALL_BUTTON_PRESS', 'ABNORMAL', 'INFO', '患者呼叫请求', '床1患者按下呼叫按钮，请求护士到床服务。呼叫原因: 需要协助翻身。', 'button_event', 'press', NULL, NULL, 30, 201, '301', 5, DATE_ADD(NOW(), INTERVAL 1 MINUTE), 5, DATE_ADD(NOW(), INTERVAL 3 MINUTE), '护士到场协助患者翻身并调整舒适体位', 'SUCCESS', 'CLOSED', 0, NULL, NULL, NULL, 120, 1, '["app_push", "screen"]', NULL, '患者需要协助翻身', '增加巡视频次，关注患者舒适度', DATE_SUB(NOW(), INTERVAL 5 MINUTE), NOW()),
-
-(5, 1, 'LIGHT_FAULT', 'FAULT', 'WARNING', '灯光设备故障', '301病房主灯通信不稳定，最近5分钟内有3次心跳超时。可能是网络信号问题或设备硬件故障。', 'heartbeat_timeout_count', '3', '2', '次/5min', 55, NULL, '301', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ACKNOWLEDGED', 0, NULL, NULL, NULL, NULL, NULL, 1, '["app_push"]', NULL, 'WiFi信号不稳定或设备固件问题', '安排网络检测和设备维护', DATE_SUB(NOW(), INTERVAL 8 MINUTE), NOW()),
-
-(6, 6, 'AC_FILTER_REMINDER', 'MAINTENANCE_DUE', 'INFO', '空调滤网更换提醒', '301病房空调已连续运行720小时，根据维护计划需要清洗或更换滤网。建议在本周内安排维护。', 'runtime_hours', '720', '720', 'hours', 25, NULL, '301', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ACTIVE', 0, NULL, NULL, NULL, NULL, NULL, 0, '["app_push"]', NULL, NULL, '按计划执行空调维护保养', NOW(), NOW());
-
--- ----------------------------
--- 表9: automation_rule (自动化规则表)
--- 用途: 存储智慧病房的自动化规则配置，实现场景联动、智能调节
--- 支持时间触发、条件触发、手动触发等多种模式
--- ----------------------------
-DROP TABLE IF EXISTS `automation_rule`;
-CREATE TABLE `automation_rule` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '规则ID，主键自增',
-  `rule_name` varchar(100) NOT NULL COMMENT '规则名称，如"夜间安静模式"、"查房模式"、"紧急响应"',
-  `rule_description` text COMMENT '规则详细描述',
-  `rule_type` enum('TIME_BASED','CONDITION_BASED','DEVICE_EVENT','MANUAL','GEO_FENCE','COMBINED') NOT NULL DEFAULT 'CONDITION_BASED' COMMENT '规则类型: TIME_BASED=时间触发 CONDITION_BASED=条件触发 DEVICE_EVENT=设备事件触发 MANUAL=手动执行 GEO_FENCE=地理围栏 COMBINED=组合触发',
-  `trigger_condition` json NOT NULL COMMENT '触发条件(JSON): 定义何时触发规则',
-  `action_list` json NOT NULL COMMENT '动作列表(JSON): 触发后执行的一系列操作',
-  `target_devices` json DEFAULT NULL COMMENT '目标设备ID列表(JSON数组)',
-  `target_wards` json DEFAULT NULL COMMENT '目标病房列表(JSON数组)',
-  `execution_order` int DEFAULT 0 COMMENT '执行顺序(数字越小优先级越高)',
-  `priority` enum('LOW','MEDIUM','HIGH','CRITICAL') NOT NULL DEFAULT 'MEDIUM' COMMENT '优先级: LOW=低 MEDIUM=中等 HIGH=高 CRITICAL=最高',
-  `is_enabled` tinyint NOT NULL DEFAULT 1 COMMENT '是否启用: 0=禁用 1=启用',
-  `schedule` json DEFAULT NULL COMMENT '调度配置(JSON): 时间窗口、重复周期等',
-  `cooldown_seconds` int DEFAULT 60 COMMENT '冷却时间(秒): 避免频繁触发',
-  `max_executions_per_day` int DEFAULT NULL COMMENT '每日最大执行次数(NULL=不限)',
-  `execution_count_today` int DEFAULT 0 COMMENT '今日已执行次数',
-  `last_execution_time` datetime DEFAULT NULL COMMENT '上次执行时间',
-  `next_execution_time` datetime DEFAULT NULL COMMENT '下次预计执行时间',
-  `success_count` int DEFAULT 0 COMMENT '累计成功执行次数',
-  `failure_count` int DEFAULT 0 COMMENT '累计失败次数',
-  `last_error_message` text COMMENT '最后一次错误信息',
-  `created_by` bigint DEFAULT NULL COMMENT '创建人ID(管理员)',
-  `modified_by` bigint DEFAULT NULL COMMENT '最后修改人ID',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `is_deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除: 0=未删除 1=已删除',
-  PRIMARY KEY (`id`),
-  INDEX `idx_rule_type` (`rule_type`),
-  INDEX `idx_priority` (`priority`),
-  INDEX `idx_is_enabled` (`is_enabled`),
-  INDEX `idx_last_execution` (`last_execution_time`),
-  INDEX `idx_created_by` (`created_by`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='自动化规则表';
-
--- 示例数据: 插入各种类型的自动化规则
-INSERT INTO `automation_rule` (`id`, `rule_name`, `rule_description`, `rule_type`, `trigger_condition`, `action_list`, `target_devices`, `target_wards`, `execution_order`, `priority`, `is_enabled`, `schedule`, `cooldown_seconds`, `max_executions_per_day`, `execution_count_today`, `last_execution_time`, `success_count`, `failure_count`, `created_by`, `create_time`, `update_time`, `is_deleted`) VALUES
-(1, '夜间安静模式(22:00-06:00)', '每晚22点自动将病房调整为夜间模式：灯光调暗、空调静音、窗帘关闭、电视待机，营造安静睡眠环境', 'TIME_BASED',
- '{"timeWindow":{"start":"22:00","end":"06:00"},"timezone":"Asia/Shanghai","repeat":["mon","tue","wed","thu","fri","sat","sun"]}',
- '[{"action":"setBrightness","params":{"brightness":20}},{"action":"setMode","params":{"mode":"night"}},{"action":"close"},{"action":"togglePower","params":{"power":"standby"}}]',
- '[1, 2, 6, 8]', '["301", "302", "303"]', 1, 'HIGH', 1,
- '{"cronExpression":"0 22 * * *","endCron":"0 6 * * *"}', 3600, 1, 0, DATE_SUB(NOW(), INTERVAL 12 HOUR), 45, 2, 1, NOW(), NOW(), 0),
-
-(2, '紧急呼叫响应', '当患者按下呼叫按钮时，自动调亮床头灯到80%亮度，并打开房门指示灯引导护士快速定位', 'DEVICE_EVENT',
- '{"eventType":"BUTTON_PRESS","deviceIdPattern":"CALL-*","debounceMs":30000}',
- '[{"action":"setBrightness","params":{"brightness":80}},{"action":"sendNotification","params":{"channels":["app_push","screen"],"message":"患者呼叫请求"}}]',
- '[1, 7]', '["301", "302", "303", "ICU-*"]', 1, 'CRITICAL', 1, NULL, 30, NULL, 5, DATE_SUB(NOW(), INTERVAL 2 HOUR), 128, 3, 1, NOW(), NOW(), 0),
-
-(3, '查房准备模式(08:45)', '每日上午08:45自动为查房做准备：打开窗帘让自然光照入、调整病床角度至平卧、调亮灯光至70%、开启监护仪大字体显示', 'TIME_BASED',
- '{"time":"08:45","repeat":["mon","tue","wed","thu","fri"]}',
- '[{"action":"open"},{"action":"setPosition","params":{"position":"flat"}},{"action":"setBrightness","params":{"brightness":70}},{"action":"setDisplayMode","params":{"mode":"rounds"}}]',
- '[2, 5, 1, 3]', '["301", "302", "303"]', 2, 'MEDIUM', 1,
- '{"cronExpression":"45 8 * * 1-5"}', 86400, 1, 0, DATE_SUB(NOW(), INTERVAL 18 HOUR), 18, 1, 2, NOW(), NOW(), 0),
-
-(4, '生命体征异常联动', '当监护仪监测到生命体征异常时(心率>120或<50，血氧<90%)，自动提高灯光亮度、发送多渠道告警通知、记录事件日志', 'CONDITION_BASED',
- '{"conditions":[{"metric":"heart_rate","operator":">","value":120},{"metric":"heart_rate","operator":"<","value":50},{"metric":"sp_o2","operator":"<","value":90}],"logic":"OR","durationSeconds":180}',
- '[{"action":"setBrightness","params":{"brightness":100}},{"action":"sendAlert","params":{"level":"CRITICAL","channels":["app_push","sms","call","screen"]}},{"action":"logEvent","params":{"category":"vital_signs_abnormal"}}]',
- '[1, 3]', NULL, 1, 'CRITICAL', 1, NULL, 300, 10, 3, DATE_SUB(NOW(), INTERVAL 30 MINUTE), 56, 8, 1, NOW(), NOW(), 0),
-
-(5, '节能模式(无人在场)', '当病房连续30分钟无人活动(通过人体传感器检测)且非治疗时段，自动关闭灯光、降低空调功率至节能模式、关闭电视', 'CONDITION_BASED',
- '{"conditions":[{"sensorType":"motion","operator":"==","value":"no_motion","durationMinutes":30},{"timeRange":{"start":"09:00","end":"17:00"}}],"logic":"AND"}',
- '[{"action":"togglePower","params":{"power":"off"}},{"action":"setMode","params":{"mode":"eco"}},{"action":"togglePower","params":{"power":"off"}}]',
- '[1, 6, 8]', '["301", "302", "303"]', 3, 'LOW', 1, NULL, 1800, NULL, 0, DATE_SUB(NOW(), INTERVAL 2 HOUR), 23, 1, 2, NOW(), NOW(), 0);
-
--- ----------------------------
--- 表10: care_plan (护理计划表)
--- 用途: 管理患者的个性化护理计划，包括护理内容、频次、执行记录等
--- 关联: patient(通过user关联)、nurse表
--- ----------------------------
-DROP TABLE IF EXISTS `care_plan`;
-CREATE TABLE `care_plan` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '护理计划ID，主键自增',
-  `patient_id` bigint NOT NULL COMMENT '患者ID(user表)',
-  `plan_name` varchar(100) NOT NULL COMMENT '计划名称，如"术后康复护理计划"、"糖尿病日常管理"',
-  `plan_type` enum('POST_OPERATIVE','CHRONIC_DISEASE','PALLIATIVE','REHABILITATION','PREVENTIVE','CUSTOM') NOT NULL COMMENT '计划类型: POST_OPERATIVE=术后 CHRONIC_DISEASE=慢性病 PALLIATIVE=姑息 REHABILITATION=康复 PREVENTIVE=预防性 CUSTOM=自定义',
-  `plan_content` text NOT NULL COMMENT '护理计划详细内容(Markdown格式)',
-  `diagnosis` varchar(500) DEFAULT NULL COMMENT '主要诊断',
-  `admission_date` date DEFAULT NULL COMMENT '入院日期',
-  `expected_discharge_date` date DEFAULT NULL COMMENT '预计出院日期',
-  `actual_discharge_date` date DEFAULT NULL COMMENT '实际出院日期',
-  `primary_nurse_id` bigint DEFAULT NULL COMMENT '责任护士ID',
-  `attending_doctor_id` bigint DEFAULT NULL COMMENT '主治医生ID',
-  `ward_number` varchar(20) DEFAULT NULL COMMENT '病房号',
-  `bed_number` varchar(10) DEFAULT NULL COMMENT '床位号',
-  `acuity_level` enum('LOW','MODERATE','HIGH','CRITICAL') DEFAULT 'MODERATE' COMMENT '护理等级: LOW=轻度 MODERATE=中度 HIGH=重度 CRITICAL=危重',
-  `fall_risk_level` enum('LOW','MODERATE','HIGH') DEFAULT 'LOW' COMMENT '跌倒风险等级: LOW=低 MODERATE=中 HIGH=高',
-  `nutrition_plan` text COMMENT '营养饮食计划',
-  `medication_schedule` json DEFAULT NULL COMMENT '用药计划(JSON): 包含药物名称、剂量、时间、途径等',
-  `vital_signs_monitoring` json DEFAULT NULL COMMENT '生命体征监测要求(JSON): 监测项目、频率、阈值',
-  `activity_restrictions` text COMMENT '活动限制说明',
-  `special_instructions` text COMMENT '特殊注意事项',
-  `goals` json DEFAULT NULL COMMENT '护理目标(JSON数组)',
-  `interventions` json DEFAULT NULL COMMENT '护理干预措施(JSON数组)',
-  `evaluation_criteria` json DEFAULT NULL COMMENT '评估标准(JSON)',
-  `frequency_per_day` int DEFAULT 1 COMMENT '每日护理频次',
-  `start_time` datetime NOT NULL COMMENT '计划开始时间',
-  `end_time` datetime DEFAULT NULL COMMENT '计划结束时间(NULL表示长期)',
-  `status` enum('DRAFT','ACTIVE','PAUSED','COMPLETED','CANCELLED') NOT NULL DEFAULT 'DRAFT' COMMENT '状态: DRAFT=草稿 ACTIVE=执行中 PAUSED=暂停 COMPLETED=已完成 CANCELLED=已取消',
-  `approval_status` enum('PENDING','APPROVED','REJECTED','REVISED') DEFAULT 'PENDING' COMMENT '审批状态: PENDING=待审批 APPROVED=已批准 REJECTED=已拒绝 REVISED=需修订',
-  `approved_by` bigint DEFAULT NULL COMMENT '审批人ID(护士长/科主任)',
-  `approved_time` datetime DEFAULT NULL COMMENT '审批时间',
-  `revision_notes` text COMMENT '修订说明',
-  `created_by` bigint NOT NULL COMMENT '创建人ID(护士)',
-  `modified_by` bigint DEFAULT NULL COMMENT '最后修改人ID',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `is_deleted` tinyint NOT NULL DEFAULT 0 COMMENT '逻辑删除: 0=未删除 1=已删除',
-  PRIMARY KEY (`id`),
-  INDEX `idx_patient_id` (`patient_id`),
-  INDEX `idx_primary_nurse` (`primary_nurse_id`),
-  INDEX `idx_ward_bed` (`ward_number`, `bed_number`),
-  INDEX `idx_status` (`status`),
-  INDEX `idx_acuity` (`acuity_level`),
-  INDEX `idx_start_end` (`start_time`, `end_time`),
-  INDEX `idx_created_by` (`created_by`),
-  CONSTRAINT `fk_careplan_patient` FOREIGN KEY (`patient_id`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_careplan_nurse` FOREIGN KEY (`primary_nurse_id`) REFERENCES `nurse` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='护理计划表';
-
--- 示例数据: 插入不同状态的护理计划
-INSERT INTO `care_plan` (`id`, `patient_id`, `plan_name`, `plan_type`, `plan_content`, `diagnosis`, `admission_date`, `expected_discharge_date`, `actual_discharge_date`, `primary_nurse_id`, `attending_doctor_id`, `ward_number`, `bed_number`, `acuity_level`, `fall_risk_level`, `nutrition_plan`, `medication_schedule`, `vital_signs_monitoring`, `activity_restrictions`, `special_instructions`, `goals`, `interventions`, `evaluation_criteria`, `frequency_per_day`, `start_time`, `end_time`, `status`, `approval_status`, `approved_by`, `approved_time`, `revision_notes`, `created_by`, `modified_by`, `create_time`, `update_time`, `is_deleted`) VALUES
-(1, 201, '膝关节置换术后康复护理计划', 'POST_OPERATIVE',
- '# 膝关节置换术后康复护理计划\n\n## 一、术后早期(0-3天)\n### 疼痛管理\n- 按医嘱给予镇痛药(PCIA泵)\n- 冰敷患膝20min/次，每2h一次\n- 抬高患肢20°\n\n### 伤口护理\n- 观察切口渗血情况\n- 保持敷料干燥清洁\n- 每4h观察肢体血运\n\n## 二、功能锻炼\n### 第1天\n- 踝泵运动：10次/组×3组/天\n- 股四头肌等长收缩：15次/组×3组/天\n\n### 第2-3天\n- CPM机被动屈曲：0-30°开始，每天增加10°\n- 直腿抬高训练：10次/组×3组/天\n\n## 三、并发症预防\n- DVT预防：气压治疗+抗凝药物\n- 压疮预防：每2h翻身\n- 肺部感染：深呼吸+有效咳嗽',
- '左膝关节骨性关节炎(KL III级)', '2026-05-08', '2026-05-18', NULL, 5, NULL, '301', '床1', 'HIGH', 'MODERATE',
- '高蛋白饮食(鸡蛋、鱼肉、牛奶)\n富含维生素C食物促进伤口愈合\n控制盐摄入(<6g/日)',
- '[{"drugName":"低分子肝素钙注射液","dose":"4100 IU","route":"皮下注射","frequency":"QD","time":"09:00"},{"drugName":"塞来昔布胶囊","dose":"200mg","route":"PO","frequency":"BID","time":"08:00,20:00"},{"drugName":"氨酚羟考酮片","dose":"1片","route":"PO","frequency":"PRN","time":"疼痛时","maxDose":"6片/日"}]',
- '{"items":[{"name":"体温","frequency":"Q4H","range":"36.0-37.3°C"},{"name":"心率","frequency":"Q4H","range":"60-100bpm"},{"name":"血压","frequency":"Q4H","range":"90-140/60-90mmHg"},{"name":"血氧","frequency":"Q4H","range":"≥95%"},{"name":"疼痛评分(VAS)","frequency":"PRN","range":"0-10分"},{"name":"患肢肿胀度","frequency":"Q8H"}]}',
- '术后3天内绝对卧床，床上活动\n3天后可在助行器辅助下站立\n避免盘腿、跪坐动作\n禁止患肢负重',
- '密切观察DVT征象(肿胀、疼痛、皮温升高)\n注意神经损伤表现(麻木、感觉异常)\n保持引流管通畅固定',
- '["术后3天VAS评分<4分","术后7天主动屈膝达90°","术后14天独立完成ADL","无DVT、感染等并发症"]',
- '["疼痛评估与干预(Q4H)","冰敷护理(Q2H)","CPM机训练(BID)","踝泵运动指导(TID)","抗凝药物给药(QD)","DVT风险评估(QD)","健康教育及心理支持(QD)]',
- '{"painControl":{"VAS<4@day3":true,"VAS<2@week1":true},"mobility":{"ROM_90@week1":true,"ADL_independent@week2":true},"complications":{"dvt":false,"infection":false}}',
- 6, '2026-05-08 10:00:00', '2026-05-18 17:00:00', 'ACTIVE', 'APPROVED', 3, '2026-05-08 11:00:00', NULL, NULL, 5, NULL, '2026-05-08 09:30:00', NOW(), NOW(), 0),
-
-(2, 202, '2型糖尿病综合管理护理计划', 'CHRONIC_DISEASE',
- '# 2型糖尿病综合管理护理计划\n\n## 一、血糖监测\n- 空腹血糖：每日早餐前\n- 餐后2h血糖：早、午、晚餐后2h\n- 睡前血糖：22:00前\n- 目标范围：空腹4.4-7.0mmol/L，餐后<10.0mmol/L\n\n## 二、用药管理\n- 二甲双胍缓释片 0.5g BID(早晚餐前)\n- 格列美脲片 2mg QD(早餐前)\n- 根据血糖调整剂量\n\n## 三、饮食管理\n- 控制总热量：25kcal/kg理想体重\n- 碳水化合物占50-60%\n- 低GI饮食为主\n- 少量多餐(3主餐+2加餐)\n\n## 四、运动处方\n- 快走/慢跑：30min/次，每周5次\n- 运动后测血糖防低血糖\n- 避免空腹运动\n\n## 五、并发症筛查\n- 每周测血压\n- 每月测体重、腰围\n- 每季度查糖化血红蛋白\n- 每年查眼底、尿微量白蛋白、足部神经病变',
- '2型糖尿病(病程8年)，糖尿病周围神经病变(早期)', NULL, NULL, NULL, 6, NULL, '302', '床2', 'MODERATE', 'HIGH',
- '糖尿病饮食处方(详见营养科会诊单)\n主食选择全谷物(燕麦、糙米)\n蔬菜≥500g/日\n水果在两餐之间食用\n严格限制精制糖和含糖饮料',
- '[{"drugName":"二甲双胍缓释片","dose":"0.5g","route":"PO","frequency":"BID","time":"07:30,17:30","withMeal":true},{"drugName":"格列美脲片","dose":"2mg","route":"PO","frequency":"QD","time":"07:30","beforeMeal":true}]',
- '{"items":[{"name":"空腹血糖","frequency":"QD","time":"06:30","range":"4.4-7.0mmol/L"},{"name":"早餐后2h","frequency":"QD","time":"09:30","range":"<10.0mmol/L"},{"name":"午餐后2h","frequency":"QD","time":"13:30","range":"<10.0mmol/L"},{"name":"晚餐后2h","frequency":"QD","time":"19:30","range":"<10.0mmol/L"},{"name":"睡前血糖","frequency":"QD","time":"21:30","range":"6.0-9.0mmol/L"},{"name":"血压","frequency":"QW","range":"<130/80mmHg"},{"name":"体重","frequency":"QM"},{"name":"足部检查","frequency":"QD"}]}',
- '避免长时间站立或久坐\n穿宽松透气鞋袜\n避免赤脚行走\n运动时随身携带糖果',
- '警惕低血糖症状(心悸、出汗、手抖)\n出现低血糖立即进食15g快起碳水化合物\n定期检查足部有无破损、水泡\n外出携带糖尿病急救卡',
- '["糖化血红蛋白(HbA1c)<7.0%","空腹血糖达标率>80%","无严重低血糖事件(HBG<3.9mmol/L)","体重下降5-10%","掌握自我管理技能"]',
- '["血糖监测技术指导","胰岛素注射技术培训(备用)","饮食教育(QW)","运动处方制定与监督","低血糖识别与处理教育","足部护理指导(QD)","心理支持(BIW)","家属同步教育"]',
- '{"glycemicControl":{"hba1c<7%":true,"fbg_80%target":true},"hypoglycemia":{"severe":0,"awareness":"preserved"},"complications":{"neuropathy_stable":true,"no_ulcer":true},"selfManagement":{"skills_mastered":true,"adherence>90%":true}}',
- 4, '2026-05-01 00:00:00', NULL, 'ACTIVE', 'APPROVED', 3, '2026-05-01 16:00:00', NULL, NULL, 6, NULL, '2026-04-30 14:00:00', NOW(), NOW(), 0);
-
-SET FOREIGN_KEY_CHECKS = 1;
-
-/*
- ============================================================================
- 智慧病房系统模块说明:
-
- 表7 - ward_device (病房设备表):
-   存储8台示例设备，覆盖301病房的完整IoT生态系统:
-     - LIGHT(1台): 智能LED主灯，支持调光调色和场景模式
-     - CURTAIN(1台): 电动开合帘，遮光率95%
-     - PATIENT_MONITOR(1台): 多参数监护仪(ECG/SPO2/BP/HR/RR/TEMP)
-     - INFUSION_PUMP(1台): 智能输液泵，支持堵塞检测和空气检测
-     - BED(1台): 五功能电动护理床(头/脚升降、高度调节、按摩)
-     - AIR_CONDITIONER(1台): 变频空调，支持ECO和静音模式
-     - CALL_BUTTON(1台): 无线蓝牙呼叫按钮，带震动反馈
-     - TV(1台): 55寸智能电视，儿童锁保护
-   设备状态全部为ONLINE，展示完整的配置JSON和能力列表
-
- 表8 - device_alert (设备告警表):
-   存储6条示例告警，涵盖所有告警类型:
-     - THRESHOLD_EXCEED(2条): 心率过高(CRITICAL)、血氧过低(CRITICAL)
-     - ABNORMAL(2条): 输液泵堵塞(WARNING)、患者呼叫(INFO)
-     - FAULT(1条): 灯光通信不稳定(WARNING)
-     - MAINTENANCE_DUE(1条): 空调滤网更换提醒(INFO)
-   展示完整生命周期: ACTIVE→ACKNOWLEDGED→IN_PROGRESS→RESOLVED→CLOSED
-   包含多级升级机制(0-4级)和多渠道通知(app_push/sms/call/screen)
-
- 表9 - automation_rule (自动化规则表):
-   存储5条示例规则，展示不同触发类型:
-     - TIME_BASED(2条): 夜间安静模式(22:00-06:00)、查房准备(08:45)
-     - DEVICE_EVENT(1条): 紧急呼叫响应(最高优先级)
-     - CONDITION_BASED(2条): 生命体征异常联动、节能模式
-   规则优先级从LOW到CRITICAL，包含冷却时间和执行频率限制
-   动作列表使用JSON格式，支持多设备协同控制
-
- 表10 - care_plan (护理计划表):
-   存储2条示例护理计划:
-     - 术后康复计划(膝关节置换): 高护理等级，详细的康复阶段划分
-     - 慢性病管理计划(2型糖尿病): 中等护理等级，长期管理方案
-   包含完整的护理要素: 诊断、用药计划、监测要求、营养方案、活动限制
-   支持审批流程(DRAFT→APPROVED)和状态跟踪(ACTIVE/PAUSED/COMPLETED)
-*/
-Query OK, 0 rows affected (0.00 sec)
-
-Query OK, 0 rows affected (0.00 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 0 rows affected (0.02 sec)
-
-Query OK, 8 rows affected (0.00 sec)
-Records: 8  Duplicates: 0  Warnings: 0
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 0 rows affected (0.02 sec)
-1136 - Column count doesn't match value count at row 1
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 0 rows affected (0.01 sec)
-
-Query OK, 5 rows affected (0.00 sec)
-Records: 5  Duplicates: 0  Warnings: 0
-
-Query OK, 0 rows affected (0.01 sec)
-Query OK, 0 rows affected (0.02 sec)
-1136 - Column count doesn't match value count at row 1
-Query OK, 0 rows affected (0.00 sec)
-
-    -> ;
-Query OK, 0 rows affected (0.00 sec)
-
-mysql>
+> hvigor ERROR: ArkTS Compiler Error
+1 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1022:31
+
+
+2 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1022:80
+
+
+3 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1028:30
+
+
+4 ERROR: 10605043 ArkTS Compiler Error
+Error Message: Array literals must contain elements of only inferrable types (arkts-no-noninferrable-arr-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1031:23
+
+
+5 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1031:24
+
+
+6 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1161:51
+
+
+7 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1161:100
+
+
+8 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1193:65
+
+
+9 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1193:114
+
+
+10 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1198:33
+
+
+11 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1214:41
+
+
+12 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1220:15
+
+
+13 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1244:59
+
+
+14 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1244:108
+
+
+15 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1252:35
+
+
+16 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1268:41
+
+
+17 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1274:15
+
+
+18 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1296:50
+
+
+19 ERROR: 10605040 ArkTS Compiler Error
+Error Message: Object literals cannot be used as type declarations (arkts-no-obj-literals-as-types) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1296:99
+
+
+20 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1301:41
+
+
+21 ERROR: 10605038 ArkTS Compiler Error
+Error Message: Object literal must correspond to some explicitly declared class or interface (arkts-no-untyped-obj-literals) At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1307:15
+
+
+22 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type '{ lesionId: any; lesionType: string; confidence: number; riskLevel: RiskLevel; location: any; size: SizeMM; suggestedDiagnosis: string; description: string; recommendations: string[]; }' is not assignable to type 'Lesion'.
+  Object literal may only specify known properties, and 'lesionId' does not exist in type 'Lesion'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1199:9
+
+
+23 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'lesionId' does not exist on type 'Lesion'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1199:26
+
+
+24 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'location' does not exist on type 'Lesion'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1205:26
+
+
+25 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type '{ reportId: string; analysisId: any; overallRiskLevel: RiskLevel.MEDIUM | RiskLevel.LOW; overallAssessment: string; summary: string; medicalAdvice: string; lesions: Lesion[]; generatedAt: any; }' is not assignable to type 'AnalysisReport'.
+  Object literal may only specify known properties, and 'analysisId' does not exist in type 'AnalysisReport'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1222:9
+
+
+26 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'analysisId' does not exist on type 'AnalysisReport'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1222:39
+
+
+27 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'generatedAt' does not exist on type 'AnalysisReport'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1230:40
+
+
+28 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type '{ lesionId: any; lesionType: string; confidence: number; riskLevel: RiskLevel.LOW; location: any; size: SizeMM; suggestedDiagnosis: string; description: string; recommendations: string[]; }' is not assignable to type 'Lesion'.
+  Object literal may only specify known properties, and 'lesionId' does not exist in type 'Lesion'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1253:7
+
+
+29 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'lesionId' does not exist on type 'Lesion'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1253:28
+
+
+30 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'location' does not exist on type 'Lesion'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1257:28
+
+
+31 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type '{ reportId: string; analysisId: any; overallRiskLevel: RiskLevel.LOW; overallAssessment: string; summary: string; medicalAdvice: string; lesions: Lesion[]; generatedAt: any; }' is not assignable to type 'AnalysisReport'.
+  Object literal may only specify known properties, and 'analysisId' does not exist in type 'AnalysisReport'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1276:9
+
+
+32 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'analysisId' does not exist on type 'AnalysisReport'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1276:39
+
+
+33 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'generatedAt' does not exist on type 'AnalysisReport'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1282:40
+
+
+34 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Type '{ reportId: string; analysisId: any; overallRiskLevel: RiskLevel.LOW; overallAssessment: string; summary: string; medicalAdvice: string; lesions: Lesion[]; generatedAt: string; }' is not assignable to type 'AnalysisReport'.
+  Object literal may only specify known properties, and 'analysisId' does not exist in type 'AnalysisReport'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1309:9
+
+
+35 ERROR: 10505001 ArkTS Compiler Error
+Error Message: Property 'analysisId' does not exist on type 'AnalysisReport'. At File: E:/HMOS6.0/Github/harmony-health-care/entry/src/main/ets/pages/ImageAnalysisPage.ets:1309:39
+
+
+COMPILE RESULT:FAIL {ERROR:36 WARN:553}
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+
+> hvigor ERROR: BUILD FAILED in 8 s 410 ms 
+
+
+Process finished with exit code -1

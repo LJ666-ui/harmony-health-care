@@ -4,7 +4,7 @@ import { Footer } from '../components/Footer';
 import { AccessibilitySettingsPanel, FirstTimeGuide } from '../components/GuideComponents';
 import { NetworkStatusBanner } from '../components/ErrorComponents';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
-import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { HttpUtil, BaseResponse, RequestOptions } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
 import EventPersistenceManager from '../utils/EventPersistenceManager';
@@ -109,27 +109,9 @@ struct Profile {
   }
 
   loadBanners() {
-    HttpUtil.get<BannerItem[]>('/api/profile/banner/list').then((res: BaseResponse<BannerItem[]>) => {
-      if (res.code === 200 && res.data) {
-        this.banners = res.data;
-      } else {
-        ToastUtil.showInfo(res.message);
-      }
-    }).catch((err: Error) => {
-      ToastUtil.showInfo(err.message);
-    });
   }
 
   loadHealthStats() {
-    HttpUtil.get<HealthStats>('/api/profile/healthStats').then((res: BaseResponse<HealthStats>) => {
-      if (res.code === 200 && res.data) {
-        this.healthStats = res.data;
-      } else {
-        ToastUtil.showInfo(res.message);
-      }
-    }).catch((err: Error) => {
-      ToastUtil.showInfo(err.message);
-    });
   }
 
   toggleElderMode(): void {

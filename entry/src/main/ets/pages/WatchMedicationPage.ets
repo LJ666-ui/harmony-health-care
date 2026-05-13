@@ -4,6 +4,7 @@
  */
 import { router } from '@kit.ArkUI';
 import { DeviceTypeUtil } from '../utils/DeviceTypeUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface MedicationReminder {
   id: string;
@@ -19,7 +20,10 @@ interface MedicationReminder {
 struct WatchMedicationPage {
   @State reminders: MedicationReminder[] = [];
   @State showAddDialog: boolean = false;
+  @State aiMedicationGuidance: string = '';
+  @State aiDrugInfo: string = '';
   private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadReminders();
@@ -91,6 +95,40 @@ struct WatchMedicationPage {
       }
     }
     return null;
+  }
+
+  async getMedicationGuidanceFromAI(medicineName: string): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `请给出${medicineName}的用药指导`
+        }
+      });
+      this.aiMedicationGuidance = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchMedicationPage] AI用药指导失败:', error);
+      this.aiMedicationGuidance = '用药指导暂时不可用';
+    }
+  }
+
+  async queryDrugInfoFromAI(drugName: string): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `查询${drugName}的药物信息、作用和副作用`
+        }
+      });
+      this.aiDrugInfo = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchMedicationPage] AI药物信息查询失败:', error);
+      this.aiDrugInfo = '药物信息暂时不可用';
+    }
   }
 
   build() {

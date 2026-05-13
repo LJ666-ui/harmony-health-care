@@ -4,14 +4,34 @@
  */
 
 import { router } from '@kit.ArkUI';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 @Entry
 @Component
 struct SmartWardCarePlanSimple {
   @State message: string = '护理计划';
+  @State aiCareAdvice: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     console.log('SmartWardCarePlanSimple: aboutToAppear');
+  }
+
+  async getCareAdviceFromAI(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '请给出护理计划的建议'
+        }
+      });
+      this.aiCareAdvice = response.output.content as string;
+    } catch (error) {
+      console.error('[SmartWardCarePlanSimple] AI护理建议失败:', error);
+      this.aiCareAdvice = '';
+    }
   }
 
   build() {

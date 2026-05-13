@@ -1,5 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { HealthRecord } from '../models/HealthData';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface Stats {
   recordDays: number;
@@ -21,6 +23,9 @@ struct HealthRecords {
   @State pageSize: number = 10;
   @State hasMore: boolean = true;
   @State loading: boolean = false;
+  @State aiSummary: string = '';
+  @State abnormalItems: string[] = [];
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   private tabs: string[] = ['全部', '血压', '血糖', '心率', '体重', '其他'];
   private timeRanges: string[] = ['一周', '一月', '三月'];
@@ -276,6 +281,37 @@ struct HealthRecords {
   }
 
   @State stats: Stats = this.getStats();
+
+  async generateAISummary(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        JSON.stringify(this.filteredRecords),
+        'health_summary'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiSummary = typeof content === 'string' ? content : JSON.stringify(content);
+      this.abnormalItems = response.suggestions || [];
+    } catch (error) {
+      console.error('[HealthRecords] AI摘要生成失败:', error);
+      this.aiSummary = 'AI摘要暂时不可用';
+    }
+  }
+
+  async detectAbnormalWithAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        JSON.stringify(this.records),
+        'risk_analysis'
+      );
+      const response = await this.orchestrator.process(request);
+      if (response.suggestions && response.suggestions.length > 0) {
+        this.abnormalItems = response.suggestions;
+      }
+    } catch (error) {
+      console.error('[HealthRecords] AI异常检测失败:', error);
+    }
+  }
 
   build() {
     Column() {

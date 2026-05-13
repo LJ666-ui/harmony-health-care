@@ -4,14 +4,34 @@
  */
 
 import { router } from '@kit.ArkUI';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 @Entry
 @Component
 struct SmartWardAlertsSimple {
   @State message: string = '告警中心';
+  @State aiAlertSummary: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     console.log('SmartWardAlertsSimple: aboutToAppear');
+  }
+
+  async getAlertSummaryFromAI(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '请总结当前病房警报情况'
+        }
+      });
+      this.aiAlertSummary = response.output.content as string;
+    } catch (error) {
+      console.error('[SmartWardAlertsSimple] AI警报摘要失败:', error);
+      this.aiAlertSummary = '';
+    }
   }
 
   build() {

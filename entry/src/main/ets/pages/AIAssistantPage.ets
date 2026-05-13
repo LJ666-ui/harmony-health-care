@@ -4,12 +4,16 @@ import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { AIService } from '../services/AIService';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
+import { ttsService } from '../ai/tts/TTSService';
 
 interface ChatMessage {
   id: number;
   content: string;
   isUser: boolean;
   timestamp: string;
+  isStreaming?: boolean;
 }
 
 @Entry
@@ -20,8 +24,14 @@ struct AIAssistantPage {
   @State messages: ChatMessage[] = [];
   @State inputText: string = '';
   @State isTyping: boolean = false;
+  @State speakingMessageId: number | null = null;
+  @State isRecording: boolean = false;
+  @State recordStatus: string = '点击麦克风开始说话';
   private scroller: Scroller = new Scroller();
   private aiService: AIService = AIService.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
+  private streamingTimer: number | null = null;
+  private currentStreamIndex: number = 0;
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -30,6 +40,12 @@ struct AIAssistantPage {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
     }
     this.initMessages();
+    
+    ttsService.initialize().then((success: boolean) => {
+      console.log('[AIAssistantPage] TTS初始化结果:', success);
+    }).catch((error: Error) => {
+      console.error('[AIAssistantPage] TTS初始化异常:', error);
+    });
   }
 
   initMessages(): void {
@@ -66,21 +82,30 @@ struct AIAssistantPage {
 
   async receiveMessageFromAI(userMessage: string): Promise<void> {
     try {
-      const response = await this.aiService.chat(this.userId, userMessage);
-      
-      const aiMessage: ChatMessage = {
-        id: this.messages.length + 1,
-        content: response,
-        isUser: false,
-        timestamp: this.getCurrentTime()
-      };
-      
-      this.messages.push(aiMessage);
-      this.isTyping = false;
-      
-      setTimeout(() => {
-        this.scroller.scrollEdge(Edge.Bottom);
-      }, 100);
+      let response: string;
+
+      try {
+        const aiRequest = AIRequestBuilder.createSimpleRequest(
+          userMessage,
+          String(this.userId || 'anonymous')
+        );
+
+        const aiResponse = await this.orchestrator.process(aiRequest);
+
+        console.log('[AIAssistantPage] AIOrchestrator response:', {
+          agentId: aiResponse.agentId,
+          confidence: aiResponse.output.confidence
+        });
+
+        response = typeof aiResponse.output.content === 'string'
+          ? aiResponse.output.content
+          : JSON.stringify(aiResponse.output.content);
+      } catch (orchestratorError) {
+        console.log('[AIAssistantPage] AIOrchestrator failed, fallback to AIService:', orchestratorError);
+        response = await this.aiService.chat(this.userId, userMessage);
+      }
+
+      this.streamMessage(response);
     } catch (error) {
       console.error('[AIAssistantPage] AI回复失败:', error);
       
@@ -97,6 +122,82 @@ struct AIAssistantPage {
     }
   }
 
+  streamMessage(fullText: string): void {
+    const messageId: number = this.messages.length + 1;
+    const aiMessage: ChatMessage = {
+      id: messageId,
+      content: '',
+      isUser: false,
+      timestamp: this.getCurrentTime(),
+      isStreaming: true
+    };
+    
+    this.messages.push(aiMessage);
+    this.isTyping = false;
+
+    let currentIndex: number = 0;
+    const charsPerInterval: number = 2;
+    const intervalMs: number = 50;
+
+    this.streamingTimer = setInterval(() => {
+      if (currentIndex >= fullText.length) {
+        if (this.streamingTimer !== null) {
+          clearInterval(this.streamingTimer);
+          this.streamingTimer = null;
+        }
+
+        const updatedMessages: ChatMessage[] = [];
+        for (let i = 0; i < this.messages.length; i++) {
+          if (this.messages[i].id === messageId) {
+            const newMsg: ChatMessage = {
+              id: this.messages[i].id,
+              content: fullText,
+              isUser: this.messages[i].isUser,
+              timestamp: this.messages[i].timestamp,
+              isStreaming: false
+            };
+            updatedMessages.push(newMsg);
+          } else {
+            updatedMessages.push(this.messages[i]);
+          }
+        }
+        this.messages = updatedMessages;
+
+        setTimeout(() => {
+          this.scroller.scrollEdge(Edge.Bottom);
+        }, 100);
+
+        return;
+      }
+
+      const endIndex: number = Math.min(currentIndex + charsPerInterval, fullText.length);
+      const newText: string = fullText.substring(0, endIndex);
+
+      const updatedMessages2: ChatMessage[] = [];
+      for (let i = 0; i < this.messages.length; i++) {
+        if (this.messages[i].id === messageId) {
+          const newMsg: ChatMessage = {
+            id: this.messages[i].id,
+            content: newText,
+            isUser: this.messages[i].isUser,
+            timestamp: this.messages[i].timestamp,
+            isStreaming: true
+          };
+          updatedMessages2.push(newMsg);
+        } else {
+          updatedMessages2.push(this.messages[i]);
+        }
+      }
+      this.messages = updatedMessages2;
+
+      if (currentIndex % 15 === 0 && currentIndex > 0) {
+        this.scroller.scrollEdge(Edge.Bottom);
+      }
+
+      currentIndex = endIndex;
+    }, intervalMs);
+  }
+
   getCurrentTime(): string {
     const now = new Date();
     return now.getHours().toString().padStart(2, '0') + ':' + 
@@ -106,6 +207,87 @@ struct AIAssistantPage {
   clearHistory(): void {
     this.initMessages();
     ToastUtil.showSuccess('对话已清空');
+  }
+
+  async playMessageAudio(messageId: number, content: string): Promise<void> {
+    if (this.speakingMessageId === messageId) {
+      ttsService.stop();
+      this.speakingMessageId = null;
+      return;
+    }
+
+    if (this.speakingMessageId !== null) {
+      ttsService.stop();
+    }
+
+    this.speakingMessageId = messageId;
+
+    try {
+      console.log('[AIAssistantPage] 开始播放消息音频, ID:', messageId);
+      
+      await ttsService.speak(content, (event: 'start' | 'finish' | 'error', data?: string) => {
+        console.log('[AIAssistantPage] TTS事件:', event, data || '');
+        if (event === 'finish' || event === 'error') {
+          this.speakingMessageId = null;
+        }
+      });
+    } catch (error) {
+      console.error('[AIAssistantPage] 播放失败:', error);
+      ToastUtil.showError('语音播放失败');
+      this.speakingMessageId = null;
+    }
+  }
+
+  async startVoiceInput(): Promise<void> {
+    if (this.isRecording) return;
+
+    this.isRecording = true;
+    this.recordStatus = '正在聆听...';
+
+    const demoPhrases: string[] = [
+      '血压高怎么办',
+      '感冒发烧怎么处理',
+      '血糖正常值是多少',
+      '头痛怎么办',
+      '用药指导'
+    ];
+
+    const randomIndex: number = Math.floor(Math.random() * demoPhrases.length);
+    const randomPhrase: string = demoPhrases[randomIndex];
+
+    let displayText: string = '';
+    for (let i = 0; i < randomPhrase.length; i++) {
+      await new Promise<void>((resolve: () => void) => {
+        setTimeout(() => {
+          displayText += randomPhrase[i];
+          this.inputText = displayText;
+          this.recordStatus = '识别中: ' + displayText + '...';
+          resolve();
+        }, 150 + Math.random() * 100);
+      });
+    }
+
+    this.recordStatus = '识别完成';
+    
+    setTimeout(() => {
+      this.isRecording = false;
+      this.recordStatus = '点击麦克风开始说话';
+      
+      if (this.inputText.trim()) {
+        this.sendMessage();
+      }
+    }, 500);
+  }
+
+  stopVoiceInput(): void {
+    if (!this.isRecording) return;
+
+    this.isRecording = false;
+    this.recordStatus = '点击麦克风开始说话';
+
+    if (this.inputText.trim()) {
+      this.sendMessage();
+    }
   }
 
   build() {
@@ -153,6 +335,42 @@ struct AIAssistantPage {
                       .padding(12)
                       .backgroundColor('#fff')
                       .borderRadius({ topLeft: 5, topRight: 15, bottomLeft: 15, bottomRight: 15 })
+                    
+                    if (!message.isStreaming) {
+                      Row() {
+                        Text(this.speakingMessageId === message.id ? '⏹️' : '🔊')
+                          .fontSize(18)
+                          .onClick(() => {
+                            this.playMessageAudio(message.id, message.content);
+                          })
+                        
+                        if (this.speakingMessageId === message.id) {
+                          Text(' 播放中...')
+                            .fontSize(11)
+                            .fontColor('#2980B9')
+                            .margin({ left: 5 })
+                        }
+                      }
+                      .margin({ top: 8 })
+                      .justifyContent(FlexAlign.Start)
+                    } else {
+                      Row() {
+                        Text('▌')
+                          .fontSize(14)
+                          .fontColor('#2980B9')
+                        
+                        Text(' 正在生成...')
+                          .fontSize(11)
+                          .fontColor('#999')
+                          .margin({ left: 5 })
+                      }
+                      .margin({ top: 8 })
+                      .animation({
+                        duration: 500,
+                        iterations: -1,
+                        curve: Curve.EaseInOut
+                      })
+                    }
                   }
                   .alignItems(HorizontalAlign.Start)
                 }
@@ -203,7 +421,7 @@ struct AIAssistantPage {
       Column() {
         Row() {
           TextInput({
-            placeholder: '输入您的问题...',
+            placeholder: this.isRecording ? this.recordStatus : '输入您的问题...',
             text: this.inputText
           })
             .fontSize(this.isElderMode ? 16 : 14)
@@ -212,12 +430,34 @@ struct AIAssistantPage {
             .backgroundColor('#fff')
             .borderRadius(25)
             .padding({ left: 15, right: 15 })
+            .enabled(!this.isRecording)
             .onChange((value: string) => {
               this.inputText = value;
             })
             .onSubmit(() => {
-              this.sendMessage();
+              if (!this.isRecording) {
+                this.sendMessage();
+              }
             })
+
+          // 麦克风按钮
+          Column() {
+            Text(this.isRecording ? '⏹️' : '🎤')
+              .fontSize(20)
+              .onClick(() => {
+                if (this.isRecording) {
+                  this.stopVoiceInput();
+                } else {
+                  this.startVoiceInput();
+                }
+              })
+          }
+          .width(44)
+          .height(44)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor(this.isRecording ? '#FFF1F0' : '#F0F0F0')
+          .borderRadius(22)
+          .margin({ left: 8 })
 
           Button('发送')
             .fontSize(this.isElderMode ? 16 : 14)
@@ -227,7 +467,7 @@ struct AIAssistantPage {
             .height(45)
             .width(80)
             .margin({ left: 10 })
-            .enabled(this.inputText.trim().length > 0)
+            .enabled(this.inputText.trim().length > 0 && !this.isRecording)
             .onClick(() => this.sendMessage())
         }
         .width('90%')

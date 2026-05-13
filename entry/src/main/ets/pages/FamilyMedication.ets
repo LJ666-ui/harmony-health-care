@@ -4,6 +4,7 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface MedicationReminder {
   id: number;
@@ -26,6 +27,9 @@ struct FamilyMedication {
   @State isLoading: boolean = false;
   @State medications: MedicationReminder[] = [];
   @State relatedUserId: number = 0;
+  @State aiScheduleOptimization: string = '';
+  @State aiMedicationReminder: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   async aboutToAppear(): Promise<void> {
     const familyInfo: Object | undefined = AppStorage.get('familyInfo');
@@ -109,6 +113,43 @@ struct FamilyMedication {
         return '已跳过';
       default:
         return status || '待服用';
+    }
+  }
+
+  async optimizeMedicationSchedule(): Promise<void> {
+    const medicationList = this.medications.map(m =>
+      `${m.medicationName} - ${m.dosage} (${m.frequency}, ${m.timeOfDay})`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `当前用药计划：\n${medicationList}\n请优化用药时间安排`
+        }
+      });
+      this.aiScheduleOptimization = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyMedication] AI用药优化失败:', error);
+      this.aiScheduleOptimization = '';
+    }
+  }
+
+  async generateSmartReminder(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '生成今日智能用药提醒和注意事项'
+        }
+      });
+      this.aiMedicationReminder = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyMedication] AI提醒生成失败:', error);
+      this.aiMedicationReminder = '';
     }
   }
 

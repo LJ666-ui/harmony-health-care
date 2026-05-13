@@ -4,6 +4,7 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface DiagnosisRecord {
   id: number;
@@ -24,6 +25,9 @@ struct FamilyDiagnosis {
   @State isLoading: boolean = true;
   @State records: DiagnosisRecord[] = [];
   @State relatedUserId: number = 0;
+  @State aiDiagnosisAnalysis: string = '';
+  @State aiTreatmentAdvice: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     const familyInfo: Object | undefined = AppStorage.get('familyInfo');
@@ -87,6 +91,37 @@ struct FamilyDiagnosis {
       return dateStr.substring(0, 10);
     } catch (e) {
       return dateStr;
+    }
+  }
+
+  async analyzeDiagnosisWithAI(): Promise<void> {
+    const diagnosisSummary = this.records.map(r =>
+      `${r.diagnosis} - ${r.hospitalName} ${r.doctorName} (${r.visitTime})`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `患者诊断记录：\n${diagnosisSummary}\n请分析病情发展趋势`,
+        intent: 'pre_diagnosis'
+      });
+      this.aiDiagnosisAnalysis = response.output.content;
+    } catch (error) {
+      console.error('[FamilyDiagnosis] AI诊断分析失败:', error);
+      this.aiDiagnosisAnalysis = '';
+    }
+  }
+
+  async getTreatmentAdviceFromAI(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: '基于诊断记录给出家庭护理和治疗建议',
+        intent: 'health_consultation'
+      });
+      this.aiTreatmentAdvice = response.output.content;
+    } catch (error) {
+      console.error('[FamilyDiagnosis] AI治疗建议失败:', error);
+      this.aiTreatmentAdvice = '';
     }
   }
 

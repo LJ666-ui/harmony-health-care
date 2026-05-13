@@ -9,6 +9,7 @@
  */
 
 import { http } from '@kit.NetworkKit';
+import { COZE_CONFIG } from '../common/constants/CozeConfig';
 
 export interface CozeConfig {
   apiKey: string;
@@ -149,10 +150,10 @@ ${surgeryInfo ? `手术详情：${surgeryInfo}` : ''}
   }
 
   private async doHttpRequest(path: string, data: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const httpRequest = http.createHttp();
+    const httpRequest = http.createHttp();
 
-      httpRequest.request(
+    try {
+      const response = await httpRequest.request(
         `${this.config.baseUrl}${path}`,
         {
           method: http.RequestMethod.POST,
@@ -163,25 +164,25 @@ ${surgeryInfo ? `手术详情：${surgeryInfo}` : ''}
           extraData: JSON.stringify(data),
           connectTimeout: 10000,
           readTimeout: 30000
-        },
-        (err, result) => {
-          httpRequest.destroy();
-
-          if (err) {
-            reject(new Error(`HTTP请求失败: ${err.message}`));
-            return;
-          }
-
-          try {
-            resolve(JSON.parse(result.result as string));
-          } catch (e) {
-            reject(new Error('JSON解析失败'));
-          }
         }
       );
-    });
+
+      if (response.responseCode !== 200) {
+        throw new Error(`HTTP错误 ${response.responseCode}: ${response.result}`);
+      }
+
+      return JSON.parse(response.result as string);
+    } catch (error) {
+      throw error;
+    } finally {
+      httpRequest.destroy();
+    }
   }
 }
 
-// 导出实例
-export const cozeApiClient = new CozeApiClient();
+// 导出实例 - 使用真实配置
+export const cozeApiClient = new CozeApiClient({
+  apiKey: COZE_CONFIG.token,
+  baseUrl: COZE_CONFIG.apiUrl,
+  botId: COZE_CONFIG.botId
+});

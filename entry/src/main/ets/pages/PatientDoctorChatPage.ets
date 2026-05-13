@@ -4,6 +4,8 @@ import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 const TAG: string = 'PatientDoctorChatPage';
 
@@ -48,6 +50,9 @@ struct PatientDoctorChatPage {
   @State messages: ChatMsg[] = [];
   @State inputText: string = '';
   @State isLoading: boolean = true;
+  @State aiChatAssist: string = '';
+  @State aiHealthTip: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
   @State sending: boolean = false;
   @State canSend: boolean = true;
   @State remainHours: number = 48;
@@ -288,6 +293,36 @@ struct PatientDoctorChatPage {
     setTimeout(() => {
       try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
     }, 50);
+  }
+
+  async getAIChatAssistance(userMessage: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `患者消息：${userMessage}，请给出专业的医疗沟通建议`,
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiChatAssist = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[PatientDoctorChatPage] AI聊天辅助失败:', error);
+      this.aiChatAssist = 'AI辅助暂时不可用';
+    }
+  }
+
+  async getHealthTipFromAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        '请给我一个今日健康小贴士',
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiHealthTip = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[PatientDoctorChatPage] AI健康提示失败:', error);
+      this.aiHealthTip = '';
+    }
   }
 
   build() {

@@ -1,5 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { HealthRecord } from '../models/HealthData';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 @Entry
 @Component
@@ -8,6 +10,10 @@ struct HealthRecordDetail {
 
   @State record: HealthRecord = this.getDefaultRecord();
   @State previousRecord: HealthRecord | null = null;
+  @State aiAnalysis: string = '';
+  @State aiTrendPrediction: string = '';
+  @State aiHealthAdvice: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   getDefaultRecord(): HealthRecord {
     return {
@@ -117,6 +123,54 @@ struct HealthRecordDetail {
       createdAt: this.record.createdAt - 86400000,
       updatedAt: this.record.createdAt - 86400000
     };
+  }
+
+  async analyzeWithAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        JSON.stringify({
+          current: this.record,
+          previous: this.previousRecord
+        }),
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiAnalysis = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[HealthRecordDetail] AI分析失败:', error);
+      this.aiAnalysis = 'AI分析暂时不可用';
+    }
+  }
+
+  async predictTrendWithAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `基于当前${this.record.type}数据：${this.record.value}${this.record.unit}，请预测未来趋势并给出建议`,
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiTrendPrediction = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[HealthRecordDetail] AI趋势预测失败:', error);
+      this.aiTrendPrediction = 'AI趋势预测暂时不可用';
+    }
+  }
+
+  async getHealthAdviceFromAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `我的${this.record.type}是${this.record.value}${this.record.unit}，请给出健康建议`,
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiHealthAdvice = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[HealthRecordDetail] AI健康建议失败:', error);
+      this.aiHealthAdvice = 'AI健康建议暂时不可用';
+    }
   }
 
   build() {

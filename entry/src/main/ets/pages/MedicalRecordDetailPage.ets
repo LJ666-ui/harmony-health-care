@@ -64,19 +64,19 @@ struct MedicalRecordDetailPage {
   build() {
     Column() {
       Row({ space: 8 }) {
-        Column()
-          .width(40)
-          .height(40)
-          .borderRadius(20)
-          .backgroundColor('#3498DB15')
-          .justifyContent(FlexAlign.Center)
-          .onClick(() => {
-            router.back();
-          }) {
-            Text('←')
-              .fontSize(18)
-              .fontColor('#3498DB');
-          }
+        Column() {
+          Text('←')
+            .fontSize(18)
+            .fontColor('#3498DB');
+        }
+        .width(40)
+        .height(40)
+        .borderRadius(20)
+        .backgroundColor('#3498DB15')
+        .justifyContent(FlexAlign.Center)
+        .onClick(() => {
+          router.back();
+        });
 
         Text('病历详情')
           .fontSize(18)

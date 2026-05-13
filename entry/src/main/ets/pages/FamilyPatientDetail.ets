@@ -4,6 +4,7 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface PatientInfo {
   id: number;
@@ -56,6 +57,9 @@ struct FamilyPatientDetail {
   @State healthCondition: HealthCondition | null = null;
   @State bodyCondition: BodyCondition | null = null;
   @State relatedUserId: number = 0;
+  @State aiCarePlan: string = '';
+  @State aiHealthRiskAssessment: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   async aboutToAppear(): Promise<void> {
     // 从路由参数或AppStorage获取患者ID
@@ -125,6 +129,36 @@ struct FamilyPatientDetail {
       'O_TYPE': 'O型'
     };
     return typeMap[bloodType] || bloodType;
+  }
+
+  async generateCarePlan(): Promise<void> {
+    if (!this.patientInfo) return;
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `患者信息：${this.patientInfo.realName}，年龄${this.patientInfo.age}岁，病史：${this.patientInfo.medicalHistory}，过敏史：${this.patientInfo.allergyHistory}`,
+        intent: 'health_consultation'
+      });
+      this.aiCarePlan = response.output.content;
+    } catch (error) {
+      console.error('[FamilyPatientDetail] AI护理方案失败:', error);
+      this.aiCarePlan = '';
+    }
+  }
+
+  async assessHealthRisk(): Promise<void> {
+    if (!this.healthCondition) return;
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `健康状态：慢性病${this.healthCondition.chronicDisease}，当前用药${this.healthCondition.currentMedication}，生活方式${this.healthCondition.lifestyle}`,
+        intent: 'health_risk_assessment'
+      });
+      this.aiHealthRiskAssessment = response.output.content;
+    } catch (error) {
+      console.error('[FamilyPatientDetail] AI风险评估失败:', error);
+      this.aiHealthRiskAssessment = '';
+    }
   }
 
   build() {

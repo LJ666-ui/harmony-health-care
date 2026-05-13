@@ -9,15 +9,14 @@ export interface GeoLocation {
   address?: string;
 }
 
+export interface MetadataContext {
+  [key: string]: string | number | boolean | MetadataContext | (string | number | boolean | MetadataContext)[];
+}
+
 export interface AIRequestInput {
   type: InputType;
   content: string | ArrayBuffer | number[];
-  metadata?: {
-    location?: GeoLocation;
-    timestamp?: number;
-    deviceType?: 'phone' | 'watch' | 'tablet';
-    context?: Record<string, any>;
-  };
+  metadata?: object;
 }
 
 export interface AIRequestPreferences {
@@ -38,13 +37,13 @@ export interface AIRequest {
 export interface ActionCommand {
   type: 'navigate' | 'open_app' | 'call' | 'send_data' | 'trigger_device';
   target: string;
-  params?: Record<string, any>;
+  params?: MetadataContext;
 }
 
 export interface HealthDataResult {
   riskScore: number;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  metrics: Record<string, any>;
+  metrics: MetadataContext;
   suggestions: string[];
 }
 

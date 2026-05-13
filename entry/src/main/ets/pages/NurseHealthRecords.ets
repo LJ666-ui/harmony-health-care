@@ -215,26 +215,26 @@ struct NurseHealthRecords {
   build() {
     Column() {
       Row({ space: 8 }) {
-        Column()
-          .width(40)
-          .height(40)
-          .borderRadius(20)
-          .backgroundColor('#3498DB15')
-          .justifyContent(FlexAlign.Center)
-          .onClick(() => {
-            if (this.patientId > 0) {
-              this.patientId = 0;
-              this.patientName = '';
-              this.records = [];
-              this.loadPatients();
-            } else {
-              router.back();
-            }
-          }) {
-            Text('←')
-              .fontSize(18)
-              .fontColor('#3498DB');
+        Column() {
+          Text('←')
+            .fontSize(18)
+            .fontColor('#3498DB');
+        }
+        .width(40)
+        .height(40)
+        .borderRadius(20)
+        .backgroundColor('#3498DB15')
+        .justifyContent(FlexAlign.Center)
+        .onClick(() => {
+          if (this.patientId > 0) {
+            this.patientId = 0;
+            this.patientName = '';
+            this.records = [];
+            this.loadPatients();
+          } else {
+            router.back();
           }
+        });
 
         Text(this.patientId > 0 ? `${this.patientName}的健康档案` : '健康档案')
           .fontSize(18)
@@ -246,20 +246,20 @@ struct NurseHealthRecords {
           .textOverflow({ overflow: TextOverflow.Ellipsis });
 
         if (this.patientId > 0) {
-          Column()
-            .width(40)
-            .height(40)
-            .borderRadius(20)
-            .justifyContent(FlexAlign.Center)
-            .onClick(() => {
-              this.patientId = 0;
-              this.patientName = '';
-              this.records = [];
-              this.loadPatients();
-            }) {
-              Text('📋')
-                .fontSize(18);
-            }
+          Column() {
+            Text('📋')
+              .fontSize(18);
+          }
+          .width(40)
+          .height(40)
+          .borderRadius(20)
+          .justifyContent(FlexAlign.Center)
+          .onClick(() => {
+            this.patientId = 0;
+            this.patientName = '';
+            this.records = [];
+            this.loadPatients();
+          });
         } else {
           Blank().width(40);
         }

@@ -5,6 +5,7 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse, RequestOptions } from '../common/utils/HttpUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface FamilyInfo {
   id: number;
@@ -39,12 +40,15 @@ interface HealthRecord {
 struct FamilyHome {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @StorageLink('familyInfo') familyInfo: FamilyInfo | null = null;
-  @State isFamilyLoggedIn: boolean = false; // 改为@State,避免自动监听变化
+  @State isFamilyLoggedIn: boolean = false;
 
   @State isLoading: boolean = false;
   @State relatedUser: RelatedUser | null = null;
   @State healthRecords: HealthRecord[] = [];
-  @State activeTab: number = 0; // 0: 个人信息, 1: 健康记录, 2: 关联用户
+  @State activeTab: number = 0;
+  @State aiHealthDashboard: string = '';
+  @State aiFamilyCareAdvice: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   async aboutToAppear(): Promise<void> {
     console.log('[FamilyHome] aboutToAppear开始执行');
@@ -185,6 +189,43 @@ struct FamilyHome {
       router.replaceUrl({ url: 'pages/Login' });
     } catch (error) {
       console.error('退出登录失败:', error);
+    }
+  }
+
+  async generateHealthDashboard(): Promise<void> {
+    const healthSummary = this.healthRecords.map(r =>
+      `${r.recordType}: ${r.value}${r.unit} (${r.recordTime})`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `家庭成员健康数据：\n${healthSummary}\n请生成健康仪表盘摘要`
+        }
+      });
+      this.aiHealthDashboard = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyHome] AI健康仪表盘失败:', error);
+      this.aiHealthDashboard = '';
+    }
+  }
+
+  async getFamilyCareAdvice(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '请给出家庭护理建议和注意事项'
+        }
+      });
+      this.aiFamilyCareAdvice = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyHome] AI护理建议失败:', error);
+      this.aiFamilyCareAdvice = '';
     }
   }
 

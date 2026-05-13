@@ -4,6 +4,7 @@ import { GlobalTheme } from '../global';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import type { Nurse } from '../models/Nurse';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 @Entry
 @Component
@@ -15,6 +16,8 @@ struct FamilyNurseListPage {
   @State isLoading: boolean = true;
   @State searchKeyword: string = '';
   @State familyId: number = 0;
+  @State aiNurseRecommendation: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     console.info('[FamilyNurseListPage] aboutToAppear currentUserId:', this.currentUserId);
@@ -102,6 +105,26 @@ struct FamilyNurseListPage {
       '护理部': '💉'
     };
     return iconMap[department] || '🏥';
+  }
+
+  async getNurseRecommendation(): Promise<void> {
+    const nurseList = this.nurses.map(n =>
+      `${n.name} - ${n.department} (${n.title})`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `可用护士列表：\n${nurseList}\n请根据患者需求推荐合适的护士`
+        }
+      });
+      this.aiNurseRecommendation = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyNurseListPage] AI护士推荐失败:', error);
+      this.aiNurseRecommendation = '';
+    }
   }
 
   build() {

@@ -4,6 +4,7 @@
  */
 import { router } from '@kit.ArkUI';
 import { DeviceTypeUtil } from '../utils/DeviceTypeUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface MessageNotification {
   id: string;
@@ -21,7 +22,10 @@ interface MessageNotification {
 struct WatchMessagePage {
   @State messages: MessageNotification[] = [];
   @State filterType: string = 'all';
+  @State aiSmartSummary: string = '';
+  @State aiUrgencyAssessment: string = '';
   private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadMessages();
@@ -106,6 +110,46 @@ struct WatchMessagePage {
 
   getUnreadCount(): number {
     return this.messages.filter(m => !m.isRead).length;
+  }
+
+  async generateMessageSummary(): Promise<void> {
+    const unreadMessages = this.messages.filter(m => !m.isRead);
+    const messageSummary = unreadMessages.map(m =>
+      `[${m.type}] ${m.title}: ${m.content}`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `未读消息摘要：\n${messageSummary}\n请总结关键信息`
+        }
+      });
+      this.aiSmartSummary = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchMessagePage] AI消息摘要失败:', error);
+      this.aiSmartSummary = '';
+    }
+  }
+
+  async assessUrgency(): Promise<void> {
+    const healthMessages = this.messages.filter(m => m.type === 'health' || m.type === 'emergency');
+    if (healthMessages.length === 0) return;
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `健康相关消息：${healthMessages.map(m => m.content).join('；')}，请评估紧急程度`
+        }
+      });
+      this.aiUrgencyAssessment = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchMessagePage] AI紧急评估失败:', error);
+      this.aiUrgencyAssessment = '';
+    }
   }
 
   build() {

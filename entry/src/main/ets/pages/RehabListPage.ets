@@ -22,6 +22,17 @@ export interface RehabCourse {
   videoUrl?: string;
 }
 
+interface CourseParams {
+  courseId?: string;
+  courseTitle?: string;
+  courseIcon?: string;
+  courseDescription?: string;
+  courseDuration?: string;
+  courseDifficulty?: string;
+  courseTargetGroup?: string;
+  videoUrl?: string;
+}
+
 interface RehabActionData {
   id: number;
   planId: number;
@@ -501,11 +512,19 @@ struct RehabListPage {
                 .borderRadius(GlobalTheme.RADIUS_LG)
                 .border({ width: 1, color: GlobalTheme.BORDER_COLOR })
                 .onClick(() => {
-                  // 优先跳视频页，无视频则跳3D页
                   if (course.videoUrl) {
                     router.pushUrl({
                       url: 'pages/RehabCourseVideoPage',
-                      params: { ...course }
+                      params: {
+                        courseId: course.id,
+                        courseTitle: course.title,
+                        courseIcon: course.icon,
+                        courseDescription: course.description,
+                        courseDuration: course.duration,
+                        courseDifficulty: course.difficulty,
+                        courseTargetGroup: course.targetGroup,
+                        videoUrl: course.videoUrl
+                      } as CourseParams
                     });
                   } else {
                     router.pushUrl({ url: 'pages/Rehab3DPage?courseId=' + course.id });

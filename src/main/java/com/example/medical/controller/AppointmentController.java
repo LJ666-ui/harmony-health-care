@@ -51,10 +51,10 @@ public class AppointmentController {
     @Autowired
     private UserService userService;
 
-    @Autowired
+    @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
 
-    @Autowired
+    @Autowired(required = false)
     private RabbitTemplate rabbitTemplate;
 
     @PostMapping("/create")
@@ -85,12 +85,15 @@ public class AppointmentController {
             String dateStr = checkFormat.format(appointment.getScheduleDate());
 
             String bookedKey = "booked:" + appointment.getDoctorId() + ":" + dateStr + ":" + appointment.getSchedulePeriod();
-            Boolean isMember = redisTemplate.boundSetOps(bookedKey).isMember(String.valueOf(appointment.getUserId()));
 
-            if (isMember != null && isMember) {
-                System.out.println("[挂号调试] Redis检测到重复预约！userId=" + appointment.getUserId() +
-                        " 已在 booked 集合中: " + bookedKey);
-                return Result.error("您今天已预约该医生该时段，不可重复挂号");
+            if (redisTemplate != null) {
+                Boolean isMember = redisTemplate.boundSetOps(bookedKey).isMember(String.valueOf(appointment.getUserId()));
+
+                if (isMember != null && isMember) {
+                    System.out.println("[挂号调试] Redis检测到重复预约！userId=" + appointment.getUserId() +
+                            " 已在 booked 集合中: " + bookedKey);
+                    return Result.error("您今天已预约该医生该时段，不可重复挂号");
+                }
             }
 
             LambdaQueryWrapper<Appointment> dupWrapper = new LambdaQueryWrapper<>();
@@ -106,11 +109,13 @@ public class AppointmentController {
                 System.out.println("[挂号调试] 数据库检测到重复预约！userId=" + appointment.getUserId() +
                         " 已有 " + dupCount + " 条有效预约记录");
 
-                try {
-                    redisTemplate.boundSetOps(bookedKey).add(String.valueOf(appointment.getUserId()));
-                    System.out.println("[挂号调试] 已将用户同步到Redis booked集合: " + bookedKey);
-                } catch (Exception syncEx) {
-                    System.err.println("[挂号调试] 同步Redis失败: " + syncEx.getMessage());
+                if (redisTemplate != null) {
+                    try {
+                        redisTemplate.boundSetOps(bookedKey).add(String.valueOf(appointment.getUserId()));
+                        System.out.println("[挂号调试] 已将用户同步到Redis booked集合: " + bookedKey);
+                    } catch (Exception syncEx) {
+                        System.err.println("[挂号调试] 同步Redis失败: " + syncEx.getMessage());
+                    }
                 }
 
                 return Result.error("您今天已预约该医生该时段，不可重复挂号");

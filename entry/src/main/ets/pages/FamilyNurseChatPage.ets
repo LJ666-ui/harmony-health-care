@@ -5,6 +5,7 @@ import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
 import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 const TAG: string = 'FamilyNurseChatPage';
 
@@ -300,12 +301,15 @@ struct FamilyNurseChatPage {
 
   async getNursingGuidanceFromAI(careTopic: string): Promise<void> {
     try {
-      const response = await this.orchestrator.process({
-        type: 'text',
-        content: `请给出关于${careTopic}的护理指导`,
-        intent: 'health_consultation'
-      });
-      this.aiNursingGuidance = response.output.content;
+      const request = AIRequestBuilder.createDataRequest(
+        `请给出关于${careTopic}的护理指导`,
+        'health_consultation',
+        String(this.currentUserId)
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiNursingGuidance = typeof response.output.content === 'string'
+        ? response.output.content
+        : JSON.stringify(response.output.content);
     } catch (error) {
       console.error('[FamilyNurseChatPage] AI护理指导失败:', error);
       this.aiNursingGuidance = 'AI护理指导暂时不可用';
@@ -314,12 +318,15 @@ struct FamilyNurseChatPage {
 
   async generateHealthReminder(): Promise<void> {
     try {
-      const response = await this.orchestrator.process({
-        type: 'text',
-        content: `请为家庭成员生成今日健康提醒和注意事项`,
-        intent: 'health_consultation'
-      });
-      this.aiHealthReminder = response.output.content;
+      const request = AIRequestBuilder.createDataRequest(
+        `请为家庭成员生成今日健康提醒和注意事项`,
+        'health_consultation',
+        String(this.currentUserId)
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiHealthReminder = typeof response.output.content === 'string'
+        ? response.output.content
+        : JSON.stringify(response.output.content);
     } catch (error) {
       console.error('[FamilyNurseChatPage] AI健康提醒生成失败:', error);
       this.aiHealthReminder = '';

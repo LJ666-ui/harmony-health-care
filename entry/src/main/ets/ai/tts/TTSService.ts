@@ -77,20 +77,44 @@ export class TTSService {
 
       this.initialized = true;
       console.log('[TTSService] ✅ TTS引擎初始化成功');
+      
       return true;
     } catch (e) {
-      console.error('[TTSService] ❌ TTS引擎初始化失败，使用模拟模式:', e);
-      this.initialized = false;
-      return true;
+      console.error('[TTSService] ❌ TTS引擎初始化失败:', e);
+      console.error('[TTSService] 尝试重新初始化...');
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      try {
+        this.ttsEngine = await textToSpeech.createEngine({
+          language: 'zh-CN',
+          online: 0,
+          person: 0
+        });
+        
+        this.initialized = true;
+        console.log('[TTSService] ✅ TTS引擎重试初始化成功（离线模式）');
+        return true;
+      } catch (retryError) {
+        console.error('[TTSService] ❌ 重试也失败，将使用模拟模式:', retryError);
+        this.initialized = false;
+        return true;
+      }
     }
   }
 
   async speak(text: string, callback?: TTSCallback): Promise<void> {
-    if (!text || text.trim().length === 0) return;
+    if (!text || text.trim().length === 0) {
+      console.log('[TTSService] 文本为空，跳过播报');
+      return;
+    }
 
     const cleanText = this.cleanTextForTTS(text);
+    console.log('[TTSService] 准备播报文本:', cleanText.substring(0, 50) + '...');
+    console.log('[TTSService] TTS引擎状态:', this.initialized ? '已初始化' : '未初始化');
 
     if (this.isSpeaking) {
+      console.log('[TTSService] 正在播放中，先停止');
       this.stop();
     }
 
@@ -99,8 +123,10 @@ export class TTSService {
 
     try {
       if (this.ttsEngine && this.initialized) {
+        console.log('[TTSService] 使用真实TTS引擎播放');
         this.speakWithEngine(cleanText);
       } else {
+        console.log('[TTSService] TTS引擎不可用，使用模拟模式');
         await this.simulateSpeak(cleanText, callback);
       }
     } catch (error) {

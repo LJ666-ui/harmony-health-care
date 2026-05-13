@@ -4,6 +4,8 @@ import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import BrowseTracker from '../utils/BrowseTracker';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 export interface RehabCourse {
   id: string;
@@ -22,6 +24,10 @@ export interface RehabCourse {
 struct RehabListPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @State recordId: number = 0;
+  @State aiFilteredCourses: RehabCourse[] = [];
+  @State aiRecommendation: string = '';
+  @State userId: number = 1;
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   @State courses: RehabCourse[] = [
     {
@@ -140,6 +146,40 @@ struct RehabListPage {
   aboutToDisappear(): void {
     if (this.recordId > 0) {
       BrowseTracker.recordEnd(this.recordId);
+    }
+  }
+
+  async getAICourseRecommendation(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        '请根据我的健康状况推荐最适合的康复训练课程',
+        'rehabilitation_guidance',
+        String(this.userId)
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiRecommendation = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+    } catch (error) {
+      console.error('[RehabListPage] AI推荐失败:', error);
+      this.aiRecommendation = 'AI推荐暂时不可用';
+    }
+  }
+
+  async filterCoursesWithAI(userCondition: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        `我的情况：${userCondition}，请从以下课程中筛选适合我的：${this.courses.map(c => c.title).join('，')}`,
+        'rehabilitation_guidance',
+        String(this.userId)
+      );
+      const response = await this.orchestrator.process(request);
+      const contentStr = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+      const recommendedTitles = contentStr.split('，').map((t: string) => t.trim());
+      this.aiFilteredCourses = this.courses.filter(course =>
+        recommendedTitles.some((title: string) => course.title.includes(title))
+      );
+    } catch (error) {
+      console.error('[RehabListPage] AI筛选失败:', error);
+      this.aiFilteredCourses = [];
     }
   }
 

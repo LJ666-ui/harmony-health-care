@@ -31,10 +31,10 @@ public class PayController {
     @Autowired
     private PaymentRecordService paymentRecordService;
 
-    @Autowired
+    @Autowired(required = false)
     private RedisStockInterface redisStockService;
 
-    @Autowired
+    @Autowired(required = false)
     private RabbitTemplate rabbitTemplate;
 
     @PostMapping("/create")

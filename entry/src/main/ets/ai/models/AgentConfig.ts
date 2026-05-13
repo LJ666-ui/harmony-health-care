@@ -110,8 +110,8 @@ export class AgentConfig {
 
   static getFallbackChain(agentId: AgentId): AgentId[] {
     const fallbackMap: Record<AgentId, AgentId[]> = {
-      xiaoyi: ['deepseek', 'coze', 'mindspore'],
-      deepseek: ['coze', 'xiaoyi', 'mindspore'],
+      xiaoyi: ['deepseek', 'mindspore'],
+      deepseek: ['xiaoyi', 'mindspore'],
       coze: ['deepseek', 'xiaoyi', 'mindspore'],
       mindspore: ['hiai', 'xiaoyi', 'deepseek'],
       hiai: ['mindspore', 'xiaoyi', 'deepseek']

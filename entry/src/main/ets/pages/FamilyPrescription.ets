@@ -4,6 +4,7 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface Prescription {
   id: number;
@@ -36,6 +37,9 @@ struct FamilyPrescription {
   @State prescriptions: Prescription[] = [];
   @State selectedPrescription: Prescription | null = null;
   @State relatedUserId: number = 0;
+  @State aiMedicationGuidance: string = '';
+  @State aiDrugInteractionCheck: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     const familyInfo: Object | undefined = AppStorage.get('familyInfo');
@@ -116,6 +120,42 @@ struct FamilyPrescription {
       'CANCELLED': '#95A5A6'
     };
     return colorMap[status || ''] || '#95A5A6';
+  }
+
+  async getMedicationGuidance(): Promise<void> {
+    if (!this.selectedPrescription) return;
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `处方信息：${this.selectedPrescription.medications}，诊断：${this.selectedPrescription.diagnosis}，请给出用药指导`
+        }
+      });
+      this.aiMedicationGuidance = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyPrescription] AI用药指导失败:', error);
+      this.aiMedicationGuidance = '';
+    }
+  }
+
+  async checkDrugInteraction(): Promise<void> {
+    if (!this.selectedPrescription) return;
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `药物列表：${this.selectedPrescription.medications}，请检查药物相互作用和注意事项`
+        }
+      });
+      this.aiDrugInteractionCheck = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyPrescription] AI药物相互作用检查失败:', error);
+      this.aiDrugInteractionCheck = '';
+    }
   }
 
   build() {

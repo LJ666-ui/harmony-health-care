@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface FamilyDoctor {
   id: number;
@@ -22,6 +23,8 @@ struct FamilyDoctorPage {
   @State doctors: FamilyDoctor[] = [];
   @State myDoctor: FamilyDoctor | null = null;
   @State isLoading: boolean = true;
+  @State aiDoctorRecommendation: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -85,6 +88,26 @@ struct FamilyDoctorPage {
       console.error('跳转医生对话失败:', error.message);
       ToastUtil.showError('功能开发中');
     });
+  }
+
+  async getDoctorRecommendation(): Promise<void> {
+    const doctorList = this.doctors.map(d =>
+      `${d.name} - ${d.title} (${d.specialty}, ${d.hospital}) 评分: ${d.rating}`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `可用医生列表：\n${doctorList}\n请根据家庭健康需求推荐合适的医生`
+        }
+      });
+      this.aiDoctorRecommendation = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyDoctorPage] AI医生推荐失败:', error);
+      this.aiDoctorRecommendation = '';
+    }
   }
 
   build() {

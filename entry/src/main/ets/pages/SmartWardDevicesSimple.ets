@@ -4,14 +4,34 @@
  */
 
 import { router } from '@kit.ArkUI';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 @Entry
 @Component
 struct SmartWardDevicesSimple {
   @State message: string = '病房设备管理';
+  @State aiDeviceStatus: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     console.log('SmartWardDevicesSimple: aboutToAppear');
+  }
+
+  async checkDeviceStatusWithAI(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '检查病房设备运行状态'
+        }
+      });
+      this.aiDeviceStatus = response.output.content as string;
+    } catch (error) {
+      console.error('[SmartWardDevicesSimple] AI设备状态失败:', error);
+      this.aiDeviceStatus = '';
+    }
   }
 
   build() {

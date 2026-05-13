@@ -4,6 +4,8 @@ import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 const TAG: string = 'DoctorFamilyChatPage';
 
@@ -57,6 +59,9 @@ struct DoctorFamilyChatPage {
   @State remainHours: number = 48;
   @State expireWarning: string = '';
   @State hasAccess: boolean = false;
+  @State aiTranslation: string = '';
+  @State aiChatSummary: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
   @State otherUserType: string = 'patient'; // 'patient' or 'family'
 
   private scroller: Scroller = new Scroller();
@@ -329,6 +334,37 @@ struct DoctorFamilyChatPage {
     setTimeout(() => {
       try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
     }, 50);
+  }
+
+  async translateWithAI(text: string, targetLanguage: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `将以下内容翻译为${targetLanguage}：${text}`,
+        'general_chat'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiTranslation = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[DoctorFamilyChatPage] AI翻译失败:', error);
+      this.aiTranslation = 'AI翻译暂时不可用';
+    }
+  }
+
+  async generateChatSummary(): Promise<void> {
+    const recentMessages = this.messages.slice(-10).map(m => m.content).join('\n');
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `请总结以下聊天记录的要点：\n${recentMessages}`,
+        'general_chat'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiChatSummary = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[DoctorFamilyChatPage] AI摘要生成失败:', error);
+      this.aiChatSummary = 'AI摘要生成暂时不可用';
+    }
   }
 
   build() {

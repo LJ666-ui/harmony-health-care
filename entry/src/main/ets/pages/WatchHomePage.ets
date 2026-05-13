@@ -4,6 +4,7 @@
  */
 import { router } from '@kit.ArkUI';
 import { DeviceTypeUtil, DeviceType } from '../utils/DeviceTypeUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface QuickAction {
   id: string;
@@ -18,7 +19,10 @@ interface QuickAction {
 struct WatchHomePage {
   @State currentTime: string = '';
   @State currentDeviceType: DeviceType = DeviceType.UNKNOWN;
+  @State aiHealthSummary: string = '';
+  @State aiSmartRecommendation: string = '';
   private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   // 快捷功能列表
   quickActions: QuickAction[] = [
@@ -44,6 +48,40 @@ struct WatchHomePage {
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
     this.currentTime = `${hours}:${minutes}`;
+  }
+
+  async generateHealthSummary(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '请生成今日健康数据摘要和关键指标'
+        }
+      });
+      this.aiHealthSummary = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchHomePage] AI健康摘要生成失败:', error);
+      this.aiHealthSummary = '';
+    }
+  }
+
+  async getSmartRecommendation(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '基于当前时间和用户习惯，给出智能功能推荐'
+        }
+      });
+      this.aiSmartRecommendation = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchHomePage] AI智能推荐失败:', error);
+      this.aiSmartRecommendation = '';
+    }
   }
 
   build() {

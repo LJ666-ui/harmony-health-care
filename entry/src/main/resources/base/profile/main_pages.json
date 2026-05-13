@@ -153,6 +153,7 @@
     "pages/PatientDetailPage",
     "pages/PatientChatListPage",
     "pages/PatientDoctorChatPage",
-    "pages/PatientNurseChatPage"
+    "pages/PatientNurseChatPage",
+    "pages/AITestPage"
   ]
 }

@@ -52,7 +52,8 @@ export struct HomePage {
     { id: 'browse_history', icon: '🕐', title: '浏览历史', color: '#7F8C8D', route: 'pages/BrowseHistoryPage' },
     { id: 'daily_recommend', icon: '⭐', title: '每日推荐', color: '#F1C40F', route: 'pages/DailyRecommendPage' },
     { id: 'ancient_img', icon: '📜', title: '古医图谱', color: '#1ABC9C', route: 'pages/AncientMedicalImgPage' },
-    { id: 'imaging', icon: '🔬', title: '医学影像', color: '#8E44AD', route: 'pages/ImageAnalysisPage' }
+    { id: 'imaging', icon: '🔬', title: '医学影像', color: '#8E44AD', route: 'pages/ImageAnalysisPage' },
+    { id: 'ai_test', icon: '🧪', title: 'AI功能测试', color: '#E74C3C', route: 'pages/AITestPage' }
   ];
 
   aboutToAppear(): void {

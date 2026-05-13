@@ -21,6 +21,7 @@ import {
   ToolDefinition,
   ChatRole
 } from './types/DeepSeekTypes';
+import { SILICONFLOW_CONFIG } from '../common/constants/SiliconFlowConfig';
 
 export class SiliconFlowClient {
   private config: DeepSeekConfig;
@@ -32,12 +33,12 @@ export class SiliconFlowClient {
 
   private constructor(config?: Partial<DeepSeekConfig>) {
     this.config = {
-      apiKey: config?.apiKey || 'sk-nyvarnxvnqlheyvsvtqvkmdxjjsqaoacnududnkwjadpxhfv',
+      apiKey: config?.apiKey || SILICONFLOW_CONFIG.apiKey,
       baseUrl: config?.baseUrl || 'https://api.siliconflow.cn/v1',
-      model: config?.model || 'deepseek-ai/DeepSeek-V3',
-      maxTokens: config?.maxTokens || 4096,
-      temperature: config?.temperature || 0.7,
-      timeout: config?.timeout || 15000
+      model: config?.model || SILICONFLOW_CONFIG.model,
+      maxTokens: config?.maxTokens || SILICONFLOW_CONFIG.maxTokens,
+      temperature: config?.temperature || SILICONFLOW_CONFIG.temperature,
+      timeout: config?.timeout || SILICONFLOW_CONFIG.timeout
     };
   }
 

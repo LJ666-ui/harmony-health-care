@@ -7,6 +7,7 @@ import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { TaskStatus } from '../models/SmartWardEnums';
 import { CareTask } from '../models/SmartWardTaskModels';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 @Entry
 @Component
@@ -15,6 +16,9 @@ struct SmartWardCarePlan {
   @State tasks: CareTask[] = [];
   @State isLoading: boolean = true;
   @State selectedFilter: string = 'all';
+  @State aiCarePlanOptimization: string = '';
+  @State aiTaskPriorityAdvice: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadTasks();
@@ -112,6 +116,39 @@ struct SmartWardCarePlan {
   formatTime(timestamp: number): string {
     const date = new Date(timestamp);
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+
+  async optimizeCarePlanWithAI(): Promise<void> {
+    const taskSummary = this.tasks.map(t =>
+      `${t.taskName} - ${t.patientName} (${this.formatTime(t.scheduledTime)}) [优先级:${t.priority}]`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `护理任务列表：\n${taskSummary}\n请优化护理计划安排`,
+        intent: 'health_consultation'
+      });
+      this.aiCarePlanOptimization = response.output.content;
+    } catch (error) {
+      console.error('[SmartWardCarePlan] AI护理优化失败:', error);
+      this.aiCarePlanOptimization = '';
+    }
+  }
+
+  async getTaskPriorityAdvice(): Promise<void> {
+    const highPriorityTasks = this.tasks.filter(t => t.priority >= 8);
+    if (highPriorityTasks.length === 0) return;
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `高优先级任务：${highPriorityTasks.map(t => t.taskName).join('、')}，请给出执行建议`,
+        intent: 'general_chat'
+      });
+      this.aiTaskPriorityAdvice = response.output.content;
+    } catch (error) {
+      console.error('[SmartWardCarePlan] AI任务建议失败:', error);
+      this.aiTaskPriorityAdvice = '';
+    }
   }
 
   build() {

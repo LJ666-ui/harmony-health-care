@@ -2,6 +2,8 @@ import { router } from '@kit.ArkUI';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import EventPersistenceManager from '../utils/EventPersistenceManager';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface RecordType {
   label: string;
@@ -33,6 +35,11 @@ struct AddHealthRecord {
   @State selectedTime: string = new Date().toTimeString().substring(0, 5);
   @State errorMessage: string = '';
   @State isSaving: boolean = false;
+  @State aiAutoFillValue: string = '';
+  @State aiAbnormalWarning: string = '';
+  @State aiSuggestedRange: string = '';
+  @State userId: number = 1;
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   private recordTypes: RecordType[] = [
     { label: '血压', unit: 'mmHg', icon: '📊', color: '#1677FF', range: '收缩压 90-140，舒张压 60-90' },
@@ -157,6 +164,36 @@ struct AddHealthRecord {
         console.log('AddHealthRecord: 网络请求失败，数据已保存在本地');
         router.back();
       });
+  }
+
+  async autoFillWithAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        `请根据${this.selectedType}的正常范围，建议一个合理的参考值`,
+        'health_consultation',
+        String(this.userId)
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiAutoFillValue = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+    } catch (error) {
+      console.error('[AddHealthRecord] AI自动填充失败:', error);
+    }
+  }
+
+  async checkAbnormalWithAI(): Promise<void> {
+    if (!this.value) return;
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        `我的${this.selectedType}数值是：${this.value}${this.getCurrentTypeInfo().unit}，是否正常？`,
+        'risk_analysis',
+        String(this.userId)
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiAbnormalWarning = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+      this.aiSuggestedRange = response.suggestions?.[0] || '';
+    } catch (error) {
+      console.error('[AddHealthRecord] AI异常检测失败:', error);
+    }
   }
 
   build() {

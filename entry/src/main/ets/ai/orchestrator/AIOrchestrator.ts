@@ -2,7 +2,9 @@ import { AIRequest, AIResponse, AgentId, ConversationMessage } from '../models/A
 import { AgentConfig } from '../models/AgentConfig';
 import { IntentRouter, IntentType } from './IntentRouter';
 import { XiaoyiAgent } from '../agents/XiaoyiAgent';
-import { DeepSeekAgent } from '../agents/DeepSeekAgent';
+import { DeepSeekAgent, StreamCallback } from '../agents/DeepSeekAgent';
+import { CozeAgent } from '../agents/CozeAgent';
+import { HiAIAgent } from '../agents/HiAIAgent';
 
 export class AIOrchestrator {
   private static instance: AIOrchestrator | null = null;
@@ -12,7 +14,7 @@ export class AIOrchestrator {
   private conversationHistory: Map<string, ConversationMessage[]> = new Map();
   
   private maxRetryCount: number = 3;
-  private timeoutMs: number = 5000;
+  private timeoutMs: number = 30000;
 
   private constructor() {
     this.intentRouter = new IntentRouter();
@@ -43,6 +45,22 @@ export class AIOrchestrator {
       console.error('[AIOrchestrator] ❌ DeepSeek智能体加载失败:', e);
       AgentConfig.updateAvailability('deepseek', false);
     }
+
+    try {
+      this.agents.set('coze', new CozeAgent());
+      console.log('[AIOrchestrator] ✅ Coze智能体已加载');
+    } catch (e) {
+      console.error('[AIOrchestrator] ❌ Coze智能体加载失败:', e);
+      AgentConfig.updateAvailability('coze', false);
+    }
+
+    try {
+      this.agents.set('hiai', new HiAIAgent());
+      console.log('[AIOrchestrator] ✅ HiAI智能体已加载');
+    } catch (e) {
+      console.error('[AIOrchestrator] ❌ HiAI智能体加载失败:', e);
+      AgentConfig.updateAvailability('hiai', false);
+    }
   }
 
   async process(request: AIRequest): Promise<AIResponse> {
@@ -52,19 +70,19 @@ export class AIOrchestrator {
     console.log(`[AIOrchestrator] 输入类型: ${request.input.type}`);
     console.log(`[AIOrchestrator] 偏好设置:`, request.preferences);
 
+    let targetAgentId: AgentId = request.preferences?.preferredAgent || 'deepseek';
+
     try {
       const intentResult = await this.intentRouter.route(request);
       
-      let targetAgentId: AgentId = intentResult.suggestedAgent;
+      targetAgentId = intentResult.suggestedAgent;
       
       if (request.preferences?.preferredAgent) {
         targetAgentId = request.preferences.preferredAgent;
         console.log(`[AIOrchestrator] 用户指定使用: ${targetAgentId}`);
-      }
-
-      if (intentResult.isSystemCommand) {
+      } else if (intentResult.isSystemCommand) {
         targetAgentId = 'xiaoyi';
-        console.log(`[AIOrchistrater] 系统命令强制路由到小艺`);
+        console.log(`[AIOrchestrator] 系统命令路由到小艺`);
       }
 
       const response = await this.executeWithFallback(request, targetAgentId);
@@ -91,43 +109,66 @@ export class AIOrchestrator {
 
     } catch (error) {
       console.error('[AIOrchestrator] ❌ 处理失败:', error);
-      return this.createErrorResponse(request.requestId, error as string);
+      return this.createErrorResponse(request.requestId, error as string, targetAgentId);
+    }
+  }
+
+  async processStream(request: AIRequest, onChunk: StreamCallback): Promise<AIResponse> {
+    const startTime = Date.now();
+    
+    console.log(`[AIOrchestrator] 🌊 流式请求: ${request.requestId}`);
+
+    let targetAgentId: AgentId = request.preferences?.preferredAgent || 'deepseek';
+
+    try {
+      const agent = this.agents.get(targetAgentId);
+      
+      if (!agent) {
+        throw new Error(`智能体 ${targetAgentId} 未注册`);
+      }
+
+      if (targetAgentId === 'deepseek' && typeof (agent as DeepSeekAgent).processStream === 'function') {
+        console.log(`[AIOrchestrator] 🌊 使用DeepSeek流式模式`);
+        const response = await (agent as DeepSeekAgent).processStream(request, onChunk);
+        response.metadata.processingTime = Date.now() - startTime;
+        return response;
+      } else {
+        console.log(`[AIOrchestrator] 📋 智能体 ${targetAgentId} 不支持流式，使用普通模式`);
+        const response = await this.process(request);
+        
+        const content = typeof response.output.content === 'string' 
+          ? response.output.content 
+          : JSON.stringify(response.output.content);
+        
+        for (let i = 0; i < content.length; i += 4) {
+          onChunk(content.substring(i, Math.min(i + 4, content.length)), false);
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        onChunk('', true);
+        
+        return response;
+      }
+    } catch (error) {
+      console.error('[AIOrchestrator] ❌ 流式处理失败:', error);
+      return this.createErrorResponse(request.requestId, error as string, targetAgentId);
     }
   }
 
   private async executeWithFallback(request: AIRequest, primaryAgentId: AgentId): Promise<AIResponse> {
+    console.log(`[AIOrchestrator] 📋 executeWithFallback - preferredAgent: ${request.preferences?.preferredAgent}, primaryAgent: ${primaryAgentId}`);
+    
+    if (request.preferences?.preferredAgent) {
+      console.log(`[AIOrchestrator] ✅ 强制使用用户指定智能体: ${request.preferences.preferredAgent}`);
+      return this.executeSingleAgent(request, request.preferences.preferredAgent);
+    }
+
     const fallbackChain = AgentConfig.getFallbackChain(primaryAgentId);
     const agentsToTry = [primaryAgentId, ...fallbackChain];
 
     for (const agentId of agentsToTry) {
       try {
-        const agent = this.agents.get(agentId);
-        
-        if (!agent) {
-          console.warn(`[AIOrchestrator] 智能体 ${agentId} 未注册，跳过`);
-          continue;
-        }
-
-        const capability = AgentConfig.getCapability(agentId);
-        if (!capability?.isAvailable) {
-          console.warn(`[AIOrchestrator] 智能体 ${agentId} 不可用，跳过`);
-          continue;
-        }
-
-        if (capability.requiresNetwork && request.preferences?.offlineMode) {
-          console.warn(`[AIOrchestrator] 离线模式跳过需要网络的智能体 ${agentId}`);
-          continue;
-        }
-
-        console.log(`[AIOrchestrator] 🎯 尝试调用: ${capability.name}...`);
-        
-        const response = await Promise.race([
-          agent.process(request),
-          this.createTimeoutPromise(agentId)
-        ]);
-
+        const response = await this.tryAgent(request, agentId);
         return response;
-
       } catch (error) {
         console.warn(`[AIOrchestrator] ⚠️ 智能体 ${agentId} 调用失败:`, error);
         continue;
@@ -135,6 +176,38 @@ export class AIOrchestrator {
     }
 
     throw new Error('所有智能体均不可用');
+  }
+
+  private async executeSingleAgent(request: AIRequest, agentId: AgentId): Promise<AIResponse> {
+    console.log(`[AIOrchestrator] 🎯 用户指定使用: ${agentId}，不进行Fallback`);
+    const response = await this.tryAgent(request, agentId);
+    return response;
+  }
+
+  private async tryAgent(request: AIRequest, agentId: AgentId): Promise<AIResponse> {
+    const agent = this.agents.get(agentId);
+
+    if (!agent) {
+      throw new Error(`智能体 ${agentId} 未注册`);
+    }
+
+    const capability = AgentConfig.getCapability(agentId);
+    if (!capability?.isAvailable) {
+      throw new Error(`智能体 ${agentId} 不可用`);
+    }
+
+    if (capability.requiresNetwork && request.preferences?.offlineMode) {
+      throw new Error(`离线模式无法使用 ${agentId}`);
+    }
+
+    console.log(`[AIOrchestrator] 🎯 尝试调用: ${capability.name}...`);
+
+    const response = await Promise.race([
+      agent.process(request),
+      this.createTimeoutPromise(agentId)
+    ]);
+
+    return response;
   }
 
   private createTimeoutPromise(agentId: AgentId): Promise<never> {
@@ -190,10 +263,10 @@ export class AIOrchestrator {
     }
   }
 
-  private createErrorResponse(requestId: string, error: string): AIResponse {
+  private createErrorResponse(requestId: string, error: string, failedAgentId?: AgentId): AIResponse {
     return {
       requestId,
-      agentId: 'xiaoyi',
+      agentId: failedAgentId || 'xiaoyi',
       output: {
         type: 'text',
         content: `抱歉，我暂时无法回答您的问题。您可以尝试：\n1. 检查网络连接\n2. 稍后再试\n3. 联系客服`,
@@ -219,7 +292,7 @@ export class AIOrchestrator {
         available: cap.isAvailable,
         load: cap.currentLoad
       })),
-      uptime: process.uptime?.() || 0
+      uptime: Date.now() / 1000
     };
   }
 }

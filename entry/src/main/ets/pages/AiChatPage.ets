@@ -5,6 +5,9 @@ import { Footer } from '../components/Footer';
 import BrowseTracker from '../utils/BrowseTracker';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
+import { ttsService } from '../ai/tts/TTSService';
 
 export interface ChatMessage {
   id: string;
@@ -43,6 +46,12 @@ export interface UserInfoData {
   allergies?: string[];
 }
 
+interface AiChatConversationMsg {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
 @Entry
 @Component
 struct AiChatPage {
@@ -57,9 +66,12 @@ struct AiChatPage {
   @State historyList: AiChatHistoryItem[] = [];
   @State isLoadingHistory: boolean = false;
   @State currentSessionId: string = '';
+  @State isSpeaking: boolean = false;
+  @State speakingMessageId: string = '';
 
   private scroller: Scroller = new Scroller();
   private conversationHistory: ConversationItem[] = [];
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   @State suggestedQuestions: SuggestedQuestion[] = [
     { id: '1', question: '\u8840\u538B\u591A\u5C11\u7B97\u6B63\u5E38?', icon: '\u2764' },
@@ -82,9 +94,18 @@ struct AiChatPage {
     }
 
     this.addSystemMessage('\u60A8\u597D! \u6211\u662FAI\u5065\u5EBB\u987E\u95EE, \u53EF\u4EE5\u5E2E\u60A8\u89E3\u7B54\u5065\u5EBB\u76F8\u5173\u95EE\u9898. \u8BF7\u95EE\u6709\u4EC0\u4E48\u53EF\u4EE5\u5E2E\u52A9\u60A8\u7684?');
+
+    ttsService.initialize().then(success => {
+      if (success) {
+        console.log('[AiChatPage] TTS引擎就绪');
+      }
+    });
   }
 
   aboutToDisappear(): void {
+    ttsService.stop();
+    this.isSpeaking = false;
+
     if (this.recordId) {
       BrowseTracker.recordEnd(this.recordId);
     }
@@ -161,6 +182,33 @@ struct AiChatPage {
       }
     }
     this.messages = filtered;
+  }
+
+  async callAiOrchestrator(question: string): Promise<string> {
+    const request = AIRequestBuilder.createSimpleRequest(
+      question,
+      String(AppStorage.get('userId') || 'anonymous')
+    );
+    request.conversationHistory = this.conversationHistory.slice(-10).map(item => {
+      const msg: AiChatConversationMsg = {
+        role: item.role as 'user' | 'assistant',
+        content: item.content,
+        timestamp: Date.now()
+      };
+      return msg;
+    });
+    request.preferences = { preferredAgent: 'deepseek' };
+
+    const response = await this.orchestrator.process(request);
+
+    console.log('[AiChatPage] AIOrchestrator response:', {
+      agentId: response.agentId,
+      confidence: response.output.confidence
+    });
+
+    return typeof response.output.content === 'string'
+      ? response.output.content
+      : JSON.stringify(response.output.content);
   }
 
   async callAiApi(question: string): Promise<string> {
@@ -406,36 +454,98 @@ struct AiChatPage {
     this.addUserMessage(text);
     this.isLoading = true;
 
-    const loadingId: string = this.addLoadingMessage();
+    const streamMsgId: string = Date.now().toString() + '_stream';
+    let streamContent: string = '';
+
+    this.messages.push({
+      id: streamMsgId,
+      type: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+      isLoading: true
+    });
 
     setTimeout(async () => {
       try {
-        let response: string;
+        const request = AIRequestBuilder.createSimpleRequest(
+          text,
+          String(AppStorage.get('userId') || 'anonymous')
+        );
+        request.conversationHistory = this.conversationHistory.slice(-10).map(item => {
+          const msg: AiChatConversationMsg = {
+            role: item.role as 'user' | 'assistant',
+            content: item.content,
+            timestamp: Date.now()
+          };
+          return msg;
+        });
+        request.preferences = { preferredAgent: 'deepseek' };
 
-        try {
-          if (isConsult) {
-            response = await this.callConsultApi(text);
-          } else {
-            response = await this.callAiApi(text);
+        await this.orchestrator.processStream(request, (chunk: string, isDone: boolean) => {
+          if (!isDone && chunk.length > 0) {
+            streamContent += chunk;
+            const msgIndex: number = this.findMessageIndex(streamMsgId);
+            if (msgIndex !== -1) {
+              this.messages[msgIndex].content = streamContent;
+              this.messages[msgIndex].isLoading = !isDone;
+            }
           }
-        } catch (apiError) {
-          console.log('API call failed, using mock response:', apiError);
-          response = this.getMockResponse(text);
-        }
-
-        this.removeLoadingMessage(loadingId);
-
-        await this.typewriterEffect(response);
+          if (isDone) {
+            const msgIndex: number = this.findMessageIndex(streamMsgId);
+            if (msgIndex !== -1) {
+              this.messages[msgIndex].isLoading = false;
+              this.messages[msgIndex].content = streamContent;
+            }
+            if (streamContent && streamContent.length > 0) {
+              const convItem: ConversationItem = { role: 'assistant', content: streamContent };
+              this.conversationHistory.push(convItem);
+            }
+          }
+        });
 
       } catch (error) {
         console.error('Error:', error);
-        this.removeLoadingMessage(loadingId);
+        const msgIndex: number = this.findMessageIndex(streamMsgId);
+        if (msgIndex !== -1) {
+          this.messages.splice(msgIndex, 1);
+        }
         const errorMsg: string = error instanceof Error ? error.message : '\u62B1\u6B49, \u53D1\u751F\u4E86\u672A\u77E5\u9519\u8BEF, \u8BF7\u91CD\u8BD5';
         this.addAssistantMessage('', true, errorMsg);
       } finally {
         this.isLoading = false;
       }
-    }, 500);
+    }, 200);
+  }
+
+  speakMessage(content: string, messageId: string): void {
+    console.log('[AiChatPage] 🔊 点击朗读按钮, content长度:', content.length, 'messageId:', messageId);
+
+    if (this.isSpeaking && this.speakingMessageId === messageId) {
+      console.log('[AiChatPage] ⏹️ 停止当前播报');
+      ttsService.stop();
+      this.isSpeaking = false;
+      this.speakingMessageId = '';
+      return;
+    }
+
+    if (this.isSpeaking) {
+      ttsService.stop();
+    }
+
+    this.isSpeaking = true;
+    this.speakingMessageId = messageId;
+
+    console.log('[AiChatPage] 🎤 开始播报, TTS状态:', ttsService.getIsSpeaking());
+
+    ttsService.speak(content, (event, data) => {
+      console.log('[AiChatPage] TTS事件:', event, data || '');
+      if (event === 'finish' || event === 'error') {
+        this.isSpeaking = false;
+        if (event === 'error') {
+          ToastUtil.showInfo('语音播放失败: ' + (data || '未知错误'));
+        }
+      }
+    });
   }
 
   async typewriterEffect(fullText: string): Promise<void> {
@@ -624,7 +734,7 @@ struct AiChatPage {
   @Builder
   AssistantBubble(message: ChatMessage) {
     Row() {
-      Column({ space: 6 }) {
+      Column({ space: 8 }) {
         if (message.isLoading) {
           this.ThinkingAnimation();
         } else if (message.isError) {
@@ -632,19 +742,40 @@ struct AiChatPage {
         } else {
           this.MarkdownContent(message.content);
           this.DisclaimerText();
-        }
 
-        Text(this.formatTime(message.timestamp))
-          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-          .fontColor('#999999')
-          .margin({ left: 8 });
+          Text('---')
+            .fontSize(1)
+            .height(1)
+            .width('100%')
+            .opacity(0);
+
+          Row() {
+            Text(this.formatTime(message.timestamp))
+              .fontSize(11)
+              .fontColor('#AAAAAA');
+
+            Button(this.isSpeaking && this.speakingMessageId === message.id ? '⏹停止' : '🔊朗读')
+              .fontSize(12)
+              .fontWeight(FontWeight.Bold)
+              .height(32)
+              .backgroundColor(this.isSpeaking && this.speakingMessageId === message.id ? '#FF4444' : '#1677FF')
+              .fontColor('#FFFFFF')
+              .borderRadius(16)
+              .onClick(() => {
+                console.log('[AiChatPage] 🔊 点击朗读按钮!');
+                this.speakMessage(message.content, message.id);
+              });
+          }
+          .width('100%');
+        }
       }
-      .alignItems(HorizontalAlign.Start);
+      .alignItems(HorizontalAlign.Start)
+      .width('100%');
 
       Blank();
     }
     .width('100%')
-    .padding({ left: 12 });
+    .padding({ left: 12, right: 12 });
   }
 
   @Builder

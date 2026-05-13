@@ -4,6 +4,8 @@ import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { AIService } from '../services/AIService';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface ChatMessage {
   id: number;
@@ -22,6 +24,7 @@ struct AIAssistantPage {
   @State isTyping: boolean = false;
   private scroller: Scroller = new Scroller();
   private aiService: AIService = AIService.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -66,8 +69,29 @@ struct AIAssistantPage {
 
   async receiveMessageFromAI(userMessage: string): Promise<void> {
     try {
-      const response = await this.aiService.chat(this.userId, userMessage);
-      
+      let response: string;
+
+      try {
+        const aiRequest = AIRequestBuilder.createSimpleRequest(
+          userMessage,
+          String(this.userId || 'anonymous')
+        );
+
+        const aiResponse = await this.orchestrator.process(aiRequest);
+
+        console.log('[AIAssistantPage] AIOrchestrator response:', {
+          agentId: aiResponse.agentId,
+          confidence: aiResponse.output.confidence
+        });
+
+        response = typeof aiResponse.output.content === 'string'
+          ? aiResponse.output.content
+          : JSON.stringify(aiResponse.output.content);
+      } catch (orchestratorError) {
+        console.log('[AIAssistantPage] AIOrchestrator failed, fallback to AIService:', orchestratorError);
+        response = await this.aiService.chat(this.userId, userMessage);
+      }
+
       const aiMessage: ChatMessage = {
         id: this.messages.length + 1,
         content: response,

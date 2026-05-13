@@ -4,6 +4,7 @@
  */
 import { router } from '@kit.ArkUI';
 import { DeviceTypeUtil } from '../utils/DeviceTypeUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface SleepData {
   date: string;
@@ -29,7 +30,10 @@ struct WatchSleepPage {
   @State lastSleepData: SleepData | null = null;
   @State sleepStages: SleepStage[] = [];
   @State isSleepTracking: boolean = false;
+  @State aiSleepAnalysis: string = '';
+  @State aiSleepImprovement: string = '';
   private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadSleepData();
@@ -63,6 +67,41 @@ struct WatchSleepPage {
   toggleSleepTracking(): void {
     this.isSleepTracking = !this.isSleepTracking;
     // 实际应用中应调用传感器API开始/停止睡眠监测
+  }
+
+  async analyzeSleepWithAI(): Promise<void> {
+    if (!this.lastSleepData) return;
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `睡眠数据：总时长${this.lastSleepData.totalDuration}，深睡${this.lastSleepData.deepSleep}，浅睡${this.lastSleepData.lightSleep}，清醒${this.lastSleepData.awakeTime}，质量评分${this.lastSleepData.quality}`
+        }
+      });
+      this.aiSleepAnalysis = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchSleepPage] AI睡眠分析失败:', error);
+      this.aiSleepAnalysis = 'AI分析暂时不可用';
+    }
+  }
+
+  async getSleepImprovementAdvice(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '基于睡眠数据给出改善建议'
+        }
+      });
+      this.aiSleepImprovement = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchSleepPage] AI改善建议失败:', error);
+      this.aiSleepImprovement = '改善建议暂时不可用';
+    }
   }
 
   build() {

@@ -4,6 +4,7 @@ import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 const TAG: string = 'FamilyNurseChatPage';
 
@@ -55,6 +56,9 @@ struct FamilyNurseChatPage {
   @State expireWarning: string = '';
   @State hasAccess: boolean = false;
   @State relatedPatientName: string = '';
+  @State aiNursingGuidance: string = '';
+  @State aiHealthReminder: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   private scroller: Scroller = new Scroller();
   private familyId: number = 0;
@@ -280,6 +284,34 @@ struct FamilyNurseChatPage {
     setTimeout(() => {
       try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
     }, 50);
+  }
+
+  async getNursingGuidanceFromAI(careTopic: string): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `请给出关于${careTopic}的护理指导`,
+        intent: 'health_consultation'
+      });
+      this.aiNursingGuidance = response.output.content;
+    } catch (error) {
+      console.error('[FamilyNurseChatPage] AI护理指导失败:', error);
+      this.aiNursingGuidance = 'AI护理指导暂时不可用';
+    }
+  }
+
+  async generateHealthReminder(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `请为家庭成员生成今日健康提醒和注意事项`,
+        intent: 'health_consultation'
+      });
+      this.aiHealthReminder = response.output.content;
+    } catch (error) {
+      console.error('[FamilyNurseChatPage] AI健康提醒生成失败:', error);
+      this.aiHealthReminder = '';
+    }
   }
 
   build() {

@@ -5,6 +5,8 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface MedicineItem {
   id: number;
@@ -39,6 +41,9 @@ struct Medications {
   @State categories: CategoryItem[] = [];
   @State isLoading: boolean = true;
   @State errorMessage: string = '';
+  @State interactionWarnings: string[] = [];
+  @State aiDrugInfo: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -300,6 +305,37 @@ struct Medications {
     }).catch((error: Error) => {
       console.error('跳转药品详情失败:', error.message);
     });
+  }
+
+  async checkDrugInteractions(drugNames: string[]): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `检查以下药物的相互作用：${drugNames.join(', ')}`,
+        'drug_interaction_check'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
+      this.interactionWarnings = contentStr.split('\n').filter((w: string) => w.trim());
+    } catch (error) {
+      console.error('[Medications] AI药物相互作用检查失败:', error);
+      this.interactionWarnings = [];
+    }
+  }
+
+  async getDrugInfoFromAI(medicineName: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `请详细介绍${medicineName}的用法、用量、禁忌和注意事项`,
+        'medication_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiDrugInfo = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[Medications] AI药品信息获取失败:', error);
+      this.aiDrugInfo = 'AI药品信息暂时不可用';
+    }
   }
 
   build() {

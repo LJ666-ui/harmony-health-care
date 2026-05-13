@@ -4,6 +4,8 @@ import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { MedicationService, MedicationPlan } from '../services/MedicationService';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface MedicationReminder {
   id: number;
@@ -22,7 +24,10 @@ struct MedicationPage {
   @StorageLink('userId') userId: number = 0;
   @State reminderList: MedicationReminder[] = [];
   @State isLoading: boolean = true;
+  @State aiOptimizedSchedule: string = '';
+  @State aiMedicationAdvice: string = '';
   private medicationService: MedicationService = MedicationService.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -118,6 +123,38 @@ struct MedicationPage {
       console.error('跳转编辑提醒页失败:', error.message);
       ToastUtil.showError('功能开发中');
     });
+  }
+
+  async optimizeScheduleWithAI(): Promise<void> {
+    try {
+      const medicationList = this.reminderList.map(r => `${r.name}(${r.dosage})-${r.time}`).join(', ');
+      const request = AIRequestBuilder.createWithIntent(
+        `我的用药清单：${medicationList}，请优化服药时间安排，避免药物相互作用`,
+        'medication_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiOptimizedSchedule = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[MedicationPage] AI优化失败:', error);
+      this.aiOptimizedSchedule = 'AI优化暂时不可用';
+    }
+  }
+
+  async getMedicationAdviceFromAI(): Promise<void> {
+    try {
+      const medicationNames = this.reminderList.map(r => r.name).join(', ');
+      const request = AIRequestBuilder.createWithIntent(
+        `我正在服用以下药物：${medicationNames}，请给出用药注意事项和建议`,
+        'medication_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiMedicationAdvice = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[MedicationPage] AI建议失败:', error);
+      this.aiMedicationAdvice = 'AI建议暂时不可用';
+    }
   }
 
   build() {

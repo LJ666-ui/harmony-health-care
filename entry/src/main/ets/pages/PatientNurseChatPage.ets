@@ -4,6 +4,8 @@ import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 const TAG: string = 'PatientNurseChatPage';
 
@@ -48,6 +50,9 @@ struct PatientNurseChatPage {
   @State canSend: boolean = true;
   @State remainHours: number = 48;
   @State expireWarning: string = '';
+  @State aiNursingAdvice: string = '';
+  @State aiCareGuidance: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
   @State hasAccess: boolean = false;
 
   private scroller: Scroller = new Scroller();
@@ -277,6 +282,36 @@ struct PatientNurseChatPage {
     setTimeout(() => {
       try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
     }, 50);
+  }
+
+  async getNursingAdviceFromAI(symptom: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `患者症状：${symptom}，请给出护理建议`,
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiNursingAdvice = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[PatientNurseChatPage] AI护理建议失败:', error);
+      this.aiNursingAdvice = 'AI护理建议暂时不可用';
+    }
+  }
+
+  async getCareGuidanceFromAI(careType: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `请给出${careType}的详细护理指导`,
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiCareGuidance = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[PatientNurseChatPage] AI护理指导失败:', error);
+      this.aiCareGuidance = 'AI护理指导暂时不可用';
+    }
   }
 
   build() {

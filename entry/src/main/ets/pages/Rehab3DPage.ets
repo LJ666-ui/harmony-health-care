@@ -5,6 +5,8 @@ import { GlobalTheme } from '../global';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import web_webview from '@ohos.web.webview';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface RouterParams {
   courseId?: string | number;
@@ -36,6 +38,13 @@ interface CourseConfig {
   color: string;
 }
 
+interface MovementMetadata {
+  context: string;
+  exercise: string;
+  course: string;
+  deviceType: string;
+}
+
 @Entry
 @Component
 struct Rehab3DPage {
@@ -53,9 +62,13 @@ struct Rehab3DPage {
   @State actionName: string = '';
   @State actionDesc: string = '';
   @State loadError: string = '';
+  @State aiCorrection: string = '';
+  @State exerciseScore: number = 0;
+  @State aiRealTimeFeedback: string = '';
 
   private timer: number = -1;
   private webController: web_webview.WebviewController = new web_webview.WebviewController();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   private courseConfigs: CourseConfig[] = [
     {
@@ -161,6 +174,46 @@ struct Rehab3DPage {
     if (this.timer !== -1) {
       clearInterval(this.timer);
       this.timer = -1;
+    }
+  }
+
+  async analyzeMovementWithAI(sensorData: number[]): Promise<void> {
+    try {
+      const meta: MovementMetadata = {
+        context: 'movement_analysis',
+        exercise: this.actionName,
+        course: this.getCurrentCourse().name,
+        deviceType: 'phone'
+      };
+      const request = AIRequestBuilder.createWithMetadata(
+        JSON.stringify(sensorData),
+        meta
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiCorrection = typeof content === 'string' ? content : JSON.stringify(content);
+      this.exerciseScore = Math.round(response.output.confidence * 100);
+      this.aiRealTimeFeedback = `动作评分：${this.exerciseScore}分`;
+    } catch (error) {
+      console.error('[Rehab3DPage] AI动作分析失败:', error);
+      this.aiCorrection = 'AI分析暂时不可用';
+      this.aiRealTimeFeedback = '无法获取实时反馈';
+    }
+  }
+
+  async getAICorrectionGuidance(): Promise<void> {
+    try {
+      const currentStepName = this.getCurrentSteps()[this.currentStep] || '';
+      const request = AIRequestBuilder.createWithIntent(
+        `当前动作：${currentStepName}，课程：${this.getCurrentCourse().name}，请给出标准的动作要领和常见错误纠正`,
+        'rehabilitation_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiCorrection = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[Rehab3DPage] AI纠正指导失败:', error);
+      this.aiCorrection = 'AI纠正指导暂时不可用';
     }
   }
 

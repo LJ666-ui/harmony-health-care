@@ -1,11 +1,11 @@
 import { router } from '@kit.ArkUI';
-import { Header } from '../components/Header';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
-import { HttpUtil } from '../common/utils/HttpUtil';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import http from '@ohos.net.http';
 
 const TAG: string = 'NurseHealthRecords';
 
@@ -33,6 +33,14 @@ interface PatientInfo {
   department?: string;
   bedNumber?: string;
   diagnosis?: string;
+}
+
+interface NursePatientResponse {
+  code?: number;
+  success?: boolean;
+  msg?: string;
+  message?: string;
+  data?: PatientInfo[];
 }
 
 @Entry
@@ -81,15 +89,54 @@ struct NurseHealthRecords {
   private async loadPatients(): Promise<void> {
     this.isLoadingPatients = true;
     try {
-      const response = await HttpUtil.get<PatientInfo[]>(ApiConstants.NURSE_PATIENTS);
+      const url: string = `${ApiConstants.BASE_URL}/user/nurse/patients`;
+      hilog.info(0x0000, TAG, 'loadPatients - 请求URL: %{public}s', url);
+
+      const nurseToken: string | undefined = AppStorage.get<string>('nurseToken');
+      hilog.info(0x0000, TAG, 'loadPatients - nurseToken exists: %{public}b', nurseToken !== undefined && nurseToken.length > 0);
+
+      let response: BaseResponse<PatientInfo[]>;
+
+      if (nurseToken && nurseToken.length > 0) {
+        const httpRequest = http.createHttp();
+        const httpResponse: http.HttpResponse = await httpRequest.request(url, {
+          method: http.RequestMethod.GET,
+          header: {
+            'Content-Type': 'application/json',
+            'Token': nurseToken
+          },
+          connectTimeout: 30000,
+          readTimeout: 30000
+        });
+        httpRequest.destroy();
+
+        const resultStr: string = httpResponse.result as string;
+        hilog.info(0x0000, TAG, 'loadPatients - 响应状态码: %{public}d', httpResponse.responseCode);
+        hilog.info(0x0000, TAG, 'loadPatients - 响应内容: %{public}s', resultStr.substring(0, Math.min(200, resultStr.length)));
+
+        const resultData: NursePatientResponse = JSON.parse(resultStr) as NursePatientResponse;
+        const isSuccess: boolean = resultData.code === 200 || resultData.success === true;
+        const message: string = resultData.msg !== undefined ? resultData.msg : (resultData.message !== undefined ? resultData.message : '');
+        response = new BaseResponse<PatientInfo[]>(isSuccess, message, resultData.data, resultData.code);
+      } else {
+        hilog.warn(0x0000, TAG, 'loadPatients - 无护士Token，尝试使用HttpUtil');
+        response = await HttpUtil.get<PatientInfo[]>(ApiConstants.NURSE_PATIENTS);
+      }
+
+      hilog.info(0x0000, TAG, 'loadPatients - 响应: success=%{public}b, data长度=%{public}d',
+        response.success, response.data !== null && response.data !== undefined ? response.data.length : -1);
+
       if (response.success && response.data !== null && response.data !== undefined) {
         this.patients = response.data;
+        hilog.info(0x0000, TAG, 'loadPatients - 加载成功，共%{public}d个患者', this.patients.length);
       } else {
         this.patients = [];
+        hilog.error(0x0000, TAG, 'loadPatients - 加载失败: %{public}s', response.message || '未知错误');
       }
     } catch (error) {
       console.error('加载患者列表失败:', error);
       this.patients = [];
+      hilog.error(0x0000, TAG, 'loadPatients - 异常: %{public}s', String(error));
     } finally {
       this.isLoadingPatients = false;
     }
@@ -167,7 +214,68 @@ struct NurseHealthRecords {
 
   build() {
     Column() {
-      Header({ title: `${this.patientName}的健康档案`, showBack: true })
+      Row({ space: 8 }) {
+        Column()
+          .width(40)
+          .height(40)
+          .borderRadius(20)
+          .backgroundColor('#3498DB15')
+          .justifyContent(FlexAlign.Center)
+          .onClick(() => {
+            if (this.patientId > 0) {
+              this.patientId = 0;
+              this.patientName = '';
+              this.records = [];
+              this.loadPatients();
+            } else {
+              router.back();
+            }
+          }) {
+            Text('←')
+              .fontSize(18)
+              .fontColor('#3498DB');
+          }
+
+        Text(this.patientId > 0 ? `${this.patientName}的健康档案` : '健康档案')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis });
+
+        if (this.patientId > 0) {
+          Column()
+            .width(40)
+            .height(40)
+            .borderRadius(20)
+            .justifyContent(FlexAlign.Center)
+            .onClick(() => {
+              this.patientId = 0;
+              this.patientName = '';
+              this.records = [];
+              this.loadPatients();
+            }) {
+              Text('📋')
+                .fontSize(18);
+            }
+        } else {
+          Blank().width(40);
+        }
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#FFFFFF')
+      .padding({ left: 16, right: 16 })
+      .justifyContent(FlexAlign.SpaceBetween)
+      .alignItems(VerticalAlign.Center)
+      .shadow({
+        radius: 2,
+        color: '#1A00000020',
+        offsetX: 0,
+        offsetY: 1
+      });
 
       if (this.patientId === 0) {
         Column() {
@@ -380,6 +488,14 @@ struct NurseHealthRecords {
                   .backgroundColor('#FFFFFF')
                   .borderRadius(12)
                   .shadow({ radius: 4, color: '#1A000000', offsetX: 0, offsetY: 2 })
+                  .onClick(() => {
+                    router.pushUrl({
+                      url: 'pages/MedicalRecordDetailPage',
+                      params: {
+                        record: record
+                      }
+                    });
+                  })
                 }
               })
             }

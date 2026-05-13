@@ -31,7 +31,7 @@ public class PayController {
     @Autowired
     private PaymentRecordService paymentRecordService;
 
-    @Autowired
+    @Autowired(required = false)
     private RedisStockInterface redisStockService;
 
     @Autowired
@@ -48,6 +48,10 @@ public class PayController {
 
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
             Date scheduleDate = sdf.parse(scheduleDateStr);
+
+            if (redisStockService == null) {
+                return Result.error("Redis服务未启用，无法创建支付订单");
+            }
 
             int grabResult = redisStockService.grabSlot(doctorId, scheduleDate, schedulePeriod, userId);
             if (grabResult != 1) {
@@ -78,7 +82,9 @@ public class PayController {
 
             String form = alipayService.createPayment(outTradeNo, subject, fee.toPlainString(), description);
             if (form == null) {
-                redisStockService.backStock(doctorId, scheduleDate, schedulePeriod, userId);
+                if (redisStockService != null) {
+                    redisStockService.backStock(doctorId, scheduleDate, schedulePeriod, userId);
+                }
                 paymentRecordService.removeByOutTradeNo(outTradeNo);
                 return Result.error("创建支付订单失败");
             }

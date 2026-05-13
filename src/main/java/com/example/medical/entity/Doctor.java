@@ -17,9 +17,10 @@ public class Doctor {
     @TableField("user_id")
     private Long userId;
 
-    @TableField("real_name")
+    @TableField(exist = false)
     private String realName;
 
+    @TableField(exist = false)
     private String phone;
 
     private String hospital;
@@ -34,6 +35,7 @@ public class Doctor {
 
     private String specialty;
 
+    @TableField(exist = false)
     private String avatar;
 
     private String description;

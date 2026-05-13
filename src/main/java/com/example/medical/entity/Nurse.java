@@ -35,16 +35,15 @@ public class Nurse {
     private String nurseNo;
 
     /**
-     * 真实姓名
+     * 真实姓名（来自user表，非数据库字段）
      */
-    @NotBlank(message = "姓名不能为空")
-    @Size(min = 2, max = 50, message = "姓名长度必须在2-50个字符之间")
+    @TableField(exist = false)
     private String name;
 
     /**
-     * 手机号
+     * 手机号（来自user表，非数据库字段）
      */
-    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
+    @TableField(exist = false)
     private String phone;
 
     /**

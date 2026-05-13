@@ -122,6 +122,11 @@ struct FamilyLogin {
         AppStorage.setOrCreate<FamilyInfo>('familyInfo', response.data.familyInfo);
         AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', true);
 
+        // 保存用户ID到AppStorage（供其他页面使用）
+        const familyUserId: number = response.data.familyInfo.id || response.data.familyInfo.userId || 0;
+        console.log('[FamilyLogin] 保存userId到AppStorage:', familyUserId);
+        AppStorage.setOrCreate<number>('userId', familyUserId);
+
         console.log('[FamilyLogin] Token已保存到AppStorage');
         console.log('[FamilyLogin] isFamilyLoggedIn已设置为true');
 

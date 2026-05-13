@@ -233,18 +233,26 @@ public class UserController {
             long receiverId = Long.parseLong(body.get("receiverId").toString());
             String content = body.get("content") != null ? body.get("content").toString() : "";
 
+            String senderType = body.get("senderType") != null ? body.get("senderType").toString() : "";
+            String receiverType = body.get("receiverType") != null ? body.get("receiverType").toString() : "";
+
+            System.out.println("[sendMessage] senderId=" + senderId + " receiverId=" + receiverId +
+                " senderType=" + senderType + " receiverType=" + receiverType + " content=" + content);
+
             User sender = userService.getById(senderId);
             if (sender == null) {
+                System.out.println("[sendMessage] 发送者不存在: " + senderId);
                 return Result.error("发送者不存在");
             }
 
             if (sender.getUserType() != null && sender.getUserType() == 1) {
                 if (!doctorMessageService.canDoctorSendMessage(senderId, receiverId)) {
-                    return Result.error("该患者尚未联系您，您无法主动发起对话");
+                    return Result.error("该用户尚未联系您，您无法主动发起对话");
                 }
             }
 
             DoctorMessage message = doctorMessageService.sendMessageWithExpiry(senderId, receiverId, content);
+            System.out.println("[sendMessage] 消息发送成功 id=" + message.getId());
             return Result.success(message);
         } catch (Exception e) {
             e.printStackTrace();
@@ -312,17 +320,26 @@ public class UserController {
     @GetMapping("/message/can-send")
     public Result<?> canSend(@RequestParam Long senderId, @RequestParam Long receiverId) {
         try {
+            System.out.println("[canSend] 检查发送权限 senderId=" + senderId + " receiverId=" + receiverId);
+
             User sender = userService.getById(senderId);
             if (sender == null) {
+                System.out.println("[canSend] 发送者不存在: " + senderId);
                 return Result.error("用户不存在");
             }
+
             boolean canSend = true;
             if (sender.getUserType() != null && sender.getUserType() == 1) {
                 canSend = doctorMessageService.canDoctorSendMessage(senderId, receiverId);
+                System.out.println("[canSend] 医生权限检查结果: " + canSend);
+            } else {
+                System.out.println("[canSend] 非医生用户（userType=" + sender.getUserType() + "），允许发送");
             }
+
             Map<String, Object> result = new HashMap<>();
             result.put("canSend", canSend);
             result.put("userType", sender.getUserType());
+            System.out.println("[canSend] 返回结果: canSend=" + canSend + " userType=" + sender.getUserType());
             return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -438,8 +455,19 @@ public class UserController {
      * GET /user/nurse/patients
      */
     @GetMapping("/nurse/patients")
-    public Result<?> getNursePatients(@RequestHeader(value = "Token", required = false) String token) {
+    public Result<?> getNursePatients(
+            @RequestHeader(value = "Token", required = false) String token,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
         try {
+            // 优先使用Token头，如果没有则尝试从Authorization头提取
+            if ((token == null || token.isEmpty()) && authorization != null && !authorization.isEmpty()) {
+                if (authorization.startsWith("Bearer ")) {
+                    token = authorization.substring(7);
+                } else {
+                    token = authorization;
+                }
+            }
+
             System.out.println("[NursePatients] Token received: " + (token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "null"));
 
             if (token == null || token.isEmpty()) {
@@ -479,6 +507,14 @@ public class UserController {
             if (nurse == null) {
                 System.out.println("[NursePatients] Error: Nurse not found for nurseId: " + nurseId);
                 return Result.error("未找到护士信息");
+            }
+
+            if (nurse.getUserId() != null) {
+                User nurseUser = userService.getById(nurse.getUserId());
+                if (nurseUser != null) {
+                    nurse.setName(nurseUser.getRealName());
+                    nurse.setPhone(nurseUser.getPhone());
+                }
             }
 
             System.out.println("[NursePatients] Nurse found: " + nurse.getName() + " (ID: " + nurse.getId() + ")");

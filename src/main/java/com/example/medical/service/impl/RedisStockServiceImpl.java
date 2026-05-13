@@ -5,6 +5,7 @@ import com.example.medical.entity.DoctorSchedule;
 import com.example.medical.service.DoctorScheduleService;
 import com.example.medical.service.RedisStockInterface;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Profile("redis")
 public class RedisStockServiceImpl implements RedisStockInterface {
 
     @Autowired

@@ -109,7 +109,7 @@ class EventPersistenceManager {
     try {
       const resultSet = await RdbHelper.query(
         'SELECT * FROM ' + TABLE_OFFLINE_HEALTH_RECORD + ' ORDER BY ' + COLUMN_CREATE_TIME + ' DESC LIMIT ?',
-        [limit]
+        [String(limit)]
       );
       const records: OfflineHealthRecord[] = [];
       while (resultSet.goToNextRow()) {
@@ -251,7 +251,7 @@ class EventPersistenceManager {
     try {
       const values: relationalStore.ValuesBucket = {};
       values[COLUMN_COLLECT_TYPE] = collectType;
-      values[COLUMN_TARGET_ID] = targetId;
+      values[COLUMN_TARGET_ID] = String(targetId);
       values[COLUMN_TARGET_TITLE] = targetTitle;
       values[COLUMN_TARGET_IMAGE] = targetImage || '';
       values[COLUMN_COLLECT_TIME] = Date.now();
@@ -271,7 +271,7 @@ class EventPersistenceManager {
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
       predicates.equalTo(COLUMN_COLLECT_TYPE, collectType);
-      predicates.equalTo(COLUMN_TARGET_ID, targetId);
+      predicates.equalTo(COLUMN_TARGET_ID, String(targetId));
       const deletedCount = await RdbHelper.delete(predicates);
       hilog.info(0x0000, TAG, '本地收藏已删除, count=%{public}d', deletedCount);
       return deletedCount > 0;
@@ -285,7 +285,7 @@ class EventPersistenceManager {
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
       predicates.equalTo(COLUMN_COLLECT_TYPE, collectType);
-      predicates.equalTo(COLUMN_TARGET_ID, targetId);
+      predicates.equalTo(COLUMN_TARGET_ID, String(targetId));
       const resultSet = await RdbHelper.queryByPredicates(predicates, ['COUNT(*) as cnt']);
       let isCollected = false;
       if (resultSet.goToFirstRow()) {
@@ -426,7 +426,7 @@ class EventPersistenceManager {
       const sql = 'SELECT * FROM ' + TABLE_BROWSE_HISTORY +
         ' WHERE ' + COLUMN_BROWSE_DURATION + ' >= 2000' +
         ' ORDER BY ' + COLUMN_CREATE_TIME + ' DESC LIMIT ?';
-      const resultSet = await RdbHelper.query(sql, [limit]);
+      const resultSet = await RdbHelper.query(sql, [String(limit)]);
       const items: BrowseHistoryItem[] = [];
       while (resultSet.goToNextRow()) {
         const item: BrowseHistoryItem = {

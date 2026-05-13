@@ -305,17 +305,21 @@ struct NurseStationDashboard {
 
         // 风险等级标签
         Row() {
-          this.RiskLevelTag(room.riskLevel)
+          if (room.riskLevel) {
+            this.RiskLevelTag(room.riskLevel)
+          }
         }
         .margin({ top: 10 })
 
         // 生命体征
-        Row() {
-          this.VitalSignItem('心率', `${room.vitalSigns.heartRate}bpm`)
-          this.VitalSignItem('血氧', `${room.vitalSigns.oxygenSaturation}%`)
-          this.VitalSignItem('血压', `${room.vitalSigns.systolicBP}/${room.vitalSigns.diastolicBP}`)
+        if (room.vitalSigns) {
+          Row() {
+            this.VitalSignItem('心率', `${room.vitalSigns.heartRate}bpm`)
+            this.VitalSignItem('血氧', `${room.vitalSigns.oxygenSaturation}%`)
+            this.VitalSignItem('血压', `${room.vitalSigns.systolicBP}/${room.vitalSigns.diastolicBP}`)
+          }
+          .margin({ top: 10 })
         }
-        .margin({ top: 10 })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)

@@ -24,6 +24,8 @@ import {
 } from '../models/ImagingModels';
 import { getMockResult, delay } from '../mock/imagingMock';
 import { SampleImageManager } from '../utils/SampleImageUtil';
+import { SampleImageLoader } from '../common/service/SampleImageLoader';
+import { SampleImageItem, ImageType, IMAGE_TYPE_CONFIG } from '../common/model/SampleImageModel';
 
 @Entry
 @Component
@@ -54,6 +56,54 @@ struct ImageAnalysisPage {
   
   /** 是否显示病灶详情弹窗 */
   @State showLesionDetail: boolean = false;
+
+  /** 示例图片列表 */
+  @State sampleImages: SampleImageItem[] = [];
+
+  /** 当前选中的示例图片索引 */
+  @State selectedSampleIndex: number = -1;
+
+  /** 是否显示完整报告 */
+  @State showFullReport: boolean = false;
+
+  /**
+   * 页面加载时初始化示例图片
+   */
+  async aboutToAppear() {
+    await this.loadSampleImages();
+  }
+
+  /**
+   * 加载当前类型的示例图片
+   */
+  private async loadSampleImages() {
+    try {
+      const loader = SampleImageLoader.getInstance();
+      const imageType = this.mapImagingTypeToImageType(this.selectedImagingType);
+      const config = IMAGE_TYPE_CONFIG.get(imageType);
+      if (config) {
+        this.sampleImages = await loader.loadImagesByType(imageType, config.directory);
+        this.selectedSampleIndex = -1;
+      }
+    } catch (error) {
+      console.error('加载示例图片失败:', error);
+    }
+  }
+
+  /**
+   * 将 ImagingType 映射到 ImageType
+   */
+  private mapImagingTypeToImageType(imagingType: ImagingType): ImageType {
+    const typeMap: Record<string, ImageType> = {
+      'CHEST_XRAY': ImageType.CHEST_XRAY,
+      'BONE_XRAY': ImageType.BONE_XRAY,
+      'SKIN_PHOTO': ImageType.SKIN_PHOTO,
+      'FUNDUS_PHOTO': ImageType.FUNDUS_PHOTO,
+      'EYE_FUNDUS': ImageType.FUNDUS_PHOTO,
+      'BREAST_ULTRASOUND': ImageType.BREAST_ULTRASOUND
+    };
+    return typeMap[imagingType] || ImageType.OTHER;
+  }
 
   /**
    * 页面构建
@@ -174,7 +224,8 @@ struct ImageAnalysisPage {
    */
   @Builder
   buildUploadStep() {
-    Column() {
+    Scroll() {
+      Column() {
       // 影像预览区域
       Column() {
         if (this.imageUri) {
@@ -230,15 +281,95 @@ struct ImageAnalysisPage {
       .justifyContent(FlexAlign.SpaceEvenly)
       .margin({ top: 24 })
 
-      // 示例图片按钮（用于模拟器测试）
-      Button('使用示例图片测试')
-        .width('80%')
-        .height(44)
-        .fontSize(16)
-        .backgroundColor('#FF9800')
-        .fontColor('#FFFFFF')
-        .margin({ top: 16 })
-        .onClick(() => this.useSampleImage())
+      // 示例图片展示区域
+      Column() {
+        Text('示例图片库')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .margin({ bottom: 12 })
+
+        Text(`当前类型: ${ImagingTypeLabels.getLabel(this.selectedImagingType)} (${this.sampleImages.length}张)`)
+          .fontSize(12)
+          .fontColor('#666666')
+          .margin({ bottom: 12 })
+
+        if (this.sampleImages.length > 0) {
+          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+            ForEach(this.sampleImages, (item: SampleImageItem, index: number) => {
+              Column() {
+                Stack({ alignContent: Alignment.TopEnd }) {
+                  Image(item.imageUrl)
+                    .width(100)
+                    .height(100)
+                    .objectFit(ImageFit.Cover)
+                    .borderRadius(8)
+                    .border({
+                      width: this.selectedSampleIndex === index ? 3 : 1,
+                      color: this.selectedSampleIndex === index ? '#4A90E2' : '#E0E0E0',
+                      radius: 8
+                    })
+
+                  if (this.selectedSampleIndex === index) {
+                    Row() {
+                      Text('✓')
+                        .fontSize(12)
+                        .fontColor(Color.White)
+                    }
+                    .width(20)
+                    .height(20)
+                    .borderRadius(10)
+                    .backgroundColor('#4A90E2')
+                    .justifyContent(FlexAlign.Center)
+                    .margin({ top: 4, right: 4 })
+                  }
+                }
+                .width(100)
+                .height(100)
+
+                Text(item.imageName)
+                  .fontSize(10)
+                  .fontColor('#666666')
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .width(100)
+                  .margin({ top: 4 })
+              }
+              .width(100)
+              .margin({ right: 8, bottom: 8 })
+              .onClick(() => {
+                this.selectedSampleIndex = index;
+                this.imageUri = item.imageUrl;
+                console.info('选择示例图片:', item.imageName);
+              })
+            })
+          }
+          .width('100%')
+        } else {
+          Column() {
+            Text('暂无该类型的示例图片')
+              .fontSize(14)
+              .fontColor('#999999')
+
+            Button('刷新')
+              .height(32)
+              .fontSize(12)
+              .backgroundColor('#4A90E2')
+              .margin({ top: 8 })
+              .onClick(() => this.loadSampleImages())
+          }
+          .width('100%')
+          .height(150)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor('#F5F5F5')
+          .borderRadius(8)
+        }
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FAFAFA')
+      .borderRadius(12)
+      .margin({ top: 20 })
 
       // 影像类型选择
       Column() {
@@ -258,6 +389,9 @@ struct ImageAnalysisPage {
               .margin({ right: 8, bottom: 8 })
               .onClick(() => {
                 this.selectedImagingType = type;
+                this.imageUri = '';
+                this.selectedSampleIndex = -1;
+                this.loadSampleImages();
               })
           })
         }
@@ -277,10 +411,15 @@ struct ImageAnalysisPage {
         .enabled(!!this.imageUri)
         .margin({ top: 32 })
         .onClick(() => this.startAnalysis())
+      }
+      .width('100%')
+      .padding({ left: 20, right: 20 })
+      .margin({ bottom: 32 })
     }
     .width('100%')
-    .height('100%')
-    .padding({ left: 20, right: 20 })
+    .layoutWeight(1)
+    .scrollBar(BarState.Auto)
+    .edgeEffect(EdgeEffect.Spring)
   }
 
   /**
@@ -397,6 +536,8 @@ struct ImageAnalysisPage {
                     .onClick(() => {
                       this.selectedLesion = lesion;
                       this.showLesionDetail = true;
+                      this.currentStep = 4;
+                      this.showFullReport = false;
                     })
                 }
                 .width('100%')
@@ -456,10 +597,8 @@ struct ImageAnalysisPage {
             .fontSize(16)
             .backgroundColor('#4A90E2')
             .onClick(() => {
-              router.pushUrl({
-                url: 'pages/TestPage',
-                params: { result: this.analysisResult }
-              });
+              this.currentStep = 4;
+              this.showFullReport = true;
             })
 
           Button('重新分析')
@@ -509,93 +648,281 @@ struct ImageAnalysisPage {
    */
   @Builder
   buildDetailStep() {
-    Column() {
-      if (this.selectedLesion) {
-        // 病灶详情
-        Column() {
-          Text('病灶详情')
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
-            .margin({ bottom: 24 })
-
-          // 病灶信息
-          this.buildDetailItem('病灶类型', this.selectedLesion.lesionType);
-          this.buildDetailItem('位置', this.selectedLesion.locationDescription);
-          
-          if (this.selectedLesion.size) {
-            this.buildDetailItem(
-              '大小',
-              `${this.selectedLesion.size.widthMM.toFixed(1)}mm × ${this.selectedLesion.size.heightMM.toFixed(1)}mm`
-            );
-          }
-
-          this.buildDetailItem('置信度', `${(this.selectedLesion.confidence * 100).toFixed(0)}%`);
-          this.buildDetailItem('风险等级', RiskLevelLabels.getLabel(this.selectedLesion.riskLevel));
-          this.buildDetailItem('初步诊断', this.selectedLesion.suggestedDiagnosis);
-
-          // 建议
-          Column() {
-            Text('建议:')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#333333')
-              .margin({ bottom: 8 })
-
-            ForEach(this.selectedLesion.recommendations, (rec: string) => {
-              Row() {
-                Text('•')
-                  .fontSize(14)
-                  .fontColor('#666666')
-                  .margin({ right: 8 })
-
-                Text(rec)
-                  .fontSize(14)
-                  .fontColor('#666666')
-              }
-              .width('100%')
-              .margin({ top: 4 })
-            })
-          }
-          .width('100%')
-          .alignItems(HorizontalAlign.Start)
-          .margin({ top: 16 })
+    Scroll() {
+      Column() {
+        if (this.showFullReport && this.analysisResult) {
+          this.buildFullReport()
+        } else if (this.selectedLesion) {
+          this.buildLesionDetail()
         }
-        .width('100%')
-        .padding(20)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(8)
-        .margin({ top: 20, left: 20, right: 20 })
-
-        // 操作按钮
-        Row() {
-          Button('保存报告')
-            .width('30%')
-            .height(44)
-            .fontSize(16)
-            .backgroundColor('#4A90E2')
-            .onClick(() => {
-              // TODO: 实现保存报告功能
-            })
-
-          Button('返回')
-            .width('30%')
-            .height(44)
-            .fontSize(16)
-            .backgroundColor('#FFFFFF')
-            .fontColor('#4A90E2')
-            .border({ width: 1, color: '#4A90E2' })
-            .onClick(() => {
-              this.currentStep = 3;
-            })
-        }
-        .width('100%')
-        .justifyContent(FlexAlign.SpaceEvenly)
-        .margin({ top: 24 })
       }
+      .width('100%')
     }
     .width('100%')
-    .height('100%')
+    .layoutWeight(1)
+    .scrollBar(BarState.Auto)
+    .edgeEffect(EdgeEffect.Spring)
+  }
+
+  @Builder
+  buildFullReport() {
+    Column() {
+      Text('详细分析报告')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333')
+        .margin({ bottom: 20 })
+
+      Column() {
+        Text('📷 影像信息')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .margin({ bottom: 12 })
+
+        this.buildDetailItem('影像类型', ImagingTypeLabels.getLabel(this.analysisResult!.imagingType))
+        this.buildDetailItem('分析时间', this.analysisResult!.analyzedAt)
+        this.buildDetailItem('处理耗时', `${this.analysisResult!.processingTimeMs}ms`)
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(8)
+      .margin({ bottom: 16 })
+
+      Column() {
+        Text('🔍 病灶检测结果')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .margin({ bottom: 12 })
+
+        ForEach(this.analysisResult!.lesions, (lesion: Lesion, index: number) => {
+          Column() {
+            Row() {
+              Text(`病灶 ${index + 1}: ${lesion.lesionType}`)
+                .fontSize(15)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#333333')
+
+              Text(`${(lesion.confidence * 100).toFixed(0)}%`)
+                .fontSize(12)
+                .fontColor('#FFFFFF')
+                .backgroundColor(this.getConfidenceColor(lesion.confidence))
+                .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                .borderRadius(4)
+                .margin({ left: 8 })
+            }
+
+            Text(`位置: ${lesion.locationDescription}`)
+              .fontSize(13)
+              .fontColor('#666666')
+              .margin({ top: 4 })
+
+            Row() {
+              Text(`风险等级: `)
+                .fontSize(13)
+                .fontColor('#666666')
+
+              Text(RiskLevelLabels.getLabel(lesion.riskLevel))
+                .fontSize(13)
+                .fontColor(RiskLevelColors.getColor(lesion.riskLevel))
+                .fontWeight(FontWeight.Bold)
+            }
+            .margin({ top: 4 })
+
+            Text(`诊断建议: ${lesion.suggestedDiagnosis}`)
+              .fontSize(13)
+              .fontColor('#666666')
+              .margin({ top: 4 })
+
+            Column() {
+              ForEach(lesion.recommendations, (rec: string) => {
+                Row() {
+                  Text('•')
+                    .fontSize(12)
+                    .fontColor('#999999')
+
+                  Text(rec)
+                    .fontSize(12)
+                    .fontColor('#666666')
+                }
+                .width('100%')
+                .margin({ top: 2 })
+              })
+            }
+            .width('100%')
+            .margin({ top: 8 })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F9F9F9')
+          .borderRadius(6)
+          .margin({ top: 8 })
+        })
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(8)
+      .margin({ bottom: 16 })
+
+      Column() {
+        Text('📊 总体评估')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .margin({ bottom: 12 })
+
+        this.buildDetailItem('病灶数量', `${this.analysisResult!.lesions.length} 个`)
+
+        Row() {
+          Text('总体风险等级:')
+            .fontSize(14)
+            .fontColor('#666666')
+            .width(120)
+
+          Text(RiskLevelLabels.getLabel(this.analysisResult!.report.overallRiskLevel))
+            .fontSize(14)
+            .fontColor(RiskLevelColors.getColor(this.analysisResult!.report.overallRiskLevel))
+            .fontWeight(FontWeight.Bold)
+        }
+        .width('100%')
+        .margin({ top: 8 })
+
+        Text(this.analysisResult!.report.overallAssessment)
+          .fontSize(14)
+          .fontColor('#666666')
+          .margin({ top: 12 })
+
+        Column() {
+          Text('就医建议:')
+            .fontSize(14)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#333333')
+            .margin({ bottom: 8 })
+
+          Text(this.analysisResult!.report.medicalAdvice)
+            .fontSize(13)
+            .fontColor('#666666')
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+        .margin({ top: 16 })
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(8)
+      .margin({ bottom: 16 })
+
+      Column() {
+        Text('⚠️ 免责声明')
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FF0000')
+          .margin({ bottom: 8 })
+
+        Text(DISCLAIMER)
+          .fontSize(12)
+          .fontColor('#666666')
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFF5F5')
+      .borderRadius(8)
+
+      Button('返回结果列表')
+        .width('80%')
+        .height(44)
+        .fontSize(16)
+        .backgroundColor('#4A90E2')
+        .fontColor('#FFFFFF')
+        .margin({ top: 24, bottom: 32 })
+        .onClick(() => {
+          this.currentStep = 3;
+        })
+    }
+    .width('100%')
+    .padding({ left: 20, right: 20 })
+  }
+
+  @Builder
+  buildLesionDetail() {
+    Column() {
+      Text('病灶详情')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333')
+        .margin({ bottom: 24 })
+
+      this.buildDetailItem('病灶类型', this.selectedLesion!.lesionType);
+      this.buildDetailItem('位置', this.selectedLesion!.locationDescription);
+      
+      if (this.selectedLesion!.size) {
+        this.buildDetailItem(
+          '大小',
+          `${this.selectedLesion!.size.widthMM.toFixed(1)}mm × ${this.selectedLesion!.size.heightMM.toFixed(1)}mm`
+        );
+      }
+
+      this.buildDetailItem('置信度', `${(this.selectedLesion!.confidence * 100).toFixed(0)}%`);
+      this.buildDetailItem('风险等级', RiskLevelLabels.getLabel(this.selectedLesion!.riskLevel));
+      this.buildDetailItem('初步诊断', this.selectedLesion!.suggestedDiagnosis);
+
+      Column() {
+        Text('建议:')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .margin({ bottom: 8 })
+
+        ForEach(this.selectedLesion!.recommendations, (rec: string) => {
+          Row() {
+            Text('•')
+              .fontSize(14)
+              .fontColor('#666666')
+              .margin({ right: 8 })
+
+            Text(rec)
+              .fontSize(14)
+              .fontColor('#666666')
+          }
+          .width('100%')
+          .margin({ top: 4 })
+        })
+      }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
+      .margin({ top: 16 })
+
+      Row() {
+        Button('保存报告')
+          .width('30%')
+          .height(44)
+          .fontSize(16)
+          .backgroundColor('#4A90E2')
+          .onClick(() => {
+
+          })
+
+        Button('返回')
+          .width('30%')
+          .height(44)
+          .fontSize(16)
+          .backgroundColor('#FFFFFF')
+          .fontColor('#4A90E2')
+          .border({ width: 1, color: '#4A90E2' })
+          .onClick(() => {
+            this.currentStep = 3;
+          })
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.SpaceEvenly)
+      .margin({ top: 24, bottom: 32 })
+    }
+    .width('100%')
+    .padding({ left: 20, right: 20 })
   }
 
   /**

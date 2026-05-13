@@ -9,6 +9,7 @@ import { HttpUtil, BaseResponse, RequestOptions } from '../common/utils/HttpUtil
 import { SettingsUtil, PersistedUserInfo, PersistedDoctorInfo } from '../utils/SettingsUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import EventPersistenceManager from '../utils/EventPersistenceManager';
+import { findMockUser, createMockToken, createMockUserInfo } from '../mock/loginMock';
 
 interface LoginResponseData {
   token: string;
@@ -177,121 +178,160 @@ struct Login {
         username: this.username,
         password: this.password
       };
-      const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>(
-        '/user/login',
-        loginRequest,
-        {
-          showLoading: true,
-          loadingText: '登录中...',
-          retryCount: 1
-        }
-      );
-
-      if (response.success) {
-        if (response.data && response.data.token) {
-          try {
-            await HttpUtil.saveToken(response.data.token);
-          } catch (error) {
-            console.error('保存Token失败:', error);
+      
+      try {
+        const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>(
+          '/user/login',
+          loginRequest,
+          {
+            showLoading: false,
+            loadingText: '登录中...',
+            retryCount: 0
           }
+        );
+
+        if (response.success) {
+          await this.handleSuccessfulLogin(response);
+          return;
         }
-
-        if (response.data) {
-          try {
-            const settings: SettingsUtil = SettingsUtil.getInstance();
-            let userInfo: PersistedUserInfo;
-            if (response.data.userInfo) {
-              userInfo = response.data.userInfo;
-            } else {
-              userInfo = createPersistedUserInfo(
-                response.data.userId,
-                response.data.username || '',
-                response.data.userType,
-                '',
-                undefined,
-                undefined
-              );
-            }
-
-            if (userInfo.userType === 1 && userInfo.userId) {
-              try {
-                const doctorInfoUrl: string = ApiConstants.DOCTOR_INFO + userInfo.userId;
-                const doctorResp: BaseResponse<Object> = await HttpUtil.get<Object>(doctorInfoUrl);
-                if (doctorResp.success && doctorResp.data) {
-                  const raw: Record<string, Object> = doctorResp.data as Record<string, Object>;
-                  const doctorInfo: PersistedDoctorInfo = {};
-                  if (raw['id'] !== undefined) { doctorInfo.id = raw['id'] as number; }
-                  if (raw['realName'] !== undefined) { doctorInfo.realName = raw['realName'] as string; }
-                  if (raw['phone'] !== undefined) { doctorInfo.phone = raw['phone'] as string; }
-                  if (raw['hospital'] !== undefined) { doctorInfo.hospital = raw['hospital'] as string; }
-                  if (raw['department'] !== undefined) { doctorInfo.department = raw['department'] as string; }
-                  if (raw['licenseNumber'] !== undefined) { doctorInfo.licenseNumber = raw['licenseNumber'] as string; }
-                  if (raw['title'] !== undefined) { doctorInfo.title = raw['title'] as string; }
-                  if (raw['specialty'] !== undefined) { doctorInfo.specialty = raw['specialty'] as string; }
-                  if (raw['avatar'] !== undefined) { doctorInfo.avatar = raw['avatar'] as string; }
-                  if (raw['description'] !== undefined) { doctorInfo.description = raw['description'] as string; }
-                  if (raw['rating'] !== undefined) { doctorInfo.rating = raw['rating'] as number; }
-                  if (raw['status'] !== undefined) { doctorInfo.status = raw['status'] as number; }
-                  userInfo.doctorInfo = doctorInfo;
-                }
-              } catch (doctorErr) {
-                console.error('获取医生信息失败:', JSON.stringify(doctorErr));
-              }
-            }
-
-            await settings.saveUserInfo(userInfo);
-
-            try {
-              await EventPersistenceManager.cacheUserInfo(
-                userInfo.userId ?? 0,
-                response.data?.token ?? '',
-                userInfo.username,
-                userInfo.avatar,
-                String(userInfo.userType ?? 0)
-              );
-            } catch (cacheErr) {
-              console.warn('Login: 缓存用户信息到本地DB失败:', cacheErr);
-            }
-            
-            if (userInfo && userInfo.userId) {
-              AppStorage.setOrCreate<number>('userId', userInfo.userId);
-              console.info('登录成功，userId已保存:', userInfo.userId);
-            }
-          } catch (error) {
-            console.error('保存用户信息失败:', error);
-          }
-        }
-
-        try {
-          AppStorage.setOrCreate<boolean>('isLoggedIn', true);
-        } catch (error) {
-          console.error('保存登录状态失败:', error);
-        }
-
-        ToastUtil.loginSuccess();
-
+      } catch (networkError) {
+        console.warn('[Login] 无法连接服务器，尝试Mock登录:', networkError);
+      }
+      
+      const mockUser = findMockUser(this.username, this.password);
+      if (mockUser) {
+        console.info('[Login] 使用Mock数据登录成功');
+        const mockToken = createMockToken(mockUser.userId);
+        const mockUserInfo = createMockUserInfo(mockUser);
+        
+        const settings: SettingsUtil = SettingsUtil.getInstance();
+        await HttpUtil.saveToken(mockToken);
+        await settings.saveUserInfo(mockUserInfo);
+        
+        AppStorage.setOrCreate<string>('token', mockToken);
+        AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+        AppStorage.setOrCreate<PersistedUserInfo | null>('userInfo', mockUserInfo);
+        AppStorage.setOrCreate<string>('username', mockUserInfo.username);
+        AppStorage.setOrCreate<number>('userId', mockUserInfo.userId || 0);
+        
+        ToastUtil.showSuccess('登录成功');
+        this.isLoading = false;
+        
         setTimeout(() => {
-          try {
-            const userType: number | undefined = response.data?.userType;
-            if (userType === 1) {
-              router.replaceUrl({ url: 'pages/DoctorHomePage' });
-            } else {
-              router.replaceUrl({ url: 'pages/HomePage' });
-            }
-          } catch (error) {
-            console.error('跳转首页失败:', error);
+          if (mockUser.userType === 1) {
+            router.replaceUrl({ url: 'pages/DoctorHomePage' });
+          } else {
+            router.replaceUrl({ url: 'pages/HomePage' });
           }
-        }, 500);
+        }, 300);
       } else {
-        this.errorMessage = response.message || '登录失败';
+        this.errorMessage = '账号或密码错误';
         ToastUtil.showError(this.errorMessage, 2000);
       }
     } catch (error) {
-      this.errorMessage = '网络请求失败，请稍后重试';
+      this.errorMessage = '登录失败，请重试';
       ToastUtil.showError(this.errorMessage, 2000);
     } finally {
       this.isLoading = false;
     }
+  }
+
+  private async handleSuccessfulLogin(response: BaseResponse<LoginResponseData>): Promise<void> {
+    if (response.data && response.data.token) {
+      try {
+        await HttpUtil.saveToken(response.data.token);
+      } catch (error) {
+        console.error('保存Token失败:', error);
+      }
+    }
+
+    if (response.data) {
+      try {
+        const settings: SettingsUtil = SettingsUtil.getInstance();
+        let userInfo: PersistedUserInfo;
+        if (response.data.userInfo) {
+          userInfo = response.data.userInfo;
+        } else {
+          userInfo = createPersistedUserInfo(
+            response.data.userId,
+            response.data.username || '',
+            response.data.userType,
+            '',
+            undefined,
+            undefined
+          );
+        }
+
+        if (userInfo.userType === 1 && userInfo.userId) {
+          try {
+            const doctorInfoUrl: string = ApiConstants.DOCTOR_INFO + userInfo.userId;
+            const doctorResp: BaseResponse<Object> = await HttpUtil.get<Object>(doctorInfoUrl);
+            if (doctorResp.success && doctorResp.data) {
+              const raw: Record<string, Object> = doctorResp.data as Record<string, Object>;
+              const doctorInfo: PersistedDoctorInfo = {};
+              if (raw['id'] !== undefined) { doctorInfo.id = raw['id'] as number; }
+              if (raw['realName'] !== undefined) { doctorInfo.realName = raw['realName'] as string; }
+              if (raw['phone'] !== undefined) { doctorInfo.phone = raw['phone'] as string; }
+              if (raw['hospital'] !== undefined) { doctorInfo.hospital = raw['hospital'] as string; }
+              if (raw['department'] !== undefined) { doctorInfo.department = raw['department'] as string; }
+              if (raw['licenseNumber'] !== undefined) { doctorInfo.licenseNumber = raw['licenseNumber'] as string; }
+              if (raw['title'] !== undefined) { doctorInfo.title = raw['title'] as string; }
+              if (raw['specialty'] !== undefined) { doctorInfo.specialty = raw['specialty'] as string; }
+              if (raw['avatar'] !== undefined) { doctorInfo.avatar = raw['avatar'] as string; }
+              if (raw['description'] !== undefined) { doctorInfo.description = raw['description'] as string; }
+              if (raw['rating'] !== undefined) { doctorInfo.rating = raw['rating'] as number; }
+              if (raw['status'] !== undefined) { doctorInfo.status = raw['status'] as number; }
+              userInfo.doctorInfo = doctorInfo;
+            }
+          } catch (doctorErr) {
+            console.error('获取医生信息失败:', JSON.stringify(doctorErr));
+          }
+        }
+
+        await settings.saveUserInfo(userInfo);
+
+        try {
+          await EventPersistenceManager.cacheUserInfo(
+            userInfo.userId ?? 0,
+            response.data?.token ?? '',
+            userInfo.username,
+            userInfo.avatar,
+            String(userInfo.userType ?? 0)
+          );
+        } catch (cacheErr) {
+          console.warn('Login: 缓存用户信息到本地DB失败:', cacheErr);
+        }
+        
+        if (userInfo && userInfo.userId) {
+          AppStorage.setOrCreate<number>('userId', userInfo.userId);
+          console.info('登录成功，userId已保存:', userInfo.userId);
+        }
+      } catch (error) {
+        console.error('保存用户信息失败:', error);
+      }
+    }
+
+    try {
+      AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+    } catch (error) {
+      console.error('保存登录状态失败:', error);
+    }
+
+    ToastUtil.loginSuccess();
+    this.isLoading = false;
+
+    setTimeout(() => {
+      try {
+        const userType: number | undefined = response.data?.userType;
+        if (userType === 1) {
+          router.replaceUrl({ url: 'pages/DoctorHomePage' });
+        } else {
+          router.replaceUrl({ url: 'pages/HomePage' });
+        }
+      } catch (error) {
+        console.error('跳转首页失败:', error);
+      }
+    }, 500);
   }
 
   build() {

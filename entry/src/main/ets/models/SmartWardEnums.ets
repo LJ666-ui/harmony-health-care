@@ -26,7 +26,8 @@ export enum AlertLevel {
   EMERGENCY = 'EMERGENCY',                // 急救（最高优先级）
   URGENT = 'URGENT',                      // 紧急
   WARNING = 'WARNING',                    // 警告
-  INFO = 'INFO'                           // 信息
+  INFO = 'INFO',                          // 信息
+  CRITICAL = 'CRITICAL'                   // 危急（兼容旧代码）
 }
 
 /**
@@ -40,7 +41,12 @@ export enum AlertCategory {
   MEDICATION_REMINDER = 'MEDICATION_REMINDER', // 用药提醒
   INFUSION_ALERT = 'INFUSION_ALERT',          // 输液告警
   SCHEDULE_REMINDER = 'SCHEDULE_REMINDER',    // 计划提醒
-  FALL_DETECTION = 'FALL_DETECTION'           // 跌倒检测
+  FALL_DETECTION = 'FALL_DETECTION',          // 跌倒检测
+  VITAL_SIGN = 'VITAL_SIGN',                  // 兼容旧代码
+  DEVICE_FAULT = 'DEVICE_FAULT',              // 兼容旧代码
+  PATIENT_REQUEST = 'PATIENT_REQUEST',        // 兼容旧代码
+  NETWORK_ISSUE = 'NETWORK_ISSUE',            // 兼容旧代码
+  MAINTENANCE = 'MAINTENANCE'                 // 兼容旧代码
 }
 
 /**

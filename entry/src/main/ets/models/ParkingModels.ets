@@ -27,7 +27,7 @@ export interface ParkingSpace {
   spaceNumber: string;           // 车位号
   floor: string;                 // 楼层
   zone: string;                  // 区域
-  type: 'NORMAL' | 'DISABLED' | 'ELECTRIC' | 'VIP';  // 车位类型
+  type: 'NORMAL' | 'DISABLED' | 'ELECTRIC' | 'VIP' | 'FAST_CHARGING';  // 车位类型
   status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED';     // 车位状态
   latitude?: number;             // 纬度(可选)
   longitude?: number;            // 经度(可选)

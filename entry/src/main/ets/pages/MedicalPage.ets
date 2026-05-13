@@ -123,7 +123,7 @@ export struct MedicalPage {
                 } else if (service.id === 'report') {
                   router.pushUrl({ url: 'pages/ReportQueryPage' });
                 } else if (service.id === 'prescription') {
-                  router.pushUrl({ url: 'pages/Medications' });
+                  router.pushUrl({ url: 'pages/PrescriptionListPage' });
                 } else if (service.id === 'payment') {
                   // 缴费支付功能 - 跳转到预约管理页面查看费用信息
                   router.pushUrl({ url: 'pages/AppointmentManagementPage' });

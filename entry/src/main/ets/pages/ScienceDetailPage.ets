@@ -51,22 +51,18 @@ export interface RelatedArticle {
 export interface CommentData {
   id: number;
   articleId: number;
-  userId: number;
   userName: string;
   userAvatar: string;
   content: string;
   likeCount: number;
   parentId: number;
-  status: number;
   createTime: string;
-  updateTime: string;
-  isDeleted: number;
 }
 
 interface CommentPostData {
   articleId: number;
   content: string;
-  userId: number;
+  userName: string;
   parentId: number;
 }
 
@@ -78,8 +74,6 @@ interface LikeResponseData {
 @Component
 struct ScienceDetailPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @StorageLink('userId') currentUserId: number = 0;
-  @StorageLink('username') currentUsername: string = '';
   @State articleId: string = '';
   @State articleTitle: string = '';
   @State isFavorited: boolean = false;
@@ -98,48 +92,8 @@ struct ScienceDetailPage {
   @State replyToCommentId: number = 0;
   @State replyToUserName: string = '';
   @State showCommentInput: boolean = false;
-  @State showDeleteConfirm: boolean = false;
 
   private browseRecordId: number | undefined = undefined;
-
-  handleDeleteClick(): void {
-    this.showDeleteConfirm = true;
-  }
-
-  confirmDelete(): void {
-    this.showDeleteConfirm = false;
-    this.deleteArticle();
-  }
-
-  cancelDelete(): void {
-    this.showDeleteConfirm = false;
-  }
-
-  async deleteArticle(): Promise<void> {
-    if (!this.articleDetail) {
-      ToastUtil.showError('文章不存在', 3000);
-      return;
-    }
-
-    try {
-      console.info('删除文章，ID:', this.articleDetail.id);
-      const url: string = ApiConstants.ARTICLE_DELETE + this.articleDetail.id;
-      const response: BaseResponse<Object> = await HttpUtil.delete<Object>(url);
-      console.info('删除响应:', JSON.stringify(response));
-
-      if (response.success) {
-        ToastUtil.showSuccess('删除成功');
-        setTimeout(() => {
-          router.back();
-        }, 1000);
-      } else {
-        ToastUtil.showError(response.message || '删除失败', 3000);
-      }
-    } catch (e) {
-      console.error('删除文章异常:', e);
-      ToastUtil.showError('删除失败，请重试', 3000);
-    }
-  }
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -172,10 +126,8 @@ struct ScienceDetailPage {
   async loadArticleDetail(): Promise<void> {
     this.isLoading = true;
     try {
-      console.info('开始加载文章详情，文章ID:', this.articleId);
       const url: string = ApiConstants.ARTICLE_DETAIL + this.articleId;
       const response: BaseResponse<ArticleDetailData> = await HttpUtil.get<ArticleDetailData>(url);
-      console.info('文章详情响应:', JSON.stringify(response));
 
       if (response.success && response.data) {
         this.articleDetail = response.data;
@@ -188,13 +140,11 @@ struct ScienceDetailPage {
 
         this.cacheArticleLocally();
       } else {
-        console.error('加载文章详情失败:', response.message);
-        ToastUtil.showSuccess(response.message || '加载失败');
+        ToastUtil.showSuccess('加载失败');
       }
     } catch (e) {
-      console.error('加载文章详情异常:', e);
-      const error = e as Error;
-      ToastUtil.showSuccess(error.message || '网络异常，请检查连接');
+      console.error('加载文章详情失败:', e);
+      ToastUtil.showSuccess('网络异常，请检查连接');
     } finally {
       this.isLoading = false;
     }
@@ -277,32 +227,17 @@ struct ScienceDetailPage {
 
   async checkCollectionStatus(): Promise<void> {
     try {
-      const response: BaseResponse<Object[]> = await HttpUtil.get<Object[]>(ApiConstants.ARTICLE_MY_COLLECTS);
-      if (response.success && response.data && Array.isArray(response.data)) {
-        this.isFavorited = false;
-        for (let i = 0; i < response.data.length; i++) {
-          const item = response.data[i] as Record<string, Object>;
-          const collectedArticleId = String(item['articleId'] || item['id'] || '');
-          if (collectedArticleId === this.articleId) {
-            this.isFavorited = true;
-            break;
-          }
-        }
+      const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
+      predicates.equalTo(COLUMN_COLLECT_TYPE, 'ARTICLE');
+      predicates.equalTo(COLUMN_TARGET_ID, Number(this.articleId));
+
+      const result = await RdbHelper.queryByPredicates(predicates, ['id']);
+      if (result && result.rowCount > 0) {
+        this.isFavorited = true;
+        result.close();
       }
     } catch (e) {
       console.error('查询收藏状态失败:', e);
-      try {
-        const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
-        predicates.equalTo(COLUMN_COLLECT_TYPE, 'ARTICLE');
-        predicates.equalTo(COLUMN_TARGET_ID, Number(this.articleId));
-        const result = await RdbHelper.queryByPredicates(predicates, ['id']);
-        if (result && result.rowCount > 0) {
-          this.isFavorited = true;
-          result.close();
-        }
-      } catch (localError) {
-        console.error('本地查询收藏状态也失败:', localError);
-      }
     }
   }
 
@@ -325,13 +260,7 @@ struct ScienceDetailPage {
           predicates.equalTo(COLUMN_TARGET_ID, Number(this.articleId));
           await RdbHelper.delete(predicates);
         } else {
-          console.error('取消收藏失败:', response.message);
-          this.isFavorited = false;
-          const predicates = new relationalStore.RdbPredicates(TABLE_COLLECTION_CACHE);
-          predicates.equalTo(COLUMN_COLLECT_TYPE, 'ARTICLE');
-          predicates.equalTo(COLUMN_TARGET_ID, Number(this.articleId));
-          await RdbHelper.delete(predicates);
-          ToastUtil.showSuccess('已同步收藏状态');
+          ToastUtil.showSuccess('取消收藏失败');
         }
       } else {
         const collectUrl: string = ApiConstants.ARTICLE_COLLECT + this.articleId + '/collect';
@@ -382,60 +311,30 @@ struct ScienceDetailPage {
   }
 
   async loadComments(): Promise<void> {
-    if (!this.articleId) {
-      console.warn('文章ID为空，跳过加载评论');
-      return;
-    }
+    if (!this.articleId) return;
     try {
-      console.info('开始加载评论，文章ID:', this.articleId);
       const url: string = ApiConstants.COMMENT_LIST + this.articleId;
       const response: BaseResponse<CommentData[]> = await HttpUtil.get<CommentData[]>(url);
-      console.info('评论加载响应:', JSON.stringify(response));
-      
       if (response.success && response.data) {
         this.comments = response.data;
-        console.info('成功加载评论数量:', this.comments.length);
-      } else {
-        console.warn('评论加载失败:', response.message);
-        this.comments = [];
       }
     } catch (e) {
-      console.error('加载评论异常:', e);
-      this.comments = [];
+      console.error('加载评论失败:', e);
     }
   }
 
   async postComment(): Promise<void> {
-    console.info('评论按钮被点击');
-    console.info('用户ID:', this.currentUserId, '文章ID:', this.articleId);
-    
-    if (!this.commentInputText.trim()) {
-      console.error('评论内容为空');
-      ToastUtil.showSuccess('请输入评论内容');
-      return;
-    }
-    if (this.isSubmittingComment) {
-      console.warn('正在提交评论，请勿重复点击');
-      return;
-    }
-    
-    if (!this.currentUserId || this.currentUserId === 0) {
-      console.error('未登录或用户ID无效');
-      ToastUtil.showSuccess('请先登录');
-      return;
-    }
+    if (!this.commentInputText.trim() || this.isSubmittingComment) return;
 
     this.isSubmittingComment = true;
     try {
       const postData: CommentPostData = {
         articleId: Number(this.articleId),
         content: this.commentInputText.trim(),
-        userId: this.currentUserId,
+        userName: '当前用户',
         parentId: this.replyToCommentId
       };
-      console.info('发送评论请求:', JSON.stringify(postData));
       const response: BaseResponse<CommentData> = await HttpUtil.post<CommentData>(ApiConstants.COMMENT_ADD, postData);
-      console.info('评论响应:', JSON.stringify(response));
       if (response.success && response.data) {
         this.comments.unshift(response.data);
         this.commentInputText = '';
@@ -444,26 +343,11 @@ struct ScienceDetailPage {
         this.showCommentInput = false;
         ToastUtil.showSuccess('评论发布成功');
       } else {
-        const errorMsg = response.message || '评论发布失败';
-        console.error('评论发布失败:', errorMsg, '响应码:', response.code);
-        ToastUtil.showSuccess(errorMsg);
+        ToastUtil.showSuccess('评论发布失败');
       }
     } catch (e) {
-      console.error('发布评论异常:', e);
-      const error = e as Error;
-      let errorMsg = '发布失败，请检查网络';
-      if (error.message) {
-        if (error.message.includes('timeout')) {
-          errorMsg = '请求超时，请稍后重试';
-        } else if (error.message.includes('network')) {
-          errorMsg = '网络连接失败';
-        } else if (error.message.includes('401')) {
-          errorMsg = '登录已过期，请重新登录';
-        } else {
-          errorMsg = '发布失败: ' + error.message;
-        }
-      }
-      ToastUtil.showSuccess(errorMsg);
+      console.error('发布评论失败:', e);
+      ToastUtil.showSuccess('发布失败，请检查网络');
     } finally {
       this.isSubmittingComment = false;
     }
@@ -753,32 +637,19 @@ struct ScienceDetailPage {
           .fontColor('#333333')
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
-
-        Row({ space: 8 }) {
-          Text('\u{1F4E4}')
-            .fontSize(20)
-            .fontColor('#1677FF')
-            .width(36)
-            .height(36)
-            .textAlign(TextAlign.Center)
-            .onClick(() => this.handleShare())
-
-          if (this.articleDetail && this.currentUserId > 0) {
-            Text('🗑️')
-              .fontSize(20)
-              .width(36)
-              .height(36)
-              .textAlign(TextAlign.Center)
-              .onClick(() => this.handleDeleteClick())
-          }
-        }
+        Text('\u{1F4E4}')
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+          .fontColor('#1677FF')
+          .width(40)
+          .height(40)
+          .textAlign(TextAlign.Center)
+          .onClick(() => this.handleShare());
       }
       .width('100%')
       .height(56)
       .backgroundColor('#FFFFFF')
       .padding({ left: 16, right: 16 })
-      .justifyContent(FlexAlign.SpaceBetween)
-      .alignItems(VerticalAlign.Center)
+      .justifyContent(FlexAlign.Center)
 
       Scroll() {
         Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
@@ -832,15 +703,6 @@ struct ScienceDetailPage {
                 Text('\u{1F441} ' + this.formatReadCount(this.articleDetail.viewCount))
                   .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
                   .fontColor('#999999');
-
-                Blank()
-
-                if (this.currentUserId > 0) {
-                  Text('🗑️ 删除')
-                    .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                    .fontColor('#E74C3C')
-                    .onClick(() => this.handleDeleteClick())
-                }
               }
               .justifyContent(FlexAlign.Start)
               .width('100%')
@@ -918,16 +780,6 @@ struct ScienceDetailPage {
             }
           })
 
-          if (this.currentUserId > 0) {
-            Button('🗑️')
-              .width(56)
-              .height(56)
-              .fontSize(24)
-              .backgroundColor('transparent')
-              .border({ width: 0 })
-              .onClick(() => this.handleDeleteClick());
-          }
-
           Row() {
             Button('A-')
               .width(48)
@@ -972,56 +824,6 @@ struct ScienceDetailPage {
         offsetX: 0,
         offsetY: -4
       });
-
-      if (this.showDeleteConfirm) {
-        Column() {
-          Blank()
-          Column({ space: 20 }) {
-            Text('⚠️ 确认删除')
-              .fontSize(18)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#333333')
-
-            Text('删除后无法恢复，确定要删除这篇文章吗？')
-              .fontSize(15)
-              .fontColor('#666666')
-              .textAlign(TextAlign.Center)
-
-            Row({ space: 16 }) {
-              Button('取消')
-                .layoutWeight(1)
-                .height(44)
-                .fontSize(15)
-                .fontColor('#666666')
-                .backgroundColor('#F5F7FA')
-                .borderRadius(10)
-                .onClick(() => this.cancelDelete())
-
-              Button('确认删除')
-                .layoutWeight(1)
-                .height(44)
-                .fontSize(15)
-                .fontColor('#FFFFFF')
-                .backgroundColor('#E74C3C')
-                .borderRadius(10)
-                .onClick(() => this.confirmDelete())
-            }
-            .width('100%')
-          }
-          .width('85%')
-          .padding(24)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(16)
-          .shadow({ radius: 20, color: '#00000022', offsetX: 0, offsetY: 4 })
-          Blank()
-        }
-        .width('100%')
-        .height('100%')
-        .position({ x: 0, y: 0 })
-        .backgroundColor('#00000055')
-        .justifyContent(FlexAlign.Center)
-        .alignItems(HorizontalAlign.Center)
-      }
 
       Footer({ activeIndex: 3 });
     }

@@ -477,7 +477,18 @@ struct DoctorHomePage {
                   });
               }
               .width('100%')
-              .alignItems(VerticalAlign.Top);
+              .alignItems(VerticalAlign.Top)
+              .onClick(() => {
+                router.pushUrl({
+                  url: 'pages/DoctorPatientManagementPage',
+                  params: {
+                    patientId: conv.otherUserId,
+                    patientName: conv.otherUserName,
+                    doctorId: this.currentUserId,
+                    doctorName: this.doctorName
+                  }
+                });
+              });
 
               Row() {
                 Button(conv.otherUserType === 1 ? '回复家属' : '回复患者')
@@ -489,7 +500,6 @@ struct DoctorHomePage {
                   .borderRadius(16)
                   .onClick(() => {
                     if (conv.otherUserType === 1) {
-                      // 家属聊天
                       router.push({
                         url: 'pages/DoctorFamilyChatPage',
                         params: {
@@ -502,7 +512,6 @@ struct DoctorHomePage {
                         }
                       });
                     } else {
-                      // 患者聊天
                       router.push({
                         url: 'pages/DoctorChatPage',
                         params: {

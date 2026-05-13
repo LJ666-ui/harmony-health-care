@@ -45,9 +45,9 @@ struct AncientImageVideoPage {
   @State rodOffsetY: number = 0;
   @State shadowOpacity: number = 0.3;
 
-  @State filterSepia: number = 0.4;
-  @State filterVignette: number = 0.3;
-  @State filterContrast: number = 1.1;
+  @State filterSepia: number = 0.12;
+  @State filterVignette: number = 0.25;
+  @State filterContrast: number = 1.05;
 
   @State beatIntensity: number = 0;
   @State bpmValue: number = 60;
@@ -779,13 +779,15 @@ struct AncientImageVideoPage {
     })
   }
 
-  private buildSepiaFilter(): ColorFilter {
-    const matrix: number[] = [
-      1 - this.filterSepia * 0.6 + this.filterContrast - 1, this.filterSepia * 0.3, this.filterSepia * 0.07, 0, this.filterSepia * 20,
-      this.filterSepia * 0.2, 1 - this.filterSepia * 0.3 + this.filterContrast - 1, this.filterSepia * 0.05, 0, this.filterSepia * 10,
-      this.filterSepia * 0.1, this.filterSepia * 0.15, 1 - this.filterSepia * 0.1 + this.filterContrast - 1, 0, 0,
+  private buildSepiaFilter(): number[] {
+    const s: number = this.filterSepia;
+    const c: number = this.filterContrast;
+
+    return [
+      (1 - s) * c + s * 0.393, s * 0.769, s * 0.189, 0, s * 5,
+      s * 0.349, (1 - s) * c + s * 0.686, s * 0.168, 0, s * 2,
+      s * 0.272, s * 0.534, (1 - s) * c + s * 0.131, 0, 0,
       0, 0, 0, 1, 0
     ];
-    return new ColorFilter(matrix);
   }
 }

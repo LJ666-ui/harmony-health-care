@@ -39,7 +39,7 @@ interface HealthRecord {
 struct FamilyHome {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @StorageLink('familyInfo') familyInfo: FamilyInfo | null = null;
-  @StorageLink('isFamilyLoggedIn') isFamilyLoggedIn: boolean = false;
+  @State isFamilyLoggedIn: boolean = false; // 改为@State,避免自动监听变化
 
   @State isLoading: boolean = false;
   @State relatedUser: RelatedUser | null = null;
@@ -47,41 +47,103 @@ struct FamilyHome {
   @State activeTab: number = 0; // 0: 个人信息, 1: 健康记录, 2: 关联用户
 
   async aboutToAppear(): Promise<void> {
-    // 检查登录状态
-    if (!this.isFamilyLoggedIn) {
-      router.replaceUrl({ url: 'pages/FamilyLogin' });
-      return;
-    }
+    console.log('[FamilyHome] aboutToAppear开始执行');
 
-    // 加载数据
-    await this.loadData();
+    try {
+      // 从AppStorage获取登录状态
+      this.isFamilyLoggedIn = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
+      console.log('[FamilyHome] isFamilyLoggedIn:', this.isFamilyLoggedIn);
+
+      // 检查登录状态 - 添加Token验证
+      const familyToken: string | undefined = AppStorage.get<string>('familyToken');
+      console.log('[FamilyHome] familyToken:', familyToken ? (familyToken.substring(0, 20) + '...') : '未获取');
+
+      if (!this.isFamilyLoggedIn || !familyToken || familyToken.length === 0) {
+        console.error('[FamilyHome] 家属未登录或Token无效,跳转到登录页');
+        router.replaceUrl({ url: 'pages/FamilyLogin' });
+        return;
+      }
+
+      console.log('[FamilyHome] 登录验证通过,开始加载数据');
+      // 加载数据 - 使用try-catch保护整个加载过程
+      await this.loadData();
+    } catch (error) {
+      console.error('[FamilyHome] aboutToAppear发生异常:', error);
+      // 设置默认值，防止UI渲染崩溃
+      this.setDefaultValues();
+    }
+  }
+
+  private setDefaultValues(): void {
+    const defaultInfo: FamilyInfo = {
+      id: 0,
+      name: '家属',
+      phone: '',
+      relation: '未知',
+      userId: 0,
+      isEmergencyContact: 0
+    };
+    this.familyInfo = defaultInfo;
+
+    const defaultUser: RelatedUser = {
+      id: 0,
+      username: '患者',
+      realName: '',
+      phone: ''
+    };
+    this.relatedUser = defaultUser;
+    this.isLoading = false;
   }
 
   // 加载数据
   private async loadData(): Promise<void> {
     this.isLoading = true;
     try {
-      // 获取家属详细信息
-      const options: RequestOptions = { skipAuth: false };
-      const response = await HttpUtil.get<FamilyInfo>('/family/info', options);
+      // 使用家属Token进行认证
+      const response: BaseResponse<FamilyInfo> = await HttpUtil.get<FamilyInfo>('/family/info');
 
       if (response.success && response.data) {
         this.familyInfo = response.data;
         AppStorage.setOrCreate<FamilyInfo>('familyInfo', response.data);
-        
-        // 获取关联患者信息
-        if (response.data.userId) {
-          this.relatedUser = {
-            id: response.data.userId,
-            username: '',
-            realName: '',
-            phone: ''
-          };
-          await this.loadRelatedUserInfo(response.data.userId);
+        console.log('[FamilyHome] 家属信息加载成功:', JSON.stringify(response.data));
+
+        // 安全地获取userId
+        const userId: number = response.data.userId || 0;
+        if (userId > 0) {
+          console.log('[FamilyHome] 开始加载关联用户,userId:', userId);
+          // 先设置默认值，防止加载过程中UI崩溃
+          const tempUser: RelatedUser = { id: userId, username: '加载中...', realName: '', phone: '' };
+          this.relatedUser = tempUser;
+
+          await this.loadRelatedUserInfo(userId);
+        } else {
+          console.warn('[FamilyHome] 家属没有关联患者');
+          const defaultUser: RelatedUser = { id: 0, username: '未关联', realName: '', phone: '' };
+          this.relatedUser = defaultUser;
+        }
+      } else {
+        // 请求失败 - 设置默认值而不是让页面崩溃
+        console.error('[FamilyHome] 加载家属信息失败:', response.message);
+        const defaultInfo: FamilyInfo = {
+          id: 0,
+          name: '家属',
+          phone: '',
+          relation: '未知',
+          userId: 0,
+          isEmergencyContact: 0
+        };
+        this.familyInfo = defaultInfo;
+        const defaultUser: RelatedUser = { id: 0, username: '患者', realName: '', phone: '' };
+        this.relatedUser = defaultUser;
+
+        if (response.code !== 401) {
+          ToastUtil.showError(response.message || '加载信息失败');
         }
       }
     } catch (error) {
-      console.error('加载家属信息失败:', error);
+      console.error('[FamilyHome] loadData发生异常:', error);
+      // 异常时设置默认值，确保UI能正常渲染
+      this.setDefaultValues();
       ToastUtil.showError('加载信息失败');
     } finally {
       this.isLoading = false;
@@ -90,13 +152,22 @@ struct FamilyHome {
 
   private async loadRelatedUserInfo(userId: number): Promise<void> {
     try {
-      const response = await HttpUtil.get<RelatedUser>(`/user/${userId}`);
+      console.log('[FamilyHome] 开始加载关联用户信息,userId:', userId);
+      const queryParams: Record<string, number> = { 'id': userId };
+      const response = await HttpUtil.get<RelatedUser>('/user/info', queryParams);
       if (response.success && response.data) {
         this.relatedUser = response.data;
         AppStorage.setOrCreate<RelatedUser>('relatedUser', response.data);
+        console.log('[FamilyHome] 关联用户信息加载成功:', JSON.stringify(response.data));
+      } else {
+        console.error('[FamilyHome] 加载关联用户信息失败:', response.message);
+        const defaultUser: RelatedUser = { id: userId, username: '患者', realName: '', phone: '' };
+        this.relatedUser = defaultUser;
       }
     } catch (error) {
-      console.error('加载关联用户信息失败:', error);
+      console.error('[FamilyHome] 加载关联用户信息异常:', error);
+      const defaultUser: RelatedUser = { id: userId, username: '患者', realName: '', phone: '' };
+      this.relatedUser = defaultUser;
     }
   }
 
@@ -132,209 +203,188 @@ struct FamilyHome {
         }
       })
 
-      // 主要内容区域
-      Column() {
-        // 家属信息卡片
-        if (this.familyInfo) {
+      // 主要内容区域 - 添加Scroll组件支持滚动
+      Scroll() {
+        Column() {
+          // 家属信息卡片(简化版)
+          if (this.familyInfo) {
+          Row() {
+            Image($r('app.media.startIcon'))
+              .width(40)
+              .height(40)
+              .borderRadius(20)
+              .margin({ right: 12 })
+
+            Column() {
+              Text(`${this.familyInfo.name} (${this.getRelationText(this.familyInfo.relation)})`)
+                .fontSize(this.isElderMode ? 18 : 16)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(GlobalTheme.TEXT_PRIMARY)
+
+              if (this.familyInfo.isEmergencyContact === 1) {
+                Text('紧急联系人')
+                  .fontSize(12)
+                  .fontColor('#FF5722')
+              }
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+          }
+          .width('95%')
+          .padding(12)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(8)
+          .margin({ top: 10 })
+        }
+
+        // 关联患者信息卡片(重点展示)
+        if (this.relatedUser) {
           Column() {
-            // 头像和姓名
+            Row() {
+              Text('👤 关联患者')
+                .fontSize(this.isElderMode ? 18 : 16)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(GlobalTheme.TEXT_PRIMARY)
+
+              Blank()
+
+              Button('查看详情 >')
+                .height(28)
+                .fontSize(12)
+                .fontColor('#3498DB')
+                .backgroundColor(Color.Transparent)
+                .onClick(() => {
+                  if (this.relatedUser && this.relatedUser.id) {
+                    console.log('[FamilyHome] 跳转到患者详情, userId:', this.relatedUser.id);
+                    router.pushUrl({
+                      url: 'pages/FamilyPatientDetail',
+                      params: { userId: this.relatedUser.id }
+                    });
+                  } else if (this.familyInfo && this.familyInfo.userId) {
+                    // 如果relatedUser没有数据，使用familyInfo中的userId
+                    console.log('[FamilyHome] 使用familyInfo.userId跳转:', this.familyInfo.userId);
+                    router.pushUrl({
+                      url: 'pages/FamilyPatientDetail',
+                      params: { userId: this.familyInfo.userId }
+                    });
+                  } else {
+                    ToastUtil.showError('未找到关联患者信息');
+                  }
+                })
+            }
+            .width('100%')
+            .padding({ left: 16, right: 16, top: 16, bottom: 8 })
+
+            Divider().color('#E0E0E0')
+
             Row() {
               Image($r('app.media.startIcon'))
                 .width(60)
                 .height(60)
                 .borderRadius(30)
-                .margin({ right: 15 })
-
-              Column() {
-                Text(this.familyInfo.name)
-                  .fontSize(this.isElderMode ? 22 : 18)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(GlobalTheme.TEXT_PRIMARY)
-
-                Text(this.getRelationText(this.familyInfo.relation))
-                  .fontSize(this.isElderMode ? 16 : 14)
-                  .fontColor(GlobalTheme.TEXT_SECONDARY)
-                  .margin({ top: 5 })
-
-                if (this.familyInfo.isEmergencyContact === 1) {
-                  Text('紧急联系人')
-                    .fontSize(12)
-                    .fontColor('#FFFFFF')
-                    .backgroundColor('#FF5722')
-                    .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-                    .borderRadius(4)
-                    .margin({ top: 5 })
-                }
-              }
-              .alignItems(HorizontalAlign.Start)
-            }
-            .width('100%')
-            .padding(15)
-
-            // 基本信息
-            Row() {
-              this.InfoItem('手机号', this.familyInfo.phone || '未设置')
-              Divider().vertical(true).height(30).color('#E0E0E0')
-              this.InfoItem('年龄', this.familyInfo.age ? `${this.familyInfo.age}岁` : '未设置')
-              Divider().vertical(true).height(30).color('#E0E0E0')
-              this.InfoItem('性别', this.getGenderText(this.familyInfo.gender))
-            }
-            .width('100%')
-            .justifyContent(FlexAlign.SpaceAround)
-            .padding({ top: 10, bottom: 10 })
-            .backgroundColor('#FAFAFA')
-
-            // 健康状况
-            if (this.familyInfo.healthCondition) {
-              Column() {
-                Text('健康状况')
-                  .fontSize(14)
-                  .fontColor(GlobalTheme.TEXT_SECONDARY)
-                  .margin({ bottom: 5 })
-
-                Text(this.familyInfo.healthCondition)
-                  .fontSize(this.isElderMode ? 18 : 16)
-                  .fontColor(GlobalTheme.TEXT_PRIMARY)
-              }
-              .width('100%')
-              .alignItems(HorizontalAlign.Start)
-              .padding(15)
-              .backgroundColor('#FFFFFF')
-              .margin({ top: 10 })
-            }
-          }
-          .width('95%')
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12)
-          .margin({ top: 15 })
-          .shadow({ radius: 5, color: '#E0E0E0', offsetX: 0, offsetY: 2 })
-
-        // 关联患者信息卡片
-        if (this.relatedUser) {
-          Column() {
-            Text('👤 关联患者')
-              .fontSize(this.isElderMode ? 18 : 16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(GlobalTheme.TEXT_PRIMARY)
-              .width('100%')
-              .margin({ bottom: 15 })
-
-            Row() {
-              Image($r('app.media.startIcon'))
-                .width(50)
-                .height(50)
-                .borderRadius(25)
-                .margin({ right: 15 })
+                .margin({ right: 16 })
 
               Column() {
                 Text(this.relatedUser.realName || this.relatedUser.username || '患者')
-                  .fontSize(this.isElderMode ? 20 : 18)
+                  .fontSize(this.isElderMode ? 22 : 20)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(GlobalTheme.TEXT_PRIMARY)
 
-                Text(`ID: ${this.relatedUser.id}`)
-                  .fontSize(12)
+                Text(`患者ID: ${this.relatedUser.id}`)
+                  .fontSize(13)
                   .fontColor(GlobalTheme.TEXT_SECONDARY)
-                  .margin({ top: 5 })
+                  .margin({ top: 4 })
 
                 if (this.relatedUser.phone) {
-                  Text(`电话: ${this.relatedUser.phone}`)
-                    .fontSize(12)
+                  Text(`联系电话: ${this.relatedUser.phone}`)
+                    .fontSize(13)
                     .fontColor(GlobalTheme.TEXT_SECONDARY)
                     .margin({ top: 2 })
                 }
               }
               .alignItems(HorizontalAlign.Start)
-
-              Blank()
-
-              Button('查看详情')
-                .height(32)
-                .fontSize(12)
-                .fontColor('#3498DB')
-                .backgroundColor('#E8F4FD')
-                .borderRadius(16)
-                .onClick(() => {
-                  if (this.relatedUser) {
-                    router.pushUrl({ 
-                      url: 'pages/FamilyHealthRecords',
-                      params: { userId: this.relatedUser.id }
-                    });
-                  }
-                })
+              .layoutWeight(1)
             }
             .width('100%')
-            .padding(15)
+            .padding(16)
           }
           .width('95%')
           .backgroundColor('#FFFFFF')
           .borderRadius(12)
-          .margin({ top: 15 })
+          .margin({ top: 12 })
           .shadow({ radius: 5, color: '#E0E0E0', offsetX: 0, offsetY: 2 })
         }
-        }
 
-        // 功能菜单
+        // 快捷功能入口
         Column() {
-          Text('功能菜单')
+          Text('快捷服务')
             .fontSize(this.isElderMode ? 18 : 16)
             .fontWeight(FontWeight.Bold)
             .fontColor(GlobalTheme.TEXT_PRIMARY)
             .width('100%')
-            .margin({ bottom: 15 })
+            .margin({ bottom: 12 })
 
-          // 菜单项
-          Column() {
-            this.MenuItem('📋 查看健康记录', '查看您和关联用户的健康记录', () => {
+          Row({ space: 12 }) {
+            this.QuickCard('📋', '就诊记录', '诊断和就诊历史', '#3498DB', () => {
+              router.pushUrl({ url: 'pages/FamilyMedicalRecords' });
+            })
+
+            this.QuickCard('💊', '处方记录', '医生开具的处方', '#27AE60', () => {
+              router.pushUrl({ url: 'pages/FamilyPrescription' });
+            })
+          }
+          .width('100%')
+
+          Row({ space: 12 }) {
+            this.QuickCard('📊', '健康数据', '血压血糖等指标', '#9B59B6', () => {
               router.pushUrl({ url: 'pages/FamilyHealthRecords' });
             })
 
-            Divider().width('100%').color('#E0E0E0')
-
-            this.MenuItem('👥 查看关联用户', '查看关联用户的信息', () => {
-              router.pushUrl({ url: 'pages/FamilyPage' });
+            this.QuickCard('🔔', '复诊安排', '预约和复查日期', '#F39C12', () => {
+              router.pushUrl({ url: 'pages/FamilyFollowUp' });
             })
+          }
+          .width('100%')
+          .margin({ top: 12 })
+        }
+        .width('95%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(12)
+        .margin({ top: 16 })
+        .shadow({ radius: 5, color: '#E0E0E0', offsetX: 0, offsetY: 2 })
 
-            Divider().width('100%').color('#E0E0E0')
+        // 其他功能
+        Column() {
+          Text('更多功能')
+            .fontSize(this.isElderMode ? 18 : 16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(GlobalTheme.TEXT_PRIMARY)
+            .width('100%')
+            .margin({ bottom: 12 })
 
-            this.MenuItem('💬 咨询聊天', '与医护人员在线沟通', () => {
+          Column() {
+            this.MenuItem('💬 在线咨询', '与医生、护士在线沟通', () => {
               router.pushUrl({ url: 'pages/FamilyChatListPage' });
             })
 
             Divider().width('100%').color('#E0E0E0')
 
-            this.MenuItem('💊 用药管理', '查看和管理用药信息', () => {
+            this.MenuItem('💊 用药计划', '定时用药提醒设置', () => {
               router.pushUrl({ url: 'pages/FamilyMedication' });
             })
 
             Divider().width('100%').color('#E0E0E0')
 
-            this.MenuItem('🏥 医疗记录', '查看关联患者的就诊记录', () => {
-              router.pushUrl({ url: 'pages/FamilyMedicalRecords' });
-            })
-
-            Divider().width('100%').color('#E0E0E0')
-
-            this.MenuItem('📊 健康监测', '查看健康数据和趋势', () => {
-              router.pushUrl({ url: 'pages/FamilyHealthRecords' });
-            })
-
-            Divider().width('100%').color('#E0E0E0')
-
-            this.MenuItem('🔔 消息通知', '查看健康提醒和通知', () => {
-              ToastUtil.showInfo('消息通知功能开发中');
-            })
-
-            Divider().width('100%').color('#E0E0E0')
-
-            this.MenuItem('🔐 修改密码', '修改登录密码', () => {
-              ToastUtil.showInfo('修改密码功能开发中');
-            })
-
-            Divider().width('100%').color('#E0E0E0')
-
-            this.MenuItem('👨‍👩‍👧 家属管理', '管理家属成员信息', () => {
-              router.pushUrl({ url: 'pages/FamilyPage' });
+            this.MenuItem('👤 患者详情', '查看完整个人信息', () => {
+              if (this.familyInfo && this.familyInfo.userId) {
+                router.pushUrl({
+                  url: 'pages/FamilyPatientDetail',
+                  params: { userId: this.familyInfo.userId }
+                });
+              } else {
+                ToastUtil.showError('未找到关联患者信息');
+              }
             })
           }
           .width('100%')
@@ -342,21 +392,26 @@ struct FamilyHome {
           .borderRadius(8)
         }
         .width('95%')
-        .margin({ top: 20 })
-        .padding(15)
+        .padding(16)
         .backgroundColor('#FFFFFF')
         .borderRadius(12)
+        .margin({ top: 16 })
         .shadow({ radius: 5, color: '#E0E0E0', offsetX: 0, offsetY: 2 })
 
         // 底部提示
-        Text('家属登录功能 v1.0')
+        Text('家属服务 v2.0 - 关爱从了解开始')
           .fontSize(12)
           .fontColor(GlobalTheme.TEXT_SECONDARY)
-          .margin({ top: 30, bottom: 20 })
+          .margin({ top: 20, bottom: 20 })
+        }
+        .width('100%')
       }
       .layoutWeight(1)
       .width('100%')
       .backgroundColor('#F5F5F5')
+      .scrollable(ScrollDirection.Vertical)  // 允许垂直滚动
+      .scrollBar(BarState.Auto)  // 自动显示滚动条
+      .edgeEffect(EdgeEffect.Spring)  // 添加弹性效果
 
       // Loading遮罩
       if (this.isLoading) {
@@ -406,6 +461,33 @@ struct FamilyHome {
     }
     .width('100%')
     .padding(15)
+    .onClick(onClick)
+  }
+
+  // 快捷卡片组件
+  @Builder
+  QuickCard(icon: string, title: string, description: string, color: string, onClick: () => void) {
+    Column() {
+      Text(icon)
+        .fontSize(32)
+        .margin({ bottom: 8 })
+
+      Text(title)
+        .fontSize(this.isElderMode ? 16 : 14)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(GlobalTheme.TEXT_PRIMARY)
+
+      Text(description)
+        .fontSize(11)
+        .fontColor(GlobalTheme.TEXT_SECONDARY)
+        .margin({ top: 4 })
+        .maxLines(2)
+    }
+    .layoutWeight(1)
+    .padding(12)
+    .backgroundColor(color + '15')
+    .borderRadius(12)
+    .border({ width: 1, color: color + '40' })
     .onClick(onClick)
   }
 

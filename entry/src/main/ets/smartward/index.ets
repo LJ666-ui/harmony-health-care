@@ -42,5 +42,7 @@ export { NurseStationDashboard } from './pages/NurseStationDashboard';
 // 初始化器
 export { SmartWardInitializer } from './SmartWardInitializer';
 
-// Mock数据
-export { MockDataGenerator } from '../../mock/smartwardMock';
+// 真实数据（基于数据库）
+export { RealDataGenerator } from '../../mock/smartwardMock_realdata';
+// 原始模拟数据（如需回退可使用）
+// export { MockDataGenerator } from '../../mock/smartwardMock';

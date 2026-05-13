@@ -20,7 +20,7 @@ import { CallButtonController } from './core/controllers/CallButtonController';
 import { InfusionPumpController } from './core/controllers/InfusionPumpController';
 import { presetRules } from './config/presetRules';
 import { DeviceType } from '../models/SmartWardEnums';
-import { MockDataGenerator } from '../../mock/smartwardMock';
+import { RealDataGenerator } from '../../mock/smartwardMock_realdata';  // 切换到真实数据生成器
 
 /**
  * 智慧病房系统初始化器
@@ -146,9 +146,9 @@ export class SmartWardInitializer {
    * 生成模拟数据
    */
   public async generateMockData(): Promise<void> {
-    console.log('SmartWardInitializer: Generating mock data...');
+    console.log('SmartWardInitializer: Generating real data from database...');
 
-    const mockGenerator = MockDataGenerator.getInstance();
+    const mockGenerator = RealDataGenerator.getInstance();  // 使用真实数据生成器
     const deviceManager = DeviceManager.getInstance();
 
     // 生成6个病房

@@ -27,10 +27,35 @@ export class MedicalBannerManager {
   }
 
   private async getAllBanners(): Promise<BannerModel[]> {
-    let hasMultipleDevices = (await this.userDeviceService.getUserDeviceStatus()).hasMultipleDevices
-    let isInpatient = (await this.userInpatientService.getUserInpatientStatus()).isInpatient
-    let hasAvailableSource = (await this.expertSourceService.getExpertSourceInfo()).hasAvailableSource
-    let registerTime = (await this.userRegisterService.getUserRegisterTime()).registerTime
+    let hasMultipleDevices = false
+    let isInpatient = false
+    let hasAvailableSource = false
+    let registerTime = 0
+
+    try {
+      hasMultipleDevices = (await this.userDeviceService.getUserDeviceStatus()).hasMultipleDevices
+    } catch (error) {
+      console.warn('[MedicalBannerManager] 获取设备状态失败，使用默认值:', error)
+    }
+
+    try {
+      isInpatient = (await this.userInpatientService.getUserInpatientStatus()).isInpatient
+    } catch (error) {
+      console.warn('[MedicalBannerManager] 获取住院状态失败，使用默认值:', error)
+    }
+
+    try {
+      hasAvailableSource = (await this.expertSourceService.getExpertSourceInfo()).hasAvailableSource
+    } catch (error) {
+      console.warn('[MedicalBannerManager] 获取专家号源信息失败，使用默认值:', error)
+    }
+
+    try {
+      registerTime = (await this.userRegisterService.getUserRegisterTime()).registerTime
+    } catch (error) {
+      console.warn('[MedicalBannerManager] 获取注册时间失败，使用默认值:', error)
+    }
+
     let now = Date.now()
 
     let banner1: BannerModel = new BannerModel()
@@ -60,7 +85,7 @@ export class MedicalBannerManager {
     banner3.startColor = '#50C878'
     banner3.endColor = '#3DA35D'
     banner3.icon = '🏨⚙️'
-    banner3.targetPage = 'SmartWardPage'
+    banner3.targetPage = 'SmartWardDevicesSimple'  // 修正为实际存在的页面
     banner3.condition = () => isInpatient
 
     let banner4: BannerModel = new BannerModel()
@@ -80,7 +105,7 @@ export class MedicalBannerManager {
     banner5.startColor = '#1ABC9C'
     banner5.endColor = '#16A085'
     banner5.icon = '📋✅'
-    banner5.targetPage = 'MedicalGuidePage'
+    banner5.targetPage = 'MedicalPage'  // 修正为实际存在的页面
     banner5.condition = () => now - registerTime <= 7 * 24 * 60 * 60 * 1000
 
     this.bannerList = [banner1, banner2, banner3, banner4, banner5]

@@ -6,20 +6,21 @@ import com.example.medical.common.JwtUtil;
 import com.example.medical.common.Result;
 import com.example.medical.entity.Doctor;
 import com.example.medical.entity.DoctorMessage;
+import com.example.medical.entity.Nurse;
+import com.example.medical.entity.NursePatientRelation;
 import com.example.medical.entity.User;
 import com.example.medical.service.DoctorMessageService;
 import com.example.medical.service.DoctorService;
+import com.example.medical.service.NursePatientRelationService;
+import com.example.medical.service.NurseService;
 import com.example.medical.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.Date;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping("/user")
@@ -36,6 +37,15 @@ public class UserController {
     @Autowired
     private DoctorMessageService doctorMessageService;
 
+    @Autowired
+    private NurseService nurseService;
+
+    @Autowired
+    private NursePatientRelationService nursePatientRelationService;
+
+    @Autowired
+    private ApplicationContext applicationContext;
+
     /**
      * 发送验证码（模拟）
      * 实际项目中应该调用短信服务API
@@ -50,12 +60,12 @@ public class UserController {
         if (!phone.matches("^1[3-9]\\d{9}$")) {
             return Result.error("手机号格式不正确");
         }
-        
+
         // TODO: 实际项目中这里应该：
         // 1. 调用短信服务API发送验证码
         // 2. 将验证码存入Redis并设置过期时间
         // 3. 返回发送结果
-        
+
         // 模拟发送成功
         System.out.println("[验证码] 发送验证码到手机: " + phone + ", 验证码: 123456");
         Map<String, Object> result = new HashMap<>();
@@ -134,12 +144,12 @@ public class UserController {
             if (keyword != null && !keyword.isEmpty()) {
                 final String kw = keyword.trim().toLowerCase();
                 wrapper.and(w -> w.like(Doctor::getHospital, kw)
-                    .or()
-                    .like(Doctor::getDepartment, kw)
-                    .or()
-                    .like(Doctor::getTitle, kw)
-                    .or()
-                    .like(Doctor::getSpecialty, kw));
+                        .or()
+                        .like(Doctor::getDepartment, kw)
+                        .or()
+                        .like(Doctor::getTitle, kw)
+                        .or()
+                        .like(Doctor::getSpecialty, kw));
             }
             if (department != null && !department.isEmpty()) {
                 wrapper.eq(Doctor::getDepartment, department);
@@ -149,7 +159,7 @@ public class UserController {
             }
             wrapper.orderByDesc(Doctor::getCreateTime);
             List<Doctor> doctors = doctorService.list(wrapper);
-            
+
             List<Map<String, Object>> result = new ArrayList<>();
             for (Doctor doctor : doctors) {
                 Map<String, Object> item = new HashMap<>();
@@ -163,7 +173,7 @@ public class UserController {
                 item.put("description", doctor.getDescription());
                 item.put("rating", doctor.getRating());
                 item.put("status", doctor.getStatus());
-                
+
                 User user = (doctor.getUserId() != null) ? userService.getById(doctor.getUserId()) : null;
                 if (user != null) {
                     item.put("realName", user.getRealName());
@@ -176,10 +186,10 @@ public class UserController {
                     item.put("avatar", "");
                     item.put("username", "");
                 }
-                
+
                 result.add(item);
             }
-            
+
             return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -194,7 +204,7 @@ public class UserController {
             if (doctor == null) {
                 return Result.error("医生不存在");
             }
-            
+
             Map<String, Object> result = new HashMap<>();
             result.put("id", doctor.getId());
             result.put("userId", doctor.getUserId());
@@ -206,7 +216,7 @@ public class UserController {
             result.put("description", doctor.getDescription());
             result.put("rating", doctor.getRating());
             result.put("status", doctor.getStatus());
-            
+
             User user = (doctor.getUserId() != null) ? userService.getById(doctor.getUserId()) : null;
             if (user != null) {
                 result.put("realName", user.getRealName());
@@ -219,7 +229,7 @@ public class UserController {
                 result.put("avatar", "");
                 result.put("username", "");
             }
-            
+
             return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -233,7 +243,7 @@ public class UserController {
             if (doctor.getUserId() == null) {
                 return Result.error("用户ID不能为空");
             }
-            
+
             User user = userService.getById(doctor.getUserId());
             if (user == null) {
                 return Result.error("用户不存在");
@@ -278,7 +288,7 @@ public class UserController {
             if (doctor == null) {
                 return Result.error("医生信息不存在");
             }
-            
+
             Map<String, Object> result = new HashMap<>();
             result.put("id", doctor.getId());
             result.put("userId", doctor.getUserId());
@@ -290,7 +300,7 @@ public class UserController {
             result.put("description", doctor.getDescription());
             result.put("rating", doctor.getRating());
             result.put("status", doctor.getStatus());
-            
+
             User user = (doctor.getUserId() != null) ? userService.getById(doctor.getUserId()) : null;
             if (user != null) {
                 result.put("realName", user.getRealName());
@@ -303,7 +313,7 @@ public class UserController {
                 result.put("avatar", "");
                 result.put("username", "");
             }
-            
+
             return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
@@ -364,8 +374,8 @@ public class UserController {
             if (messages != null && !messages.isEmpty()) {
                 for (DoctorMessage m : messages) {
                     System.out.println("  msg id=" + m.getId() + " sender=" + m.getSenderId()
-                        + " receiver=" + m.getReceiverId() + " content=" + m.getContent()
-                        + " expireTime=" + m.getExpireTime());
+                            + " receiver=" + m.getReceiverId() + " content=" + m.getContent()
+                            + " expireTime=" + m.getExpireTime());
                 }
             }
             LambdaQueryWrapper<DoctorMessage> readWrapper = new LambdaQueryWrapper<>();
@@ -400,7 +410,7 @@ public class UserController {
             long userB = Long.parseLong(body.get("userB").toString());
             LambdaQueryWrapper<DoctorMessage> wrapper = new LambdaQueryWrapper<>();
             wrapper.and(w -> w.eq(DoctorMessage::getSenderId, userA).eq(DoctorMessage::getReceiverId, userB))
-                .or(w -> w.eq(DoctorMessage::getSenderId, userB).eq(DoctorMessage::getReceiverId, userA));
+                    .or(w -> w.eq(DoctorMessage::getSenderId, userB).eq(DoctorMessage::getReceiverId, userA));
             if (doctorMessageService.remove(wrapper)) {
                 return Result.success("删除成功");
             } else {
@@ -440,8 +450,56 @@ public class UserController {
             if (doctor == null || doctor.getUserType() != 1) {
                 return Result.error("非医生身份，无权访问");
             }
-            List<Map<String, Object>> conversations = doctorMessageService.getConversationList(doctorId);
-            return Result.success(conversations);
+
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            Doctor doctorInfo = doctorService.getByUserId(doctorId);
+            if (doctorInfo != null) {
+                try {
+                    com.example.medical.service.PatientGroupService patientGroupService =
+                            applicationContext.getBean(com.example.medical.service.PatientGroupService.class);
+                    if (patientGroupService != null) {
+                        List<com.example.medical.entity.PatientGroup> groups =
+                                patientGroupService.getGroupsByDoctorId(doctorInfo.getId());
+                        if (groups != null && !groups.isEmpty()) {
+                            Set<Long> patientIdSet = new LinkedHashSet<>();
+                            for (com.example.medical.entity.PatientGroup group : groups) {
+                                List<Long> patientIds =
+                                        patientGroupService.getPatientIdsByGroupId(group.getId());
+                                if (patientIds != null) {
+                                    patientIdSet.addAll(patientIds);
+                                }
+                            }
+                            for (Long patientId : patientIdSet) {
+                                User patientUser = userService.getById(patientId);
+                                if (patientUser != null) {
+                                    Map<String, Object> patientInfo = new HashMap<>();
+                                    patientInfo.put("otherUserId", patientId);
+                                    patientInfo.put("otherUserName", patientUser.getUsername());
+                                    patientInfo.put("otherUserType",
+                                            patientUser.getUserType() != null ? patientUser.getUserType() : 0);
+                                    patientInfo.put("lastMessage", "患者已添加到您的管理列表");
+                                    patientInfo.put("lastTime", new Date());
+                                    patientInfo.put("unreadCount", 0);
+                                    patientInfo.put("remainHours", 48);
+                                    patientInfo.put("expireTime",
+                                            new Date(System.currentTimeMillis() + 48L * 60 * 60 * 1000));
+                                    result.add(patientInfo);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("[getDoctorPatients] 从patient_group获取患者失败，尝试从消息表获取: " + e.getMessage());
+                }
+            }
+
+            if (result.isEmpty()) {
+                List<Map<String, Object>> conversations = doctorMessageService.getConversationList(doctorId);
+                result.addAll(conversations);
+            }
+
+            return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("获取患者列表失败：" + e.getMessage());
@@ -458,6 +516,254 @@ public class UserController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("清理过期消息失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取所有患者列表（user_type=0）
+     * GET /user/patients
+     * 用于护士端显示患者列表
+     */
+    @GetMapping("/patients")
+    public Result<?> getAllPatients() {
+        try {
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(User::getUserType, 0)
+                    .eq(User::getIsDeleted, 0)
+                    .orderByDesc(User::getCreateTime);
+
+            List<User> patients = userService.list(wrapper);
+
+            if (patients != null && !patients.isEmpty()) {
+                patients.forEach(user -> user.setPassword(null));
+                return Result.success(patients);
+            } else {
+                return Result.success(new ArrayList<>());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取患者列表失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前登录护士负责的患者列表
+     * GET /user/nurse/patients
+     */
+    @GetMapping("/nurse/patients")
+    public Result<?> getNursePatients(@RequestHeader(value = "Token", required = false) String token) {
+        try {
+            System.out.println("[NursePatients] Token received: " + (token != null ? token.substring(0, Math.min(20, token.length())) + "..." : "null"));
+
+            if (token == null || token.isEmpty()) {
+                System.out.println("[NursePatients] Error: No token provided");
+                return Result.error("未提供Token");
+            }
+
+            Long nurseId = null;
+
+            if (JwtUtil.isNurseToken(token)) {
+                nurseId = JwtUtil.getNurseId(token);
+                System.out.println("[NursePatients] Detected NURSE token, nurseId: " + nurseId);
+            } else {
+                Long userId = JwtUtil.getUserId(token);
+                System.out.println("[NursePatients] Detected USER token, userId: " + userId);
+                if (userId == null) {
+                    System.out.println("[NursePatients] Error: Invalid token or cannot extract userId");
+                    return Result.error("无效的Token或无法提取用户ID");
+                }
+
+                Nurse nurse = nurseService.findByUserId(userId);
+                if (nurse == null) {
+                    System.out.println("[NursePatients] Error: Nurse not found for userId: " + userId);
+                    return Result.error("未找到护士信息");
+                }
+                nurseId = nurse.getId();
+            }
+
+            if (nurseId == null) {
+                System.out.println("[NursePatients] Error: Cannot determine nurseId from token");
+                return Result.error("无法从Token中获取护士ID");
+            }
+
+            System.out.println("[NursePatients] Final nurseId: " + nurseId);
+
+            Nurse nurse = nurseService.getById(nurseId);
+            if (nurse == null) {
+                System.out.println("[NursePatients] Error: Nurse not found for nurseId: " + nurseId);
+                return Result.error("未找到护士信息");
+            }
+
+            System.out.println("[NursePatients] Nurse found: " + nurse.getName() + " (ID: " + nurse.getId() + ")");
+
+            List<Long> patientIds = nursePatientRelationService.getPatientIdsByNurseId(nurse.getId());
+            System.out.println("[NursePatients] Patient IDs from relation: " + patientIds);
+
+            if (patientIds == null || patientIds.isEmpty()) {
+                System.out.println("[NursePatients] No patients assigned to this nurse");
+                return Result.success(new ArrayList<>());
+            }
+
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.in(User::getId, patientIds)
+                    .eq(User::getUserType, 0)
+                    .eq(User::getIsDeleted, 0)
+                    .orderByDesc(User::getCreateTime);
+
+            List<User> patients = userService.list(wrapper);
+            System.out.println("[NursePatients] Total patients found: " + (patients != null ? patients.size() : 0));
+
+            if (patients != null && !patients.isEmpty()) {
+                patients.forEach(user -> user.setPassword(null));
+                return Result.success(patients);
+            } else {
+                System.out.println("[NursePatients] Returning empty list");
+                return Result.success(new ArrayList<>());
+            }
+        } catch (Exception e) {
+            System.err.println("[NursePatients] Exception occurred:");
+            e.printStackTrace();
+            return Result.error("获取护士患者列表失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取患者详情信息
+     * GET /user/patient/{patientId}
+     */
+    @GetMapping("/patient/{patientId}")
+    public Result<?> getPatientDetail(@PathVariable Long patientId) {
+        try {
+            User user = userService.getById(patientId);
+            if (user == null) {
+                return Result.error("患者不存在");
+            }
+            if (user.getUserType() != null && user.getUserType() != 0) {
+                return Result.error("该用户不是患者");
+            }
+            if (user.getIsDeleted() != null && user.getIsDeleted() == 1) {
+                return Result.error("该患者已被删除");
+            }
+            user.setPassword(null);
+            return Result.success(user);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取患者详情失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 调试接口：测试护士患者数据链路
+     * GET /user/nurse/patients/debug?nurseId=1
+     */
+    @GetMapping("/nurse/patients/debug")
+    public Result<?> debugNursePatients(@RequestParam(required = false) Long nurseId) {
+        try {
+            System.out.println("[DebugNursePatients] Starting debug...");
+
+            Map<String, Object> debugInfo = new HashMap<>();
+
+            if (nurseId == null) {
+                nurseId = 1L;
+            }
+            debugInfo.put("inputNurseId", nurseId);
+
+            Nurse nurse = nurseService.getById(nurseId);
+            if (nurse == null) {
+                debugInfo.put("error", "Nurse not found for id: " + nurseId);
+                return Result.success(debugInfo);
+            }
+            debugInfo.put("nurseFound", true);
+            debugInfo.put("nurseName", nurse.getName());
+            debugInfo.put("nurseId", nurse.getId());
+
+            List<Long> patientIds = nursePatientRelationService.getPatientIdsByNurseId(nurse.getId());
+            System.out.println("[DebugNursePatients] Patient IDs: " + patientIds);
+            debugInfo.put("patientIdsFromRelation", patientIds);
+            debugInfo.put("patientCount", patientIds != null ? patientIds.size() : 0);
+
+            if (patientIds == null || patientIds.isEmpty()) {
+                debugInfo.put("warning", "No patients in relation table");
+                LambdaQueryWrapper<NursePatientRelation> allRelations = new LambdaQueryWrapper<>();
+                allRelations.eq(NursePatientRelation::getNurseId, nurseId)
+                        .eq(NursePatientRelation::getIsDeleted, 0);
+                List<NursePatientRelation> allRel = nursePatientRelationService.list(allRelations);
+                debugInfo.put("allRelationsForThisNurse", allRel);
+                return Result.success(debugInfo);
+            }
+
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.in(User::getId, patientIds)
+                    .eq(User::getUserType, 0)
+                    .eq(User::getIsDeleted, 0);
+
+            List<User> patients = userService.list(wrapper);
+            System.out.println("[DebugNursePatients] Patients found: " + (patients != null ? patients.size() : 0));
+            debugInfo.put("patientsFound", patients != null ? patients.size() : 0);
+
+            if (patients != null && !patients.isEmpty()) {
+                patients.forEach(user -> user.setPassword(null));
+                debugInfo.put("patients", patients);
+            } else {
+                debugInfo.put("warning", "No users found with those IDs. Checking user table directly...");
+
+                LambdaQueryWrapper<User> checkUsers = new LambdaQueryWrapper<>();
+                checkUsers.in(User::getId, patientIds);
+                List<User> allUsersWithIds = userService.list(checkUsers);
+                debugInfo.put("allUsersWithTheseIds", allUsersWithIds);
+
+                if (allUsersWithIds != null) {
+                    allUsersWithIds.forEach(u -> {
+                        Map<String, Object> userInfo = new HashMap<>();
+                        userInfo.put("id", u.getId());
+                        userInfo.put("username", u.getUsername());
+                        userInfo.put("phone", u.getPhone());
+                        userInfo.put("age", u.getAge());
+                        userInfo.put("userType", u.getUserType());
+                        userInfo.put("isDeleted", u.getIsDeleted());
+                        System.out.println("[DebugNursePatients] User check - ID:" + u.getId()
+                                + " Username:" + u.getUsername()
+                                + " Type:" + u.getUserType()
+                                + " Deleted:" + u.getIsDeleted());
+                    });
+                }
+            }
+
+            return Result.success(debugInfo);
+        } catch (Exception e) {
+            System.err.println("[DebugNurePatients] Exception:");
+            e.printStackTrace();
+            Map<String, Object> errorInfo = new HashMap<>();
+            errorInfo.put("error", e.getMessage());
+            errorInfo.put("stackTrace", e.toString());
+            return Result.success(errorInfo);
+        }
+    }
+
+    /**
+     * 临时方案：获取所有患者列表（用于测试）
+     * GET /user/all-patients
+     */
+    @GetMapping("/all-patients")
+    public Result<?> getAllPatientsForTest() {
+        try {
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(User::getUserType, 0)
+                    .eq(User::getIsDeleted, 0)
+                    .orderByDesc(User::getId);
+
+            List<User> patients = userService.list(wrapper);
+            System.out.println("[AllPatients] Total patients: " + (patients != null ? patients.size() : 0));
+
+            if (patients != null && !patients.isEmpty()) {
+                patients.forEach(user -> user.setPassword(null));
+                return Result.success(patients);
+            } else {
+                return Result.success(new ArrayList<>());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取所有患者失败：" + e.getMessage());
         }
     }
 }

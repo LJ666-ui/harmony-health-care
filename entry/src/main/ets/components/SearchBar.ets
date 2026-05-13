@@ -9,8 +9,8 @@ export interface SearchBarProps {
 @Component
 export struct SearchBar {
   @Prop placeholder: string = '搜索健康知识、药材、食材...';
-  @Prop onSearch?: (text: string) => void;
-  @Prop onVoiceInput?: () => void;
+  onSearch?: (text: string) => void;
+  onVoiceInput?: () => void;
   @State searchText: string = '';
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 

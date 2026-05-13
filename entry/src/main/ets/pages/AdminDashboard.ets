@@ -13,6 +13,7 @@ interface SystemStatistics {
   weeklyActiveUsers?: number;
   monthlyEvaluations?: number;
   planCompletionRate?: number;
+  recentUsers?: UserInfo[];
 }
 
 interface UserInfo {
@@ -60,31 +61,42 @@ struct AdminDashboard {
     this.isLoadingStats = true;
     try {
       console.info('[AdminDashboard] 开始加载统计数据...');
-      
+
       const response: BaseResponse<SystemStatistics> = await HttpUtil.get<SystemStatistics>(
         '/admin/dashboard/stats',
         undefined,
         { isAdmin: true }
       );
-      
+
       console.info('[AdminDashboard] API响应:', JSON.stringify(response));
-      
-      if (response.code === 200 && response.data) {
+
+      if (response.success && response.data) {
         this.userCount = response.data.userCount || 0;
         this.familyCount = response.data.familyCount || 0;
         this.doctorCount = response.data.doctorCount || 0;
         this.adminCount = response.data.adminCount || 0;
-        console.info('[AdminDashboard] 数据加载成功:', 
+        if (response.data.recentUsers) {
+          this.recentUsers = response.data.recentUsers as UserInfo[];
+        }
+        console.info('[AdminDashboard] 数据加载成功:',
           'userCount=', this.userCount,
           'doctorCount=', this.doctorCount,
           'adminCount=', this.adminCount);
       } else {
-        console.error('[AdminDashboard] API返回错误:', response.code, response.message);
-        promptAction.showToast({ message: '获取统计数据失败: ' + (response.message || '未知错误') });
+        console.warn('[AdminDashboard] API返回非成功状态，使用默认值');
+        this.userCount = 0;
+        this.familyCount = 0;
+        this.doctorCount = 0;
+        this.adminCount = 0;
+        this.recentUsers = [];
       }
     } catch (error) {
-      console.error('[AdminDashboard] 加载统计数据异常:', error);
-      promptAction.showToast({ message: '网络错误，请检查后端服务' });
+      console.error('[AdminDashboard] 加载统计数据异常，使用默认值:', error);
+      this.userCount = 0;
+      this.familyCount = 0;
+      this.doctorCount = 0;
+      this.adminCount = 0;
+      this.recentUsers = [];
     } finally {
       this.isLoadingStats = false;
     }
@@ -148,7 +160,7 @@ struct AdminDashboard {
 
       Row({ space: 8 }) {
         Column() {
-          Text(String((this.currentAdmin?.realName || '管').charAt(0)))
+          Text((this.currentAdmin?.realName || '管')[0])
             .fontSize(15)
             .fontWeight(FontWeight.Bold)
             .fontColor('#FFFFFF');
@@ -391,7 +403,7 @@ struct AdminDashboard {
           ForEach(this.recentUsers, (user: UserInfo, index: number) => {
             Row({ space: 12 }) {
               Column() {
-                Text(String((user.real_name || user.realName || user.username || 'U').charAt(0)))
+                Text((user.real_name || user.realName || user.username || 'U')[0])
                   .fontSize(14)
                   .fontWeight(FontWeight.Bold)
                   .fontColor('#FFFFFF')

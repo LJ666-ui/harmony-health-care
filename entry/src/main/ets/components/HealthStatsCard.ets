@@ -7,7 +7,7 @@ export struct HealthStatsCard {
   build() {
     Row() {
       Column() {
-        Text(this.healthRecordCount.toString())
+        Text((this.healthRecordCount ?? 0).toString())
           .fontSize(22)
           .fontColor('#1677FF')
           .fontWeight(FontWeight.Bold)
@@ -26,7 +26,7 @@ export struct HealthStatsCard {
         .stroke('#EEEEEE');
 
       Column() {
-        Text(this.collectCount.toString())
+        Text((this.collectCount ?? 0).toString())
           .fontSize(22)
           .fontColor('#52C41A')
           .fontWeight(FontWeight.Bold)
@@ -45,7 +45,7 @@ export struct HealthStatsCard {
         .stroke('#EEEEEE');
 
       Column() {
-        Text(this.browseHistoryCount.toString())
+        Text((this.browseHistoryCount ?? 0).toString())
           .fontSize(22)
           .fontColor('#FAAD14')
           .fontWeight(FontWeight.Bold)

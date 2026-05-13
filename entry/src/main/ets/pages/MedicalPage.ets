@@ -119,10 +119,9 @@ export struct MedicalPage {
                 if (service.id === 'appointment') {
                   router.pushUrl({ url: 'pages/HospitalPage' });
                 } else if (service.id === 'queue') {
-                  // 排队叫号功能 - 跳转到预约管理页面查看排队信息
-                  router.pushUrl({ url: 'pages/AppointmentManagementPage' });
+                  router.pushUrl({ url: 'pages/QueuePage' });
                 } else if (service.id === 'report') {
-                  router.pushUrl({ url: 'pages/HealthRecords' });
+                  router.pushUrl({ url: 'pages/ReportQueryPage' });
                 } else if (service.id === 'prescription') {
                   router.pushUrl({ url: 'pages/Medications' });
                 } else if (service.id === 'payment') {

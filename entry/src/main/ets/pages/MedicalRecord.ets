@@ -151,13 +151,17 @@ struct MedicalRecord {
       if (this.isLoading) {
         Loading();
       } else if (this.hasError) {
-        EmptyState({
-          icon: '❌',
-          title: '加载失败',
-          description: '病历数据加载出现问题，请重试',
-          buttonText: '重新加载',
-          onAdd: () => this.loadMedicalRecords()
-        });
+        Column() {
+          EmptyState({
+            icon: '❌',
+            title: '加载失败',
+            description: '病历数据加载出现问题，请重试',
+            buttonText: '重新加载',
+            showButton: true
+          })
+        }
+        .width('100%')
+        .onClick(() => this.loadMedicalRecords());
       } else {
         // 筛选栏
         Column() {
@@ -201,18 +205,22 @@ struct MedicalRecord {
 
         // 病历列表
         if (this.filteredRecords.length === 0) {
-          EmptyState({
-            icon: '📋',
-            title: '暂无病历',
-            description: '没有找到符合条件的病历记录',
-            buttonText: '清除筛选',
-            onAdd: () => {
-              this.hospitalFilter = '';
-              this.diagnosisFilter = '';
-              this.filteredRecords = [];
-              for (let i = 0; i < this.records.length; i++) {
-                this.filteredRecords.push(this.records[i]);
-              }
+          Column() {
+            EmptyState({
+              icon: '📋',
+              title: '暂无病历',
+              description: '没有找到符合条件的病历记录',
+              buttonText: '清除筛选',
+              showButton: true
+            })
+          }
+          .width('100%')
+          .onClick(() => {
+            this.hospitalFilter = '';
+            this.diagnosisFilter = '';
+            this.filteredRecords = [];
+            for (let i = 0; i < this.records.length; i++) {
+              this.filteredRecords.push(this.records[i]);
             }
           });
         } else {

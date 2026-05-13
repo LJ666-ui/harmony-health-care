@@ -17,11 +17,6 @@ public class Doctor {
     @TableField("user_id")
     private Long userId;
 
-    @TableField("real_name")
-    private String realName;
-
-    private String phone;
-
     private String hospital;
 
     @TableField("department")
@@ -33,8 +28,6 @@ public class Doctor {
     private String title;
 
     private String specialty;
-
-    private String avatar;
 
     private String description;
 

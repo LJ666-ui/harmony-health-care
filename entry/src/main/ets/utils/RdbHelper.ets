@@ -8,6 +8,7 @@ class RdbHelper {
   private static instance: RdbHelper;
   private rdbStore: relationalStore.RdbStore | null = null;
   private dbPath: string = 'local.db';
+  private initialized: boolean = false;
 
   private constructor() {}
 
@@ -18,6 +19,10 @@ class RdbHelper {
     return RdbHelper.instance;
   }
 
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
   public async init(context: common.UIAbilityContext): Promise<void> {
     try {
       const config: relationalStore.StoreConfig = {
@@ -25,21 +30,28 @@ class RdbHelper {
         securityLevel: relationalStore.SecurityLevel.S1
       };
       this.rdbStore = await relationalStore.getRdbStore(context, config);
+      this.initialized = true;
       hilog.info(0x0000, TAG, 'SQLite DB initialized successfully');
     } catch (error) {
+      this.initialized = false;
       hilog.error(0x0000, TAG, 'Failed to initialize database');
       throw new Error('Failed to initialize database');
     }
   }
 
   public getRdb(): relationalStore.RdbStore {
-    if (!this.rdbStore) {
+    if (!this.initialized || !this.rdbStore) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
       throw new Error('Database not initialized');
     }
     return this.rdbStore;
   }
 
   public async executeSql(sql: string, bindArgs?: Array<string | number | null>): Promise<void> {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       await this.getRdb().executeSql(sql, bindArgs);
     } catch (error) {
@@ -49,6 +61,10 @@ class RdbHelper {
   }
 
   public async query(sql: string, bindArgs?: Array<string | number | null>): Promise<relationalStore.ResultSet> {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       return await this.getRdb().querySql(sql, bindArgs);
     } catch (error) {
@@ -58,6 +74,10 @@ class RdbHelper {
   }
 
   public async insert(table: string, values: relationalStore.ValuesBucket): Promise<number> {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       return await this.getRdb().insert(table, values);
     } catch (error) {
@@ -67,6 +87,10 @@ class RdbHelper {
   }
 
   public async insertOrUpdate(table: string, values: relationalStore.ValuesBucket, idColumn: string, idValue: number): Promise<number> {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       const predicates = new relationalStore.RdbPredicates(table);
       predicates.equalTo(idColumn, idValue);
@@ -91,6 +115,10 @@ class RdbHelper {
   }
 
   public async queryByPredicates(predicates: relationalStore.RdbPredicates, columns?: string[]): Promise<relationalStore.ResultSet> {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       return await this.getRdb().query(predicates, columns || []);
     } catch (error) {
@@ -100,6 +128,10 @@ class RdbHelper {
   }
 
   public async update(table: string, values: relationalStore.ValuesBucket, predicates: relationalStore.RdbPredicates): Promise<number> {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       return await this.getRdb().update(values, predicates);
     } catch (error) {
@@ -109,6 +141,10 @@ class RdbHelper {
   }
 
   public async delete(predicates: relationalStore.RdbPredicates): Promise<number> {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       return await this.getRdb().delete(predicates);
     } catch (error) {
@@ -118,6 +154,10 @@ class RdbHelper {
   }
 
   public beginTransaction(): void {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       this.getRdb().beginTransaction();
     } catch (error) {
@@ -127,6 +167,10 @@ class RdbHelper {
   }
 
   public commit(): void {
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Database not initialized, skip operation');
+      throw new Error('Database not initialized');
+    }
     try {
       this.getRdb().commit();
     } catch (error) {

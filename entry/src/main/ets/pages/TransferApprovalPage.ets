@@ -243,13 +243,17 @@ struct TransferApprovalPage {
           if (this.isLoading) {
             Loading({ text: '加载转院申请...' })
           } else if (this.hasError) {
-            EmptyState({
-              icon: '❌',
-              title: '加载失败',
-              description: '点击下方按钮重试',
-              buttonText: '重试',
-              onAdd: (): void => this.loadApplications()
-            })
+            Column() {
+              EmptyState({
+                icon: '❌',
+                title: '加载失败',
+                description: '点击下方按钮重试',
+                buttonText: '重试',
+                showButton: true
+              })
+            }
+            .width('100%')
+            .onClick((): void => this.loadApplications())
           } else if (this.applications.length === 0) {
             EmptyState({
               icon: '📋',

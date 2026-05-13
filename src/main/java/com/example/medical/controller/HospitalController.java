@@ -1,5 +1,6 @@
 package com.example.medical.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.medical.common.Result;
 import com.example.medical.dto.HospitalDistanceDTO;
@@ -29,7 +30,9 @@ public class HospitalController {
     @GetMapping("/list")
     public Result<List<Hospital>> getHospitalList() {
         try {
-            List<Hospital> hospitals = hospitalService.list();
+            LambdaQueryWrapper<Hospital> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Hospital::getIsDeleted, 0);
+            List<Hospital> hospitals = hospitalService.list(wrapper);
             return Result.success(hospitals);
         } catch (Exception e) {
             e.printStackTrace();
@@ -40,7 +43,7 @@ public class HospitalController {
     @GetMapping("/department/list")
     public Result<List<HospitalDepartment>> getDepartmentList(@RequestParam Long hospitalId) {
         try {
-            List<HospitalDepartment> departments = hospitalDepartmentService.getDepartmentsByHospitalIdWithLocation(hospitalId);
+            List<HospitalDepartment> departments = hospitalDepartmentService.getDepartmentsByHospitalId(hospitalId);
             return Result.success(departments);
         } catch (Exception e) {
             e.printStackTrace();

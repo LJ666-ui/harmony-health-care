@@ -349,14 +349,18 @@ struct MedicalRecordSyncPage {
               DeviceCard({ device: device, isElderMode: this.isElderMode, isSyncing: this.isSyncing, onSelectTargetDevice: (d: DeviceInfo): void => this.selectTargetDevice(d) })
             })
           } else {
-            EmptyState({
-              icon: '📡',
-              title: '未发现可用设备',
-              description: '点击下方按钮刷新设备列表',
-              buttonText: '刷新',
-              onAdd: async (): Promise<void> => {
-                await this.refreshDevices();
-              }
+            Column() {
+              EmptyState({
+                icon: '📡',
+                title: '未发现可用设备',
+                description: '点击下方按钮刷新设备列表',
+                buttonText: '刷新',
+                showButton: true
+              })
+            }
+            .width('100%')
+            .onClick(async (): Promise<void> => {
+              await this.refreshDevices();
             })
           }
 

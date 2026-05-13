@@ -13,7 +13,7 @@ public interface RehabActionService extends IService<RehabAction> {
      * @param pageSize 每页大小（默认10条）
      * @return 分页结果
      */
-    Page<RehabAction> getActionList(int pageNum, int pageSize);
+    Page<RehabAction> getActionList(int pageNum, int pageSize, String keyword);
 
     /**
      * 根据ID查询动作详情

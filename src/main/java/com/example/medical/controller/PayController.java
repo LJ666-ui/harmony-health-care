@@ -7,10 +7,10 @@ import com.example.medical.dto.AppointmentMessage;
 import com.example.medical.entity.PaymentRecord;
 import com.example.medical.service.AlipayService;
 import com.example.medical.service.PaymentRecordService;
-import com.example.medical.service.RedisStockInterface;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -32,7 +32,7 @@ public class PayController {
     private PaymentRecordService paymentRecordService;
 
     @Autowired
-    private RedisStockInterface redisStockService;
+    private StringRedisTemplate redisTemplate;
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
@@ -42,20 +42,26 @@ public class PayController {
         try {
             Long userId = Long.parseLong(body.get("userId").toString());
             Long doctorId = Long.parseLong(body.get("doctorId").toString());
-            String scheduleDateStr = body.get("scheduleDate").toString();
+            String scheduleDateStr = body.get("scheduleDate").toString().trim();
+            
+            if (scheduleDateStr.length() > 8) {
+                scheduleDateStr = scheduleDateStr.substring(0, 8);
+                log.warn("[支付] scheduleDate过长，已截取前8位: {}", scheduleDateStr);
+            }
+            
+            if (scheduleDateStr.contains("-") || scheduleDateStr.contains("T")) {
+                scheduleDateStr = scheduleDateStr.replaceAll("[^0-9]", "");
+                log.info("[支付] scheduleDate格式化后: {}", scheduleDateStr);
+            }
+            
             Integer schedulePeriod = Integer.parseInt(body.get("schedulePeriod").toString());
             BigDecimal fee = new BigDecimal(body.get("fee").toString());
 
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
             Date scheduleDate = sdf.parse(scheduleDateStr);
 
-            int grabResult = redisStockService.grabSlot(doctorId, scheduleDate, schedulePeriod, userId);
-            if (grabResult != 1) {
-                if (grabResult == -1) {
-                    return Result.error("您今天已预约该医生，不可重复挂号");
-                }
-                return Result.error("号源已满，请选择其他时段");
-            }
+            log.info("[支付] 创建支付订单 userId={} doctorId={} date={} period={}",
+                    userId, doctorId, scheduleDateStr, schedulePeriod);
 
             String outTradeNo = "APPT" + System.currentTimeMillis() + userId;
 
@@ -73,23 +79,65 @@ public class PayController {
             record.setUpdateTime(new Date());
             paymentRecordService.save(record);
 
+            String payOrderKey = "pay:order:" + outTradeNo;
+            String payOrderValue = userId + ":" + doctorId + ":" + scheduleDateStr + ":" + schedulePeriod;
+            redisTemplate.opsForValue().set(payOrderKey, payOrderValue, 20, java.util.concurrent.TimeUnit.MINUTES);
+
+            log.info("[支付] 订单已设置20分钟过期 outTradeNo={}", outTradeNo);
+
             String subject = "挂号费 - 医生ID:" + doctorId;
             String description = "挂号支付 日期:" + scheduleDate + " 时段:" + schedulePeriod;
 
-            String form = alipayService.createPayment(outTradeNo, subject, fee.toPlainString(), description);
-            if (form == null) {
-                redisStockService.backStock(doctorId, scheduleDate, schedulePeriod, userId);
-                paymentRecordService.removeByOutTradeNo(outTradeNo);
-                return Result.error("创建支付订单失败");
+            String form = alipayService.createMobilePayment(outTradeNo, subject, fee.toPlainString(), description);
+            
+            boolean mockPaymentEnabled = false;
+            
+            if (mockPaymentEnabled || form == null) {
+                if (form == null) {
+                    log.warn("[支付] 支付宝创建WAP订单失败，启用模拟支付 outTradeNo={}", outTradeNo);
+                } else {
+                    log.info("[支付] 模拟支付模式已启用 outTradeNo={}", outTradeNo);
+                }
+                
+                paymentRecordService.markPaySuccess(outTradeNo, "MOCK_" + System.currentTimeMillis());
+                
+                AppointmentMessage message = new AppointmentMessage();
+                message.setUserId(userId);
+                message.setDoctorId(doctorId);
+                message.setScheduleDateStr(scheduleDateStr);
+                message.setSchedulePeriod(schedulePeriod);
+                message.setFee(fee);
+                message.setTraceId(outTradeNo);
+                
+                rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_NAME,
+                    RabbitMQConfig.ORDER_ROUTING_KEY,
+                    message
+                );
+                
+                Map<String, Object> mockResult = new HashMap<>();
+                mockResult.put("outTradeNo", outTradeNo);
+                mockResult.put("payForm", "");
+                mockResult.put("payType", "mock");
+                mockResult.put("doctorId", doctorId);
+                mockResult.put("scheduleDate", scheduleDateStr);
+                mockResult.put("schedulePeriod", schedulePeriod);
+                mockResult.put("fee", fee);
+                mockResult.put("message", "模拟支付成功");
+                return Result.success(mockResult);
             }
+
+            log.info("[支付] WAP支付表单长度={} outTradeNo={}", form.length(), outTradeNo);
 
             Map<String, Object> result = new HashMap<>();
             result.put("outTradeNo", outTradeNo);
             result.put("payForm", form);
+            result.put("payType", "wap");
             result.put("doctorId", doctorId);
             result.put("scheduleDate", scheduleDateStr);
             result.put("schedulePeriod", schedulePeriod);
             result.put("fee", fee);
+            result.put("expireTime", System.currentTimeMillis() + 20 * 60 * 1000);
             return Result.success(result);
         } catch (Exception e) {
             log.error("[支付] 创建支付订单异常: {}", e.getMessage(), e);

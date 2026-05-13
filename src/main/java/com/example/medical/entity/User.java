@@ -38,9 +38,21 @@ public class User {
     @TableField("user_type")
     private Integer userType;
 
+    @TableField("real_name")
+    private String realName;
+
     @TableField("create_time")
     private Date createTime;
 
     @TableField("is_deleted")
     private Integer isDeleted;
+
+    @TableField("avatar")
+    private String avatar;
+
+    @TableField("status")
+    private Integer status;
+
+    @TableField("update_time")
+    private Date updateTime;
 }

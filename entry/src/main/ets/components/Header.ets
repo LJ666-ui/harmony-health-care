@@ -17,20 +17,20 @@ export struct Header {
   build() {
     Row({ space: 8 }) {
       if (this.showBack) {
-        Column()
-          .width(AccessibilityConfig.getIconButtonSize())
-          .height(AccessibilityConfig.getIconButtonSize())
-          .borderRadius(AccessibilityConfig.getIconButtonSize() / 2)
-          .backgroundColor(AccessibilityConfig.getThemeColor() + '15')
-          .justifyContent(FlexAlign.Center)
-          .accessibilityText('返回')
-          .onClick(() => {
-            router.back();
-          }) {
-            Text('←')
-              .fontSize(AccessibilityConfig.getFontSizeBody())
-              .fontColor(AccessibilityConfig.getThemeColor());
-          }
+        Column() {
+          Text('←')
+            .fontSize(AccessibilityConfig.getFontSizeBody())
+            .fontColor(AccessibilityConfig.getThemeColor());
+        }
+        .width(AccessibilityConfig.getIconButtonSize())
+        .height(AccessibilityConfig.getIconButtonSize())
+        .borderRadius(AccessibilityConfig.getIconButtonSize() / 2)
+        .backgroundColor(AccessibilityConfig.getThemeColor() + '15')
+        .justifyContent(FlexAlign.Center)
+        .accessibilityText('返回')
+        .onClick(() => {
+          router.back();
+        })
       } else {
         Blank().width(AccessibilityConfig.getIconButtonSize());
       }
@@ -45,22 +45,22 @@ export struct Header {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .accessibilityText('页面标题：' + this.title);
 
-      if (this.rightAction) {
-        Column()
-          .width(AccessibilityConfig.getIconButtonSize())
-          .height(AccessibilityConfig.getIconButtonSize())
-          .borderRadius(AccessibilityConfig.getIconButtonSize() / 2)
-          .justifyContent(FlexAlign.Center)
-          .accessibilityText(this.rightAction.label)
-          .onClick(() => {
-            if (this.rightAction && this.rightAction.onClick) {
-              this.rightAction.onClick();
-            }
-          }) {
-            Text(this.rightAction.icon)
-              .fontSize(AccessibilityConfig.getFontSizeBody())
-              .fontColor(AccessibilityConfig.getTextSecondary());
+      if (this.rightAction != null) {
+        Column() {
+          Text(this.rightAction.icon)
+            .fontSize(AccessibilityConfig.getFontSizeBody())
+            .fontColor(AccessibilityConfig.getTextSecondary());
+        }
+        .width(AccessibilityConfig.getIconButtonSize())
+        .height(AccessibilityConfig.getIconButtonSize())
+        .borderRadius(AccessibilityConfig.getIconButtonSize() / 2)
+        .justifyContent(FlexAlign.Center)
+        .accessibilityText(this.rightAction.label)
+        .onClick(() => {
+          if (this.rightAction && this.rightAction.onClick) {
+            this.rightAction.onClick();
           }
+        })
       } else {
         Blank().width(AccessibilityConfig.getIconButtonSize());
       }

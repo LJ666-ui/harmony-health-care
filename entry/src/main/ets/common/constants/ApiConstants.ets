@@ -242,6 +242,16 @@ interface ApiConstantsInterface {
   APPOINTMENT_USER_LIST: string;
   APPOINTMENT_CHECK_AVAILABILITY: string;
   APPOINTMENT_STATISTICS: string;
+  APPOINTMENT_QUEUE_INFO: string;
+  APPOINTMENT_QUEUE_REALTIME: string;
+  APPOINTMENT_CHECK_IN: string;
+  APPOINTMENT_COMPLETE: string;
+  APPOINTMENT_CHECK_EXPIRED: string;
+
+  EXAMINATION_REPORT_LIST: string;
+  EXAMINATION_REPORT_DETAIL: string;
+  EXAMINATION_REPORT_GENERATE: string;
+  EXAMINATION_REPORT_INIT_DEMO: string;
 
   PAY_CREATE: string;
   PAY_STATUS: string;
@@ -250,10 +260,12 @@ interface ApiConstantsInterface {
   SCHEDULE_ADD: string;
   SCHEDULE_LIST: string;
   SCHEDULE_DOCTOR_DATE: string;
+  SCHEDULE_STOCK_QUERY: string;
 
   ADMIN_LOGIN: string;
   ADMIN_INFO: string;
   ADMIN_LOGOUT: string;
+  ADMIN_USER_LIST: string;
 }
 
 export const ApiConstants: ApiConstantsInterface = {
@@ -326,18 +338,18 @@ export const ApiConstants: ApiConstantsInterface = {
   KNOWLEDGE_STATS: '/api/knowledge/stats',
   KNOWLEDGE_RELATED: '/api/knowledge/related',
 
-  REHAB_PLAN_LIST: '/rehab/list',
-  REHAB_PLAN_DETAIL: '/rehab/get/',
-  REHAB_PLAN_ADD: '/rehab/add',
-  REHAB_PLAN_UPDATE: '/rehab/update',
-  REHAB_PLAN_DELETE: '/rehab/delete/',
-  REHAB_ACTION_LIST: '/rehab/action/list',
-  REHAB_ACTION_DETAIL: '/rehab/action/detail/',
-  REHAB_START: '/rehab/start/',
-  REHAB_COMPLETE: '/rehab/complete/',
-  REHAB_HISTORY: '/rehab/history',
-  REHAB_SEARCH: '/rehab/search',
-  REHAB_FUZZY: '/rehab/fuzzy',
+  REHAB_PLAN_LIST: '/api/rehab/list',
+  REHAB_PLAN_DETAIL: '/api/rehab/get/',
+  REHAB_PLAN_ADD: '/api/rehab/add',
+  REHAB_PLAN_UPDATE: '/api/rehab/update',
+  REHAB_PLAN_DELETE: '/api/rehab/delete/',
+  REHAB_ACTION_LIST: '/api/rehab/action/list',
+  REHAB_ACTION_DETAIL: '/api/rehab/action/detail/',
+  REHAB_START: '/api/rehab/start/',
+  REHAB_COMPLETE: '/api/rehab/complete/',
+  REHAB_HISTORY: '/api/rehab/history',
+  REHAB_SEARCH: '/api/rehab/search',
+  REHAB_FUZZY: '/api/rehab/fuzzy',
 
   ARTICLE_LIST: '/healthArticle/list',
   ARTICLE_PAGE: '/healthArticle/page',
@@ -461,6 +473,16 @@ export const ApiConstants: ApiConstantsInterface = {
   APPOINTMENT_USER_LIST: '/appointment/user/',
   APPOINTMENT_CHECK_AVAILABILITY: '/appointment/check-availability',
   APPOINTMENT_STATISTICS: '/appointment/statistics/',
+  APPOINTMENT_QUEUE_INFO: '/appointment/queue-info',
+  APPOINTMENT_QUEUE_REALTIME: '/appointment/queue-realtime',
+  APPOINTMENT_CHECK_IN: '/appointment/',
+  APPOINTMENT_COMPLETE: '/appointment/',
+  APPOINTMENT_CHECK_EXPIRED: '/appointment/check-expired',
+
+  EXAMINATION_REPORT_LIST: '/examination-report/list',
+  EXAMINATION_REPORT_DETAIL: '/examination-report/',
+  EXAMINATION_REPORT_GENERATE: '/examination-report/generate',
+  EXAMINATION_REPORT_INIT_DEMO: '/examination-report/init-demo',
 
   PAY_CREATE: '/pay/create',
   PAY_STATUS: '/pay/status',
@@ -469,8 +491,10 @@ export const ApiConstants: ApiConstantsInterface = {
   SCHEDULE_ADD: '/schedule/add',
   SCHEDULE_LIST: '/schedule/list',
   SCHEDULE_DOCTOR_DATE: '/schedule/doctor/',
+  SCHEDULE_STOCK_QUERY: '/schedule/stock/query',
 
   ADMIN_LOGIN: '/admin/login',
   ADMIN_INFO: '/admin/info',
-  ADMIN_LOGOUT: '/admin/logout'
+  ADMIN_LOGOUT: '/admin/logout',
+  ADMIN_USER_LIST: '/admin/user/list'
 };

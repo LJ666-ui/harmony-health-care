@@ -126,12 +126,12 @@ struct AdminDashboard {
     Row() {
       Button({ type: ButtonType.Normal }) {
         Text('☰')
-          .fontSize(22)
+          .fontSize(20)
           .fontColor('#FFFFFF');
       }
       .width(40)
       .height(40)
-      .backgroundColor('#334155')
+      .backgroundColor('rgba(255,255,255,0.15)')
       .borderRadius(10)
       .onClick(() => {
         this.showSidebar = true;
@@ -144,59 +144,77 @@ struct AdminDashboard {
         .layoutWeight(1)
         .textAlign(TextAlign.Center);
 
-      Row({ space: 6 }) {
-        Text('👤')
-          .fontSize(16);
+      Row({ space: 8 }) {
+        Column() {
+          Text(String((this.currentAdmin?.realName || '管').charAt(0)))
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF');
+        }
+        .width(30)
+        .height(30)
+        .borderRadius(15)
+        .backgroundColor('rgba(255,255,255,0.25)')
+        .justifyContent(FlexAlign.Center);
+
         Text(this.currentAdmin ? this.currentAdmin.realName : '管理员')
           .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-          .fontColor('#FFFFFFCC');
+          .fontColor('#FFFFFFDD');
       }
       .onClick(() => {
         this.showSidebar = true;
       });
     }
     .width('100%')
-    .height(56)
+    .height(58)
     .padding({ left: 16, right: 16 })
-    .backgroundColor('#1E293B')
+    .linearGradient({
+      direction: GradientDirection.Right,
+      colors: [['#1E293B', 0], ['#334155', 0.5], ['#1E3A5F', 1]]
+    })
     .justifyContent(FlexAlign.SpaceBetween)
     .alignItems(VerticalAlign.Center);
   }
 
   @Builder
   StatsSection() {
-    Column({ space: 12 }) {
-      Text('数据概览')
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-        .fontWeight(FontWeight.Bold)
-        .fontColor(GlobalTheme.TEXT_PRIMARY)
-        .width('100%');
+    Column({ space: 14 }) {
+      Row() {
+        Text('数据概览')
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1A1A2E');
+        Blank();
+        Text('实时统计')
+          .fontSize(11)
+          .fontColor('#52C41A')
+          .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+          .backgroundColor('#52C41A12')
+          .borderRadius(10);
+      }
+      .width('100%');
 
       if (this.isLoadingStats) {
         Row() {
-          LoadingProgress()
-            .width(40)
-            .height(40)
-            .color('#1677FF');
+          LoadingProgress().width(36).height(36).color('#1677FF');
         }
-        .width('100%')
-        .justifyContent(FlexAlign.Center)
-        .padding(20);
+        .width('100%').height(120).justifyContent(FlexAlign.Center);
       } else {
-        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-          this.StatCard('👥', this.userCount, '注册用户', '#1677FF');
-          this.StatCard('👨‍👩‍👧', this.familyCount, '家属记录', '#52C41A');
-          this.StatCard('🏥', this.doctorCount, '医生用户', '#FAAD14');
-          this.StatCard('🛡️', this.adminCount, '管理员', '#8B5CF6');
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+          this.StatCard('👥', this.userCount, '注册用户', '#1677FF', '+12%', true);
+          this.StatCard('👨‍👩‍👧', this.familyCount, '家属记录', '#52C41A', '+5%', false);
+          this.StatCard('🏥', this.doctorCount, '医生用户', '#FAAD14', '+3', false);
+          this.StatCard('🛡️', this.adminCount, '管理员', '#8B5CF6', '', false);
         }
         .width('100%');
       }
     }
     .width('100%')
-    .padding(16)
+    .padding(18)
     .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .margin({ top: 12, left: 12, right: 12 });
+    .borderRadius(16)
+    .margin({ top: 14, left: 14, right: 14 })
+    .shadow({ radius: 16, color: '#00000006', offsetX: 0, offsetY: 4 });
   }
 
   @Builder
@@ -241,26 +259,42 @@ struct AdminDashboard {
   }
 
   @Builder
-  StatCard(icon: string, value: number, label: string, color: string) {
-    Column({ space: 8 }) {
-      Text(icon)
-        .fontSize(28);
+  StatCard(icon: string, value: number, label: string, color: string, trend?: string, isHot?: boolean) {
+    Column({ space: 10 }) {
+      Row() {
+        Text(icon)
+          .fontSize(26);
+        Blank();
+        if (trend && trend.length > 0) {
+          Text(trend)
+            .fontSize(11)
+            .fontColor(isHot ? '#FF4D4F' : '#52C41A')
+            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+            .backgroundColor((isHot ? '#FF4D4F' : '#52C41A') + '12')
+            .borderRadius(6);
+        }
+      }
+      .width('100%');
+
       Text(value.toString())
-        .fontSize(24)
+        .fontSize(28)
         .fontWeight(FontWeight.Bold)
-        .fontColor(color);
-      Text(label)
-        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-        .fontColor(GlobalTheme.TEXT_SECONDARY);
+        .fontColor('#1A1A2E');
+
+      Row() {
+        Text(label)
+          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
+          .fontColor('#888');
+      }
     }
-    .width('47%')
+    .width('48%')
     .padding(16)
-    .backgroundColor('#F8FAFC')
-    .borderRadius(12)
-    .border({ width: 1, color: '#E2E8F0', style: BorderStyle.Solid })
-    .margin({ bottom: 8 })
-    .justifyContent(FlexAlign.Center)
-    .alignItems(HorizontalAlign.Center);
+    .backgroundColor(color + '08')
+    .borderRadius(14)
+    .border({ width: { left: 3 }, color: color, style: BorderStyle.Solid })
+    .justifyContent(FlexAlign.Start)
+    .alignItems(HorizontalAlign.Start)
+    .margin({ bottom: 8 });
   }
 
   @Builder
@@ -275,21 +309,31 @@ struct AdminDashboard {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         ForEach(this.tabs, (tab: string, index: number) => {
           if (index > 0) {
-            Column({ space: 6 }) {
+            Row({ space: 10 }) {
               Text(this.tabIcons[index])
-                .fontSize(24);
-              Text(tab)
-                .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                .fontColor(GlobalTheme.TEXT_SECONDARY);
+                .fontSize(22);
+              Column({ space: 2 }) {
+                Text(tab)
+                  .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor('#333');
+                Text(this.getTabDesc(index))
+                  .fontSize(10)
+                  .fontColor('#AAA');
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1);
+
+              Text('→')
+                .fontSize(14)
+                .fontColor('#CCC');
             }
-            .width('47%')
-            .padding(16)
+            .width('48%')
+            .padding({ left: 14, right: 14, top: 14, bottom: 14 })
             .backgroundColor('#FFFFFF')
             .borderRadius(12)
-            .border({ width: 1, color: '#E2E8F0', style: BorderStyle.Solid })
+            .shadow({ radius: 6, color: '#00000004', offsetX: 0, offsetY: 2 })
             .margin({ bottom: 8 })
-            .justifyContent(FlexAlign.Center)
-            .alignItems(HorizontalAlign.Center)
             .onClick(() => {
               if (index === 3 && this.currentAdmin && this.currentAdmin.role !== 1) {
                 return;
@@ -302,59 +346,94 @@ struct AdminDashboard {
       .width('100%');
     }
     .width('100%')
-    .padding(16)
+    .padding(18)
     .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .margin({ top: 12, left: 12, right: 12 });
+    .borderRadius(16)
+    .margin({ top: 14, left: 14, right: 14 })
+    .shadow({ radius: 12, color: '#00000005', offsetX: 0, offsetY: 3 });
+  }
+
+  getTabDesc(index: number): string {
+    const descs: string[] = ['', '全局运营监控', '用户数据管理', '家属信息维护', '权限管理'];
+    return descs[index] || '';
   }
 
   @Builder
   RecentSection() {
-    Column({ space: 12 }) {
-      Text('最近注册用户')
-        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-        .fontWeight(FontWeight.Bold)
-        .fontColor(GlobalTheme.TEXT_PRIMARY)
-        .width('100%');
+    Column({ space: 14 }) {
+      Row() {
+        Text('最近注册用户')
+          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1A1A2E');
+        Blank();
+        Text(`最新 ${this.recentUsers.length} 位`)
+          .fontSize(11)
+          .fontColor('#999')
+          .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+          .backgroundColor('#F5F5F5')
+          .borderRadius(10);
+      }
+      .width('100%');
 
       if (this.recentUsers.length === 0) {
-        Text('暂无数据')
-          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-          .fontColor(GlobalTheme.TEXT_HINT)
-          .width('100%')
-          .textAlign(TextAlign.Center)
-          .padding(20);
-      } else {
         Column({ space: 8 }) {
+          Text('📭').fontSize(36);
+          Text('暂无注册数据')
+            .fontSize(13)
+            .fontColor('#AAA');
+        }
+        .width('100%').height(140).justifyContent(FlexAlign.Center);
+      } else {
+        Column({ space: 6 }) {
           ForEach(this.recentUsers, (user: UserInfo, index: number) => {
             Row({ space: 12 }) {
-              Text('👤')
-                .fontSize(20);
-              Column({ space: 4 }) {
+              Column() {
+                Text(String((user.real_name || user.realName || user.username || 'U').charAt(0)))
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FFFFFF')
+                  .width(34)
+                  .height(34)
+                  .borderRadius(12)
+                  .backgroundColor(index % 3 === 0 ? '#1677FF' : index % 3 === 1 ? '#52C41A' : '#8B5CF6');
+              }
+              .width(34)
+              .height(34)
+              .borderRadius(12)
+              .justifyContent(FlexAlign.Center);
+
+              Column({ space: 3 }) {
                 Text(user.real_name || user.realName || user.username)
                   .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                  .fontColor(GlobalTheme.TEXT_PRIMARY)
-                  .fontWeight(FontWeight.Medium);
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor('#333');
                 Text(user.create_time || user.createTime || '未知时间')
-                  .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                  .fontColor(GlobalTheme.TEXT_SECONDARY);
+                  .fontSize(11)
+                  .fontColor('#BBB');
               }
-              .alignItems(HorizontalAlign.Start);
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1);
+
+              Text(`${index + 1}`)
+                .fontSize(12)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#DDD');
             }
             .width('100%')
-            .padding(12)
-            .backgroundColor('#F8FAFC')
-            .borderRadius(8);
+            .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+            .backgroundColor('#FAFAFA')
+            .borderRadius(10);
           }, (user: UserInfo, index: number) => `${index}`);
         }
-        .width('100%');
       }
     }
     .width('100%')
-    .padding(16)
+    .padding(18)
     .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .margin({ top: 12, left: 12, right: 12, bottom: 24 });
+    .borderRadius(16)
+    .margin({ top: 14, left: 14, right: 14, bottom: 24 })
+    .shadow({ radius: 12, color: '#00000005', offsetX: 0, offsetY: 3 });
   }
 
   @Builder

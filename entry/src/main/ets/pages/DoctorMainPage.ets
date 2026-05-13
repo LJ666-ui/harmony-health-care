@@ -1,8 +1,9 @@
 import { router } from '@kit.ArkUI';
-import { HttpUtil } from '../common/utils/HttpUtil';
+import { HttpUtil, RequestOptions } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { SettingsUtil, PersistedUserInfo } from '../utils/SettingsUtil';
 import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
+import promptAction from '@ohos.promptAction';
 
 export class PatientConvItem {
   otherUserId: number = 0;
@@ -21,6 +22,8 @@ interface QuickAction {
   title: string;
   color: string;
   route: string;
+  badge?: number;
+  group?: string;
 }
 
 @Entry
@@ -42,13 +45,14 @@ struct DoctorMainPage {
   private pollTimerId: number = -1;
 
   private quickActions: QuickAction[] = [
-    { id: 'patients', icon: '👥', title: '患者管理', color: '#1677FF', route: 'pages/DoctorPatientListPage' },
-    { id: 'medical_records', icon: '📋', title: '病历管理', color: '#52C41A', route: 'pages/DoctorMedicalRecordListPage' },
-    { id: 'prescriptions', icon: '💊', title: '处方管理', color: '#FA8C16', route: 'pages/DoctorPrescriptionListPage' },
-    { id: 'follow_up', icon: '🔔', title: '复诊管理', color: '#E74C3C', route: 'pages/DoctorFollowUpPage' },
-    { id: 'consultations', icon: '💬', title: '在线问诊', color: '#13C2C2', route: '' },
-    { id: 'schedule', icon: '📅', title: '排班管理', color: '#722ED1', route: 'pages/DoctorSchedulePage' },
-    { id: 'consultation_management', icon: '🏥', title: '会诊管理', color: '#52C41A', route: 'pages/ConsultationManagementPage' }
+    { id: 'patients', icon: '👥', title: '患者管理', color: '#1677FF', route: 'pages/DoctorPatientListPage', group: '核心业务' },
+    { id: 'medical_records', icon: '📋', title: '病历管理', color: '#52C41A', route: 'pages/DoctorMedicalRecordListPage', group: '核心业务' },
+    { id: 'prescriptions', icon: '💊', title: '处方管理', color: '#FA8C16', route: 'pages/DoctorPrescriptionListPage', group: '核心业务' },
+    { id: 'follow_up', icon: '🔔', title: '复诊管理', color: '#E74C3C', route: 'pages/DoctorFollowUpPage', group: '核心业务' },
+    { id: 'consultations', icon: '💬', title: '在线问诊', color: '#13C2C2', route: '', badge: 0, group: '沟通服务' },
+    { id: 'consultation_management', icon: '🏥', title: '会诊管理', color: '#52C41A', route: 'pages/ConsultationManagementPage', group: '协作交流' },
+    { id: 'notification', icon: '🔔', title: '通知中心', color: '#F5222D', route: '', group: '消息通知' },
+    { id: 'settings', icon: '⚙️', title: '系统设置', color: '#8C8C8C', route: '', group: '系统功能' }
   ];
 
   aboutToAppear(): void {
@@ -82,55 +86,71 @@ struct DoctorMainPage {
 
   private loadDoctorInfo(): void {
     console.log('[DoctorMainPage] loadDoctorInfo 开始执行');
-    
-    // 从 AppStorage 中读取医生信息
+
+    const requestOptions: RequestOptions = {} as RequestOptions;
+    const params: Record<string, Object> = {} as Record<string, Object>;
+    console.log('[DoctorMainPage] Token: 存在');
+
+    if (this.currentUserId > 0) {
+      console.log('[DoctorMainPage] 从API获取最新医生信息...');
+      HttpUtil.get<Record<string, Object>>(`${ApiConstants.DOCTOR_INFO.replace(/\/$/, '')}`, params, requestOptions)
+        .then((response: object) => {
+          console.log('[DoctorMainPage] API返回数据:', JSON.stringify(response));
+          
+          const res = response as Record<string, Object>;
+          if (res['code'] === 200 && res['data']) {
+            const data = res['data'] as Record<string, Object>;
+            console.log('[DoctorMainPage] 解析医生数据:', JSON.stringify(data));
+            
+            this.doctorInfo = DoctorInfoHelper.fromJson(data);
+            this.doctorName = this.doctorInfo.realName || '医生';
+            
+            AppStorage.setOrCreate<DoctorInfo>('doctorInfo', this.doctorInfo);
+            console.log('[DoctorMainPage] 从API加载完成，姓名:', this.doctorName);
+          } else {
+            console.warn('[DoctorMainPage] API返回异常，使用本地缓存');
+            this.loadFromLocalCache();
+          }
+        })
+        .catch((error: Error) => {
+          console.error('[DoctorMainPage] API调用失败:', error.message);
+          this.loadFromLocalCache();
+        });
+    } else {
+      console.warn('[DoctorMainPage] Token或userId缺失，从本地加载');
+      this.loadFromLocalCache();
+    }
+  }
+
+  private loadFromLocalCache(): void {
     const doctorInfoFromStorage = AppStorage.get<DoctorInfo>('doctorInfo');
-    console.log('[DoctorMainPage] 从AppStorage获取的doctorInfo:', doctorInfoFromStorage ? '存在' : '不存在');
     
-    // ✅ 始终确保 doctorInfo 是有效的 DoctorInfo 对象
     if (doctorInfoFromStorage) {
-      console.log('[DoctorMainPage] doctorInfoFromStorage 类型:', typeof doctorInfoFromStorage);
-      
-      // 确保是 DoctorInfo 类型，如果不是则进行转换
       if (doctorInfoFromStorage instanceof DoctorInfo) {
-        console.log('[DoctorMainPage] 直接使用 DoctorInfo 实例');
         this.doctorInfo = doctorInfoFromStorage;
       } else {
-        console.log('[DoctorMainPage] 需要类型转换，原始数据:', JSON.stringify(doctorInfoFromStorage));
         this.doctorInfo = DoctorInfoHelper.fromJson(doctorInfoFromStorage as Record<string, Object>);
       }
       this.doctorName = this.doctorInfo.realName || '医生';
-      console.log('[DoctorMainPage] 医生姓名已设置:', this.doctorName);
     } else {
-      // ✅ 如果没有存储的信息，使用空的 DoctorInfo 对象（已通过初始化保证不为 null）
-      console.log('[DoctorMainPage] AppStorage中无doctorInfo，使用默认值');
       this.doctorName = '医生';
       
-      // 尝试从 SettingsUtil 读取
-      console.log('[DoctorMainPage] 尝试从 SettingsUtil 读取...');
       const settings: SettingsUtil = SettingsUtil.getInstance();
       settings.getUserInfo().then((info: PersistedUserInfo | null) => {
-        console.log('[DoctorMainPage] SettingsUtil 返回:', info ? '有数据' : '无数据');
-        
         if (info && info.doctorInfo) {
           this.doctorName = info.doctorInfo.realName || info.username || '医生';
-          
-          // 安全地从 PersistedDoctorInfo 转换为 DoctorInfo
           const rawInfo = info.doctorInfo as Record<string, Object>;
-          console.log('[DoctorMainPage] 原始 doctorInfo 数据:', JSON.stringify(rawInfo));
           const docInfo: DoctorInfo = DoctorInfoHelper.fromJson(rawInfo);
           
           if (info.doctorInfo.id) { docInfo.id = info.doctorInfo.id as number; }
           if (info.userId) { docInfo.userId = info.userId; }
           
           this.doctorInfo = docInfo;
-          console.log('[DoctorMainPage] 从SettingsUtil加载完成，姓名:', this.doctorName);
         } else if (info && info.username) {
           this.doctorName = info.username;
-          console.log('[DoctorMainPage] 使用 username 作为显示名:', this.doctorName);
         }
       }).catch((err: Error) => {
-        console.error('[DoctorMainPage] 从SettingsUtil读取失败:', err.message);
+        console.error('[DoctorMainPage] SettingsUtil读取失败:', err.message);
       });
     }
   }
@@ -289,6 +309,45 @@ struct DoctorMainPage {
     return '剩余' + days + '天' + (remainH > 0 ? remainH + '小时' : '');
   }
 
+  private handleQuickActionClick(action: QuickAction): void {
+    console.log('[DoctorMainPage] 快捷功能点击:', action.id, action.title);
+
+    switch (action.id) {
+      case 'consultations':
+        this.currentTab = 1;
+        break;
+
+      case 'notification':
+        this.showToast('通知中心功能开发中...');
+        break;
+
+      case 'statistics':
+        this.showToast('统计分析功能开发中...');
+        break;
+
+      case 'settings':
+        this.currentTab = 2;
+        break;
+
+      default:
+        if (action.route) {
+          try {
+            router.pushUrl({ url: action.route });
+          } catch (error) {
+            console.error('导航失败:', error);
+            this.showToast('页面跳转失败');
+          }
+        } else {
+          this.showToast(action.title + '功能开发中...');
+        }
+        break;
+    }
+  }
+
+  private showToast(message: string): void {
+    console.log('[DoctorMainPage] Toast提示:', message);
+  }
+
   build() {
     Column() {
       Row() {
@@ -380,7 +439,30 @@ struct DoctorMainPage {
   @Builder
   buildHomePage() {
     Scroll() {
-      Column({ space: 12 }) {
+      Column({ space: 8 }) {
+        Row() {
+          Column({ space: 6 }) {
+            Text(`您好，${this.doctorName || '医生'} ${this.doctorInfo.title || ''}`)
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#1677FF');
+            Text(new Date().getHours() < 12 ? '上午好，祝您工作愉快！' : new Date().getHours() < 18 ? '下午好，请注意休息！' : '晚上好，辛苦了！')
+              .fontSize(13)
+              .fontColor('#666666');
+          }
+          .alignItems(HorizontalAlign.Start);
+
+          Blank();
+
+          Text('👨‍⚕️')
+            .fontSize(40);
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+        .backgroundColor('#FFFFFF')
+        .borderRadius(16)
+        .shadow({ radius: 6, color: '#00000008', offsetX: 0, offsetY: 2 });
+
         // ✅ 医生信息卡片 - doctorInfo 现在永远不为 null
         Row({ space: 12 }) {
             Column({ space: 4 }) {
@@ -429,235 +511,72 @@ struct DoctorMainPage {
             .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
           }
           .width('100%')
-          .padding({ left: 16, right: 16, top: 12, bottom: 6 });
+          .padding({ left: 16, right: 16, top: 8, bottom: 4 });
         
         // 快捷功能入口
-        Column({ space: 12 }) {
+        Column({ space: 16 }) {
           Text('快捷功能')
-            .fontSize(16)
+            .fontSize(18)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
+            .fontColor('#1F2937')
             .width('100%')
             .padding({ left: 16, right: 16 });
 
           Grid() {
             ForEach(this.quickActions, (action: QuickAction) => {
               GridItem() {
-                Column({ space: 8 }) {
-                  Text(action.icon)
-                    .fontSize(28);
+                Stack({ alignContent: Alignment.TopEnd }) {
+                  Column({ space: 10 }) {
+                    Text(action.icon)
+                      .fontSize(32);
 
-                  Text(action.title)
-                    .fontSize(12)
-                    .fontColor('#333333')
-                    .textAlign(TextAlign.Center)
-                    .maxLines(1)
-                    .textOverflow({ overflow: TextOverflow.Ellipsis });
-                }
-                .width('100%')
-                .padding(12)
-                .backgroundColor('#FFFFFF')
-                .borderRadius(12)
-                .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
-                .onClick(() => {
-                  if (action.id === 'consultations') {
-                    // 跳转到对话Tab
-                    this.currentTab = 1;
-                  } else if (action.route) {
-                    try {
-                      router.pushUrl({ url: action.route });
-                    } catch (error) {
-                      console.error('导航失败:', error);
-                    }
+                    Text(action.title)
+                      .fontSize(12)
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor('#374151')
+                      .textAlign(TextAlign.Center)
+                      .maxLines(1)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis });
                   }
+                  .width('100%')
+                  .padding({ top: 16, bottom: 12 })
+                  .backgroundColor('#FFFFFF')
+                  .borderRadius(16)
+                  .shadow({
+                    radius: 8,
+                    color: '#0000000D',
+                    offsetX: 0,
+                    offsetY: 4
+                  })
+                  .border({
+                    width: action.id === 'consultations' ? 2 : 0,
+                    color: action.id === 'consultations' ? '#13C2C2' : '#FFFFFF'
+                  });
+
+                  if (action.badge !== undefined && action.badge !== null && action.badge > 0) {
+                    Text(action.badge > 99 ? '99+' : action.badge.toString())
+                      .fontSize(10)
+                      .fontWeight(FontWeight.Bold)
+                      .fontColor('#FFFFFF')
+                      .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                      .borderRadius(10)
+                      .backgroundColor('#FF4D4F')
+                      .margin({ top: 8, right: 8 });
+                  }
+                }
+                .onClick(() => {
+                  this.handleQuickActionClick(action);
                 });
               }
             }, (action: QuickAction) => action.id)
           }
-          .columnsTemplate('1fr 1fr')
-          .rowsGap(12)
+          .columnsTemplate('1fr 1fr 1fr 1fr')
+          .rowsGap(16)
           .columnsGap(12)
           .width('100%')
           .padding({ left: 16, right: 16 });
         }
         .width('100%');
-
-        // 患者咨询卡片
-        Column() {
-          Row() {
-            Column({ space: 4 }) {
-              Text('患者咨询')
-                .fontSize(22)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#FFFFFF');
-              Text('仅可回复已联系您的患者')
-                .fontSize(12)
-                .fontColor('#FFFFFFAA');
-            }
-            .alignItems(HorizontalAlign.Start);
-
-            Blank();
-
-            if (this.totalUnread > 0) {
-              Badge({
-                value: this.totalUnread > 99 ? '99+' : this.totalUnread.toString(),
-                position: BadgePosition.RightTop,
-                style: { fontSize: 10, badgeSize: 18, badgeColor: '#FF4D4F' }
-              }) {
-                Text('💬')
-                  .fontSize(36);
-              }
-            } else {
-              Text('💬')
-                .fontSize(36);
-            }
-          }
-          .width('100%')
-          .padding(20);
-
-          Row({ space: 12 }) {
-            Column() {
-              Text(this.conversations.length.toString())
-                .fontSize(24)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#FFFFFF');
-              Text('活跃患者')
-                .fontSize(11)
-                .fontColor('#FFFFFFAA');
-            }
-            .layoutWeight(1)
-            .padding({ top: 12, bottom: 12 })
-            .borderRadius(12)
-            .backgroundColor('#FFFFFF15');
-
-            Column() {
-              Text(this.totalUnread.toString())
-                .fontSize(24)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#FFFFFF');
-              Text('未读消息')
-                .fontSize(11)
-                .fontColor('#FFFFFFAA');
-            }
-            .layoutWeight(1)
-            .padding({ top: 12, bottom: 12 })
-            .borderRadius(12)
-            .backgroundColor('#FFFFFF15');
-
-            Column() {
-              Text('48h')
-                .fontSize(24)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#FFFFFF');
-              Text('对话有效期')
-                .fontSize(11)
-                .fontColor('#FFFFFFAA');
-            }
-            .layoutWeight(1)
-            .padding({ top: 12, bottom: 12 })
-            .borderRadius(12)
-            .backgroundColor('#FFFFFF15');
-          }
-          .width('100%')
-          .padding({ left: 20, right: 20, bottom: 20 });
-        }
-        .width('100%')
-        .linearGradient({ angle: 135, colors: [['#1677FF', 0], ['#36CFC9', 1]] })
-        .borderRadius({ bottomLeft: 24, bottomRight: 24 })
-        .padding({ left: 16, right: 16 });
-
-        Row() {
-          Text('⚠️ 对话规则：患者主动联系后，您才可回复；对话48小时后自动消失')
-            .fontSize(11)
-            .fontColor('#FAAD14')
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis });
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, top: 10, bottom: 6 })
-        .backgroundColor('#FFFBE6');
-
-        if (!this.isLoading && this.conversations.length > 0) {
-          Column({ space: 10 }) {
-            Text('最近咨询')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#333333')
-              .width('100%')
-              .padding({ left: 16, right: 16 });
-
-            ForEach(this.conversations.slice(0, 3), (conv: PatientConvItem) => {
-              Row() {
-                Stack({ alignContent: Alignment.Center }) {
-                  Circle()
-                    .width(44)
-                    .height(44)
-                    .fill('#36CFC9');
-                  Text(conv.otherUserName.charAt(0))
-                    .fontSize(18)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#FFFFFF');
-                }
-                .margin({ right: 12 });
-
-                Column({ space: 4 }) {
-                  Row() {
-                    Text(conv.otherUserName)
-                      .fontSize(15)
-                      .fontWeight(FontWeight.Bold)
-                      .fontColor('#333333');
-
-                    Text(conv.otherUserType === 1 ? '家属' : '患者')
-                      .fontSize(10)
-                      .fontColor('#FFFFFF')
-                      .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                      .backgroundColor(conv.otherUserType === 1 ? '#FA8C16' : '#36CFC9')
-                      .borderRadius(4)
-                      .margin({ left: 6 });
-
-                    Blank();
-
-                    Text(this.formatTime(conv.lastTime))
-                      .fontSize(11)
-                      .fontColor('#BBBBBB');
-                  }
-                  .width('100%');
-
-                  Row() {
-                    Text(conv.lastMessage.length > 25 ? conv.lastMessage.substring(0, 25) + '...' : conv.lastMessage)
-                      .fontSize(13)
-                      .fontColor('#888888')
-                      .layoutWeight(1)
-                      .maxLines(1)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis });
-
-                    if (conv.unreadCount > 0) {
-                      Text(conv.unreadCount > 99 ? '99+' : conv.unreadCount.toString())
-                        .fontSize(10)
-                        .fontColor('#FFFFFF')
-                        .padding({ left: 5, right: 5, top: 2, bottom: 2 })
-                        .backgroundColor('#FF4D4F')
-                        .borderRadius(10);
-                    }
-                  }
-                  .width('100%');
-                }
-                .layoutWeight(1)
-                .alignItems(HorizontalAlign.Start);
-              }
-              .width('100%')
-              .padding(14)
-              .backgroundColor('#FFFFFF')
-              .borderRadius(12)
-              .shadow({ radius: 6, color: '#00000008', offsetX: 0, offsetY: 2 })
-              .onClick(() => {
-                this.currentTab = 1;
-              });
-            }, (conv: PatientConvItem) => conv.otherUserId.toString());
-          }
-          .width('100%')
-          .padding({ bottom: 16 });
-        }
       }
       .width('100%')
       .alignItems(HorizontalAlign.Start);
@@ -670,325 +589,492 @@ struct DoctorMainPage {
 
   @Builder
   buildConversationList() {
-    if (this.conversations.length === 0) {
-      Column() {
-        Text('🩺')
-          .fontSize(56)
-          .margin({ bottom: 16 });
-        Text('暂无患者咨询')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#333333')
-          .margin({ bottom: 8 });
-        Text('患者主动联系您后，对话将在此显示')
-          .fontSize(13)
-          .fontColor('#999999')
-          .textAlign(TextAlign.Center)
-          .width('75%')
-          .lineHeight(20);
+    Column() {
+      this.buildConsultationCard();
+
+      if (this.isLoading) {
+        Column() {
+          Text('加载中...')
+            .fontSize(16)
+            .fontColor('#999999');
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center);
+      } else if (this.conversations.length === 0) {
+        Column() {
+          Text('🩺')
+            .fontSize(56)
+            .margin({ bottom: 16 });
+          Text('暂无患者咨询')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#333333')
+            .margin({ bottom: 8 });
+          Text('患者主动联系您后，对话将在此显示')
+            .fontSize(13)
+            .fontColor('#999999')
+            .textAlign(TextAlign.Center)
+            .width('75%')
+            .lineHeight(20);
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center);
+      } else {
+        Scroll(this.scroller) {
+          Column() {
+            ForEach(this.conversations, (conv: PatientConvItem, index: number) => {
+              this.buildConversationCard(conv);
+            }, (conv: PatientConvItem) => conv.otherUserId.toString() + '_' + (conv.lastTime || ''));
+          }
+          .width('100%')
+          .padding({ top: 8, bottom: 48 });
+        }
+        .height(0)
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top);
+      }
+    }
+    .width('100%')
+    .layoutWeight(1)
+    .backgroundColor('#F5F7FA')
+    .padding({ top: 0 });
+  }
+
+  @Builder
+  buildConsultationCard() {
+    Column() {
+      Row() {
+        Column({ space: 4 }) {
+          Text('患者咨询')
+            .fontSize(22)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF');
+          Text('仅可回复已联系您的患者')
+            .fontSize(12)
+            .fontColor('#FFFFFFAA');
+        }
+        .alignItems(HorizontalAlign.Start);
+
+        Blank();
+
+        if (this.totalUnread > 0) {
+          Badge({
+            value: this.totalUnread > 99 ? '99+' : this.totalUnread.toString(),
+            position: BadgePosition.RightTop,
+            style: { fontSize: 10, badgeSize: 18, badgeColor: '#FF4D4F' }
+          }) {
+            Text('💬')
+              .fontSize(36);
+          }
+        } else {
+          Text('💬')
+            .fontSize(36);
+        }
       }
       .width('100%')
-      .layoutWeight(1)
-      .justifyContent(FlexAlign.Center);
-    } else {
-      Scroll(this.scroller) {
+      .padding(20);
+
+      Row({ space: 12 }) {
         Column() {
-          ForEach(this.conversations, (conv: PatientConvItem, index: number) => {
-            Column() {
-              Row() {
-                Stack({ alignContent: Alignment.Center }) {
-                  Circle()
-                    .width(50)
-                    .height(50)
-                    .fill('#36CFC9');
-                  // ✅ 安全访问 otherUserName，确保不为空
-                  Text((conv.otherUserName && conv.otherUserName.length > 0) ? conv.otherUserName.charAt(0) : '?')
-                    .fontSize(20)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#FFFFFF');
-                }
-                .margin({ right: 14 });
+          Text(this.conversations.length.toString())
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF');
+          Text('活跃患者')
+            .fontSize(11)
+            .fontColor('#FFFFFFAA');
+        }
+        .layoutWeight(1)
+        .padding({ top: 12, bottom: 12 })
+        .borderRadius(12)
+        .backgroundColor('#FFFFFF15');
 
-                Column({ space: 4 }) {
-                  Row() {
-                    // ✅ 安全显示用户名，提供默认值
-                    Text(conv.otherUserName || '未知用户')
-                      .fontSize(16)
-                      .fontWeight(FontWeight.Bold)
-                      .fontColor('#333333');
+        Column() {
+          Text(this.totalUnread.toString())
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF');
+          Text('未读消息')
+            .fontSize(11)
+            .fontColor('#FFFFFFAA');
+        }
+        .layoutWeight(1)
+        .padding({ top: 12, bottom: 12 })
+        .borderRadius(12)
+        .backgroundColor('#FFFFFF15');
 
-                    Text(conv.otherUserType === 1 ? '家属' : '患者')
-                      .fontSize(11)
-                      .fontColor('#FFFFFF')
-                      .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-                      .backgroundColor(conv.otherUserType === 1 ? '#FA8C16' : '#36CFC9')
-                      .borderRadius(4)
-                      .margin({ left: 8 });
+        Column() {
+          Text('48h')
+            .fontSize(24)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF');
+          Text('对话有效期')
+            .fontSize(11)
+            .fontColor('#FFFFFFAA');
+        }
+        .layoutWeight(1)
+        .padding({ top: 12, bottom: 12 })
+        .borderRadius(12)
+        .backgroundColor('#FFFFFF15');
+      }
+      .width('100%')
+      .padding({ left: 20, right: 20, bottom: 20 });
+    }
+    .width('100%')
+    .linearGradient({ angle: 135, colors: [['#1677FF', 0], ['#36CFC9', 1]] })
+    .borderRadius({ bottomLeft: 24, bottomRight: 24 });
 
-                    Blank();
+    Row() {
+      Text('ℹ️ 对话规则：患者主动联系后，您才可回复；对话48小时后自动消失')
+        .fontSize(11)
+        .fontColor('#1677FF')
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis });
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 10, bottom: 6 })
+    .backgroundColor('#E8F0FF');
+  }
 
-                    Text(this.formatTime(conv.lastTime))
-                      .fontSize(11)
-                      .fontColor('#BBBBBB');
-                  }
-                  .width('100%');
+  @Builder
+  buildConversationCard(conv: PatientConvItem) {
+    Column() {
+      Row() {
+        Stack({ alignContent: Alignment.Center }) {
+          Circle()
+            .width(50)
+            .height(50)
+            .fill('#36CFC9');
+          Text((conv.otherUserName && conv.otherUserName.length > 0) ? conv.otherUserName.charAt(0) : '?')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFFFFF');
+        }
+        .margin({ right: 14 });
 
-                  Row() {
-                    // ✅ 安全截取消息文本，防止空字符串问题（不能在 build 中使用 const）
-                    Text(((conv.lastMessage || '暂无消息').length > 20) ? 
-                      (conv.lastMessage || '暂无消息').substring(0, 20) + '...' : 
-                      (conv.lastMessage || '暂无消息'))
-                      .fontSize(13)
-                      .fontColor('#888888')
-                      .layoutWeight(1)
-                      .maxLines(1)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis });
+        Column({ space: 4 }) {
+          Row() {
+            Text(conv.otherUserName || '未知用户')
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333333');
 
-                    if (conv.unreadCount > 0) {
-                      Text(conv.unreadCount > 99 ? '99+' : conv.unreadCount.toString())
-                        .fontSize(11)
-                        .fontColor('#FFFFFF')
-                        .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                        .backgroundColor('#FF4D4F')
-                        .borderRadius(10);
-                    }
-                  }
-                  .width('100%');
+            Text(conv.otherUserType === 1 ? '家属' : '患者')
+              .fontSize(11)
+              .fontColor('#FFFFFF')
+              .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+              .backgroundColor(conv.otherUserType === 1 ? '#FA8C16' : '#36CFC9')
+              .borderRadius(4)
+              .margin({ left: 8 });
 
-                  Row() {
-                    // ✅ 安全格式化剩余时间
-                    Text('⏱️ ' + this.formatRemainHours(conv.remainHours >= 0 ? conv.remainHours : 0))
-                      .fontSize(11)
-                      .fontColor((conv.remainHours >= 0 ? conv.remainHours : 0) < 6 ? '#FF4D4F' : ((conv.remainHours >= 0 ? conv.remainHours : 0) < 12 ? '#FAAD14' : '#52C41A'));
-                  }
-                  .width('100%');
-                }
-                .layoutWeight(1)
-                .alignItems(HorizontalAlign.Start);
+            Blank();
 
-                Text('🗑️')
-                  .fontSize(18)
-                  .padding({ left: 8, right: 4, top: 4, bottom: 4 })
-                  .onClick(() => {
-                    this.deleteTarget = conv;
-                    this.showDeleteDialog = true;
-                  });
-              }
-              .width('100%')
-              .alignItems(VerticalAlign.Top)
-              .onClick(() => {
+            Text(this.formatTime(conv.lastTime))
+              .fontSize(11)
+              .fontColor('#BBBBBB');
+          }
+          .width('100%');
+
+          Row() {
+            Text(((conv.lastMessage || '暂无消息').length > 20) ?
+              (conv.lastMessage || '暂无消息').substring(0, 20) + '...' :
+              (conv.lastMessage || '暂无消息'))
+              .fontSize(13)
+              .fontColor('#888888')
+              .layoutWeight(1)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis });
+
+            if (conv.unreadCount > 0) {
+              Text(conv.unreadCount > 99 ? '99+' : conv.unreadCount.toString())
+                .fontSize(11)
+                .fontColor('#FFFFFF')
+                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                .backgroundColor('#FF4D4F')
+                .borderRadius(10);
+            }
+          }
+          .width('100%');
+
+          Row() {
+            Text('⏱️ ' + this.formatRemainHours(conv.remainHours >= 0 ? conv.remainHours : 0))
+              .fontSize(11)
+              .fontColor((conv.remainHours >= 0 ? conv.remainHours : 0) < 6 ? '#FF4D4F' : ((conv.remainHours >= 0 ? conv.remainHours : 0) < 12 ? '#FAAD14' : '#52C41A'));
+          }
+          .width('100%');
+        }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start);
+
+        Text('🗑️')
+          .fontSize(18)
+          .padding({ left: 8, right: 4, top: 4, bottom: 4 })
+          .onClick(() => {
+            this.deleteTarget = conv;
+            this.showDeleteDialog = true;
+          });
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Top)
+      .onClick(() => {
+        router.pushUrl({
+          url: 'pages/DoctorPatientManagementPage',
+          params: {
+            patientId: conv.otherUserId,
+            patientName: conv.otherUserName || '未知用户',
+            doctorId: this.currentUserId,
+            doctorName: this.doctorName
+          }
+        });
+      });
+
+      Row() {
+        Button(conv.otherUserType === 1 ? '回复家属' : '回复患者')
+          .height(32)
+          .padding({ left: 16, right: 16 })
+          .fontSize(13)
+          .fontColor('#1677FF')
+          .backgroundColor('#E8F0FF')
+          .borderRadius(16)
+          .onClick(() => {
+            try {
+              if (conv.otherUserType === 1) {
                 router.pushUrl({
-                  url: 'pages/DoctorPatientManagementPage',
+                  url: 'pages/DoctorFamilyChatPage',
                   params: {
-                    patientId: conv.otherUserId,
-                    patientName: conv.otherUserName || '未知用户',
                     doctorId: this.currentUserId,
-                    doctorName: this.doctorName
+                    doctorName: this.doctorName,
+                    currentUserId: this.currentUserId,
+                    otherUserId: conv.otherUserId,
+                    otherUserName: conv.otherUserName || '未知用户',
+                    otherUserType: 'family'
                   }
                 });
-              });
-
-              Row() {
-                Button(conv.otherUserType === 1 ? '回复家属' : '回复患者')
-                  .height(32)
-                  .padding({ left: 16, right: 16 })
-                  .fontSize(13)
-                  .fontColor('#1677FF')
-                  .backgroundColor('#E8F0FF')
-                  .borderRadius(16)
-                  .onClick(() => {
-                    if (conv.otherUserType === 1) {
-                      router.push({
-                        url: 'pages/DoctorFamilyChatPage',
-                        params: {
-                          doctorId: this.currentUserId,
-                          doctorName: this.doctorName,
-                          currentUserId: this.currentUserId,
-                          otherUserId: conv.otherUserId,
-                          otherUserName: conv.otherUserName || '未知用户',
-                          otherUserType: 'family'
-                        }
-                      });
-                    } else {
-                      router.push({
-                        url: 'pages/DoctorChatPage',
-                        params: {
-                          doctorId: this.currentUserId,
-                          doctorName: this.doctorName,
-                          currentUserId: this.currentUserId,
-                          otherUserId: conv.otherUserId,
-                          otherUserName: conv.otherUserName || '未知用户',
-                          isDoctor: true
-                        }
-                      });
-                    }
-                  });
+              } else {
+                if (!conv.otherUserId || conv.otherUserId <= 0) {
+                  promptAction.showToast({ message: '患者信息异常，无法打开对话' });
+                  return;
+                }
+                router.pushUrl({
+                  url: 'pages/DoctorChatPage',
+                  params: {
+                    doctorId: this.currentUserId,
+                    doctorName: this.doctorName,
+                    currentUserId: this.currentUserId,
+                    otherUserId: conv.otherUserId,
+                    otherUserName: conv.otherUserName || '未知用户',
+                    isDoctor: true
+                  }
+                });
               }
-              .width('100%')
-              .justifyContent(FlexAlign.End)
-              .margin({ top: 8 });
+            } catch (error) {
+              console.error('[DoctorMainPage] 打开对话页面失败:', error);
+              promptAction.showToast({ message: '打开对话失败，请重试' });
             }
-            .width('100%')
-            .padding(16)
-            .backgroundColor('#FFFFFF')
-            .borderRadius(16)
-            .margin({ bottom: 10 })
-            .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 3 });
-          }, (conv: PatientConvItem) => conv.otherUserId.toString() + '_' + (conv.lastTime || ''));
-        }
-        .width('85%')
-        .padding({ top: 8, bottom: 48 });
+          });
       }
-      .height(0)
-      .layoutWeight(1)
-      .scrollBar(BarState.Off);
+      .width('100%')
+      .justifyContent(FlexAlign.End)
+      .margin({ top: 8 });
     }
+    .width('100%')
+    .padding(16)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(16)
+    .margin({ bottom: 10 })
+    .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 3 });
   }
 
   @Builder
   buildDoctorInfo() {
     Scroll() {
-      Column({ space: 16 }) {
-        Column({ space: 16 }) {
-          Text('医生信息')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
-            .width('100%');
-
-          // ✅ doctorInfo 现在永远不为 null，安全访问所有属性
-          Column({ space: 12 }) {
-            Row({ space: 12 }) {
-              Text('姓名')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width(80);
-              Text(this.doctorInfo.realName || '-')
-                .fontSize(14)
-                .fontColor('#333333')
-                .layoutWeight(1);
-            }
-            .width('100%');
-
-            Row({ space: 12 }) {
-              Text('手机号')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width(80);
-              Text(this.doctorInfo.phone || '-')
-                .fontSize(14)
-                .fontColor('#333333')
-                .layoutWeight(1);
-            }
-            .width('100%');
-
-            Row({ space: 12 }) {
-              Text('所属医院')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width(80);
-              Text(this.doctorInfo.hospital || '-')
-                .fontSize(14)
-                .fontColor('#333333')
-                .layoutWeight(1);
-            }
-            .width('100%');
-
-            Row({ space: 12 }) {
-              Text('科室')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width(80);
-              Text(this.doctorInfo.department || '-')
-                .fontSize(14)
-                .fontColor('#333333')
-                .layoutWeight(1);
-            }
-            .width('100%');
-
-            Row({ space: 12 }) {
-              Text('职称')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width(80);
-              Text(this.doctorInfo.title || '-')
-                .fontSize(14)
-                .fontColor('#333333')
-                .layoutWeight(1);
-            }
-            .width('100%');
-
-            Row({ space: 12 }) {
-              Text('执业证号')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width(80);
-              Text(this.doctorInfo.licenseNumber || '-')
-                .fontSize(14)
-                .fontColor('#333333')
-                .layoutWeight(1);
-            }
-            .width('100%');
-
-            Row({ space: 12 }) {
-              Text('专业领域')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width(80);
-              Text(this.doctorInfo.specialty || '-')
-                .fontSize(14)
-                .fontColor('#333333')
-                .layoutWeight(1);
-            }
-            .width('100%');
-
-            Row({ space: 12 }) {
-              Text('评分')
-                .fontSize(14)
-                .fontColor('#666666')
-                .width(80);
-              Row() {
-                Text('⭐')
-                  .fontSize(14);
-                Text((this.doctorInfo.rating > 0 ? this.doctorInfo.rating.toFixed(1) : '-'))
-                  .fontSize(14)
-                  .fontColor('#333333')
-                  .margin({ left: 4 });
-              }
-              .layoutWeight(1);
-            }
-            .width('100%');
-
-            if (this.doctorInfo.description) {
-              Column({ space: 8 }) {
-                Row() {
-                  Text('个人简介')
-                    .fontSize(14)
-                    .fontColor('#666666');
-                }
-                .width('100%');
-                Text(this.doctorInfo.description)
-                  .fontSize(14)
-                  .fontColor('#333333')
-                  .lineHeight(22);
-              }
-              .width('100%');
-            }
-          }
-          .width('100%')
-          .padding(16)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(12);
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, top: 16, bottom: 80 });
+      Column({ space: 0 }) {
+        this.buildMyProfileHeader();
+        this.buildMyInfoList();
+        this.buildMyMenuList();
       }
       .width('100%')
-      .alignItems(HorizontalAlign.Start);
+      .padding({ bottom: 40 });
     }
     .width('100%')
     .layoutWeight(1)
-    .scrollBar(BarState.Off);
+    .scrollBar(BarState.Off)
+    .backgroundColor('#F5F7FA');
+  }
+
+  @Builder
+  buildMyProfileHeader() {
+    Column({ space: 16 }) {
+      Stack({ alignContent: Alignment.Bottom }) {
+        Column()
+          .width(90)
+          .height(90)
+          .borderRadius(45)
+          .backgroundColor('#1677FF')
+          .shadow({ radius: 12, color: '#1677FF33', offsetX: 0, offsetY: 6 });
+
+        Column({ space: 4 }) {
+          Row({ space: 4 }) {
+            Column()
+              .width(18)
+              .height(18)
+              .borderRadius(4)
+              .backgroundColor('#FFFFFF80')
+              .opacity(0.9);
+            Column()
+              .width(18)
+              .height(18)
+              .borderRadius(4)
+              .backgroundColor('#FFFFFF80')
+              .opacity(0.9);
+          }
+
+          Row({ space: 4 }) {
+            Column()
+              .width(18)
+              .height(18)
+              .borderRadius(4)
+              .backgroundColor('#FFFFFF80')
+              .opacity(0.9);
+            Column()
+              .width(18)
+              .height(18)
+              .borderRadius(4)
+              .backgroundColor('#FFFFFF80')
+              .opacity(0.9);
+          }
+        }
+        .padding({ bottom: 12 });
+      }
+      .width(90)
+      .height(90);
+
+      Text(this.doctorInfo.realName || '未设置')
+        .fontSize(22)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333333');
+
+      Text(`${this.doctorInfo.department || '未知科室'} | ${this.doctorInfo.title || '未设置职称'}`)
+        .fontSize(14)
+        .fontColor('#666666');
+    }
+    .width('100%')
+    .padding({ top: 40, bottom: 24 })
+    .backgroundColor('#FFFFFF')
+    .justifyContent(FlexAlign.Center);
+  }
+
+  @Builder
+  buildMyInfoList() {
+    Column() {
+      this.buildMyInfoItem('工号', this.doctorInfo.employeeNo || '-');
+      this.buildMyDivider();
+      this.buildMyInfoItem('姓名', this.doctorInfo.realName || '-');
+      this.buildMyDivider();
+      this.buildMyInfoItem('手机号', this.doctorInfo.phone || '-');
+      this.buildMyDivider();
+      this.buildMyInfoItem('科室', this.doctorInfo.department || '-');
+      this.buildMyDivider();
+      this.buildMyInfoItem('职称', this.doctorInfo.title || '-');
+    }
+    .width('100%')
+    .backgroundColor('#FFFFFF')
+    .margin({ top: 10 });
+  }
+
+  @Builder
+  buildMyInfoItem(label: string, value: string) {
+    Row() {
+      Text(label)
+        .fontSize(15)
+        .fontColor('#333333')
+        .width(80);
+
+      Text(value)
+        .fontSize(15)
+        .fontColor('#333333')
+        .layoutWeight(1)
+        .textAlign(TextAlign.End);
+    }
+    .width('100%')
+    .padding({ left: 20, right: 20, top: 16, bottom: 16 });
+  }
+
+  @Builder
+  buildMyDivider() {
+    Row()
+      .width('calc(100% - 40px)')
+      .height(1)
+      .backgroundColor('#EEEEEE')
+      .margin({ left: 20, right: 20 });
+  }
+
+  @Builder
+  buildMyMenuList() {
+    Column() {
+      this.buildMyMenuItem('编辑个人信息', () => {
+        router.pushUrl({
+          url: 'pages/DoctorProfilePage',
+          params: { doctorId: this.currentUserId }
+        });
+      });
+
+      this.buildMyMenuItem('我的排班', () => {
+        router.pushUrl({
+          url: 'pages/DoctorSchedulePage',
+          params: { doctorId: this.currentUserId }
+        });
+      });
+
+      this.buildMyMenuItem('修改密码', () => {
+        promptAction.showToast({ message: '修改密码功能开发中' });
+      });
+
+      this.buildMyMenuItem('消息通知', () => {
+        promptAction.showToast({ message: '消息通知设置开发中' });
+      });
+
+      this.buildMyMenuItem('帮助与反馈', () => {
+        promptAction.showToast({ message: '帮助与反馈开发中' });
+      });
+
+      this.buildMyMenuItem('关于我们', () => {
+        promptAction.showToast({ message: '关于我们页面开发中' });
+      });
+    }
+    .width('100%')
+    .backgroundColor('#FFFFFF')
+    .margin({ top: 10 })
+    .borderRadius({ topLeft: 12, topRight: 12 });
+  }
+
+  @Builder
+  buildMyMenuItem(title: string, onClick: () => void) {
+    Row() {
+      Text(title)
+        .fontSize(15)
+        .fontColor('#333333');
+
+      Blank();
+
+      Text('>')
+        .fontSize(16)
+        .fontColor('#CCCCCC');
+    }
+    .width('100%')
+    .padding({ left: 20, right: 20, top: 17, bottom: 17 })
+    .onClick(onClick);
+
+    if (title !== '关于我们') {
+      Row()
+        .width('calc(100% - 40px)')
+        .height(1)
+        .backgroundColor('#F5F5F5')
+        .margin({ left: 20, right: 20 });
+    }
   }
 
   @Builder

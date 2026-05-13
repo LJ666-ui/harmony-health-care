@@ -553,5 +553,26 @@ export const ApiConstants: ApiConstantsInterface = {
 
   ADMIN_LOGIN: '/admin/login',
   ADMIN_INFO: '/admin/info',
-  ADMIN_LOGOUT: '/admin/logout'
+  ADMIN_LOGOUT: '/admin/logout',
+
+  APPOINTMENT_QUEUE_INFO: '/appointment/queue/info',
+  APPOINTMENT_QUEUE_REALTIME: '/appointment/queue/realtime',
+  APPOINTMENT_CHECK_IN: '/appointment/check-in',
+  APPOINTMENT_COMPLETE: '/appointment/complete',
+  APPOINTMENT_CHECK_EXPIRED: '/appointment/check-expired',
+
+  EXAMINATION_REPORT_LIST: '/examinationReport/list',
+  EXAMINATION_REPORT_DETAIL: '/examinationReport/',
+  EXAMINATION_REPORT_GENERATE: '/examinationReport/generate',
+  EXAMINATION_REPORT_INIT_DEMO: '/examinationReport/init-demo',
+
+  NURSING_RECORD_CREATE: '/api/nursing-record',
+  NURSING_RECORD_LIST: '/api/nursing-record/list',
+  NURSING_RECORD_BY_PATIENT: '/api/nursing-record/patient/',
+  NURSING_RECORD_BY_NURSE: '/api/nursing-record/nurse/',
+  NURSING_RECORD_DETAIL: '/api/nursing-record/',
+  NURSING_RECORD_UPDATE: '/api/nursing-record/',
+  NURSING_RECORD_DELETE: '/api/nursing-record/',
+
+  ADMIN_USER_LIST: '/admin/user/list'
 };

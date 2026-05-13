@@ -3,11 +3,13 @@ package com.example.medical.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.medical.common.PageResult;
 import com.example.medical.entity.HealthRecord;
+import com.example.medical.entity.Nurse;
 import com.example.medical.mapper.HealthRecordMapper;
 import com.example.medical.service.HealthRecordService;
 import com.example.medical.service.DataShareAuthService;
 import com.example.medical.service.DataAccessLogService;
 import com.example.medical.service.NursePatientRelationService;
+import com.example.medical.service.NurseService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,9 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
 
     @Autowired
     private NursePatientRelationService nursePatientRelationService;
+
+    @Autowired
+    private NurseService nurseService;
 
     @Override
     public boolean addHealthRecord(HealthRecord healthRecord) {
@@ -53,10 +58,19 @@ public class HealthRecordServiceImpl extends ServiceImpl<HealthRecordMapper, Hea
         }
 
         // 3. 护士通过护患关系访问患者数据
+        // accessUserId 现在是 user 表的 ID，需要先查找对应的 nurse 记录
         try {
-            List<Long> patientIds = nursePatientRelationService.getPatientIdsByNurseId(accessUserId);
-            if (patientIds != null && !patientIds.isEmpty() && patientIds.contains(targetUserId)) {
-                return true;
+            Nurse nurse = nurseService.lambdaQuery()
+                    .eq(Nurse::getUserId, accessUserId)
+                    .last("LIMIT 1")
+                    .one();
+            
+            if (nurse != null && nurse.getId() != null) {
+                Long nurseId = nurse.getId();
+                List<Long> patientIds = nursePatientRelationService.getPatientIdsByNurseId(nurseId);
+                if (patientIds != null && !patientIds.isEmpty() && patientIds.contains(targetUserId)) {
+                    return true;
+                }
             }
         } catch (Exception e) {
             // 忽略异常，继续后续检查

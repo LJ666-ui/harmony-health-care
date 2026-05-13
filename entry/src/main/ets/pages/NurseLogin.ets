@@ -136,7 +136,7 @@ struct NurseLogin {
         console.log('[NurseLogin] 护士信息 - nurseId:', nurseId, ', userId:', userId);
         
         // 存储nurseId供用药管理等API使用
-        AppStorage.setOrCreate<number>('userId', nurseId);
+        AppStorage.setOrCreate<number>('userId', userId);
         AppStorage.setOrCreate<number>('nurseId', nurseId);
         AppStorage.setOrCreate<number>('userAccountId', userId);
 

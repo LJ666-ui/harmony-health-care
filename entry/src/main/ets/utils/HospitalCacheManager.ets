@@ -37,8 +37,17 @@ class HospitalCacheManager {
     return HospitalCacheManager.instance;
   }
 
+  public isInitialized(): boolean {
+    return this.initialized && rdbHelper.isInitialized();
+  }
+
   public async init(): Promise<void> {
     if (this.initialized) {
+      return;
+    }
+
+    if (!rdbHelper.isInitialized()) {
+      hilog.warn(0x0000, TAG, 'RdbHelper not initialized, skip cache initialization');
       return;
     }
 
@@ -71,7 +80,6 @@ class HospitalCacheManager {
       hilog.info(0x0000, TAG, 'Hospital cache table initialized');
     } catch (error) {
       hilog.error(0x0000, TAG, 'Failed to initialize hospital cache: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to initialize hospital cache');
     }
   }
 
@@ -80,11 +88,16 @@ class HospitalCacheManager {
       await this.init();
     }
 
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Cache not initialized, skip saving hospitals');
+      return;
+    }
+
     try {
       rdbHelper.beginTransaction();
-      
+
       const currentTime = Date.now();
-      
+
       for (const hospital of hospitals) {
         const values: relationalStore.ValuesBucket = {
           id: hospital.id,
@@ -108,13 +121,17 @@ class HospitalCacheManager {
     } catch (error) {
       rdbHelper.rollback();
       hilog.error(0x0000, TAG, 'Failed to save hospitals: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to save hospitals');
     }
   }
 
   public async getHospitalsByLevel(level: string): Promise<HospitalCacheItem[]> {
     if (!this.initialized) {
       await this.init();
+    }
+
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Cache not initialized, return empty array');
+      return [];
     }
 
     const hospitals: HospitalCacheItem[] = [];
@@ -180,12 +197,17 @@ class HospitalCacheManager {
       await this.init();
     }
 
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Cache not initialized, return null');
+      return null;
+    }
+
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
       predicates.equalTo('id', id);
 
       const resultSet = await rdbHelper.queryByPredicates(predicates);
-      
+
       if (resultSet.goToFirstRow()) {
         const hospital: HospitalCacheItem = {
           id: resultSet.getLong(resultSet.getColumnIndex('id')),
@@ -217,13 +239,17 @@ class HospitalCacheManager {
       await this.init();
     }
 
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Cache not initialized, skip clearing');
+      return;
+    }
+
     try {
       const predicates = new relationalStore.RdbPredicates(TABLE_NAME);
       await rdbHelper.delete(predicates);
       hilog.info(0x0000, TAG, 'Hospital cache cleared');
     } catch (error) {
       hilog.error(0x0000, TAG, 'Failed to clear cache: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to clear cache');
     }
   }
 
@@ -232,10 +258,16 @@ class HospitalCacheManager {
       await this.init();
     }
 
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Cache not initialized, return empty stats');
+      const emptyResult: CacheStats = { total: 0, byLevel: {} };
+      return emptyResult;
+    }
+
     try {
       const sql = `SELECT level, COUNT(*) as count FROM ${TABLE_NAME} GROUP BY level`;
       const resultSet = await rdbHelper.query(sql);
-      
+
       const byLevel: Record<string, number> = {};
       let total = 0;
 
@@ -261,14 +293,19 @@ class HospitalCacheManager {
       await this.init();
     }
 
+    if (!this.initialized) {
+      hilog.warn(0x0000, TAG, 'Cache not initialized, return false');
+      return false;
+    }
+
     try {
       const sql = `SELECT MAX(cached_time) as latest_time FROM ${TABLE_NAME}`;
       const resultSet = await rdbHelper.query(sql);
-      
+
       if (resultSet.goToFirstRow()) {
         const latestTime = resultSet.getLong(0);
         resultSet.close();
-        
+
         const now = Date.now();
         return (now - latestTime) < maxAgeMs;
       }

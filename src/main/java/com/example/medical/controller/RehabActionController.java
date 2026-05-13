@@ -25,8 +25,9 @@ public class RehabActionController {
     @GetMapping("/list")
     public Result getActionList(
             @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
-        Page<RehabAction> page = rehabActionService.getActionList(pageNum, pageSize);
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) String keyword) {
+        Page<RehabAction> page = rehabActionService.getActionList(pageNum, pageSize, keyword);
         return Result.success(page);
     }
 

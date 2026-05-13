@@ -1,6 +1,6 @@
 @Component
 export struct PullRefresh {
-  @Prop onRefresh: () => void = () => {};
+  onRefresh: () => void = () => {};
   @BuilderParam content: () => void = this.defaultContent;
 
   @Builder

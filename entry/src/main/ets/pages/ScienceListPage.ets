@@ -31,6 +31,7 @@ interface PageResultData<T> {
 
 export interface ScienceArticle {
   id: number;
+  displayIndex: number;
   title: string;
   coverImage: string;
   summary: string;
@@ -50,12 +51,12 @@ struct ScienceListPage {
   @State categories: ArticleCategory[] = [];
   @State categoryNames: string[] = ['全部'];
   @State currentCategoryIndex: number = 0;
-  @State isRefreshing: boolean = false;
   @State isLoading: boolean = false;
   @State searchKeyword: string = '';
   @State currentPage: number = 1;
   @State pageSize: number = 20;
-  @State hasMore: boolean = true;
+  @State totalCount: number = 0;
+  @State totalPages: number = 0;
   @State isSearching: boolean = false;
 
   private recordId: number | undefined = undefined;
@@ -106,15 +107,10 @@ struct ScienceListPage {
     }
   }
 
-  async loadArticles(isRefresh: boolean = false): Promise<void> {
+  async loadArticles(): Promise<void> {
     if (this.isLoading) return;
 
     this.isLoading = true;
-
-    if (isRefresh) {
-      this.currentPage = 1;
-      this.hasMore = true;
-    }
 
     try {
       let url: string = ApiConstants.ARTICLE_PAGE + '?page=' + this.currentPage + '&size=' + this.pageSize;
@@ -132,11 +128,19 @@ struct ScienceListPage {
         const data: PageResultData<ArticleItem> = response.data;
         const list: ArticleItem[] = data.records || [];
 
+        this.totalCount = data.total ? data.total : 0;
+        this.totalPages = Math.ceil(this.totalCount / this.pageSize);
+        if (this.totalPages < 1) {
+          this.totalPages = 1;
+        }
+
+        const startIndex: number = (this.currentPage - 1) * this.pageSize;
         const mappedArticles: ScienceArticle[] = [];
         for (let k = 0; k < list.length; k++) {
           const item: ArticleItem = list[k];
           const article: ScienceArticle = {
             id: item.id,
+            displayIndex: startIndex + k + 1,
             title: item.title ? item.title : '',
             coverImage: item.coverImage ? item.coverImage : '',
             summary: this.extractSummary(item.content),
@@ -149,21 +153,13 @@ struct ScienceListPage {
           mappedArticles.push(article);
         }
 
-        if (isRefresh) {
-          this.articles = mappedArticles;
-        } else {
-          this.articles = this.articles.concat(mappedArticles);
-        }
-
-        const total: number = data.total ? data.total : 0;
-        this.hasMore = this.articles.length < total;
+        this.articles = mappedArticles;
       }
     } catch (e) {
       console.error('加载文章失败:', e);
       ToastUtil.showSuccess('加载失败，请重试');
     } finally {
       this.isLoading = false;
-      this.isRefreshing = false;
     }
   }
 
@@ -202,44 +198,83 @@ struct ScienceListPage {
     return '健康科普';
   }
 
-  handleRefresh(): void {
-    this.isRefreshing = true;
-    this.loadArticles(true).then(() => {
-      ToastUtil.refreshSuccess();
-    });
-  }
-
   handleSearch(): void {
     if (!this.searchKeyword.trim()) {
       this.isSearching = false;
-      this.loadArticles(true);
+      this.currentPage = 1;
+      this.loadArticles();
       return;
     }
 
     this.isSearching = true;
     this.currentPage = 1;
-    this.hasMore = true;
-    this.articles = [];
     this.loadArticles();
   }
 
   handleClearSearch(): void {
     this.searchKeyword = '';
     this.isSearching = false;
-    this.loadArticles(true);
+    this.currentPage = 1;
+    this.loadArticles();
   }
 
   onCategoryChange(index: number, category: string): void {
     this.currentCategoryIndex = index;
     this.isSearching = false;
     this.searchKeyword = '';
-    this.loadArticles(true);
+    this.currentPage = 1;
+    this.loadArticles();
   }
 
-  loadMore(): void {
-    if (!this.hasMore || this.isLoading) return;
-    this.currentPage++;
+  goToPage(page: number): void {
+    if (page < 1 || page > this.totalPages || page === this.currentPage || this.isLoading) return;
+    this.currentPage = page;
     this.loadArticles();
+  }
+
+  prevPage(): void {
+    this.goToPage(this.currentPage - 1);
+  }
+
+  nextPage(): void {
+    this.goToPage(this.currentPage + 1);
+  }
+
+  @Builder paginationBar(): void {
+    Row({ space: 8 }) {
+      Text('共' + this.totalCount + '条')
+        .fontSize(12)
+        .fontColor('#999999')
+
+      Text('◀')
+        .fontSize(14)
+        .fontColor(this.currentPage <= 1 ? '#CCCCCC' : '#1677FF')
+        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+        .backgroundColor(this.currentPage <= 1 ? '#F5F5F5' : '#E6F4FF')
+        .borderRadius(6)
+        .onClick(() => {
+          this.prevPage();
+        })
+
+      Text(this.currentPage + ' / ' + this.totalPages)
+        .fontSize(13)
+        .fontColor('#333333')
+        .fontWeight(FontWeight.Medium)
+        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+
+      Text('▶')
+        .fontSize(14)
+        .fontColor(this.currentPage >= this.totalPages ? '#CCCCCC' : '#1677FF')
+        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+        .backgroundColor(this.currentPage >= this.totalPages ? '#F5F5F5' : '#E6F4FF')
+        .borderRadius(6)
+        .onClick(() => {
+          this.nextPage();
+        })
+    }
+    .width('100%')
+    .justifyContent(FlexAlign.Center)
+    .padding({ top: 12, bottom: 12 })
   }
 
   build() {
@@ -363,6 +398,17 @@ struct ScienceListPage {
               ForEach(this.articles, (article: ScienceArticle, index: number) => {
                 ListItem() {
                   Row() {
+                    Text(article.displayIndex.toString())
+                      .fontSize(this.isElderMode ? 16 : 13)
+                      .fontColor('#FFFFFF')
+                      .fontWeight(FontWeight.Bold)
+                      .width(28)
+                      .height(28)
+                      .textAlign(TextAlign.Center)
+                      .backgroundColor('#1677FF')
+                      .borderRadius(14)
+                      .margin({ right: 10 })
+
                     if (article.coverImage.length > 0 && article.coverImage.indexOf('http') === 0) {
                       Image(article.coverImage)
                         .width(64)
@@ -432,41 +478,15 @@ struct ScienceListPage {
                     params: { articleId: article.id.toString(), articleTitle: article.title }
                   });
                 });
-              }, (article: ScienceArticle) => article.id.toString() + '_' + article.title);
+              }, (article: ScienceArticle) => article.displayIndex.toString() + '_' + article.id.toString());
 
-              if (this.hasMore && this.articles.length > 0) {
-                ListItem() {
-                  Row() {
-                    if (this.isLoading) {
-                      LoadingProgress()
-                        .width(20)
-                        .height(20)
-                        .color('#1677FF');
-                      Text('加载中...')
-                        .fontSize(13)
-                        .fontColor('#666666')
-                        .margin({ left: 8 });
-                    } else {
-                      Text('- 上拉加载更多 -')
-                        .fontSize(13)
-                        .fontColor('#999999')
-                        .onClick(() => {
-                          this.loadMore();
-                        });
-                    }
-                  }
-                  .width('100%')
-                  .height(50)
-                  .justifyContent(FlexAlign.Center);
-                }
+              ListItem() {
+                this.paginationBar();
               }
             }
             .width('100%')
             .height(0)
-            .layoutWeight(1)
-            .onReachEnd(() => {
-              this.loadMore();
-            });
+            .layoutWeight(1);
           }
         }
         .width('85%')

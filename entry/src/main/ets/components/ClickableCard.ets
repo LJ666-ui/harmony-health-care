@@ -3,14 +3,17 @@ import curves from '@ohos.curves';
 
 @Component
 export struct ClickableCard {
-  @Prop onClick: () => void = () => {};
-  @Prop children: () => void = () => {};
+  onClick: () => void = () => {};
+  @BuilderParam contentBuilder: () => void = this.defaultContent;
+
+  @Builder
+  private defaultContent() {}
 
   @State isPressed: boolean = false;
 
   build() {
     Column() {
-      this.children();
+      this.contentBuilder();
     }
     .scale({ x: this.isPressed ? 0.97 : 1, y: this.isPressed ? 0.97 : 1 })
     .opacity(this.isPressed ? 0.9 : 1)

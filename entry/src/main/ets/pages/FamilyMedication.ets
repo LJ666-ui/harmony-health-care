@@ -5,14 +5,17 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 
-interface Medication {
+interface MedicationReminder {
   id: number;
-  name: string;
+  patientId: number;
+  medicationName: string;
   dosage: string;
   frequency: string;
-  time: string;
+  timeOfDay: string;
   status: string;
-  remark?: string;
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
 }
 
 @Entry
@@ -21,48 +24,126 @@ struct FamilyMedication {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @StorageLink('familyInfo') familyInfo: object | null = null;
   @State isLoading: boolean = false;
-  @State medications: Medication[] = [];
+  @State medications: MedicationReminder[] = [];
+  @State relatedUserId: number = 0;
 
   async aboutToAppear(): Promise<void> {
+    const familyInfo: Object | undefined = AppStorage.get('familyInfo');
+    if (familyInfo) {
+      const info: Record<string, Object> = familyInfo as Record<string, Object>;
+      this.relatedUserId = info['userId'] as number || 0;
+    }
+    
     await this.loadMedications();
   }
 
   private async loadMedications(): Promise<void> {
     this.isLoading = true;
     try {
-      const response = await HttpUtil.get<Medication[]>('/family/medications');
+      console.info('正在加载患者用药信息，userId:', this.relatedUserId.toString());
       
+      const response: BaseResponse<MedicationReminder[]> = await HttpUtil.get<MedicationReminder[]>('/family/medications');
+
       if (response.success && response.data) {
-        this.medications = response.data;
+        if (Array.isArray(response.data)) {
+          this.medications = response.data.map((item: MedicationReminder): MedicationReminder => ({
+            id: item.id || 0,
+            patientId: item.patientId || this.relatedUserId,
+            medicationName: item.medicationName || '未知药品',
+            dosage: item.dosage || '未设置',
+            frequency: item.frequency || '每日1次',
+            timeOfDay: item.timeOfDay || '08:00',
+            status: item.status || '待服用',
+            startDate: item.startDate || '',
+            endDate: item.endDate || '',
+            notes: item.notes || ''
+          }));
+
+          console.info('成功获取到', this.medications.length.toString(), '条用药记录');
+        } else if (response.data && Array.isArray((response.data as Record<string, Object>).list)) {
+          this.medications = (response.data as Record<string, Object>).list as MedicationReminder[];
+        } else {
+          this.medications = [];
+        }
+        
+        if (this.medications.length === 0) {
+          ToastUtil.showInfo('暂无用药记录');
+        }
       } else {
-        this.medications = this.getMockMedications();
+        console.error('获取用药信息失败:', response.message);
+        ToastUtil.showError(response.message || '获取用药信息失败');
+        this.medications = [];
       }
     } catch (error) {
-      console.error('加载用药信息失败:', error);
-      this.medications = this.getMockMedications();
+      console.error('加载用药信息异常:', error);
+      ToastUtil.showError('加载用药信息失败，请检查网络连接');
+      this.medications = [];
     } finally {
       this.isLoading = false;
     }
   }
 
-  private getMockMedications(): Medication[] {
-    return [
-      { id: 1, name: '降压药', dosage: '1片', frequency: '每日1次', time: '08:00', status: '已服用', remark: '早餐后服用' },
-      { id: 2, name: '降糖药', dosage: '2片', frequency: '每日2次', time: '08:00, 18:00', status: '待服用', remark: '饭前30分钟' },
-      { id: 3, name: '维生素D', dosage: '1粒', frequency: '每日1次', time: '12:00', status: '已服用', remark: '午餐时服用' }
-    ];
+  private getStatusColor(status: string): string {
+    switch (status) {
+      case '已服用':
+      case 'CONFIRMED':
+        return '#2ECC71';
+      case '待服用':
+      case 'PENDING':
+        return '#F39C12';
+      case '已跳过':
+      case 'SKIPPED':
+        return '#95A5A6';
+      default:
+        return '#F39C12';
+    }
+  }
+
+  private getStatusText(status: string): string {
+    switch (status) {
+      case 'CONFIRMED':
+        return '已服用';
+      case 'PENDING':
+        return '待服用';
+      case 'SKIPPED':
+        return '已跳过';
+      default:
+        return status || '待服用';
+    }
   }
 
   build() {
     Column() {
       Header({ title: '用药管理', showBack: true })
 
+      Text(`正在查看关联患者的用药信息（ID: ${this.relatedUserId}）`)
+        .fontSize(12)
+        .fontColor('#666666')
+        .width('95%')
+        .margin({ top: 10 })
+
       Column() {
         if (this.isLoading) {
           Loading()
+        } else if (this.medications.length === 0) {
+          Column() {
+            Text('💊')
+              .fontSize(48)
+              .margin({ bottom: 12 })
+            Text('暂无用药记录')
+              .fontSize(16)
+              .fontColor('#999999')
+              .margin({ bottom: 8 })
+            Text('患者当前没有用药安排')
+              .fontSize(14)
+              .fontColor('#BBBBBB')
+          }
+          .width('100%')
+          .layoutWeight(1)
+          .justifyContent(FlexAlign.Center)
         } else {
-          List() {
-            ForEach(this.medications, (med: Medication) => {
+          List({ space: 12 }) {
+            ForEach(this.medications, (med: MedicationReminder) => {
               ListItem() {
                 Column() {
                   Row() {
@@ -71,7 +152,7 @@ struct FamilyMedication {
                       .margin({ right: 15 })
 
                     Column() {
-                      Text(med.name)
+                      Text(med.medicationName)
                         .fontSize(this.isElderMode ? 18 : 16)
                         .fontWeight(FontWeight.Bold)
                         .fontColor(GlobalTheme.TEXT_PRIMARY)
@@ -81,7 +162,7 @@ struct FamilyMedication {
                         .fontColor(GlobalTheme.TEXT_SECONDARY)
                         .margin({ top: 5 })
 
-                      Text(`服用时间: ${med.time}`)
+                      Text(`服用时间: ${med.timeOfDay}`)
                         .fontSize(12)
                         .fontColor(GlobalTheme.TEXT_SECONDARY)
                         .margin({ top: 3 })
@@ -89,29 +170,44 @@ struct FamilyMedication {
                     .alignItems(HorizontalAlign.Start)
                     .layoutWeight(1)
 
-                    // 状态标签
-                    Text(med.status)
+                    Text(this.getStatusText(med.status))
                       .fontSize(12)
                       .fontColor('#FFFFFF')
-                      .backgroundColor(med.status === '已服用' ? '#2ECC71' : '#F39C12')
+                      .backgroundColor(this.getStatusColor(med.status))
                       .padding({ left: 8, right: 8, top: 4, bottom: 4 })
                       .borderRadius(4)
                   }
                   .width('100%')
 
-                  if (med.remark) {
-                    Text(`备注: ${med.remark}`)
+                  if (med.notes) {
+                    Text(`备注: ${med.notes}`)
                       .fontSize(12)
                       .fontColor(GlobalTheme.TEXT_SECONDARY)
                       .margin({ top: 10 })
                       .width('100%')
+                  }
+
+                  if (med.startDate) {
+                    Row() {
+                      Text(`开始日期: ${med.startDate}`)
+                        .fontSize(11)
+                      .fontColor('#999999')
+                      
+                      if (med.endDate) {
+                        Text(`  结束日期: ${med.endDate}`)
+                          .fontSize(11)
+                          .fontColor('#999999')
+                      }
+                    }
+                    .width('100%')
+                    .margin({ top: 5 })
                   }
                 }
                 .width('100%')
                 .padding(15)
                 .backgroundColor('#FFFFFF')
                 .borderRadius(8)
-                .margin({ bottom: 10 })
+                .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 })
               }
             })
           }

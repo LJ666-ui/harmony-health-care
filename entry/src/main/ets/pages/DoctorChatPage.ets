@@ -4,6 +4,9 @@ import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
+import { ConsultationService, ConsultationMessage } from '../services/ConsultationService';
+import { WebSocketClient, MessageHandler, MessageData } from '../network/WebSocketClient';
+import { ToastUtil } from '../common/utils/ToastUtil';
 
 const TAG: string = 'DoctorChatPage';
 
@@ -39,6 +42,41 @@ class ChatParams {
   prefillMessage?: string = '';
 }
 
+class ChatMessageHandler implements MessageHandler {
+  private page: DoctorChatPage;
+
+  constructor(page: DoctorChatPage) {
+    this.page = page;
+  }
+
+  onMessage(message: MessageData): void {
+    const chatMsg = new ChatMsg();
+    chatMsg.id = message.messageId || Date.now();
+    chatMsg.senderId = message.senderId || 0;
+    chatMsg.receiverId = this.page.getCurrentUserId();
+    chatMsg.content = message.content || '';
+    chatMsg.createTime = message.createTime || new Date().toISOString();
+
+    this.page.addMessage(chatMsg);
+  }
+
+  onConnect(): void {
+    hilog.info(0x0000, TAG, 'WebSocket连接成功');
+    this.page.setWebSocketState(true);
+  }
+
+  onDisconnect(): void {
+    hilog.warn(0x0000, TAG, 'WebSocket连接断开');
+    this.page.setWebSocketState(false);
+    ToastUtil.showWarning('连接已断开，正在重连...');
+  }
+
+  onError(error: Error): void {
+    hilog.error(0x0000, TAG, 'WebSocket错误: %{public}s', error.message);
+    this.page.setWebSocketState(false);
+  }
+}
+
 @Entry
 @Component
 struct DoctorChatPage {
@@ -63,6 +101,10 @@ struct DoctorChatPage {
   private pollTimerId: number = -1;
   private countdownTimerId: number = -1;
   private pendingLocalMsgs: ChatMsg[] = [];
+  private consultationService: ConsultationService = ConsultationService.getInstance();
+  private wsClient: WebSocketClient | null = null;
+  private sessionId: string = '';
+  private useWebSocket: boolean = false;
 
   aboutToAppear(): void {
     this.checkAccess();
@@ -119,6 +161,58 @@ struct DoctorChatPage {
   aboutToDisappear(): void {
     this.stopPolling();
     this.stopCountdown();
+    this.disconnectWebSocket();
+  }
+
+  public getCurrentUserId(): number {
+    return this.currentUserId;
+  }
+
+  public addMessage(chatMsg: ChatMsg): void {
+    this.messages.push(chatMsg);
+    setTimeout(() => {
+      try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
+    }, 100);
+  }
+
+  public setWebSocketState(connected: boolean): void {
+    this.useWebSocket = connected;
+  }
+
+  private async initWebSocket(): Promise<void> {
+    try {
+      const session = await this.consultationService.createConsultationSession(this.doctorId, 'text');
+
+      if (session) {
+        this.sessionId = session.sessionId.toString();
+
+        this.wsClient = WebSocketClient.getInstance(this.sessionId);
+
+        const handler = new ChatMessageHandler(this);
+
+        this.wsClient.addMessageHandler(handler);
+        
+        const connected = await this.wsClient.connect(this.currentUserId.toString(), 'patient');
+        
+        if (connected) {
+          hilog.info(0x0000, TAG, 'WebSocket初始化成功');
+        } else {
+          hilog.warn(0x0000, TAG, 'WebSocket连接失败，降级为HTTP轮询');
+          this.useWebSocket = false;
+        }
+      }
+    } catch (error) {
+      hilog.error(0x0000, TAG, 'WebSocket初始化失败: %{public}s', JSON.stringify(error));
+      this.useWebSocket = false;
+    }
+  }
+
+  private disconnectWebSocket(): void {
+    if (this.wsClient) {
+      this.wsClient.disconnect();
+      this.wsClient = null;
+      this.useWebSocket = false;
+    }
   }
 
   private startPolling(): void {

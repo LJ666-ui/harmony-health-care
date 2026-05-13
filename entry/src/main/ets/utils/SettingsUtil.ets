@@ -6,6 +6,8 @@ const TOKEN_KEY: string = 'auth_token';
 const USER_INFO_KEY: string = 'user_info';
 const IS_LOGGED_IN_KEY: string = 'is_logged_in';
 const SESSION_INFO_KEY: string = 'session_info';
+const LOGIN_TIME_KEY: string = 'login_time';
+const LOGIN_EXPIRY_MS: number = 24 * 60 * 60 * 1000;
 
 export interface PersistedDoctorInfo {
   id?: number;
@@ -107,11 +109,14 @@ export class SettingsUtil {
       return;
     }
     try {
+      const loginTime: number = Date.now();
       await this.dataPreferences.put(TOKEN_KEY, token);
       await this.dataPreferences.put(IS_LOGGED_IN_KEY, true);
+      await this.dataPreferences.put(LOGIN_TIME_KEY, loginTime);
       await this.dataPreferences.flush();
       AppStorage.setOrCreate<string>('token', token);
       AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+      console.info('[SettingsUtil] Token已保存，登录时间:', new Date(loginTime).toLocaleString());
     } catch (e) {
       console.error('SettingsUtil - save token failed:', e);
     }
@@ -144,7 +149,30 @@ export class SettingsUtil {
       }
       if (isLoggedIn) {
         const token: string = await this.getToken();
-        return token.length > 0;
+        if (token.length === 0) {
+          return false;
+        }
+        
+        const loginTimeValue: preferences.ValueType = await this.dataPreferences.get(LOGIN_TIME_KEY, 0);
+        const loginTime: number = typeof loginTimeValue === 'number' ? loginTimeValue : 0;
+        
+        if (loginTime === 0) {
+          console.info('[SettingsUtil] 无登录时间记录，需要重新登录');
+          return false;
+        }
+        
+        const currentTime: number = Date.now();
+        const elapsedMs: number = currentTime - loginTime;
+        
+        if (elapsedMs > LOGIN_EXPIRY_MS) {
+          console.info('[SettingsUtil] 登录已过期（超过24小时），需要重新登录');
+          console.info(`[SettingsUtil] 登录时间: ${new Date(loginTime).toLocaleString()}, 已过时间: ${Math.floor(elapsedMs / 1000 / 60)} 分钟`);
+          await this.clearAllLoginData();
+          return false;
+        }
+        
+        console.info(`[SettingsUtil] 登录有效，剩余时间: ${Math.floor((LOGIN_EXPIRY_MS - elapsedMs) / 1000 / 60)} 分钟`);
+        return true;
       }
       return false;
     } catch (e) {
@@ -195,6 +223,7 @@ export class SettingsUtil {
     try {
       await this.dataPreferences.delete(TOKEN_KEY);
       await this.dataPreferences.delete(USER_INFO_KEY);
+      await this.dataPreferences.delete(LOGIN_TIME_KEY);
       await this.dataPreferences.put(IS_LOGGED_IN_KEY, false);
       await this.dataPreferences.flush();
       AppStorage.setOrCreate<string>('token', '');
@@ -202,6 +231,7 @@ export class SettingsUtil {
       AppStorage.setOrCreate<string>('username', '');
       AppStorage.setOrCreate<number>('userId', 0);
       AppStorage.setOrCreate<boolean>('isLoggedIn', false);
+      console.info('[SettingsUtil] 所有登录数据已清除');
     } catch (e) {
       console.error('SettingsUtil - clear all login data failed:', e);
     }

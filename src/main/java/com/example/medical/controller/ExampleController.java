@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.medical.common.Result;
 import com.example.medical.entity.ExampleEntity;
 import com.example.medical.service.ExampleService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +27,7 @@ import java.util.Map;
 @RequestMapping("/example")
 @CrossOrigin
 @Validated
-@Api(tags = "示例模块管理")
+@Tag(name = "示例模块管理")
 public class ExampleController {
 
     @Autowired
@@ -38,7 +38,7 @@ public class ExampleController {
      * POST /example/create
      */
     @PostMapping("/create")
-    @ApiOperation(value = "创建资源", notes = "创建新的示例资源")
+    @Operation(summary = "创建资源", description = "创建新的示例资源")
     public Result<?> create(@Valid @RequestBody ExampleEntity entity) {
         // 参数校验
         if (entity.getName() == null || entity.getName().trim().isEmpty()) {
@@ -67,12 +67,12 @@ public class ExampleController {
      * GET /example/list?current=1&size=10&keyword=xxx
      */
     @GetMapping("/list")
-    @ApiOperation(value = "分页查询", notes = "分页查询示例资源列表")
+    @Operation(summary = "分页查询", description = "分页查询示例资源列表")
     public Result<?> list(
-        @ApiParam("当前页") @RequestParam(defaultValue = "1") Integer current,
-        @ApiParam("每页数量") @RequestParam(defaultValue = "10") Integer size,
-        @ApiParam("搜索关键词") @RequestParam(required = false) String keyword,
-        @ApiParam("状态") @RequestParam(required = false) Integer status
+        @Parameter(description = "当前页") @RequestParam(defaultValue = "1") Integer current,
+        @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size,
+        @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
+        @Parameter(description = "状态") @RequestParam(required = false) Integer status
     ) {
         Page<ExampleEntity> page = new Page<>(current, size);
         LambdaQueryWrapper<ExampleEntity> wrapper = new LambdaQueryWrapper<>();
@@ -101,8 +101,8 @@ public class ExampleController {
      * GET /example/{id}
      */
     @GetMapping("/{id}")
-    @ApiOperation(value = "查询详情", notes = "根据ID查询示例资源详情")
-    public Result<?> getById(@ApiParam("资源ID") @PathVariable Long id) {
+    @Operation(summary = "查询详情", description = "根据ID查询示例资源详情")
+    public Result<?> getById(@Parameter(description = "资源ID") @PathVariable Long id) {
         if (id == null || id <= 0) {
             return Result.error("ID无效");
         }
@@ -120,9 +120,9 @@ public class ExampleController {
      * PUT /example/{id}
      */
     @PutMapping("/{id}")
-    @ApiOperation(value = "更新资源", notes = "根据ID更新示例资源信息")
+    @Operation(summary = "更新资源", description = "根据ID更新示例资源信息")
     public Result<?> update(
-        @ApiParam("资源ID") @PathVariable Long id,
+        @Parameter(description = "资源ID") @PathVariable Long id,
         @Valid @RequestBody ExampleEntity entity
     ) {
         if (id == null || id <= 0) {
@@ -149,8 +149,8 @@ public class ExampleController {
      * DELETE /example/{id}
      */
     @DeleteMapping("/{id}")
-    @ApiOperation(value = "删除资源", notes = "根据ID删除示例资源")
-    public Result<?> delete(@ApiParam("资源ID") @PathVariable Long id) {
+    @Operation(summary = "删除资源", description = "根据ID删除示例资源")
+    public Result<?> delete(@Parameter(description = "资源ID") @PathVariable Long id) {
         if (id == null || id <= 0) {
             return Result.error("ID无效");
         }
@@ -174,7 +174,7 @@ public class ExampleController {
      * DELETE /example/batch
      */
     @DeleteMapping("/batch")
-    @ApiOperation(value = "批量删除", notes = "批量删除示例资源")
+    @Operation(summary = "批量删除", description = "批量删除示例资源")
     public Result<?> batchDelete(@RequestBody Long[] ids) {
         if (ids == null || ids.length == 0) {
             return Result.error("请选择要删除的资源");
@@ -200,10 +200,10 @@ public class ExampleController {
      * PUT /example/{id}/status
      */
     @PutMapping("/{id}/status")
-    @ApiOperation(value = "更新状态", notes = "更新资源状态")
+    @Operation(summary = "更新状态", description = "更新资源状态")
     public Result<?> updateStatus(
-        @ApiParam("资源ID") @PathVariable Long id,
-        @ApiParam("状态值") @RequestParam Integer status
+        @Parameter(description = "资源ID") @PathVariable Long id,
+        @Parameter(description = "状态值") @RequestParam Integer status
     ) {
         if (id == null || id <= 0) {
             return Result.error("ID无效");
@@ -227,8 +227,8 @@ public class ExampleController {
      * GET /example/count
      */
     @GetMapping("/count")
-    @ApiOperation(value = "统计数量", notes = "统计资源总数")
-    public Result<?> count(@ApiParam("状态") @RequestParam(required = false) Integer status) {
+    @Operation(summary = "统计数量", description = "统计资源总数")
+    public Result<?> count(@Parameter(description = "状态") @RequestParam(required = false) Integer status) {
         LambdaQueryWrapper<ExampleEntity> wrapper = new LambdaQueryWrapper<>();
 
         if (status != null) {

@@ -30,7 +30,7 @@ public class ScheduleController {
     @Autowired
     private DoctorScheduleService scheduleService;
 
-    @Autowired
+    @Autowired(required = false)
     private RedisStockInterface redisStockService;
 
     @Autowired
@@ -70,11 +70,13 @@ public class ScheduleController {
             schedule.setUpdateTime(new Date());
 
             if (scheduleService.save(schedule)) {
-                redisStockService.setStock(
-                        schedule.getDoctorId(),
-                        schedule.getScheduleDate(),
-                        schedule.getSchedulePeriod(),
-                        schedule.getMaxCount());
+                if (redisStockService != null) {
+                    redisStockService.setStock(
+                            schedule.getDoctorId(),
+                            schedule.getScheduleDate(),
+                            schedule.getSchedulePeriod(),
+                            schedule.getMaxCount());
+                }
                 Map<String, Object> result = new HashMap<>();
                 result.put("scheduleId", schedule.getId());
                 result.put("message", "排班添加成功");

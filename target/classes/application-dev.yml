@@ -1,0 +1,55 @@
+server:
+  address: 0.0.0.0
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/medical_health?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+  thymeleaf:
+    enabled: false
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  tomcat:
+    max-http-post-size: -1
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+mybatis-plus:
+  type-aliases-package: com.example.medical.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+file:
+  upload-path: D:/harmony-health-care/uploads/
+
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: medical-images
+  preview-url-expiry: 3600
+
+ai:
+  engine:
+    url: http://localhost:8000/api/v1
+    timeout: 30000
+    retry-count: 1
+    version: 1.0.0
+
+medical-image:
+  max-file-size: 20971520
+  supported-formats: JPG,PNG,DICOM
+  compression-quality: 0.5
+  preview-width: 800
+  preview-height: 600

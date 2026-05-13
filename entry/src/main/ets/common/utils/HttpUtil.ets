@@ -176,13 +176,15 @@ export class HttpUtil {
     // 自动检测当前登录角色并选择对应的Token
     // 优先级：家属 > 护士 > 医生 > 管理员 > 普通用户
     let token: string | null = null;
-    
+
     if (options && options.skipAuth) {
       // 跳过认证，不添加Token
       token = null;
+      console.log('[HttpUtil] 跳过认证,不添加Token');
     } else if (options && options.isAdmin) {
       // 明确指定为管理员请求
       token = HttpUtil.getAdminToken();
+      console.log('[HttpUtil] 使用管理员Token:', token ? '已获取' : '未获取');
     } else {
       // 自动检测当前登录角色
       const isFamilyLoggedIn: boolean = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
@@ -190,17 +192,24 @@ export class HttpUtil {
       const isDoctorLoggedIn: boolean = AppStorage.get<boolean>('isDoctorLoggedIn') || false;
       const isAdminLoggedIn: boolean = AppStorage.get<boolean>('isAdminLoggedIn') || false;
       const isLoggedIn: boolean = AppStorage.get<boolean>('isLoggedIn') || false;
-      
+
+      console.log('[HttpUtil] 登录状态检测: 家属=' + isFamilyLoggedIn + ', 护士=' + isNurseLoggedIn + ', 医生=' + isDoctorLoggedIn + ', 管理员=' + isAdminLoggedIn + ', 用户=' + isLoggedIn);
+
       if (isFamilyLoggedIn) {
         token = HttpUtil.getFamilyToken();
+        console.log('[HttpUtil] 使用家属Token:', token ? (token.substring(0, 20) + '...') : '未获取');
       } else if (isNurseLoggedIn) {
         token = HttpUtil.getNurseToken();
+        console.log('[HttpUtil] 使用护士Token:', token ? '已获取' : '未获取');
       } else if (isDoctorLoggedIn) {
         token = HttpUtil.getDoctorToken();
+        console.log('[HttpUtil] 使用医生Token:', token ? '已获取' : '未获取');
       } else if (isAdminLoggedIn) {
         token = HttpUtil.getAdminToken();
+        console.log('[HttpUtil] 使用管理员Token:', token ? '已获取' : '未获取');
       } else if (isLoggedIn) {
         token = HttpUtil.getToken();
+        console.log('[HttpUtil] 使用用户Token:', token ? '已获取' : '未获取');
       }
     }
     
@@ -208,7 +217,7 @@ export class HttpUtil {
       'Content-Type': 'application/json'
     };
     if (token) {
-      headers['Token'] = token;
+      headers['Authorization'] = 'Bearer ' + token;
     }
 
     const requestOptions: HttpRequestOptions = {
@@ -272,7 +281,7 @@ export class HttpUtil {
           'Content-Type': 'multipart/form-data'
         };
         if (token) {
-          reqHeaders['Token'] = token;
+          reqHeaders['Authorization'] = 'Bearer ' + token;
         }
         httpRequest.request(fullUrl, {
           method: http.RequestMethod.POST,

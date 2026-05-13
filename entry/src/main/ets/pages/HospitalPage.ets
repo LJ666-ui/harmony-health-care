@@ -9,6 +9,8 @@ import { ApiConstants } from '../common/constants/ApiConstants';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { GlobalTheme } from '../global';
 import hospitalCacheManager, { HospitalCacheItem } from '../utils/HospitalCacheManager';
+import { convertLevelToDbValue } from '../constants/DataDictionary';
+import type { Hospital, HospitalPageData } from '../models/Hospital';
 
 const TAG = 'HospitalPage';
 
@@ -20,10 +22,6 @@ class HospitalItem {
   level: string = '';
   department: string = '';
   description: string = '';
-}
-
-interface HospitalPageData {
-  records: HospitalItem[];
 }
 
 interface RawHospitalItem {
@@ -81,6 +79,11 @@ struct HospitalPage {
     }
   }
 
+  // 将前端显示的筛选标签转换为数据库中实际存储的值
+  private convertLevelToDbValue(level: string): string {
+    return convertLevelToDbValue(level);
+  }
+
   async loadHospitalList(filterLevel?: string): Promise<void> {
     hilog.info(0x0000, TAG, 'loadHospitalList 开始加载, filterLevel=%{public}s', filterLevel || '全部');
 
@@ -96,7 +99,7 @@ struct HospitalPage {
     try {
       let cachedHospitals: HospitalCacheItem[] = [];
       let isCacheValid = false;
-      
+
       try {
         cachedHospitals = await hospitalCacheManager.getHospitalsByLevel(filterLevel || '全部');
         isCacheValid = await hospitalCacheManager.isCacheValid();
@@ -106,10 +109,10 @@ struct HospitalPage {
         cachedHospitals = [];
         isCacheValid = false;
       }
-      
+
       if (cachedHospitals.length > 0 && isCacheValid) {
         hilog.info(0x0000, TAG, '使用缓存数据，数量：', cachedHospitals.length);
-        
+
         const validHospitals: HospitalItem[] = [];
         for (const item of cachedHospitals) {
           try {
@@ -126,7 +129,7 @@ struct HospitalPage {
             hilog.warn(0x0000, TAG, '缓存数据转换失败: %{public}s', JSON.stringify(convertError));
           }
         }
-        
+
         this.hospitals = validHospitals;
         this.filterHospitals();
         this.isLoading = false;
@@ -136,21 +139,21 @@ struct HospitalPage {
       }
 
       hilog.info(0x0000, TAG, '缓存无效，从服务器获取数据');
-      
+
       let url: string = ApiConstants.HOSPITAL_LIST;
       let queryParams: Record<string, string> | undefined = undefined;
-      
+
       if (filterLevel && filterLevel !== '全部') {
         url = ApiConstants.HOSPITAL_PAGE;
         queryParams = {
-          'level': filterLevel,
+          'level': this.convertLevelToDbValue(filterLevel),
           'page': '1',
           'size': '500'
         };
       }
 
       let response: BaseResponse<HospitalItem[]>;
-      
+
       if (queryParams) {
         response = await HttpUtil.request<HospitalItem[]>(
           HttpMethod.GET,
@@ -175,7 +178,7 @@ struct HospitalPage {
       if (response.success && response.data) {
         let rawHospitalList: RawHospitalItem[] = [];
         const data: Object = response.data;
-        
+
         if (Array.isArray(data)) {
           rawHospitalList = data as RawHospitalItem[];
         } else if (data && typeof data === 'object') {
@@ -188,7 +191,7 @@ struct HospitalPage {
             hilog.error(0x0000, TAG, '解析分页数据失败: %{public}s', JSON.stringify(parseError));
           }
         }
-        
+
         hilog.info(0x0000, TAG, '原始数据数量=%{public}d', rawHospitalList.length);
 
         const validHospitals: HospitalItem[] = [];
@@ -198,14 +201,14 @@ struct HospitalPage {
             validHospitals.push(validated);
           }
         }
-        
+
         hilog.info(0x0000, TAG, '数据验证完成, 有效=%{public}d, 过滤=%{public}d',
           validHospitals.length, rawHospitalList.length - validHospitals.length);
 
         if (validHospitals.length > 0) {
           this.hospitals = validHospitals;
           this.filterHospitals();
-          
+
           try {
             const cacheItems: HospitalCacheItem[] = validHospitals.map((item: HospitalItem): HospitalCacheItem => ({
               id: item.id,
@@ -220,7 +223,7 @@ struct HospitalPage {
               cached_time: Date.now(),
               data_source: 'server'
             }));
-            
+
             await hospitalCacheManager.saveHospitals(cacheItems);
             hilog.info(0x0000, TAG, '已保存到缓存，数量：%{public}d', cacheItems.length);
           } catch (saveError) {
@@ -255,12 +258,12 @@ struct HospitalPage {
 
   onLevelSelect(level: string): void {
     hilog.info(0x0000, TAG, 'onLevelSelect 选择分类: %{public}s', level);
-    
+
     if (this.selectedLevel === level) {
       hilog.info(0x0000, TAG, '重复选择相同分类，跳过');
       return;
     }
-    
+
     this.selectedLevel = level;
     this.loadHospitalList(level);
   }
@@ -294,14 +297,14 @@ struct HospitalPage {
 
   aboutToAppear(): void {
     hilog.info(0x0000, TAG, 'aboutToAppear 页面初始化开始');
-    
+
     try {
       if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
         AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
       } else {
         this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
       }
-      
+
       this.loadHospitalList();
       hilog.info(0x0000, TAG, 'aboutToAppear 初始化完成');
     } catch (initError) {
@@ -313,7 +316,7 @@ struct HospitalPage {
 
   openARNavigation(): void {
     hilog.info(0x0000, TAG, 'openARNavigation 打开AR导航');
-    
+
     try {
       router.pushUrl({ url: 'pages/DestinationSelectPage' }).catch((error: Error) => {
         hilog.error(0x0000, TAG, 'AR导航跳转失败: %{public}s', error.message);

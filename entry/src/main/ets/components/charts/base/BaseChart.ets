@@ -170,7 +170,10 @@ export abstract class BaseChart<T> {
    * 获取绘图区域（去除padding后的区域）
    */
   protected getPlotArea(): { x: number; y: number; width: number; height: number } {
-    const [top, right, bottom, left] = this.config.padding;
+    const top = this.config.padding[0];
+    const right = this.config.padding[1];
+    const bottom = this.config.padding[2];
+    const left = this.config.padding[3];
     return {
       x: left,
       y: top,

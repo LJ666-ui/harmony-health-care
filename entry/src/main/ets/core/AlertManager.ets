@@ -63,7 +63,8 @@ export class AlertManager {
         [AlertLevel.EMERGENCY]: 0,
         [AlertLevel.URGENT]: 1,
         [AlertLevel.WARNING]: 2,
-        [AlertLevel.INFO]: 3
+        [AlertLevel.INFO]: 3,
+        [AlertLevel.CRITICAL]: 0
       };
 
       // 先按等级排序

@@ -3,17 +3,11 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
-import RdbHelper from '../utils/RdbHelper';
-import {
-  TABLE_ARTICLE_DRAFT,
-  COLUMN_ID,
-  COLUMN_DRAFT_TITLE,
-  COLUMN_DRAFT_CONTENT,
-  COLUMN_DRAFT_CATEGORY_ID,
-  COLUMN_DRAFT_COVER_IMAGE,
-  COLUMN_DRAFT_LAST_EDIT_TIME
-} from '../utils/DatabaseConstants';
-import relationalStore from '@ohos.data.relationalStore';
+import ArticleDraftManager from '../utils/ArticleDraftManager';
+import DatabaseDiagnostic from '../utils/DatabaseDiagnostic';
+import DraftTest from '../utils/DraftTest';
+import SimpleDraftTest from '../utils/SimpleDraftTest';
+import DatabaseDebug from '../utils/DatabaseDebug';
 
 interface CategoryOption {
   id: number;
@@ -73,32 +67,24 @@ struct PublishArticlePage {
 
   async loadDraft(): Promise<void> {
     try {
-      const predicates = new relationalStore.RdbPredicates(TABLE_ARTICLE_DRAFT);
-      predicates.orderByDesc(COLUMN_DRAFT_LAST_EDIT_TIME);
-      predicates.limitAs(1);
-
-      const result = await RdbHelper.queryByPredicates(predicates,
-        [COLUMN_DRAFT_TITLE, COLUMN_DRAFT_CONTENT, COLUMN_DRAFT_CATEGORY_ID]);
-
-      if (result && result.goToFirstRow()) {
-        const title = result.getString(0);
-        const content = result.getString(1);
-        const categoryId = result.getLong(2);
-
-        if (title && title.length > 0) {
-          this.articleTitle = title;
+      const draft = await ArticleDraftManager.getLatestDraft();
+      
+      if (draft) {
+        if (draft.draftTitle && draft.draftTitle.length > 0) {
+          this.articleTitle = draft.draftTitle;
         }
-        if (content && content.length > 0) {
-          this.articleContent = content;
+        if (draft.draftContent && draft.draftContent.length > 0) {
+          this.articleContent = draft.draftContent;
         }
-
-        for (let i = 0; i < this.categories.length; i++) {
-          if (this.categories[i].id === categoryId) {
-            this.selectedCategoryIndex = i;
-            break;
+        
+        if (draft.draftCategoryId) {
+          for (let i = 0; i < this.categories.length; i++) {
+            if (this.categories[i].id === draft.draftCategoryId) {
+              this.selectedCategoryIndex = i;
+              break;
+            }
           }
         }
-        result.close();
       }
     } catch (e) {
       console.error('加载草稿失败:', e);
@@ -106,26 +92,39 @@ struct PublishArticlePage {
   }
 
   async saveDraft(): Promise<void> {
+    console.info('===== saveDraft 开始 =====');
+    console.info('articleTitle:', this.articleTitle);
+    console.info('articleContent length:', this.articleContent.length);
+    
+    // 先进行数据库诊断
+    await DatabaseDiagnostic.checkDatabase();
+    
     try {
-      const values: relationalStore.ValuesBucket = {};
-      values[COLUMN_DRAFT_TITLE] = this.articleTitle;
-      values[COLUMN_DRAFT_CONTENT] = this.articleContent;
-      values[COLUMN_DRAFT_CATEGORY_ID] = this.categories[this.selectedCategoryIndex].id;
-      values[COLUMN_DRAFT_COVER_IMAGE] = '';
-      values[COLUMN_DRAFT_LAST_EDIT_TIME] = Date.now();
-
-      await RdbHelper.insertOrUpdate(TABLE_ARTICLE_DRAFT, values, COLUMN_ID, 1);
+      await ArticleDraftManager.saveDraft(
+        this.articleTitle,
+        this.articleContent,
+        this.categories[this.selectedCategoryIndex].id
+      );
+      
+      console.info('===== saveDraft 成功完成 =====');
       ToastUtil.showSuccess('草稿已保存');
     } catch (e) {
-      console.error('保存草稿失败:', e);
-      ToastUtil.showError('草稿保存失败', 3000);
+      console.error('===== saveDraft 失败 =====');
+      console.error('错误对象:', e);
+      console.error('错误详情:', JSON.stringify(e));
+      
+      if (e instanceof Error) {
+        console.error('错误消息:', e.message);
+        ToastUtil.showError('草稿保存失败: ' + e.message, 3000);
+      } else {
+        ToastUtil.showError('草稿保存失败', 3000);
+      }
     }
   }
 
   async clearDraft(): Promise<void> {
     try {
-      const predicates = new relationalStore.RdbPredicates(TABLE_ARTICLE_DRAFT);
-      await RdbHelper.delete(predicates);
+      await ArticleDraftManager.clearDraft();
     } catch (e) {
       console.error('清除草稿失败:', e);
     }
@@ -363,6 +362,37 @@ struct PublishArticlePage {
               .fontColor('#BBBBBB')
 
             Row({ space: 12 }) {
+              Button('📊 数据库信息')
+                .layoutWeight(1)
+                .height(42)
+                .fontSize(14)
+                .fontColor('#FF9800')
+                .backgroundColor('#FFF3E0')
+                .borderRadius(10)
+                .onClick(async () => {
+                  await DatabaseDebug.showDatabaseInfo();
+                  ToastUtil.showSuccess('查看日志窗口');
+                })
+
+              Button('🧪 测试插入')
+                .layoutWeight(1)
+                .height(42)
+                .fontSize(14)
+                .fontColor('#9C27B0')
+                .backgroundColor('#F3E5F5')
+                .borderRadius(10)
+                .onClick(async () => {
+                  try {
+                    await DatabaseDebug.testInsert();
+                    ToastUtil.showSuccess('测试插入成功');
+                  } catch (e) {
+                    ToastUtil.showError('测试失败: ' + (e instanceof Error ? e.message : '未知错误'));
+                  }
+                })
+            }
+            .width('100%')
+            
+            Row({ space: 12 }) {
               Button('💾 保存草稿')
                 .layoutWeight(1)
                 .height(42)
@@ -372,7 +402,7 @@ struct PublishArticlePage {
                 .borderRadius(10)
                 .onClick(() => this.saveDraft())
 
-              Button('🗑️ 清空草稿')
+              Button('🗑️ 清空')
                 .layoutWeight(1)
                 .height(42)
                 .fontSize(14)

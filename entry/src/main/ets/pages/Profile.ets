@@ -61,7 +61,8 @@ struct Profile {
     { icon: '📊', title: '健康统计报告', color: '#52C41A', url: 'pages/StatisticsPage' },
     { icon: '🏆', title: '社区排行榜', color: '#FAAD14', url: 'pages/RankingPage' },
     { icon: '📋', title: '我的病历', color: '#1677FF', url: 'pages/MedicalRecord' },
-    { icon: '❤️', title: '我的收藏', color: '#FF4757', url: 'pages/MyCollectPage' }
+    { icon: '❤️', title: '我的收藏', color: '#FF4757', url: 'pages/MyCollectPage' },
+    { icon: '📖', title: '浏览历史', color: '#1677FF', url: 'pages/BrowseHistoryPage' }
   ];
 
   @State settingsItems: MenuItem[] = [
@@ -108,7 +109,7 @@ struct Profile {
   }
 
   loadBanners() {
-    HttpUtil.get<BannerItem[]>('api/profile/banner/list').then((res: BaseResponse<BannerItem[]>) => {
+    HttpUtil.get<BannerItem[]>('/api/profile/banner/list').then((res: BaseResponse<BannerItem[]>) => {
       if (res.code === 200 && res.data) {
         this.banners = res.data;
       } else {
@@ -120,7 +121,7 @@ struct Profile {
   }
 
   loadHealthStats() {
-    HttpUtil.get<HealthStats>('api/profile/healthStats').then((res: BaseResponse<HealthStats>) => {
+    HttpUtil.get<HealthStats>('/api/profile/healthStats').then((res: BaseResponse<HealthStats>) => {
       if (res.code === 200 && res.data) {
         this.healthStats = res.data;
       } else {

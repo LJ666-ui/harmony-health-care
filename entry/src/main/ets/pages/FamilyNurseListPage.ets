@@ -3,20 +3,7 @@ import { Header } from '../components/Header';
 import { GlobalTheme } from '../global';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
-
-interface NurseInfo {
-  id: number;
-  userId: number;
-  nurseNo: string;
-  name: string;
-  gender: number;
-  phone: string;
-  department: string;
-  title: string;
-  workYears: number;
-  avatar: string;
-  status: number;
-}
+import type { Nurse } from '../models/Nurse';
 
 @Entry
 @Component
@@ -24,7 +11,7 @@ struct FamilyNurseListPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @StorageLink('userId') currentUserId: number = 0;
 
-  @State nurses: NurseInfo[] = [];
+  @State nurses: Nurse[] = [];
   @State isLoading: boolean = true;
   @State searchKeyword: string = '';
   @State familyId: number = 0;
@@ -46,7 +33,7 @@ struct FamilyNurseListPage {
         params['keyword'] = this.searchKeyword.trim();
       }
 
-      const response: BaseResponse<NurseInfo[]> = await HttpUtil.get<NurseInfo[]>('/nurse/list', params);
+      const response: BaseResponse<Nurse[]> = await HttpUtil.get<Nurse[]>('/nurse/list', params);
       
       if (response.success && response.data) {
         this.nurses = response.data;
@@ -61,7 +48,7 @@ struct FamilyNurseListPage {
     }
   }
 
-  private handleNurseClick(nurse: NurseInfo): void {
+  private handleNurseClick(nurse: Nurse): void {
     router.pushUrl({
       url: 'pages/FamilyNurseChatPage',
       params: {
@@ -71,10 +58,6 @@ struct FamilyNurseListPage {
         relatedPatientName: ''
       }
     });
-  }
-
-  private getGenderText(gender: number): string {
-    return gender === 1 ? '男' : '女';
   }
 
   private getDepartmentIcon(department: string): string {
@@ -153,7 +136,7 @@ struct FamilyNurseListPage {
         .justifyContent(FlexAlign.Center)
       } else {
         List({ space: 10 }) {
-          ForEach(this.nurses, (nurse: NurseInfo) => {
+          ForEach(this.nurses, (nurse: Nurse) => {
             ListItem() {
               Row() {
                 // 头像
@@ -172,10 +155,10 @@ struct FamilyNurseListPage {
                       .fontColor(GlobalTheme.TEXT_PRIMARY)
                       .layoutWeight(1)
 
-                    Text(this.getGenderText(nurse.gender))
+                    Text(nurse.nurseNo || 'N' + nurse.id)
                       .fontSize(12)
-                      .fontColor('#666666')
-                      .backgroundColor('#F0F0F0')
+                      .fontColor('#722ED1')
+                      .backgroundColor('#F9F0FF')
                       .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                       .borderRadius(4)
                   }
@@ -194,13 +177,6 @@ struct FamilyNurseListPage {
                   }
                   .width('100%')
                   .margin({ top: 4 })
-
-                  if (nurse.workYears && nurse.workYears > 0) {
-                    Text(`工作年限: ${nurse.workYears}年`)
-                      .fontSize(12)
-                      .fontColor('#999999')
-                      .margin({ top: 2 })
-                  }
 
                   Text(`工号: ${nurse.nurseNo}`)
                     .fontSize(11)

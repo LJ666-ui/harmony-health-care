@@ -17,12 +17,9 @@ interface NurseInfo {
   userId: number;
   nurseNo: string;
   name: string;
-  gender: number;
   phone: string;
   department: string;
   title: string;
-  certificateNo: string;
-  workYears: number;
   avatar: string;
   status: number;
 }

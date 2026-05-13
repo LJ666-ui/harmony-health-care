@@ -122,7 +122,6 @@ interface ApiConstantsInterface {
   REHAB_PLAN_DETAIL: string;
   REHAB_PLAN_ADD: string;
   REHAB_PLAN_UPDATE: string;
-  REHAB_PLAN_DETAIL: string;
   REHAB_PLAN_DELETE: string;
   REHAB_ACTION_LIST: string;
   REHAB_ACTION_DETAIL: string;

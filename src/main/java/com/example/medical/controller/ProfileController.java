@@ -25,29 +25,49 @@ public class ProfileController {
     @GetMapping("/banner/list")
     public Result<List<Map<String, Object>>> getBannerList() {
         List<Map<String, Object>> banners = new ArrayList<>();
-        
-        // 示例数据
+
         Map<String, Object> banner1 = new HashMap<>();
-        banner1.put("id", 1);
+        banner1.put("id", "1");
+        banner1.put("icon", "💡");
         banner1.put("title", "健康生活小贴士");
-        banner1.put("image", "https://example.com/banner1.jpg");
-        banner1.put("url", "/pages/HealthTips");
+        banner1.put("subtitle", "每日健康提醒，科学管理您的身体");
+        banner1.put("ctaText", "立即查看");
+        banner1.put("targetUrl", "pages/HealthPage");
+        List<Map<String, Object>> colors1 = new ArrayList<>();
+        Map<String, Object> c1a = new HashMap<>(); c1a.put("color", "#1677FF"); c1a.put("offset", 0);
+        Map<String, Object> c1b = new HashMap<>(); c1b.put("color", "#36CFC9"); c1b.put("offset", 1);
+        colors1.add(c1a); colors1.add(c1b);
+        banner1.put("gradientColors", colors1);
         banners.add(banner1);
-        
+
         Map<String, Object> banner2 = new HashMap<>();
-        banner2.put("id", 2);
+        banner2.put("id", "2");
+        banner2.put("icon", "🌸");
         banner2.put("title", "春季养生指南");
-        banner2.put("image", "https://example.com/banner2.jpg");
-        banner2.put("url", "/pages/SeasonalHealth");
+        banner2.put("subtitle", "顺应时节，调养身心");
+        banner2.put("ctaText", "了解更多");
+        banner2.put("targetUrl", "pages/HealthPage");
+        List<Map<String, Object>> colors2 = new ArrayList<>();
+        Map<String, Object> c2a = new HashMap<>(); c2a.put("color", "#52C41A"); c2a.put("offset", 0);
+        Map<String, Object> c2b = new HashMap<>(); c2b.put("color", "#95DE64"); c2b.put("offset", 1);
+        colors2.add(c2a); colors2.add(c2b);
+        banner2.put("gradientColors", colors2);
         banners.add(banner2);
-        
+
         Map<String, Object> banner3 = new HashMap<>();
-        banner3.put("id", 3);
+        banner3.put("id", "3");
+        banner3.put("icon", "🏥");
         banner3.put("title", "在线问诊服务");
-        banner3.put("image", "https://example.com/banner3.jpg");
-        banner3.put("url", "/pages/OnlineConsultation");
+        banner3.put("subtitle", "专业医生，随时咨询");
+        banner3.put("ctaText", "开始问诊");
+        banner3.put("targetUrl", "pages/MedicalPage");
+        List<Map<String, Object>> colors3 = new ArrayList<>();
+        Map<String, Object> c3a = new HashMap<>(); c3a.put("color", "#722ED1"); c3a.put("offset", 0);
+        Map<String, Object> c3b = new HashMap<>(); c3b.put("color", "#B37FEB"); c3b.put("offset", 1);
+        colors3.add(c3a); colors3.add(c3b);
+        banner3.put("gradientColors", colors3);
         banners.add(banner3);
-        
+
         return Result.success(banners);
     }
 
@@ -58,46 +78,9 @@ public class ProfileController {
     @GetMapping("/healthStats")
     public Result<Map<String, Object>> getHealthStats() {
         Map<String, Object> stats = new HashMap<>();
-        
-        // 健康记录统计
-        Map<String, Object> healthRecords = new HashMap<>();
-        healthRecords.put("total", 15);
-        healthRecords.put("thisMonth", 3);
-        healthRecords.put("latestType", "血压测量");
-        stats.put("healthRecords", healthRecords);
-        
-        // 预约统计
-        Map<String, Object> appointments = new HashMap<>();
-        appointments.put("upcoming", 2);
-        appointments.put("completed", 8);
-        appointments.put("cancelled", 1);
-        stats.put("appointments", appointments);
-        
-        // 健康评分
-        stats.put("healthScore", 85);
-        stats.put("healthLevel", "良好");
-        
-        // 风险评估
-        Map<String, Object> riskAssessment = new HashMap<>();
-        riskAssessment.put("level", "低风险");
-        riskAssessment.put("score", 92);
-        riskAssessment.put("lastAssessDate", "2026-05-10");
-        stats.put("riskAssessment", riskAssessment);
-        
-        // 康复计划
-        Map<String, Object> rehabPlan = new HashMap<>();
-        rehabPlan.put("active", 1);
-        rehabPlan.put("completed", 3);
-        rehabPlan.put("progress", 65);
-        stats.put("rehabPlan", rehabPlan);
-        
-        // 用药提醒
-        Map<String, Object> medication = new HashMap<>();
-        medication.put("activeReminders", 2);
-        medication.put("todayTaken", 1);
-        medication.put("totalToday", 3);
-        stats.put("medication", medication);
-        
+        stats.put("healthRecordCount", 15);
+        stats.put("collectCount", 8);
+        stats.put("browseHistoryCount", 23);
         return Result.success(stats);
     }
 }

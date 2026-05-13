@@ -13,6 +13,15 @@ export interface MockUser {
 export const mockUsers: MockUser[] = [
   {
     userId: 1,
+    username: '13245679876',
+    password: '123456',
+    userType: 0,
+    realName: '测试用户',
+    phone: '13245679876',
+    avatar: ''
+  },
+  {
+    userId: 2,
     username: '13948999643',
     password: '123456',
     userType: 0,

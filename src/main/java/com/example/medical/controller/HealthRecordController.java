@@ -6,8 +6,10 @@ import com.example.medical.common.PageResult;
 import com.example.medical.dto.HealthRecordItem;
 import com.example.medical.entity.HealthRecord;
 import com.example.medical.entity.FamilyMember;
+import com.example.medical.entity.Nurse;
 import com.example.medical.service.HealthRecordService;
 import com.example.medical.service.FamilyAuthService;
+import com.example.medical.service.NurseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
@@ -28,6 +30,9 @@ public class HealthRecordController {
 
     @Autowired
     private FamilyAuthService familyAuthService;
+
+    @Autowired
+    private NurseService nurseService;
 
     /**
      * 添加健康记录
@@ -215,9 +220,17 @@ public class HealthRecordController {
             return JwtUtil.getDoctorId(token);
         }
         
-        // 护士token
+        // 护士token - 需要查询nurse表获取userId
         if (JwtUtil.isNurseToken(token)) {
-            return JwtUtil.getNurseId(token);
+            Long nurseId = JwtUtil.getNurseId(token);
+            if (nurseId != null) {
+                Nurse nurse = nurseService.getById(nurseId);
+                if (nurse != null && nurse.getUserId() != null) {
+                    return nurse.getUserId();  // ✅ 返回user表的ID
+                }
+                return nurseId;  // fallback: 如果没有userId，返回nurseId
+            }
+            return null;
         }
         
         return null;

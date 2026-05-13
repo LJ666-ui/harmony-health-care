@@ -242,6 +242,7 @@ export class HttpUtil {
     };
     if (token) {
       headers['Token'] = token;
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     const requestOptions: HttpRequestOptions = {

@@ -133,7 +133,27 @@ public class DoctorController {
                 return Result.error("医生不存在");
             }
 
-            return Result.success(doctor);
+            // 关联查询用户表获取 realName 和 phone
+            User user = userService.getById(doctor.getUserId());
+            
+            // 组装完整信息返回给前端
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", doctor.getId());
+            result.put("userId", doctor.getUserId());
+            result.put("realName", user != null ? user.getRealName() : "");
+            result.put("phone", user != null ? user.getPhone() : "");
+            result.put("hospital", doctor.getHospital());
+            result.put("department", doctor.getDepartment());
+            result.put("licenseNumber", doctor.getLicenseNumber());
+            result.put("title", doctor.getTitle());
+            result.put("specialty", doctor.getSpecialty());
+            result.put("description", doctor.getDescription());
+            result.put("rating", doctor.getRating());
+            result.put("status", doctor.getStatus());
+            result.put("createTime", doctor.getCreateTime());
+            result.put("updateTime", doctor.getUpdateTime());
+
+            return Result.success(result);
         } catch (Exception e) {
             return Result.error("获取医生信息失败: " + e.getMessage());
         }
@@ -172,6 +192,126 @@ public class DoctorController {
             return Result.success(patients);
         } catch (Exception e) {
             return Result.error("获取患者列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新医生个人信息
+     */
+    @PutMapping("/update")
+    public Result updateDoctorInfo(@RequestHeader("Token") String token, @RequestBody Map<String, Object> params) {
+        try {
+            if (!JwtUtil.isDoctorToken(token)) {
+                return Result.error("非医生Token");
+            }
+
+            Long doctorId = JwtUtil.getDoctorId(token);
+            if (doctorId == null) {
+                return Result.error("无效的Token");
+            }
+
+            Doctor existingDoctor = doctorService.findById(doctorId);
+            if (existingDoctor == null) {
+                return Result.error("医生不存在");
+            }
+
+            // 获取关联的用户信息
+            User user = userService.getById(existingDoctor.getUserId());
+            if (user == null) {
+                return Result.error("关联用户不存在");
+            }
+
+            // 1. 更新 user 表（realName 和 phone）
+            if (params.containsKey("realName")) {
+                user.setRealName((String) params.get("realName"));
+            }
+            if (params.containsKey("phone")) {
+                user.setPhone((String) params.get("phone"));
+            }
+            userService.updateById(user);
+
+            // 2. 更新 doctor 表（其他字段）
+            if (params.containsKey("department")) {
+                existingDoctor.setDepartment((String) params.get("department"));
+            }
+            if (params.containsKey("title")) {
+                existingDoctor.setTitle((String) params.get("title"));
+            }
+            if (params.containsKey("specialty")) {
+                existingDoctor.setSpecialty((String) params.get("specialty"));
+            }
+            if (params.containsKey("description")) {
+                existingDoctor.setDescription((String) params.get("description"));
+            }
+            existingDoctor.setUpdateTime(new java.util.Date());
+
+            if (doctorService.updateById(existingDoctor)) {
+                return Result.success("更新成功");
+            } else {
+                return Result.error("更新失败");
+            }
+        } catch (Exception e) {
+            return Result.error("更新医生信息失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 修改医生密码
+     */
+    @PostMapping("/password")
+    public Result changePassword(@RequestHeader("Token") String token, @RequestBody Map<String, String> params) {
+        try {
+            if (!JwtUtil.isDoctorToken(token)) {
+                return Result.error("非医生Token");
+            }
+
+            Long doctorId = JwtUtil.getDoctorId(token);
+            if (doctorId == null) {
+                return Result.error("无效的Token");
+            }
+
+            String oldPassword = params.get("oldPassword");
+            String newPassword = params.get("newPassword");
+
+            if (oldPassword == null || oldPassword.isEmpty()) {
+                return Result.error("原密码不能为空");
+            }
+            if (newPassword == null || newPassword.isEmpty()) {
+                return Result.error("新密码不能为空");
+            }
+            if (newPassword.length() < 6) {
+                return Result.error("新密码长度不能少于6位");
+            }
+
+            Doctor doctor = doctorService.findById(doctorId);
+            if (doctor == null) {
+                return Result.error("医生不存在");
+            }
+
+            User user = userService.getById(doctor.getUserId());
+            if (user == null) {
+                return Result.error("用户不存在");
+            }
+
+            boolean passwordMatches = false;
+            if (user.getPassword().startsWith("$2a$") || user.getPassword().startsWith("$2b$")) {
+                passwordMatches = BCryptUtil.matches(oldPassword, user.getPassword());
+            } else {
+                passwordMatches = user.getPassword().equals(oldPassword);
+            }
+
+            if (!passwordMatches) {
+                return Result.error("原密码错误");
+            }
+
+            user.setPassword(BCryptUtil.encrypt(newPassword));
+            if (userService.updateById(user)) {
+                return Result.success("密码修改成功");
+            } else {
+                return Result.error("密码修改失败");
+            }
+        } catch (Exception e) {
+            return Result.error("修改密码失败: " + e.getMessage());
         }
     }
 }

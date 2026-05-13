@@ -62,6 +62,7 @@ struct NurseSchedulePage {
   @State filteredSchedules: NurseScheduleItem[] = [];
   @State useMockData: boolean = false;
   @State errorMessage: string = '';
+  @State showMySchedule: boolean = false;
 
   private baseUrl: string = `${ApiConstants.BASE_URL}/api/nurse/schedule`;
 
@@ -105,8 +106,22 @@ struct NurseSchedulePage {
       header['Token'] = nurseToken;
     }
     
+    const selectedDateStr: string = this.formatDate(this.selectedDate);
+    let url: string = '';
+    
+    if (this.showMySchedule) {
+      const nurseId: number = this.getNurseId();
+      if (nurseId <= 0) {
+        console.warn('[NurseSchedulePage] 护士ID无效，无法加载个人排班');
+        return;
+      }
+      url = `${this.baseUrl}/nurse/${nurseId}?startDate=${selectedDateStr}&endDate=${selectedDateStr}`;
+    } else {
+      url = `${this.baseUrl}/daily?date=${selectedDateStr}`;
+    }
+    
     const response: http.HttpResponse = await http.createHttp().request(
-      `${this.baseUrl}/daily?date=${this.formatDate(this.selectedDate)}`,
+      url,
       {
         method: http.RequestMethod.GET,
         header: header,
@@ -118,14 +133,61 @@ struct NurseSchedulePage {
     if (response.responseCode === 200) {
       const resultObj: Record<string, Object> = JSON.parse(response.result as string) as Record<string, Object>;
       if (resultObj['code'] === 200 && resultObj['data'] !== undefined) {
-        const data: Record<string, Object> = resultObj['data'] as Record<string, Object>;
-        this.dailyOverview = this.parseDailyOverview(data);
+        if (this.showMySchedule) {
+          const dataArray: Object[] = resultObj['data'] as Object[];
+          this.dailyOverview = this.buildPersonalDailyOverview(dataArray, selectedDateStr);
+        } else {
+          const data: Record<string, Object> = resultObj['data'] as Record<string, Object>;
+          this.dailyOverview = this.parseDailyOverview(data);
+        }
       } else {
         throw new Error('Invalid response format');
       }
     } else {
       throw new Error(`HTTP ${response.responseCode}`);
     }
+  }
+
+  private buildPersonalDailyOverview(schedulesData: Object[], date: string): DailyOverview {
+    const overview: DailyOverview = new DailyOverview();
+    overview.date = date;
+    overview.totalCount = schedulesData.length;
+    
+    const shiftStatsMap: Map<string, number> = new Map<string, number>();
+    shiftStatsMap.set('\u65E9\u73ED', 0);
+    shiftStatsMap.set('\u4E2D\u73ED', 0);
+    shiftStatsMap.set('\u591C\u73ED', 0);
+    
+    const deptMap: Map<string, DepartmentInfo> = new Map<string, DepartmentInfo>();
+    
+    schedulesData.forEach((item: Object) => {
+      const schedule: NurseScheduleItem = this.parseScheduleItem(item);
+      overview.schedules.push(schedule);
+      
+      const shiftName: string = this.getShortShiftName(schedule.shiftType);
+      const currentCount: number | undefined = shiftStatsMap.get(shiftName);
+      if (currentCount !== undefined) {
+        shiftStatsMap.set(shiftName, currentCount + 1);
+      }
+      
+      if (schedule.department && schedule.department.length > 0) {
+        let deptInfo: DepartmentInfo | undefined = deptMap.get(schedule.department);
+        if (deptInfo === undefined) {
+          deptInfo = new DepartmentInfo();
+          deptInfo.department = schedule.department;
+          deptInfo.nurseCount = 0;
+          deptInfo.totalPatients = 0;
+          deptMap.set(schedule.department, deptInfo);
+        }
+        deptInfo.nurseCount += 1;
+        deptInfo.totalPatients += schedule.bedCount;
+      }
+    });
+    
+    overview.shiftStats = shiftStatsMap;
+    overview.departments = Array.from(deptMap.values());
+    
+    return overview;
   }
 
   async loadWeeklyScheduleFromNetwork(): Promise<void> {
@@ -185,6 +247,11 @@ struct NurseSchedulePage {
   }
 
   private getNurseName(): string {
+    const realName: string | undefined = AppStorage.get<string>('nurseRealName');
+    if (realName && realName.length > 0) {
+      return realName;
+    }
+    
     if (this.nurseInfo == null) {
       return '-';
     }
@@ -324,6 +391,27 @@ struct NurseSchedulePage {
     this.updateFilteredSchedules();
   }
 
+  private async toggleMySchedule(): Promise<void> {
+    this.showMySchedule = !this.showMySchedule;
+    this.loading = true;
+    
+    try {
+      await this.loadDailyOverviewFromNetwork();
+      this.updateFilteredSchedules();
+      
+      if (this.showMySchedule) {
+        console.info('[NurseSchedulePage] 切换到我的排班视图');
+      } else {
+        console.info('[NurseSchedulePage] 切换到全部排班视图');
+      }
+    } catch (error) {
+      console.error('切换视图失败:', error);
+      this.errorMessage = '加载失败，请重试';
+    } finally {
+      this.loading = false;
+    }
+  }
+
   private getShiftName(shiftType: number): string {
     switch (shiftType) {
       case 1: return '\u65E9\u73ED(07:00-15:00)';
@@ -377,7 +465,7 @@ struct NurseSchedulePage {
 
   build() {
     Column() {
-      Header({ title: '\u6392\u73ED\u67E5\u770B' })
+      Header({ title: '\u6211\u7684\u6392\u73ED' })
 
       if (this.loading) {
         Column() {
@@ -595,6 +683,14 @@ struct NurseSchedulePage {
           .backgroundColor(this.selectedShift === 3 ? '#9B59B6' : '#F0F0F0')
           .fontColor(this.selectedShift === 3 ? '#FFFFFF' : '#666666')
           .onClick(() => this.onShiftFilterChange(3))
+
+        Text('\u6211\u7684\u6392\u73ED')
+          .fontSize(13)
+          .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+          .borderRadius(16)
+          .backgroundColor(this.showMySchedule ? '#E74C3C' : '#F0F0F0')
+          .fontColor(this.showMySchedule ? '#FFFFFF' : '#666666')
+          .onClick(() => this.toggleMySchedule())
       }
     }
     .scrollable(ScrollDirection.Horizontal)

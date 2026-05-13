@@ -114,10 +114,21 @@ struct DoctorChatPage {
     const authManager: AuthManager = AuthManager.getInstance();
     const currentRole: UserRole = authManager.getCurrentRole();
 
-    if (currentRole === UserRole.GUEST) {
+    hilog.info(0x0000, TAG, 'checkAccess - currentRole=%{public}s, userId from Storage=%{public}d', 
+      currentRole, this.currentUserId);
+
+    if (currentRole === UserRole.GUEST && this.currentUserId === 0) {
       promptAction.showToast({ message: '请先登录' });
       router.replaceUrl({ url: 'pages/Login' });
       return;
+    }
+
+    if (this.currentUserId === 0) {
+      const storedUserId: number | undefined = AppStorage.get<number>('userId');
+      if (storedUserId && storedUserId > 0) {
+        this.currentUserId = storedUserId;
+        hilog.info(0x0000, TAG, '从AppStorage恢复userId=%{public}d', storedUserId);
+      }
     }
 
     this.hasAccess = true;
@@ -125,37 +136,50 @@ struct DoctorChatPage {
   }
 
   private initParams(): void {
-    const params: ChatParams = router.getParams() as ChatParams;
-    hilog.info(0x0000, TAG, 'aboutToAppear params=%{public}s', JSON.stringify(params));
-    if (params) {
-      this.isDoctor = params.isDoctor === true;
-      this.doctorId = params.doctorId || 0;
-      this.doctorName = params.doctorName || '医生';
-      this.currentUserId = params.currentUserId || this.currentUserId || 1;
+    try {
+      const params: ChatParams = router.getParams() as ChatParams;
+      hilog.info(0x0000, TAG, 'aboutToAppear params=%{public}s', JSON.stringify(params));
+      if (params) {
+        this.isDoctor = params.isDoctor === true;
+        this.doctorId = params.doctorId || 0;
+        this.doctorName = params.doctorName || '医生';
+        this.currentUserId = params.currentUserId || this.currentUserId || 1;
 
-      if (this.isDoctor) {
-        this.otherUserId = params.otherUserId || 0;
-        this.otherUserName = params.otherUserName || '患者';
+        if (this.isDoctor) {
+          this.otherUserId = params.otherUserId || 0;
+          this.otherUserName = params.otherUserName || '患者';
+        } else {
+          this.otherUserId = this.doctorId;
+          this.otherUserName = this.doctorName;
+        }
+
+        if (this.isDoctor) {
+          this.checkCanSend();
+        } else {
+          this.canSend = true;
+        }
+
+        if (params.prefillMessage && params.prefillMessage.trim() !== '') {
+          this.inputText = params.prefillMessage;
+        }
       } else {
-        this.otherUserId = this.doctorId;
-        this.otherUserName = this.doctorName;
+        hilog.error(0x0000, TAG, '未接收到页面参数');
       }
-
-      if (this.isDoctor) {
-        this.checkCanSend();
-      } else {
-        this.canSend = true;
-      }
-
-      if (params.prefillMessage && params.prefillMessage.trim() !== '') {
-        this.inputText = params.prefillMessage;
-      }
+    } catch (error) {
+      hilog.error(0x0000, TAG, '初始化参数异常: %{public}s', error instanceof Error ? error.message : '未知错误');
     }
+    
     hilog.info(0x0000, TAG, 'init done isDoctor=%{public}b currentUserId=%{public}d otherUserId=%{public}d doctorId=%{public}d',
       this.isDoctor, this.currentUserId, this.otherUserId, this.doctorId);
-    this.loadHistory();
-    this.startPolling();
-    this.startCountdown();
+      
+    if (this.currentUserId > 0 && this.otherUserId > 0) {
+      this.loadHistory();
+      this.startPolling();
+      this.startCountdown();
+    } else {
+      hilog.warn(0x0000, TAG, '用户ID缺失，跳过加载历史消息');
+      this.isLoading = false;
+    }
   }
 
   aboutToDisappear(): void {

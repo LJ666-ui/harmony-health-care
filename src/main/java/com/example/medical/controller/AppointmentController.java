@@ -399,6 +399,148 @@ public class AppointmentController {
         }
     }
 
+    @GetMapping("/doctor/{doctorId}/patients")
+    public Result<?> getDoctorPatients(@PathVariable Long doctorId) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            String todayStr = sdf.format(new Date());
+            Date today = sdf.parse(todayStr);
+
+            LambdaQueryWrapper<Appointment> todayWrapper = new LambdaQueryWrapper<>();
+            todayWrapper.eq(Appointment::getDoctorId, doctorId)
+                    .eq(Appointment::getIsDeleted, 0)
+                    .eq(Appointment::getScheduleDate, today)
+                    .in(Appointment::getStatus, 0, 1, 2)
+                    .orderByAsc(Appointment::getSchedulePeriod)
+                    .orderByDesc(Appointment::getCreateTime);
+            List<Appointment> todayAppointments = appointmentService.list(todayWrapper);
+
+            LambdaQueryWrapper<Appointment> historyWrapper = new LambdaQueryWrapper<>();
+            historyWrapper.eq(Appointment::getDoctorId, doctorId)
+                    .eq(Appointment::getIsDeleted, 0)
+                    .ne(Appointment::getScheduleDate, today)
+                    .in(Appointment::getStatus, 1, 2)
+                    .orderByDesc(Appointment::getScheduleDate);
+            List<Appointment> historyAppointments = appointmentService.list(historyWrapper);
+
+            Set<Long> todayPatientIds = new HashSet<>();
+            Set<Long> allPatientIds = new HashSet<>();
+
+            for (Appointment apt : todayAppointments) {
+                if (apt.getUserId() != null) {
+                    todayPatientIds.add(apt.getUserId());
+                    allPatientIds.add(apt.getUserId());
+                }
+            }
+            for (Appointment apt : historyAppointments) {
+                if (apt.getUserId() != null) {
+                    allPatientIds.add(apt.getUserId());
+                }
+            }
+
+            List<Map<String, Object>> todayPatients = new ArrayList<>();
+            List<Map<String, Object>> historyPatients = new ArrayList<>();
+
+            Map<Long, User> userCache = new HashMap<>();
+
+            for (Long userId : todayPatientIds) {
+                User user = userCache.computeIfAbsent(userId, id -> userService.getById(id));
+                if (user == null) continue;
+
+                Appointment latestApt = todayAppointments.stream()
+                        .filter(a -> a.getUserId().equals(userId))
+                        .findFirst()
+                        .orElse(null);
+
+                Map<String, Object> patientMap = buildPatientInfo(user, latestApt, true);
+                todayPatients.add(patientMap);
+            }
+
+            for (Long userId : allPatientIds) {
+                if (todayPatientIds.contains(userId)) continue;
+
+                User user = userCache.get(userId);
+                if (user == null) {
+                    user = userService.getById(userId);
+                    userCache.put(userId, user);
+                }
+                if (user == null) continue;
+
+                Appointment latestApt = historyAppointments.stream()
+                        .filter(a -> a.getUserId().equals(userId))
+                        .findFirst()
+                        .orElse(null);
+
+                Map<String, Object> patientMap = buildPatientInfo(user, latestApt, false);
+                historyPatients.add(patientMap);
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("todayPatients", todayPatients);
+            result.put("historyPatients", historyPatients);
+            result.put("todayCount", todayPatients.size());
+            result.put("totalCount", allPatientIds.size());
+
+            return Result.success(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取患者列表失败：" + e.getMessage());
+        }
+    }
+
+    private Map<String, Object> buildPatientInfo(User user, Appointment appointment, boolean isToday) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("patientId", user.getId());
+        map.put("name", user.getRealName() != null ? user.getRealName() : "未知");
+        map.put("phone", user.getPhone() != null ? user.getPhone() : "");
+        map.put("avatar", user.getAvatar() != null ? user.getAvatar() : "");
+        map.put("isToday", isToday);
+
+        if (appointment != null) {
+            map.put("appointmentId", appointment.getId());
+            map.put("scheduleDate", appointment.getScheduleDate());
+            map.put("schedulePeriod", appointment.getSchedulePeriod());
+            map.put("status", appointment.getStatus());
+            map.put("fee", appointment.getFee());
+            map.put("appointmentNo", appointment.getAppointmentNo());
+
+            String periodText = "";
+            if (appointment.getSchedulePeriod() != null) {
+                switch (appointment.getSchedulePeriod()) {
+                    case 1: periodText = "上午"; break;
+                    case 2: periodText = "下午"; break;
+                    case 3: periodText = "晚上"; break;
+                    default: periodText = ""; break;
+                }
+            }
+            map.put("periodText", periodText);
+
+            String statusText = "";
+            if (appointment.getStatus() != null) {
+                switch (appointment.getStatus()) {
+                    case 0: statusText = "待确认"; break;
+                    case 1: statusText = "已确认"; break;
+                    case 2: statusText = "就诊中"; break;
+                    case 3: statusText = "已取消"; break;
+                    case 4: statusText = "已完成"; break;
+                    default: statusText = "未知"; break;
+                }
+            }
+            map.put("statusText", statusText);
+        } else {
+            map.put("appointmentId", null);
+            map.put("scheduleDate", null);
+            map.put("schedulePeriod", null);
+            map.put("status", null);
+            map.put("fee", null);
+            map.put("appointmentNo", null);
+            map.put("periodText", "");
+            map.put("statusText", "");
+        }
+
+        return map;
+    }
+
     @PutMapping("/{id}/status")
     public Result<?> updateAppointmentStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {

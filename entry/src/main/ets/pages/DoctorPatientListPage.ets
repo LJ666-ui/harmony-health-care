@@ -1,16 +1,33 @@
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { http } from '@kit.NetworkKit';
-import { PatientBasicInfo, PatientBasicInfoHelper } from '../models/DoctorPatientModels';
 import { SettingsUtil } from '../utils/SettingsUtil';
+
+interface PatientInfo {
+  patientId: number;
+  name: string;
+  phone: string;
+  avatar: string;
+  isToday: boolean;
+  appointmentId?: number;
+  scheduleDate?: string;
+  schedulePeriod?: number;
+  status?: number;
+  fee?: number;
+  appointmentNo?: string;
+  periodText?: string;
+  statusText?: string;
+}
 
 @Entry
 @Component
 struct DoctorPatientListPage {
-  @State patients: PatientBasicInfo[] = [];
+  @State todayPatients: PatientInfo[] = [];
+  @State historyPatients: PatientInfo[] = [];
   @State isLoading: boolean = true;
   @State errorMessage: string = '';
   @State doctorId: number = 0;
+  @State currentTab: number = 0;
 
   aboutToAppear(): void {
     this.loadDoctorId();
@@ -41,11 +58,10 @@ struct DoctorPatientListPage {
     try {
       hilog.info(0x0000, 'DoctorPatientListPage', `开始加载患者列表, doctorId=${this.doctorId}`);
       const serverUrl: string = 'http://192.168.108.1:8080';
-      hilog.info(0x0000, 'DoctorPatientListPage', `请求URL: ${serverUrl}/api/doctor/${this.doctorId}/patients`);
+      hilog.info(0x0000, 'DoctorPatientListPage', `请求URL: ${serverUrl}/api/appointment/doctor/${this.doctorId}/patients`);
 
-      // 调用新的综合API获取患者的详细信息
       const response = await http.createHttp().request(
-        `${serverUrl}/api/doctor/${this.doctorId}/patients`,
+        `${serverUrl}/api/appointment/doctor/${this.doctorId}/patients`,
         {
           method: http.RequestMethod.GET,
           header: { 'Content-Type': 'application/json' },
@@ -55,49 +71,30 @@ struct DoctorPatientListPage {
       );
 
       hilog.info(0x0000, 'DoctorPatientListPage', `响应状态码: ${response.responseCode}`);
-      hilog.info(0x0000, 'DoctorPatientListPage', `响应结果: ${response.result}`);
 
       if (response.responseCode === 200) {
-        const result: Record<string, ESObject> = JSON.parse(response.result as string) as Record<string, ESObject>;
+        const result: Record<string, Object> = JSON.parse(response.result as string) as Record<string, Object>;
         hilog.info(0x0000, 'DoctorPatientListPage', `解析后的code: ${result['code']}, message: ${result['message']}`);
 
-        const rawData: ESObject | ESObject[] | null = result['data'];
-        const patientsData: ESObject[] = Array.isArray(rawData) ? rawData : [];
+        const data: Object | undefined = result['data'];
+        if (data && typeof data === 'object') {
+          const dataRecord: Record<string, Object> = data as Record<string, Object>;
+          const todayPatientsRaw: Object | undefined = dataRecord['todayPatients'];
+          const historyPatientsRaw: Object | undefined = dataRecord['historyPatients'];
 
-        hilog.info(0x0000, 'DoctorPatientListPage', `获取到${patientsData.length}位患者`);
+          const todayData: Record<string, Object>[] = Array.isArray(todayPatientsRaw) ? todayPatientsRaw as Record<string, Object>[] : [];
+          const historyData: Record<string, Object>[] = Array.isArray(historyPatientsRaw) ? historyPatientsRaw as Record<string, Object>[] : [];
 
-        // 解析返回的患者详细信息
-        this.patients = [];
-        for (let i = 0; i < patientsData.length; i++) {
-          const raw: ESObject = patientsData[i] as ESObject;
-          if (raw == null) {
-            continue;
-          }
+          hilog.info(0x0000, 'DoctorPatientListPage', `今日患者: ${todayData.length}位, 历史患者: ${historyData.length}位`);
 
-          const patient: PatientBasicInfo = new PatientBasicInfo();
-
-          const patientIdVal: string | number | boolean | null | undefined = raw['patientId'];
-          patient.id = typeof patientIdVal === 'number' ? patientIdVal : 0;
-
-          const usernameVal: string | number | boolean | null | undefined = raw['username'];
-          patient.name = typeof usernameVal === 'string' ? usernameVal : '未知';
-
-          const ageVal: string | number | boolean | null | undefined = raw['age'];
-          patient.age = typeof ageVal === 'number' ? ageVal : 0;
-
-          const phoneVal: string | number | boolean | null | undefined = raw['phone'];
-          patient.phone = typeof phoneVal === 'string' ? phoneVal : '';
-
-          const idCardVal: string | number | boolean | null | undefined = raw['idCard'];
-          patient.idCard = typeof idCardVal === 'string' ? idCardVal : '';
-
-          this.patients.push(patient);
+          this.todayPatients = this.parsePatientArray(todayData);
+          this.historyPatients = this.parsePatientArray(historyData);
         }
 
         this.isLoading = false;
         
-        if (this.patients.length > 0) {
-          hilog.info(0x0000, 'DoctorPatientListPage', `第一位患者: ${this.patients[0].name}, ${this.patients[0].age}岁`);
+        if (this.todayPatients.length > 0 || this.historyPatients.length > 0) {
+          hilog.info(0x0000, 'DoctorPatientListPage', `加载完成 - 今日: ${this.todayPatients.length}, 历史: ${this.historyPatients.length}`);
         } else {
           hilog.warn(0x0000, 'DoctorPatientListPage', '患者列表为空');
         }
@@ -105,7 +102,7 @@ struct DoctorPatientListPage {
         let errorDetail = '';
         if (response.result) {
           try {
-            const errorResult: ESObject = JSON.parse(response.result as string) as ESObject;
+            const errorResult: Record<string, Object> = JSON.parse(response.result as string) as Record<string, Object>;
             errorDetail = (errorResult['message'] as string) || (response.result as string);
           } catch (e) {
             errorDetail = response.result as string;
@@ -119,7 +116,6 @@ struct DoctorPatientListPage {
         this.isLoading = false;
       }
     } catch (error) {
-      // 捕获并显示详细的网络错误
       let errorMsg = '未知错误';
       if (error) {
         if (typeof error === 'string') {
@@ -131,7 +127,6 @@ struct DoctorPatientListPage {
       
       hilog.error(0x0000, 'DoctorPatientListPage', `loadPatients 异常: ${errorMsg}`);
       
-      // 根据错误类型给出更友好的提示
       if (errorMsg.includes('timeout') || errorMsg.includes('超时')) {
         this.errorMessage = '⏰ 网络超时，请检查后端服务是否启动';
       } else if (errorMsg.includes('refused') || errorMsg.includes('ECONNREFUSED')) {
@@ -144,6 +139,76 @@ struct DoctorPatientListPage {
       
       this.isLoading = false;
     }
+  }
+
+  private parsePatientArray(rawArray: Record<string, Object>[]): PatientInfo[] {
+    const patients: PatientInfo[] = [];
+
+    for (let i = 0; i < rawArray.length; i++) {
+      const raw: Record<string, Object> = rawArray[i];
+      if (raw == null) continue;
+
+      const patient: PatientInfo = {} as PatientInfo;
+
+      const patientIdVal: Object | undefined = raw['patientId'];
+      patient.patientId = typeof patientIdVal === 'number' ? patientIdVal : 0;
+
+      const nameVal: Object | undefined = raw['name'];
+      patient.name = typeof nameVal === 'string' ? nameVal : '未知';
+
+      const phoneVal: Object | undefined = raw['phone'];
+      patient.phone = typeof phoneVal === 'string' ? phoneVal : '';
+
+      const avatarVal: Object | undefined = raw['avatar'];
+      patient.avatar = typeof avatarVal === 'string' ? avatarVal : '';
+
+      const isTodayVal: Object | undefined = raw['isToday'];
+      patient.isToday = isTodayVal === true;
+
+      const appointmentIdVal: Object | undefined = raw['appointmentId'];
+      if (appointmentIdVal !== undefined && appointmentIdVal !== null) {
+        patient.appointmentId = typeof appointmentIdVal === 'number' ? appointmentIdVal : undefined;
+      }
+
+      const scheduleDateVal: Object | undefined = raw['scheduleDate'];
+      if (scheduleDateVal !== undefined && scheduleDateVal !== null) {
+        patient.scheduleDate = String(scheduleDateVal);
+      }
+
+      const schedulePeriodVal: Object | undefined = raw['schedulePeriod'];
+      if (schedulePeriodVal !== undefined && schedulePeriodVal !== null) {
+        patient.schedulePeriod = Number(schedulePeriodVal);
+      }
+
+      const statusVal: Object | undefined = raw['status'];
+      if (statusVal !== undefined && statusVal !== null) {
+        patient.status = Number(statusVal);
+      }
+
+      const feeVal: Object | undefined = raw['fee'];
+      if (feeVal !== undefined && feeVal !== null) {
+        patient.fee = Number(feeVal);
+      }
+
+      const appointmentNoVal: Object | undefined = raw['appointmentNo'];
+      if (appointmentNoVal !== undefined && appointmentNoVal !== null) {
+        patient.appointmentNo = String(appointmentNoVal);
+      }
+
+      const periodTextVal: Object | undefined = raw['periodText'];
+      if (periodTextVal !== undefined && periodTextVal !== null) {
+        patient.periodText = String(periodTextVal);
+      }
+
+      const statusTextVal: Object | undefined = raw['statusText'];
+      if (statusTextVal !== undefined && statusTextVal !== null) {
+        patient.statusText = String(statusTextVal);
+      }
+
+      patients.push(patient);
+    }
+
+    return patients;
   }
 
   build() {
@@ -167,130 +232,272 @@ struct DoctorPatientListPage {
           .fontColor('#333333')
           .layoutWeight(1)
           .textAlign(TextAlign.Center);
+
+        Text(`${this.todayPatients.length + this.historyPatients.length}`)
+          .fontSize(14)
+          .fontColor('#666666')
+          .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+          .borderRadius(12)
+          .backgroundColor('#F0F0F0');
       }
       .width('100%')
       .height(56)
       .padding({ left: 16, right: 16 });
 
-      if (this.isLoading) {
-        Column() {
-          Text('加载中...')
-            .fontSize(16)
-            .fontColor('#999999');
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .justifyContent(FlexAlign.Center);
-      } else if (this.errorMessage) {
-        Column() {
-          Text('📋')
-            .fontSize(56)
-            .margin({ bottom: 16 });
-          Text(this.errorMessage)
-            .fontSize(16)
-            .fontColor('#666666')
-            .margin({ bottom: 8 });
-          Text('请稍后重试')
-            .fontSize(14)
-            .fontColor('#999999');
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .justifyContent(FlexAlign.Center);
-      } else if (this.patients.length === 0) {
-        Column() {
-          Text('👥')
-            .fontSize(56)
-            .margin({ bottom: 16 });
-          Text('暂无患者')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
-            .margin({ bottom: 8 });
-          Text('患者主动联系您后，将在此显示')
-            .fontSize(14)
-            .fontColor('#999999')
-            .textAlign(TextAlign.Center)
-            .width('75%')
-            .lineHeight(20);
-        }
-        .width('100%')
-        .layoutWeight(1)
-        .justifyContent(FlexAlign.Center);
-      } else {
-        Scroll() {
-          Column() {
-            ForEach(this.patients, (patient: PatientBasicInfo) => {
-              Row() {
-                Stack({ alignContent: Alignment.Center }) {
-                  Circle()
-                    .width(50)
-                    .height(50)
-                    .fill('#1677FF');
-                  Text(patient.name.charAt(0))
-                    .fontSize(20)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#FFFFFF');
-                }
-                .margin({ right: 12 });
-
-                Column({ space: 4 }) {
-                  Text(patient.name)
-                    .fontSize(16)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#333333');
-
-                  if (patient.age > 0) {
-                    Text(`${patient.age}岁${patient.phone ? ' · ' + patient.phone.substring(0, 3) + '****' + patient.phone.substring(7) : ''}`)
-                      .fontSize(13)
-                      .fontColor('#888888');
-                  } else {
-                    Text('年龄未知')
-                      .fontSize(13)
-                      .fontColor('#888888');
-                  }
-                }
-                .alignItems(HorizontalAlign.Start)
-                .layoutWeight(1);
-
-                Text('>')
-                  .fontSize(18)
-                  .fontColor('#CCCCCC');
+      Tabs({ index: this.currentTab }) {
+        TabContent() {
+          if (this.isLoading) {
+            Column() {
+              Text('加载中...')
+                .fontSize(16)
+                .fontColor('#999999');
+            }
+            .width('100%')
+            .layoutWeight(1)
+            .justifyContent(FlexAlign.Center);
+          } else if (this.todayPatients.length === 0) {
+            Column() {
+              Text('📅')
+                .fontSize(48)
+                .margin({ bottom: 12 });
+              Text('今日暂无挂号患者')
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#666666')
+                .margin({ bottom: 6 });
+              Text('患者挂号后将在此显示')
+                .fontSize(13)
+                .fontColor('#999999');
+            }
+            .width('100%')
+            .layoutWeight(1)
+            .justifyContent(FlexAlign.Center);
+          } else {
+            Scroll() {
+              Column() {
+                ForEach(this.todayPatients, (patient: PatientInfo) => {
+                  this.buildPatientCard(patient);
+                }, (patient: PatientInfo) => patient.patientId.toString());
               }
               .width('100%')
-              .padding(16)
-              .backgroundColor('#FFFFFF')
-              .borderRadius(12)
-              .margin({ bottom: 10 })
-              .shadow({ radius: 6, color: '#00000008', offsetX: 0, offsetY: 2 })
-              .onClick(() => {
-                router.pushUrl({
-                  url: 'pages/DoctorPatientManagementPage',
-                  params: {
-                    patientId: patient.id,
-                    patientName: patient.name,
-                    doctorId: this.doctorId,
-                    patientData: {
-                      id: patient.id,
-                      name: patient.name,
-                      age: patient.age,
-                      phone: patient.phone,
-                      idCard: patient.idCard
-                    }
-                  }
-                });
-              });
-            }, (patient: PatientBasicInfo) => patient.id.toString());
+              .padding({ left: 16, right: 16, top: 12, bottom: 48 });
+            }
+            .layoutWeight(1)
+            .scrollBar(BarState.Off);
           }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 8, bottom: 48 });
         }
-        .layoutWeight(1)
-        .scrollBar(BarState.Off);
+        .tabBar(`今日挂号 (${this.todayPatients.length})`);
+
+        TabContent() {
+          if (this.isLoading) {
+            Column() {
+              Text('加载中...')
+                .fontSize(16)
+                .fontColor('#999999');
+            }
+            .width('100%')
+            .layoutWeight(1)
+            .justifyContent(FlexAlign.Center);
+          } else if (this.historyPatients.length === 0) {
+            Column() {
+              Text('👥')
+                .fontSize(48)
+                .margin({ bottom: 12 });
+              Text('暂无历史患者')
+                .fontSize(16)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#666666')
+                .margin({ bottom: 6 });
+              Text('历史就诊患者将在此显示')
+                .fontSize(13)
+                .fontColor('#999999');
+            }
+            .width('100%')
+            .layoutWeight(1)
+            .justifyContent(FlexAlign.Center);
+          } else {
+            Scroll() {
+              Column() {
+                ForEach(this.historyPatients, (patient: PatientInfo) => {
+                  this.buildPatientCard(patient);
+                }, (patient: PatientInfo) => patient.patientId.toString());
+              }
+              .width('100%')
+              .padding({ left: 16, right: 16, top: 12, bottom: 48 });
+            }
+            .layoutWeight(1)
+            .scrollBar(BarState.Off);
+          }
+        }
+        .tabBar(`历史患者 (${this.historyPatients.length})`);
       }
+      .width('100%')
+      .layoutWeight(1)
+      .barMode(BarMode.Fixed)
+      .onChange((index: number) => {
+        this.currentTab = index;
+      });
     }
     .width('100%')
     .height('100%')
     .backgroundColor('#F5F7FA');
+  }
+
+  @Builder
+  buildPatientCard(patient: PatientInfo) {
+    Column() {
+      Row({ space: 12 }) {
+        Stack({ alignContent: Alignment.Center }) {
+          Circle()
+            .width(48)
+            .height(48)
+            .fill(patient.isToday ? '#1677FF' : '#52C41A');
+          
+          if (patient.avatar && patient.avatar.length > 0) {
+            Image(patient.avatar)
+              .width(48)
+              .height(48)
+              .borderRadius(24)
+              .objectFit(ImageFit.Cover);
+          } else {
+            Text(patient.name.charAt(0))
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#FFFFFF');
+          }
+        }
+
+        Column({ space: 4 }) {
+          Row({ space: 8 }) {
+            Text(patient.name)
+              .fontSize(16)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333333');
+
+            if (patient.isToday) {
+              Text('今日')
+                .fontSize(11)
+                .fontWeight(FontWeight.Medium)
+                .fontColor('#FFFFFF')
+                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                .borderRadius(8)
+                .backgroundColor('#1677FF');
+            }
+          }
+          .width('100%');
+
+          if (patient.phone) {
+            Text(`${patient.phone.substring(0, 3)}****${patient.phone.substring(7)}`)
+              .fontSize(13)
+              .fontColor('#888888');
+          }
+
+          if (patient.periodText) {
+            Text(`${patient.periodText}${patient.statusText ? ' · ' + patient.statusText : ''}`)
+              .fontSize(12)
+              .fontColor('#666666');
+          }
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1);
+
+        Column({ space: 6 }) {
+          if (patient.statusText) {
+            Text(this.getStatusBadgeText(patient.statusText))
+              .fontSize(11)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#FFFFFF')
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .borderRadius(10)
+              .backgroundColor(this.getStatusBadgeColor(patient.status));
+          }
+
+          Text('>')
+            .fontSize(16)
+            .fontColor('#CCCCCC');
+        }
+        .alignItems(HorizontalAlign.End);
+      }
+      .width('100%')
+      .padding(12);
+
+      if (patient.isToday && patient.appointmentNo) {
+        Row() {
+          Text('挂号单号: ')
+            .fontSize(12)
+            .fontColor('#999999');
+          Text(patient.appointmentNo)
+            .fontSize(12)
+            .fontColor('#666666')
+            .layoutWeight(1);
+          
+          if (patient.fee) {
+            Text(`¥${patient.fee}`)
+              .fontSize(13)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#FF4D4F');
+          }
+        }
+        .width('100%')
+        .padding({ left: 12, right: 12, bottom: 8 })
+        .border({
+          width: { top: 1 },
+          color: '#F0F0F0'
+        });
+      }
+    }
+    .width('100%')
+    .backgroundColor('#FFFFFF')
+    .borderRadius(12)
+    .shadow({ radius: 6, color: '#00000008', offsetX: 0, offsetY: 2 })
+    .margin({ bottom: 10 })
+    .onClick(() => {
+      router.pushUrl({
+        url: 'pages/DoctorPatientManagementPage',
+        params: {
+          patientId: patient.patientId,
+          patientName: patient.name,
+          doctorId: this.doctorId,
+          patientData: {
+            id: patient.patientId,
+            name: patient.name,
+            phone: patient.phone,
+            avatar: patient.avatar,
+            appointmentId: patient.appointmentId,
+            scheduleDate: patient.scheduleDate,
+            schedulePeriod: patient.schedulePeriod,
+            status: patient.status,
+            periodText: patient.periodText,
+            statusText: patient.statusText,
+            fee: patient.fee,
+            appointmentNo: patient.appointmentNo
+          }
+        }
+      });
+    });
+  }
+
+  private getStatusBadgeText(statusText: string): string {
+    switch (statusText) {
+      case '待确认': return '待确认';
+      case '已确认': return '已确认';
+      case '就诊中': return '就诊中';
+      case '已取消': return '已取消';
+      case '已完成': return '已完成';
+      default: return statusText;
+    }
+  }
+
+  private getStatusBadgeColor(status: number | undefined): string {
+    if (status === undefined || status === null) return '#999999';
+    
+    switch (status) {
+      case 0: return '#FAAD14';
+      case 1: return '#1677FF';
+      case 2: return '#52C41A';
+      case 3: return '#FF4D4F';
+      case 4: return '#52C41A';
+      default: return '#999999';
+    }
   }
 }

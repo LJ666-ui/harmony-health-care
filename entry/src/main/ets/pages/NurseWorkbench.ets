@@ -3,6 +3,8 @@ import { Header } from '../components/Header';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
+import { HttpUtil, RequestOptions } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 
 interface NurseInfo {
   id: number;
@@ -35,6 +37,7 @@ struct NurseWorkbench {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @StorageLink('nurseInfo') nurseInfo: NurseInfo | null = null;
   @State currentIndex: number = 0;
+  @State nurseRealName: string = '';
 
   private quickActions: QuickAction[] = [
     { id: 'patient_list', icon: '👥', title: '患者列表', color: '#3498DB', route: 'pages/PatientListPage' },
@@ -138,7 +141,87 @@ struct NurseWorkbench {
       }
     }
     
+    // 加载用户真实姓名
+    this.loadUserInfo();
+    
     console.info('[NurseWorkbench] aboutToAppear 完成, nurseInfo:', this.nurseInfo ? '已加载' : '为空');
+  }
+
+  private loadUserInfo(): void {
+    const userId: number = AppStorage.get<number>('userId') || 0;
+    
+    console.info('[NurseWorkbench] loadUserInfo - AppStorage userId:', userId);
+    
+    if (userId <= 0) {
+      console.warn('[NurseWorkbench] AppStorage中userId无效，尝试从nurseInfo获取');
+      if (this.nurseInfo) {
+        const info = this.nurseInfo as NurseInfo;
+        const nurseUserId: number = info.userId || 0;
+        const nurseId: number = info.id || 0;
+        
+        console.info('[NurseWorkbench] nurseInfo - userId:', nurseUserId, ', id:', nurseId);
+        
+        if (nurseUserId > 0) {
+          this.fetchUserInfo(nurseUserId);
+        } else {
+          console.warn('[NurseWorkbench] 无法获取有效的user_id，跳过用户信息加载');
+        }
+      } else {
+        console.warn('[NurseWorkbench] nurseInfo为空，无法获取userId');
+      }
+      return;
+    }
+    
+    console.info('[NurseWorkbench] 使用AppStorage中的userId:', userId, '查询user表');
+    this.fetchUserInfo(userId);
+  }
+
+  private fetchUserInfo(userId: number): void {
+    console.info('[NurseWorkbench] fetchUserInfo - 开始查询user表, userId:', userId);
+    
+    const requestOptions: RequestOptions = {} as RequestOptions;
+    const params: Record<string, Object> = {} as Record<string, Object>;
+    
+    HttpUtil.get<Record<string, Object>>(`${ApiConstants.USER_INFO}?id=${userId}`, params, requestOptions)
+      .then((response: object) => {
+        const res = response as Record<string, Object>;
+        console.info('[NurseWorkbench] fetchUserInfo - API返回:', JSON.stringify(res));
+        
+        if (res['code'] === 200 && res['data']) {
+          const data = res['data'] as Record<string, Object>;
+          const realName: string = data['realName'] as string || data['name'] as string || '';
+          const userName: string = data['username'] as string || '';
+          
+          console.info('[NurseWorkbench] fetchUserInfo - 用户数据:', 'realName:', realName, ', name:', data['name'], ', username:', userName);
+          
+          if (realName) {
+            this.nurseRealName = realName;
+            AppStorage.setOrCreate<string>('nurseRealName', realName);
+            console.info('[NurseWorkbench] ✅ 获取到真实姓名:', realName);
+            
+            // 更新nurseInfo中的name字段
+            if (this.nurseInfo) {
+              const info = this.nurseInfo as NurseInfo;
+              const updatedInfo: NurseInfo = {
+                id: info.id,
+                userId: info.userId,
+                nurseNo: info.nurseNo,
+                name: realName,
+                phone: info.phone,
+                department: info.department,
+                title: info.title,
+                avatar: info.avatar,
+                status: info.status
+              };
+              this.nurseInfo = updatedInfo;
+              AppStorage.setOrCreate<NurseInfo | null>('nurseInfo', updatedInfo);
+            }
+          }
+        }
+      })
+      .catch((error: Error) => {
+        console.error('[NurseWorkbench] 获取用户信息失败:', error.message);
+      });
   }
 
   private handleLogout(): void {
@@ -181,7 +264,7 @@ struct NurseWorkbench {
                 .backgroundColor('#E0E0E0')
 
               Column() {
-                Text(`欢迎，${this.nurseInfo?.name || '护士'}`)
+                Text(`欢迎，${this.nurseRealName || this.nurseInfo?.name || '护士'}`)
                   .fontSize(this.isElderMode ? 22 : 18)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(GlobalTheme.TEXT_PRIMARY)

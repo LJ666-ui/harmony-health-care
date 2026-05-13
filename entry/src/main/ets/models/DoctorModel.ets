@@ -12,6 +12,7 @@ export class DoctorInfo {
   description: string = '';
   rating: number = 0;
   status: number = 0;
+  employeeNo: string = '';
   createTime: string = '';
   updateTime: string = '';
 
@@ -34,6 +35,7 @@ export class DoctorInfoHelper {
     if (raw['description'] !== undefined && raw['description'] !== null) { info.description = raw['description'] as string; }
     if (raw['rating'] !== undefined && raw['rating'] !== null) { info.rating = raw['rating'] as number; }
     if (raw['status'] !== undefined && raw['status'] !== null) { info.status = raw['status'] as number; }
+    if (raw['employeeNo'] !== undefined && raw['employeeNo'] !== null) { info.employeeNo = raw['employeeNo'] as string; }
     if (raw['createTime'] !== undefined && raw['createTime'] !== null) { info.createTime = raw['createTime'] as string; }
     if (raw['updateTime'] !== undefined && raw['updateTime'] !== null) { info.updateTime = raw['updateTime'] as string; }
     return info;
@@ -54,6 +56,7 @@ export class DoctorInfoHelper {
     map['description'] = info.description;
     map['rating'] = info.rating;
     map['status'] = info.status;
+    map['employeeNo'] = info.employeeNo;
     return map;
   }
 

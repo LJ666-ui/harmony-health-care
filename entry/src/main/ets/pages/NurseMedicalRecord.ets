@@ -3,7 +3,7 @@ import { Header } from '../components/Header';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
-import { HttpUtil } from '../common/utils/HttpUtil';
+import { HttpUtil, RequestOptions } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 
 interface NursingRecord {
@@ -30,6 +30,7 @@ interface NurseInfoForRecord {
 
 interface CreateNursingRecordRequest {
   patientId: number;
+  nurseId: number;
   recordType: number;
   recordContent: string;
   remark?: string;
@@ -134,6 +135,7 @@ struct NurseMedicalRecord {
     try {
       const requestBody: CreateNursingRecordRequest = {
         patientId: this.selectedPatientId,
+        nurseId: this.getNurseId(),
         recordType: this.newRecordType,
         recordContent: this.newRecordContent,
         remark: this.newRemark
@@ -141,10 +143,12 @@ struct NurseMedicalRecord {
 
       console.info('[NurseMedicalRecord] 保存护理记录，患者ID:', this.selectedPatientId, '护士ID:', this.currentUserId);
 
+      const requestOptions: RequestOptions = {} as RequestOptions;
+      
       const response = await HttpUtil.post<NursingRecord>(
         ApiConstants.NURSING_RECORD_CREATE,
         requestBody,
-        { skipAuth: false }
+        requestOptions
       );
 
       console.info('[NurseMedicalRecord] 保存结果:', JSON.stringify(response));

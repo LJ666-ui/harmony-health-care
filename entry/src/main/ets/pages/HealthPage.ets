@@ -6,6 +6,8 @@ import { HealthOverviewCard, HealthOverviewData } from '../components/HealthOver
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
 import { HealthService, HealthData } from '../services/HealthService';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface ServiceCard {
   id: number;
@@ -43,8 +45,12 @@ struct HealthPage {
   @State currentTab: number = 0;
   @State isLoading: boolean = true;
   @State vitalSigns: VitalSignItem[] = [];
-  
+  @State aiHealthAnalysis: string = '';
+  @State aiRiskAlert: string = '';
+  @State aiPersonalizedAdvice: string = '';
+
   private healthService: HealthService = HealthService.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   healthBanners: BannerItem[] = [
     {
@@ -186,6 +192,51 @@ struct HealthPage {
       ];
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  async analyzeHealthWithAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        JSON.stringify(this.vitalSigns),
+        'health_summary',
+        String(this.userId)
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiHealthAnalysis = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+    } catch (error) {
+      console.error('[HealthPage] AI健康分析失败:', error);
+      this.aiHealthAnalysis = 'AI分析暂时不可用';
+    }
+  }
+
+  async checkRiskWithAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        JSON.stringify(this.vitalSigns),
+        'risk_analysis',
+        String(this.userId)
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiRiskAlert = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+    } catch (error) {
+      console.error('[HealthPage] AI风险检测失败:', error);
+      this.aiRiskAlert = 'AI风险检测暂时不可用';
+    }
+  }
+
+  async getPersonalizedAdviceFromAI(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        '基于我的当前健康数据，请给出个性化的健康管理建议',
+        'health_consultation',
+        String(this.userId)
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiPersonalizedAdvice = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+    } catch (error) {
+      console.error('[HealthPage] AI个性化建议失败:', error);
+      this.aiPersonalizedAdvice = 'AI建议暂时不可用';
     }
   }
 

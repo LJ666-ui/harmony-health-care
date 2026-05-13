@@ -5,6 +5,8 @@ import { HttpUtil } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface ChatSession {
   id: number;
@@ -23,13 +25,16 @@ interface ChatSession {
 struct FamilyChatListPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @StorageLink('userId') currentUserId: number = 0;
-  
+
   @State currentTab: number = 0;
   @State doctorSessions: ChatSession[] = [];
   @State nurseSessions: ChatSession[] = [];
   @State isLoading: boolean = true;
   @State hasAccess: boolean = false;
   @State hasRelatedPatient: boolean = true;
+  @State aiSmartSummary: string = '';
+  @State aiUrgencyAlert: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   async aboutToAppear(): Promise<void> {
     this.checkAccess();
@@ -121,6 +126,38 @@ struct FamilyChatListPage {
       return `${diffDays}天前`;
     } else {
       return `${date.getMonth() + 1}/${date.getDate()}`;
+    }
+  }
+
+  async generateSmartSummary(): Promise<void> {
+    const allSessions = [...this.doctorSessions, ...this.nurseSessions];
+    const recentMessages = allSessions.map(s => `与${s.targetUserName}的最后消息：${s.lastMessage}`).join('\n');
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `请总结以下所有聊天会话的关键信息：\n${recentMessages}`,
+        'general_chat'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiSmartSummary = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[FamilyChatListPage] AI智能摘要失败:', error);
+      this.aiSmartSummary = '';
+    }
+  }
+
+  async checkUrgencyAlert(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        '检查是否有需要紧急关注的医疗信息',
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiUrgencyAlert = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[FamilyChatListPage] AI紧急提醒检查失败:', error);
+      this.aiUrgencyAlert = '';
     }
   }
 

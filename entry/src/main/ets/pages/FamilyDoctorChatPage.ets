@@ -4,6 +4,7 @@ import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 const TAG: string = 'FamilyDoctorChatPage';
 
@@ -54,6 +55,9 @@ struct FamilyDoctorChatPage {
   @State remainHours: number = 48;
   @State expireWarning: string = '';
   @State hasAccess: boolean = false;
+  @State aiHealthConsultation: string = '';
+  @State aiMedicalAdvice: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
   @State relatedPatientName: string = '';
 
   private scroller: Scroller = new Scroller();
@@ -284,6 +288,34 @@ struct FamilyDoctorChatPage {
     setTimeout(() => {
       try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
     }, 50);
+  }
+
+  async consultWithAI(question: string): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `家庭成员健康咨询：${question}`,
+        intent: 'health_consultation'
+      });
+      this.aiHealthConsultation = response.output.content;
+    } catch (error) {
+      console.error('[FamilyDoctorChatPage] AI健康咨询失败:', error);
+      this.aiHealthConsultation = 'AI健康咨询暂时不可用';
+    }
+  }
+
+  async getMedicalAdviceFromAI(symptom: string): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `家庭成员症状：${symptom}，请给出医疗建议`,
+        intent: 'health_consultation'
+      });
+      this.aiMedicalAdvice = response.output.content;
+    } catch (error) {
+      console.error('[FamilyDoctorChatPage] AI医疗建议失败:', error);
+      this.aiMedicalAdvice = 'AI医疗建议暂时不可用';
+    }
   }
 
   build() {

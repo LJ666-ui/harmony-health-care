@@ -3,6 +3,8 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface TrainingPlan {
   id: number;
@@ -30,6 +32,9 @@ struct RehabilitationPage {
   @State plans: TrainingPlan[] = [];
   @State records: TrainingRecord[] = [];
   @State isLoading: boolean = true;
+  @State aiRecommendation: string = '';
+  @State aiPersonalPlan: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -83,6 +88,36 @@ struct RehabilitationPage {
 
   viewPlanDetail(plan: TrainingPlan): void {
     ToastUtil.showInfo('详情功能开发中');
+  }
+
+  async getAIRecommendation(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `基于我的康复训练进度：${this.plans.map(p => `${p.name}(${p.progress}%)`).join('，')}，请给出个性化康复建议`,
+        'rehabilitation_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiRecommendation = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[RehabilitationPage] AI推荐失败:', error);
+      this.aiRecommendation = 'AI推荐暂时不可用';
+    }
+  }
+
+  async generateAIPersonalPlan(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        JSON.stringify(this.records),
+        'rehabilitation_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiPersonalPlan = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[RehabilitationPage] AI方案生成失败:', error);
+      this.aiPersonalPlan = 'AI方案生成暂时不可用';
+    }
   }
 
   build() {

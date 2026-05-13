@@ -18,10 +18,10 @@
     "pages/AppointmentManagementPage",
     "pages/QueuePage",
     "pages/HospitalDetailPage",
-    "pages/DepartmentDoctorsPage",
-    "pages/DoctorDetailPage",
     "pages/HospitalDepartmentPage",
     "pages/DepartmentListPage",
+    "pages/DepartmentDoctorsPage",
+    "pages/DoctorDetailPage",
     "pages/Medications",
     "pages/Profile",
     "pages/AddAppointmentPage",
@@ -162,6 +162,7 @@
     "pages/PatientDoctorChatPage",
     "pages/PatientNurseChatPage",
     "pages/NurseFamilyChatPage",
-    "pages/FamilyNurseChatPage"
+    "pages/FamilyNurseChatPage",
+    "pages/AITestPage"
   ]
 }

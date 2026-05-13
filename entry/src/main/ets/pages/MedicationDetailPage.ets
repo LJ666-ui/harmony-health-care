@@ -2,6 +2,8 @@ import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface MedicineDetail {
   id: number;
@@ -18,6 +20,10 @@ struct MedicationDetailPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @State medicine: MedicineDetail | null = null;
   @State isLoading: boolean = true;
+  @State aiDetailedGuidance: string = '';
+  @State aiQaAnswer: string = '';
+  @State aiSideEffects: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -132,6 +138,54 @@ struct MedicationDetailPage {
       taboo: '暂无禁忌信息',
       source: '未知分类'
     };
+  }
+
+  async getDetailedGuidanceFromAI(): Promise<void> {
+    if (!this.medicine) return;
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `请详细说明${this.medicine.name}的用药指导，包括最佳服用时间、食物影响、剂量调整等`,
+        'medication_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiDetailedGuidance = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[MedicationDetailPage] AI详细指导失败:', error);
+      this.aiDetailedGuidance = 'AI详细指导暂时不可用';
+    }
+  }
+
+  async askQuestionToAI(question: string): Promise<void> {
+    if (!this.medicine) return;
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `关于${this.medicine.name}的问题：${question}`,
+        'medication_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiQaAnswer = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[MedicationDetailPage] AI问答失败:', error);
+      this.aiQaAnswer = 'AI问答暂时不可用';
+    }
+  }
+
+  async getSideEffectsFromAI(): Promise<void> {
+    if (!this.medicine) return;
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `请列出${this.medicine.name}的常见副作用、罕见副作用及应对措施`,
+        'medication_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiSideEffects = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[MedicationDetailPage] AI副作用查询失败:', error);
+      this.aiSideEffects = 'AI副作用信息暂时不可用';
+    }
   }
 
   build() {

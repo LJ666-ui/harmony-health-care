@@ -149,11 +149,11 @@ export class IntentRouter {
       case IntentType.APPOINTMENT_BOOKING:
         const doctorMatch = text.match(/(\w+)医生/);
         if (doctorMatch) entities.doctorName = doctorMatch[1];
-        
+
         const timeMatch = text.match(/(明天|后天|今天|下周\w)/);
         if (timeMatch) entities.time = timeMatch[1];
-        
-        const periodMatch = text.match /(上午|下午|晚上)/;
+
+        const periodMatch = text.match(/(上午|下午|晚上)/);
         if (periodMatch) entities.period = periodMatch[1];
         break;
 
@@ -163,13 +163,13 @@ export class IntentRouter {
         break;
 
       case IntentType.HEALTH_QUERY:
-        const metricMatch = text.match /(血压|血糖|心率|体重|体温)/;
+        const metricMatch = text.match(/(血压|血糖|心率|体重|体温)/);
         if (metricMatch) entities.metric = metricMatch[1];
         break;
 
       case IntentType.EMERGENCY:
         entities.isEmergency = true;
-        entities.urgency = this assessUrgency(text);
+        entities.urgency = this.assessUrgency(text);
         break;
     }
 

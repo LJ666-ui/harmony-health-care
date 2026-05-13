@@ -4,6 +4,8 @@ import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { ConsultationService, OnlineDoctor } from '../services/ConsultationService';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface Department {
   id: number;
@@ -28,7 +30,13 @@ struct ConsultationPage {
   @State departments: Department[] = [];
   @State recommendedDoctors: Doctor[] = [];
   @State isLoading: boolean = true;
+  @State aiPreDiagnosisResult: string = '';
+  @State aiSuggestedDepartment: string = '';
+  @State aiTriageAdvice: string = '';
+  @State symptomsInput: string = '';
+  @State userId: number = 1;
   private consultationService: ConsultationService = ConsultationService.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -136,6 +144,58 @@ struct ConsultationPage {
       console.error('跳转医生对话失败:', error.message);
       ToastUtil.showError('功能开发中');
     });
+  }
+
+  async preDiagnoseWithAI(): Promise<void> {
+    if (!this.symptomsInput.trim()) {
+      ToastUtil.showInfo('请先输入症状描述');
+      return;
+    }
+
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        `症状描述：${this.symptomsInput}，请进行预问诊和分诊建议`,
+        'pre_diagnosis',
+        String(this.userId || 'default-user')
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiPreDiagnosisResult = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+      this.aiSuggestedDepartment = response.suggestions?.[0] || '';
+      this.aiTriageAdvice = response.suggestions?.[1] || '';
+    } catch (error) {
+      console.error('[ConsultationPage] AI预问诊失败:', error);
+      this.aiPreDiagnosisResult = 'AI预问诊暂时不可用';
+    }
+  }
+
+  async getAIDepartmentRecommendation(symptoms: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        `根据症状：${symptoms}，推荐应该挂哪个科室`,
+        'pre_diagnosis',
+        String(this.userId || 'default-user')
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiSuggestedDepartment = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+    } catch (error) {
+      console.error('[ConsultationPage] AI科室推荐失败:', error);
+      this.aiSuggestedDepartment = 'AI科室推荐暂时不可用';
+    }
+  }
+
+  async getAITriageGuidance(urgencyLevel: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createDataRequest(
+        `患者紧急程度：${urgencyLevel}，请给出分诊指导建议`,
+        'pre_diagnosis',
+        String(this.userId || 'default-user')
+      );
+      const response = await this.orchestrator.process(request);
+      this.aiTriageAdvice = typeof response.output.content === 'string' ? response.output.content : JSON.stringify(response.output.content);
+    } catch (error) {
+      console.error('[ConsultationPage] AI分诊指导失败:', error);
+      this.aiTriageAdvice = 'AI分诊指导暂时不可用';
+    }
   }
 
   build() {

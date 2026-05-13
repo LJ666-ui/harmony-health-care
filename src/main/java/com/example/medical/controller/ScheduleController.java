@@ -33,7 +33,7 @@ public class ScheduleController {
     @Autowired(required = false)
     private RedisStockInterface redisStockService;
 
-    @Autowired
+    @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
 
     @Autowired

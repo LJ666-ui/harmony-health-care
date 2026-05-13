@@ -2,6 +2,8 @@ import { router } from '@kit.ArkUI';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { GlobalTheme } from '../global';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 interface RehabService {
   id: number;
@@ -21,12 +23,29 @@ struct RehabPage {
     { id: 2, icon: '🎮', title: '3D康复训练', description: '沉浸式3D康复体验', url: 'pages/Rehab3DPage' },
     { id: 3, icon: '⚠️', title: '健康评估', description: '个性化风险评估', url: 'pages/RiskAssessmentPage' }
   ];
+  @State aiTrainingPlan: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     } else {
       this.isElderMode = AppStorage.get<boolean>('isOldModeEnabled') || false;
+    }
+  }
+
+  async generateAITrainingPlan(): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        '请为我生成一个个性化的康复训练计划，包括训练项目、频率、强度和注意事项',
+        'rehabilitation_guidance'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiTrainingPlan = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[RehabPage] AI训练计划生成失败:', error);
+      this.aiTrainingPlan = 'AI训练计划生成暂时不可用';
     }
   }
 

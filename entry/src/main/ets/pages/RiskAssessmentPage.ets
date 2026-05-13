@@ -5,6 +5,7 @@ import { RiskAssessmentEngine } from '../ai/RiskAssessmentEngine';
 import { HealthInputData, RiskAssessmentResult, RadarDataItem, getRiskColor, getRiskLabel, RiskLevel } from '../models/AIModels';
 import { RadarChart } from '../components/RadarChart';
 import { getRadarDataFromResult } from '../mock/riskAssessmentMock';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 class AssessmentData {
   age: string = '';
@@ -61,6 +62,8 @@ struct RiskAssessmentPage {
   @State lastResult: string = '低风险';
   @State assessmentData: AssessmentData = new AssessmentData();
   @State errorMessage: string = '';
+  @State aiSuggestion: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   private createStepArray(): number[] {
     const arr: number[] = [];

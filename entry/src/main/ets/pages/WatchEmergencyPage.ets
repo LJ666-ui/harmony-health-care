@@ -5,6 +5,7 @@
 import { router } from '@kit.ArkUI';
 import { call } from '@kit.TelephonyKit';
 import { DeviceTypeUtil } from '../utils/DeviceTypeUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface EmergencyContact {
   id: string;
@@ -20,8 +21,12 @@ struct WatchEmergencyPage {
   @State isSOSActive: boolean = false;
   @State sosCountDown: number = 5;
   @State emergencyContacts: EmergencyContact[] = [];
+  @State aiEmergencyAnalysis: string = '';
+  @State aiFirstAidGuide: string = '';
+  @State aiTriageAdvice: string = '';
   private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
   private sosTimer: number = -1;
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadEmergencyContacts();
@@ -85,6 +90,57 @@ struct WatchEmergencyPage {
         console.error('[WatchEmergencyPage] 呼叫失败:', err.message);
       }
     });
+  }
+
+  async analyzeEmergencyWithAI(emergencyType: string): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `用户触发${emergencyType}紧急情况，请分析可能的危险程度和需要的救援措施`
+        }
+      });
+      this.aiEmergencyAnalysis = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchEmergencyPage] AI紧急分析失败:', error);
+      this.aiEmergencyAnalysis = 'AI分析暂时不可用';
+    }
+  }
+
+  async getFirstAidGuideFromAI(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '请提供紧急情况下的急救指导步骤'
+        }
+      });
+      this.aiFirstAidGuide = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchEmergencyPage] AI急救指导失败:', error);
+      this.aiFirstAidGuide = '急救指导暂时不可用';
+    }
+  }
+
+  async getTriageAdviceFromAI(symptoms: string): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `患者症状：${symptoms}，请给出分诊建议和优先级`
+        }
+      });
+      this.aiTriageAdvice = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchEmergencyPage] AI分诊建议失败:', error);
+      this.aiTriageAdvice = '分诊建议暂时不可用';
+    }
   }
 
   build() {

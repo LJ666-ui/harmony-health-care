@@ -8,6 +8,7 @@ import { Header } from '../components/Header';
 import { DeviceManager } from '../core/DeviceManager';
 import { DeviceType } from '../models/SmartWardEnums';
 import { DeviceInfo, DeviceStatus } from '../models/SmartWardDeviceModels';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 @Entry
 @Component
@@ -17,8 +18,10 @@ struct SmartWardDevices {
   @State devices: DeviceInfo[] = [];
   @State isLoading: boolean = true;
   @State selectedDevice: DeviceStatus | null = null;
-
+  @State aiDeviceDiagnosis: string = '';
+  @State aiDeviceOptimization: string = '';
   private deviceManager = DeviceManager.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadDevices();
@@ -64,6 +67,37 @@ struct SmartWardDevices {
       [DeviceType.INFUSION_PUMP]: '输液泵'
     };
     return nameMap[deviceType] || '未知设备';
+  }
+
+  async diagnoseDeviceWithAI(): Promise<void> {
+    const deviceSummary = this.devices.map(d =>
+      `${this.getDeviceTypeName(d.type)}: ${d.status || '正常'}`
+    ).join(', ');
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `病房设备状态：${deviceSummary}，请诊断设备运行状况`,
+        intent: 'health_monitoring'
+      });
+      this.aiDeviceDiagnosis = response.output.content;
+    } catch (error) {
+      console.error('[SmartWardDevices] AI设备诊断失败:', error);
+      this.aiDeviceDiagnosis = '';
+    }
+  }
+
+  async optimizeDeviceSettings(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: '请优化病房设备设置以提高患者舒适度和节能效果',
+        intent: 'general_chat'
+      });
+      this.aiDeviceOptimization = response.output.content;
+    } catch (error) {
+      console.error('[SmartWardDevices] AI优化建议失败:', error);
+      this.aiDeviceOptimization = '';
+    }
   }
 
   build() {

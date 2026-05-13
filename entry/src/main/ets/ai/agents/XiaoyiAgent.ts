@@ -221,7 +221,7 @@ export class XiaoyiAgent {
       { type: IntentType.NAVIGATION, pattern: /(导航|怎么走|去.*科|AR导航)/,
         extractor: (t) => ({ destination: t.match(/去(\w+科|\w+室)/)?.[1] })},
       { type: IntentType.HEALTH_QUERY, pattern: /(血压|血糖|心率|体重|健康记录|体检)/,
-        extractor: (t) => ({ metric: t.match /(血压|血糖|心率|体重|体温)/)?.[1] })},
+        extractor: (t) => ({ metric: t.match(/(血压|血糖|心率|体重|体温)/)?.[1] })},
       { type: IntentType.RISK_ASSESSMENT, pattern: /(风险|评估|检查|分析|预测)/ },
       { type: IntentType.EMERGENCY, pattern: /(救命|急救|120|晕倒|胸痛|呼吸困难)/,
         extractor: () => ({ urgency: 'high', isEmergency: true })},

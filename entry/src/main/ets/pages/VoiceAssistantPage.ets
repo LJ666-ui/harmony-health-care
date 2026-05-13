@@ -5,6 +5,9 @@ import { Footer } from '../components/Footer';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import BrowseTracker from '../utils/BrowseTracker';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
+import { AIRequestPreferences } from '../ai/models/AITypes';
 
 export interface VoiceCommand {
   id: string;
@@ -39,6 +42,12 @@ export interface ChatMode {
   description: string;
 }
 
+interface ConversationHistoryMsg {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
 @Entry
 @Component
 struct VoiceAssistantPage {
@@ -63,6 +72,7 @@ struct VoiceAssistantPage {
   private conversationHistory: ConversationItem[] = [];
   private retryCount: number = 0;
   private maxRetryCount: number = 3;
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   @State chatModes: ChatMode[] = [
     { id: 'general', name: '\u901A\u7528\u95EE\u7B54', icon: '\uD83E\uDDE0', description: '\u5E38\u89C1\u5065\u5EBB\u95EE\u9898' },
@@ -290,7 +300,46 @@ struct VoiceAssistantPage {
     this.addMessage('assistant', '\uD83E\uDD14 \u6B63\u5728\u601D\u8003\u4E2D...');
 
     try {
-      const answer: string = await this.fetchAiResponse(question);
+      let answer: string;
+
+      try {
+        const request = AIRequestBuilder.createSimpleRequest(
+          question,
+          String(AppStorage.get('userId') || 'anonymous')
+        );
+        request.conversationHistory = this.conversationHistory.slice(-10).map(item => {
+          const msg: ConversationHistoryMsg = {
+            role: item.role as 'user' | 'assistant',
+            content: item.content,
+            timestamp: Date.now()
+          };
+          return msg;
+        });
+        if (this.currentMode.id === 'consult') {
+          const prefs: AIRequestPreferences = { preferredAgent: 'deepseek' };
+          request.preferences = prefs;
+        }
+
+        const response = await this.orchestrator.process(request);
+
+        console.log('[VoiceAssistantPage] AIOrchestrator response:', {
+          agentId: response.agentId,
+          confidence: response.output.confidence
+        });
+
+        answer = typeof response.output.content === 'string'
+          ? response.output.content
+          : JSON.stringify(response.output.content);
+
+        if (this.currentMode.id === 'consult' || this.currentMode.id === 'risk') {
+          const disclaimer = '\n\n---\n26A0FE0F **\u6E29\u99A8\u63D0\u793A**: \u4EE5\u4E0A\u5EFA\u8BAE\u53EA\u4F9B\u53C2\u8003, \u5982\u6709\u4E0D\u9002\u8BF7\u53CA\u65F6\u5C31\u533B.';
+          answer = answer + disclaimer;
+        }
+      } catch (orchestratorError) {
+        console.log('[VoiceAssistantPage] AIOrchestrator failed, fallback to API:', orchestratorError);
+        answer = await this.fetchAiResponse(question);
+      }
+
       this.updateLastAssistantMessage(answer);
 
       const convItem: ConversationItem = { role: 'assistant', content: answer };

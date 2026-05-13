@@ -4,6 +4,7 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface HealthRecord {
   id: number;
@@ -33,6 +34,9 @@ struct FamilyHealthRecords {
   @State records: HealthRecord[] = [];
   @State selectedType: string = '全部';
   @State relatedUserId: number = 0;
+  @State aiRecordAnalysis: string = '';
+  @State aiTrendPrediction: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   private recordTypes: string[] = ['全部', '血压', '血糖', '心率', '体重', '体温'];
 
@@ -174,6 +178,43 @@ struct FamilyHealthRecords {
       '体温': '#F38181'
     };
     return colorMap[type] || '#3498DB';
+  }
+
+  async analyzeRecordsWithAI(): Promise<void> {
+    const recordSummary = this.records.map(r =>
+      `${r.recordType}: ${r.value}${r.unit} (${r.recordTime})`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `健康记录数据：\n${recordSummary}\n请分析健康状况`
+        }
+      });
+      this.aiRecordAnalysis = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyHealthRecords] AI记录分析失败:', error);
+      this.aiRecordAnalysis = '';
+    }
+  }
+
+  async predictHealthTrend(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '基于健康记录预测未来健康趋势和风险'
+        }
+      });
+      this.aiTrendPrediction = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyHealthRecords] AI趋势预测失败:', error);
+      this.aiTrendPrediction = '';
+    }
   }
 
   build() {

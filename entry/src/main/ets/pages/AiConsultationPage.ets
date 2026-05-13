@@ -1,9 +1,23 @@
 /**
- * AI问诊主页面（简化版）
- * 提供基础的AI问诊功能
+ * AI问诊主页面（增强版）
+ * 提供完整的AI问诊功能，支持多轮对话和智能分析
  */
 
 import { router } from '@kit.ArkUI';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
+import { StreamCallback } from '../ai/agents/DeepSeekAgent';
+
+interface ConsultationHistoryItem {
+  role: string;
+  content: string;
+  timestamp: number;
+}
+
+interface ConsultationMetaData {
+  context: string;
+  conversationHistory: ConsultationHistoryItem[];
+}
 
 @Entry
 @Component
@@ -11,6 +25,10 @@ struct AiConsultationPage {
   @State private question: string = '';
   @State private messages: MessageItem[] = [];
   @State private isLoading: boolean = false;
+  @State private aiDiagnosisReport: string = '';
+  @State private aiTreatmentSuggestion: string = '';
+  @State private conversationContext: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear() {
     // 初始化欢迎消息
@@ -32,7 +50,6 @@ struct AiConsultationPage {
     this.question = '';
     this.isLoading = true;
 
-    // 添加用户消息
     const userMessage: MessageItem = {
       id: 'user_' + Date.now(),
       role: 'user',
@@ -41,24 +58,88 @@ struct AiConsultationPage {
     };
     this.messages.push(userMessage);
 
-    // 模拟AI响应
-    await this.delay(1000);
+    this.conversationContext += `\n用户: ${userQuestion}`;
 
-    const response = this.generateResponse(userQuestion);
+    const streamMsgId: string = 'assistant_stream_' + Date.now();
+    let streamContent: string = '';
 
-    // 添加助手消息
     const assistantMessage: MessageItem = {
-      id: 'assistant_' + Date.now(),
+      id: streamMsgId,
       role: 'assistant',
-      content: response,
+      content: '',
       timestamp: Date.now()
     };
     this.messages.push(assistantMessage);
 
+    let timeoutHandle: number | null = null;
+
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error('请求超时(30s)')), 30000);
+      });
+
+      const meta: ConsultationMetaData = {
+        context: this.conversationContext,
+        conversationHistory: this.messages.slice(-10).map((m): ConsultationHistoryItem => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp
+        }))
+      };
+
+      const request = AIRequestBuilder.createWithMetadata(userQuestion, meta);
+      request.preferences = { preferredAgent: 'deepseek' };
+
+      await Promise.race([
+        this.orchestrator.processStream(request, (chunk: string, isDone: boolean) => {
+          if (!isDone && chunk.length > 0) {
+            streamContent += chunk;
+            const idx = this.findMessageIndex(streamMsgId);
+            if (idx !== -1) {
+              this.messages[idx].content = streamContent;
+            }
+          }
+          if (isDone) {
+            const idx = this.findMessageIndex(streamMsgId);
+            if (idx !== -1) {
+              this.messages[idx].content = streamContent;
+            }
+          }
+        }),
+        timeoutPromise
+      ]);
+
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+
+      this.conversationContext += `\nAI助手: ${streamContent}`;
+
+    } catch (error) {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      console.error('[AiConsultationPage] AI调用失败:', error);
+
+      const idx = this.findMessageIndex(streamMsgId);
+      if (idx !== -1 && !this.messages[idx].content) {
+        this.messages.splice(idx, 1);
+      }
+
+      const fallbackResponse = this.generateFallbackResponse(userQuestion);
+      const fallbackMessage: MessageItem = {
+        id: 'assistant_fallback_' + Date.now(),
+        role: 'assistant',
+        content: fallbackResponse,
+        timestamp: Date.now()
+      };
+      this.messages.push(fallbackMessage);
+    }
+
     this.isLoading = false;
   }
 
-  private generateResponse(question: string): string {
+  private findMessageIndex(id: string): number {
+    return this.messages.findIndex((m: MessageItem) => m.id === id);
+  }
+
+  private generateFallbackResponse(question: string): string {
     const questionLower = question.toLowerCase();
 
     if (questionLower.includes('头痛') || questionLower.includes('头晕')) {
@@ -77,6 +158,38 @@ struct AiConsultationPage {
       return '【中医智能体】\n中医体质辨识：\n中医将人体体质分为九种：平和质、气虚质、阳虚质、阴虚质、痰湿质、湿热质、血瘀质、气郁质、特禀质。\n\n不同体质需要不同的调理方法。建议到中医科进行专业体质辨识。';
     } else {
       return '感谢您的咨询。为了给您提供更准确的建议，请详细描述您的症状或问题。\n\n例如：\n- 我最近头痛\n- 高血压怎么管理\n- 糖尿病饮食要注意什么\n\n如有紧急情况，请及时就医。';
+    }
+  }
+
+  async generateDiagnosisReport(): Promise<void> {
+    try {
+      const fullConversation = this.messages.map(m => `${m.role}: ${m.content}`).join('\n');
+      const request = AIRequestBuilder.createWithIntent(
+        `基于以下完整问诊记录，生成诊断报告：\n${fullConversation}`,
+        'pre_diagnosis'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiDiagnosisReport = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[AiConsultationPage] 诊断报告生成失败:', error);
+      this.aiDiagnosisReport = '诊断报告生成暂时不可用';
+    }
+  }
+
+  async getTreatmentSuggestion(): Promise<void> {
+    try {
+      const recentSymptoms = this.messages.filter(m => m.role === 'user').slice(-5).map(m => m.content).join(', ');
+      const request = AIRequestBuilder.createWithIntent(
+        `基于患者症状：${recentSymptoms}，给出治疗建议`,
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiTreatmentSuggestion = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[AiConsultationPage] 治疗建议获取失败:', error);
+      this.aiTreatmentSuggestion = '治疗建议获取暂时不可用';
     }
   }
 

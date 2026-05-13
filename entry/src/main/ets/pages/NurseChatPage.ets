@@ -4,6 +4,8 @@ import { HttpUtil } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import promptAction from '@ohos.promptAction';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 const TAG: string = 'NurseChatPage';
 
@@ -48,6 +50,9 @@ struct NurseChatPage {
   @State inputText: string = '';
   @State isLoading: boolean = true;
   @State sending: boolean = false;
+  @State aiNursingKnowledge: string = '';
+  @State aiProtocolGuidance: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
   @State canSend: boolean = true;
   @State remainHours: number = 48;
   @State expireWarning: string = '';
@@ -318,6 +323,36 @@ struct NurseChatPage {
     setTimeout(() => {
       try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
     }, 50);
+  }
+
+  async queryNursingKnowledge(question: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `护理知识库查询：${question}`,
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiNursingKnowledge = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[NurseChatPage] AI护理知识查询失败:', error);
+      this.aiNursingKnowledge = 'AI护理知识查询暂时不可用';
+    }
+  }
+
+  async getProtocolGuidanceFromAI(protocolName: string): Promise<void> {
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `请给出${protocolName}的护理操作规范和注意事项`,
+        'health_consultation'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiProtocolGuidance = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[NurseChatPage] AI操作规范查询失败:', error);
+      this.aiProtocolGuidance = 'AI操作规范查询暂时不可用';
+    }
   }
 
   build() {

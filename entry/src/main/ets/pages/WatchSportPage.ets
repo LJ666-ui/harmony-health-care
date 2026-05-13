@@ -4,6 +4,7 @@
  */
 import { router } from '@kit.ArkUI';
 import { DeviceTypeUtil } from '../utils/DeviceTypeUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface SportData {
   type: string;
@@ -31,8 +32,11 @@ struct WatchSportPage {
   @State sportRecords: SportRecord[] = [];
   @State isTracking: boolean = false;
   @State trackingDuration: number = 0;
+  @State aiSportAnalysis: string = '';
+  @State aiTrainingAdvice: string = '';
   private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
   private trackingTimer: number = -1;
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadSportData();
@@ -127,6 +131,43 @@ struct WatchSportPage {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  async analyzeSportDataWithAI(): Promise<void> {
+    const sportSummary = this.sportDataList.map(d =>
+      `${d.type}: ${d.value}${d.unit} (目标: ${d.target}, 完成${Math.round(d.progress)}%)`
+    ).join(', ');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `运动数据：${sportSummary}，请分析运动表现`
+        }
+      });
+      this.aiSportAnalysis = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchSportPage] AI运动分析失败:', error);
+      this.aiSportAnalysis = 'AI分析暂时不可用';
+    }
+  }
+
+  async getTrainingAdviceFromAI(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '基于当前运动数据给出个性化训练建议'
+        }
+      });
+      this.aiTrainingAdvice = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchSportPage] AI训练建议失败:', error);
+      this.aiTrainingAdvice = '训练建议暂时不可用';
+    }
   }
 
   build() {

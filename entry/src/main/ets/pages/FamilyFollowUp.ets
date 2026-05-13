@@ -4,6 +4,7 @@ import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface FollowUpItem {
   id: number;
@@ -25,6 +26,9 @@ struct FamilyFollowUp {
   @State isLoading: boolean = true;
   @State followUps: FollowUpItem[] = [];
   @State relatedUserId: number = 0;
+  @State aiFollowUpAdvice: string = '';
+  @State aiRehabilitationPlan: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     const familyInfo: Object | undefined = AppStorage.get('familyInfo');
@@ -119,6 +123,42 @@ struct FamilyFollowUp {
       'SURGERY': '⚕️'
     };
     return map[type] || '📅';
+  }
+
+  async getFollowUpAdvice(): Promise<void> {
+    const upcomingFollowUps = this.followUps.filter(f => f.status === 'UPCOMING');
+    if (upcomingFollowUps.length === 0) return;
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `即将到来的复诊：${upcomingFollowUps.map(f => `${f.title} - ${f.followUpDate}`).join('、')}，请给出随访准备建议`
+        }
+      });
+      this.aiFollowUpAdvice = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyFollowUp] AI随访建议失败:', error);
+      this.aiFollowUpAdvice = '';
+    }
+  }
+
+  async generateRehabilitationPlan(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '基于复诊记录生成康复训练计划'
+        }
+      });
+      this.aiRehabilitationPlan = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyFollowUp] AI康复计划失败:', error);
+      this.aiRehabilitationPlan = '';
+    }
   }
 
   build() {

@@ -7,6 +7,8 @@ import promptAction from '@ohos.promptAction';
 import { ConsultationService, ConsultationMessage } from '../services/ConsultationService';
 import { WebSocketClient, MessageHandler, MessageData } from '../network/WebSocketClient';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
 
 const TAG: string = 'DoctorChatPage';
 
@@ -92,6 +94,10 @@ struct DoctorChatPage {
   @State remainHours: number = 48;
   @State expireWarning: string = '';
   @State hasAccess: boolean = false;
+  @State aiDiagnosisSuggestion: string = '';
+  @State aiSymptomAnalysis: string = '';
+  @State aiRecommendedQuestions: string[] = [];
+  @State isAIAnalyzing: boolean = false;
 
   private scroller: Scroller = new Scroller();
   private doctorId: number = 0;
@@ -105,6 +111,7 @@ struct DoctorChatPage {
   private wsClient: WebSocketClient | null = null;
   private sessionId: string = '';
   private useWebSocket: boolean = false;
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.checkAccess();
@@ -444,6 +451,61 @@ struct DoctorChatPage {
     setTimeout(() => {
       try { this.scroller.scrollEdge(Edge.Bottom); } catch (e) {}
     }, 50);
+  }
+
+  async analyzeSymptomsWithAI(symptomDescription: string): Promise<void> {
+    this.isAIAnalyzing = true;
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `患者症状描述：${symptomDescription}，请分析可能的病因并给出诊断建议`,
+        'pre_diagnosis'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiSymptomAnalysis = typeof content === 'string' ? content : JSON.stringify(content);
+      this.aiDiagnosisSuggestion = response.suggestions?.[0] || '';
+      this.aiRecommendedQuestions = response.suggestions || [];
+    } catch (error) {
+      console.error('[DoctorChatPage] AI症状分析失败:', error);
+      this.aiSymptomAnalysis = 'AI症状分析暂时不可用';
+    } finally {
+      this.isAIAnalyzing = false;
+    }
+  }
+
+  async getAIDiagnosisHelp(): Promise<void> {
+    const recentMessages = this.messages.slice(-5).map(m => m.content).join('\n');
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `基于以下聊天记录，请给出辅助诊断建议：\n${recentMessages}`,
+        'pre_diagnosis'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      this.aiDiagnosisSuggestion = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (error) {
+      console.error('[DoctorChatPage] AI诊断辅助失败:', error);
+      this.aiDiagnosisSuggestion = 'AI诊断辅助暂时不可用';
+    }
+  }
+
+  async suggestFollowUpQuestions(): Promise<void> {
+    const lastUserMessage = this.messages.slice().reverse().find(m => m.senderId === this.currentUserId);
+    if (!lastUserMessage) return;
+
+    try {
+      const request = AIRequestBuilder.createWithIntent(
+        `患者说：${lastUserMessage.content}，请建议医生应该追问的3个问题`,
+        'pre_diagnosis'
+      );
+      const response = await this.orchestrator.process(request);
+      const content = response.output.content;
+      const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
+      this.aiRecommendedQuestions = contentStr.split('\n').filter((q: string) => q.trim());
+    } catch (error) {
+      console.error('[DoctorChatPage] AI追问建议失败:', error);
+      this.aiRecommendedQuestions = [];
+    }
   }
 
   build() {

@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { GlobalTheme } from '../global';
 import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ToastUtil } from '../common/utils/ToastUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface MedicalRecordItem {
   id: number;
@@ -24,6 +25,9 @@ struct FamilyMedicalRecords {
   @State isLoading: boolean = true;
   @State records: MedicalRecordItem[] = [];
   @State relatedUserId: number = 0;
+  @State aiRecordSummary: string = '';
+  @State aiHealthTrend: string = '';
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     const familyInfo: Object | undefined = AppStorage.get('familyInfo');
@@ -117,6 +121,43 @@ ${record.medicationAdvice || '无'}`,
         action: () => {}
       }
     });
+  }
+
+  async generateRecordSummary(): Promise<void> {
+    const recordSummary = this.records.map(r =>
+      `${r.diagnosis || '未知诊断'} - ${r.hospitalName} (${r.visitTime})`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `医疗记录摘要：\n${recordSummary}\n请总结关键信息`
+        }
+      });
+      this.aiRecordSummary = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyMedicalRecords] AI记录摘要失败:', error);
+      this.aiRecordSummary = '';
+    }
+  }
+
+  async analyzeHealthTrend(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: '基于医疗记录分析健康趋势和风险'
+        }
+      });
+      this.aiHealthTrend = response.output.content as string;
+    } catch (error) {
+      console.error('[FamilyMedicalRecords] AI趋势分析失败:', error);
+      this.aiHealthTrend = '';
+    }
   }
 
   build() {

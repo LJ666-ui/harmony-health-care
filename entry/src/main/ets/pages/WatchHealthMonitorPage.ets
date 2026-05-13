@@ -4,6 +4,7 @@
  */
 import { router } from '@kit.ArkUI';
 import { DeviceTypeUtil } from '../utils/DeviceTypeUtil';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 interface HealthData {
   type: string;
@@ -20,8 +21,12 @@ interface HealthData {
 struct WatchHealthMonitorPage {
   @State healthDataList: HealthData[] = [];
   @State isRefreshing: boolean = false;
+  @State aiHealthAnalysis: string = '';
+  @State aiAbnormalAlert: string = '';
+  @State aiTrendPrediction: string = '';
   private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
   private refreshInterval: number = -1;
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadHealthData();
@@ -132,6 +137,62 @@ struct WatchHealthMonitorPage {
       this.refreshHealthData();
       this.isRefreshing = false;
     }, 1000);
+  }
+
+  async analyzeHealthDataWithAI(): Promise<void> {
+    const healthSummary = this.healthDataList.map(d =>
+      `${d.type}: ${d.value}${d.unit} (${d.status})`
+    ).join(', ');
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `实时健康数据：${healthSummary}，请分析健康状况`
+        }
+      });
+      this.aiHealthAnalysis = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchHealthMonitorPage] AI健康分析失败:', error);
+      this.aiHealthAnalysis = 'AI分析暂时不可用';
+    }
+  }
+
+  async checkAbnormalAlert(): Promise<void> {
+    const abnormalData = this.healthDataList.filter(d => d.status !== '正常');
+    if (abnormalData.length === 0) return;
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `检测到异常数据：${abnormalData.map(d => d.type).join('、')}，请给出预警和建议`
+        }
+      });
+      this.aiAbnormalAlert = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchHealthMonitorPage] AI异常预警失败:', error);
+      this.aiAbnormalAlert = '';
+    }
+  }
+
+  async predictHealthTrend(): Promise<void> {
+    try {
+      const response = await this.orchestrator.process({
+        requestId: Date.now().toString(),
+        userId: AppStorage.get('userId')?.toString() || '0',
+        input: {
+          type: 'text',
+          content: `基于当前健康数据预测未来健康趋势和风险`
+        }
+      });
+      this.aiTrendPrediction = response.output.content as string;
+    } catch (error) {
+      console.error('[WatchHealthMonitorPage] AI趋势预测失败:', error);
+      this.aiTrendPrediction = '';
+    }
   }
 
   build() {

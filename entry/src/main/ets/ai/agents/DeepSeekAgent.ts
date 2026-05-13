@@ -1,4 +1,5 @@
 import { AIRequest, AIResponse, AgentId } from '../models/AITypes';
+import http from '@ohos.net.http';
 
 export interface DeepSeekConfig {
   apiUrl: string;
@@ -9,6 +10,8 @@ export interface DeepSeekConfig {
   timeout: number;
 }
 
+export type StreamCallback = (chunk: string, isDone: boolean) => void;
+
 export class DeepSeekAgent {
   private readonly agentId: AgentId = 'deepseek';
   private config: DeepSeekConfig;
@@ -17,7 +20,7 @@ export class DeepSeekAgent {
   constructor() {
     this.config = {
       apiUrl: 'https://api.siliconflow.cn/v1/chat/completions',
-      apiKey: 'sk-nyvarnxvnqlheyvsvtqvkmdxjjsqaoacnududnkwjadpxhfv',
+      apiKey: 'sk-hbucrijbdwvxzqjwvyenyqlejbmvciwelasphsafnftojvuo',
       model: 'deepseek-ai/DeepSeek-V3',
       maxTokens: 2048,
       temperature: 0.7,
@@ -124,6 +127,45 @@ export class DeepSeekAgent {
     }
   }
 
+  async processStream(request: AIRequest, onChunk: StreamCallback): Promise<AIResponse> {
+    const startTime = Date.now();
+    console.log(`[DeepSeekAgent] 🌊 流式处理请求: ${request.requestId}`);
+
+    try {
+      const inputText = this.extractInputText(request);
+      const conversationHistory = request.conversationHistory || [];
+
+      let fullContent = '';
+      await this.callDeepSeekStreamAPI(inputText, conversationHistory, (chunk) => {
+        fullContent += chunk;
+        onChunk(chunk, false);
+      });
+
+      onChunk('', true);
+
+      return {
+        requestId: request.requestId,
+        agentId: this.agentId,
+        output: {
+          type: 'text',
+          content: fullContent,
+          confidence: this.calculateConfidence(fullContent)
+        },
+        metadata: {
+          processingTime: Date.now() - startTime,
+          modelUsed: this.config.model,
+          tokensUsed: 0,
+          isOffline: false,
+          agentVersion: '1.0.0'
+        },
+        suggestions: this.generateSuggestions(inputText, fullContent)
+      };
+    } catch (error) {
+      console.error('[DeepSeekAgent] 流式API调用失败:', error);
+      return this.createErrorResponse(request.requestId, error as string, startTime);
+    }
+  }
+
   private extractInputText(request: AIRequest): string {
     if (typeof request.input.content === 'string') {
       return request.input.content;
@@ -152,34 +194,106 @@ export class DeepSeekAgent {
     console.log(`[DeepSeekAgent] 发送请求到硅基流动API...`);
     console.log(`[DeepSeekAgent] 用户消息长度: ${userMessage.length}字符`);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+    const httpRequest = http.createHttp();
 
     try {
-      const response = await fetch(this.config.apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal
-      });
+      const response = await httpRequest.request(
+        this.config.apiUrl,
+        {
+          method: http.RequestMethod.POST,
+          header: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.config.apiKey}`
+          },
+          extraData: JSON.stringify(requestBody),
+          connectTimeout: this.config.timeout,
+          readTimeout: this.config.timeout
+        }
+      );
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API错误 ${response.status}: ${errorText}`);
+      if (response.responseCode !== 200) {
+        throw new Error(`API错误 ${response.responseCode}: ${response.result}`);
       }
 
-      const data = await response.json();
+      const data = JSON.parse(response.result as string);
       console.log(`[DeepSeekAgent] API响应成功`);
       return data;
 
     } catch (error) {
-      clearTimeout(timeoutId);
       throw error;
+    } finally {
+      httpRequest.destroy();
+    }
+  }
+
+  private async callDeepSeekStreamAPI(userMessage: string, history: any[], onChunk: (chunk: string) => void): Promise<void> {
+    const messages = [
+      { role: 'system', content: this.systemPrompt },
+      ...history.slice(-6).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      { role: 'user', content: userMessage }
+    ];
+
+    const requestBody = {
+      model: this.config.model,
+      messages: messages,
+      max_tokens: this.config.maxTokens,
+      temperature: this.config.temperature,
+      stream: true
+    };
+
+    console.log(`[DeepSeekAgent] 🌊 发送流式请求到硅基流动API...`);
+
+    const httpRequest = http.createHttp();
+
+    try {
+      const response = await httpRequest.request(
+        this.config.apiUrl,
+        {
+          method: http.RequestMethod.POST,
+          header: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Accept': 'text/event-stream'
+          },
+          extraData: JSON.stringify(requestBody),
+          connectTimeout: this.config.timeout,
+          readTimeout: 60000
+        }
+      );
+
+      if (response.responseCode !== 200) {
+        throw new Error(`流式API错误 ${response.responseCode}: ${response.result}`);
+      }
+
+      const resultStr = response.result as string;
+      const lines = resultStr.split('\n');
+
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine === 'data: [DONE]') {
+          continue;
+        }
+        if (trimmedLine.startsWith('data: ')) {
+          try {
+            const jsonStr = trimmedLine.substring(6);
+            const data = JSON.parse(jsonStr);
+            if (data.choices && data.choices[0]?.delta?.content) {
+              onChunk(data.choices[0].delta.content);
+            }
+          } catch (e) {
+            console.warn('[DeepSeekAgent] SSE解析跳过:', trimmedLine);
+          }
+        }
+      }
+
+      console.log(`[DeepSeekAgent] 🌊 流式响应完成`);
+    } catch (error) {
+      throw error;
+    } finally {
+      httpRequest.destroy();
     }
   }
 

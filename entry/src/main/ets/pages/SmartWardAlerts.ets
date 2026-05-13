@@ -8,6 +8,7 @@ import { Header } from '../components/Header';
 import { AlertManager } from '../core/AlertManager';
 import { WardAlert } from '../models/SmartWardAlertModels';
 import { AlertLevel } from '../models/SmartWardEnums';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
 @Entry
 @Component
@@ -16,8 +17,10 @@ struct SmartWardAlerts {
   @State alerts: WardAlert[] = [];
   @State isLoading: boolean = true;
   @State selectedTab: string = 'all';
-
+  @State aiAlertAnalysis: string = '';
+  @State aiEmergencyResponse: string = '';
   private alertManager = AlertManager.getInstance();
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     this.loadAlerts();
@@ -83,6 +86,39 @@ struct SmartWardAlerts {
         return '信息';
       default:
         return '未知';
+    }
+  }
+
+  async analyzeAlertsWithAI(): Promise<void> {
+    const alertSummary = this.alerts.map(a =>
+      `[${this.getAlertLevelText(a.level)}] ${a.title}: ${a.message} (${a.source})`
+    ).join('\n');
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `病房警报列表：\n${alertSummary}\n请分析警报严重程度和处理优先级`,
+        intent: 'emergency_response'
+      });
+      this.aiAlertAnalysis = response.output.content;
+    } catch (error) {
+      console.error('[SmartWardAlerts] AI警报分析失败:', error);
+      this.aiAlertAnalysis = '';
+    }
+  }
+
+  async getEmergencyResponsePlan(): Promise<void> {
+    const emergencyAlerts = this.alerts.filter(a => a.level === AlertLevel.EMERGENCY || a.level === AlertLevel.URGENT);
+    if (emergencyAlerts.length === 0) return;
+    try {
+      const response = await this.orchestrator.process({
+        type: 'text',
+        content: `紧急警报：${emergencyAlerts.map(a => a.title).join('、')}，请给出紧急响应方案`,
+        intent: 'emergency_response'
+      });
+      this.aiEmergencyResponse = response.output.content;
+    } catch (error) {
+      console.error('[SmartWardAlerts] AI紧急响应失败:', error);
+      this.aiEmergencyResponse = '';
     }
   }
 

@@ -1,434 +1,447 @@
-# 🤖 AI功能完整测试指南
+# 🤖 AI功能完整测试指南（含智能体标注）
 
 > **项目**: harmony-health-care (鸿蒙智慧医疗健康系统)
 > **更新时间**: 2026-05-13
-> **统计**: 共 **51个页面** 集成了AI功能，**100+处** AI调用点
 
 ---
 
-## 📊 AI功能总览图
+## 📊 五大智能体总览
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    AI统一调度层 (AIOrchestrator)              │
-├─────────────────────────────────────────────────────────────┤
-│  小艺Skill │ DeepSeek大模型 │ Coze专业Bot │ HiAI端侧推理    │
-└─────┬───────┴───────┬───────┴───────┬───────┴───────┬───────┘
-      │               │               │               │
-      ▼               ▼               ▼               ▼
-┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-│ 语音助手  │  │ 健康咨询  │  │ 专科问诊  │  │ 康复指导  │
-│ AR导航    │  │ 风险评估  │  │ 影像分析  │  │ 动作纠正  │
-└──────────┘  └──────────┘  └──────────┘  └──────────┘
-```
+| 智能体 | ID | 类型 | 需要网络 | 延迟 | 说明 |
+|--------|-----|------|---------|------|------|
+| **🟢 小艺 (Xiaoyi)** | `xiaoyi` | 端侧 | 否 | 500ms | HarmonyOS原生助手，处理挂号/导航/急救/设备控制 |
+| **🔵 硅基流动DeepSeek** | `deepseek` | 云端 | 是 | 2000ms | 大语言模型，处理通用对话/医学知识/流式输出 |
+| **🟣 Coze智能体** | `coze` | 云端 | 是 | 3000ms | 字节跳动AI平台，知识库问答/工作流自动化 |
+| **🟠 MindSpore Lite** | `mindspore` | 端侧 | 否 | 100ms | 华为端侧推理，风险评估/健康监测/数值预测 |
+| **🔴 HiAI NPU** | `hiai` | 端侧NPU | 否 | 50ms | 华为NPU硬件加速，图像识别/视觉分析 |
 
 ---
 
-## 🎯 快速导航：按优先级测试
+## 📊 智能体路由规则（IntentRouter）
 
-### 🔴 P0 - 核心AI功能（必测）
+系统通过 `IntentRouter` 根据用户输入的关键词自动路由到不同智能体：
 
-| 序号 | 页面名称 | 文件路径 | AI功能 | 测试入口 |
-|------|---------|---------|--------|---------|
-| 1 | **AI智能问诊** | `pages/AiConsultationPage.ets` | 多轮对话+流式输出 | [→ 测试方法](#1-ai智能问诊) |
-| 2 | **AI通用聊天** | `pages/AiChatPage.ets` | 流式对话+多Agent路由 | [→ 测试方法](#2-ai通用聊天) |
-| 3 | **康复课程推荐** | `pages/RehabListPage.ets` | AI筛选+个性化推荐 | [→ 测试方法](#3-康复课程推荐) |
-| 4 | **3D康复训练** | `pages/Rehab3DPage.ets` | AI实时动作纠正 | [→ 测试方法](#4-3d康复训练) |
-| 5 | **在线问诊辅助** | `pages/ConsultationPage.ets` | AI科室推荐+分诊指导 | [→ 测试方法](#5-在线问诊辅助) |
+| 输入关键词 | 路由到 | 意图类型 |
+|-----------|--------|---------|
+| 挂号、预约、门诊、看病、排号 | 🟢 小艺 | `appointment_booking` |
+| 导航、怎么走、去XX科、AR导航 | 🟢 小艺 | `navigation` |
+| 血压、血糖、心率、体检报告 | 🟠 MindSpore | `health_query` |
+| 风险、评估、检查、分析、预测、筛查 | 🟠 MindSpore | `risk_assessment` |
+| 救命、急救、120、晕倒、胸痛 | 🟢 小艺 | `emergency` |
+| 吃药、用药、药物、提醒吃药 | 🟢 小艺 | `medication_reminder` |
+| 康复、训练、运动、锻炼、太极 | 🟢 小艺 | `rehab_training` |
+| 打开、启动、连接设备、配对 | 🟢 小艺 | `device_control` |
+| 什么是、怎么办、为什么、副作用、禁忌、饮食 | 🔵 DeepSeek | `knowledge_query` |
+| 其他（无关键词匹配） | 🔵 DeepSeek | `general_chat`（默认） |
 
-### 🟡 P1 - 重要AI功能（建议测试）
-
-| 序号 | 页面名称 | 文件路径 | AI功能 | 测试入口 |
-|------|---------|---------|--------|---------|
-| 6 | **家庭护士聊天** | `pages/FamilyNurseChatPage.ets` | 护理指导+健康提醒 | [→ 测试方法](#6-家庭护士聊天) |
-| 7 | **患者医生聊天** | `pages/PatientDoctorChatPage.ets` | AI聊天辅助 | [→ 测试方法](#7-患者医生聊天) |
-| 8 | **语音助手** | `pages/VoiceAssistantPage.ets` | 语音识别+意图理解 | [→ 测试方法](#8-语音助手) |
-| 9 | **健康记录详情** | `pages/HealthRecordDetail.ets` | AI数据分析 | [→ 测试方法](#9-健康记录分析) |
-| 10 | **康复方案生成** | `pages/RehabPage.ets` | AI个性化训练计划 | [→ 测试方法](#10-康复方案生成) |
-
-### 🟢 P2 - 扩展AI功能（可选测试）
-
-#### 手表系列（7个页面）
-
-| 序号 | 页面名称 | AI功能 |
-|------|---------|--------|
-| 11 | **WatchHomePage** | AI健康摘要生成 |
-| 12 | **WatchSportPage** | AI运动建议 |
-| 13 | **WatchSleepPage** | AI睡眠分析 |
-| 14 | **WatchEmergencyPage** | AI急救指导 |
-| 15 | **WatchMedicationPage** | AI用药提醒 |
-| 16 | **WatchHealthMonitorPage** | AI异常检测 |
-| 17 | **WatchMessagePage** | AI消息处理 |
-
-#### 家庭医生模块（3个页面）
-
-| 序号 | 页面名称 | AI功能 |
-|------|---------|--------|
-| 18 | **FamilyDoctorPage** | AI病情总结 |
-| 19 | **FamilyNurseListPage** | AI成员状态分析 |
-| 20 | **FamilyHome** | AI健康概览 |
-
-#### 其他AI页面（9个页面）
-
-| 序号 | 页面名称 | AI功能 |
-|------|---------|--------|
-| 21 | **FamilyFollowUp** | AI随访建议 |
-| 22 | **FamilyPrescription** | AI处方解读 |
-| 23 | **FamilyMedication** | AI药物相互作用 |
-| 24 | **FamilyMedicalRecords** | AI病历分析 |
-| 25 | **FamilyHealthRecords** | AI趋势分析 |
-| 26 | **FamilyPatientDetail** | AI风险评估 |
-| 27 | **FamilyDiagnosis** | AI诊断辅助 |
-| 28 | **AddHealthRecord** | AI数据校验 |
-| 29 | **MedicationDetailPage** | AI药品说明 |
-
-#### 智能病房系列（6个页面）
-
-| 序号 | 页面名称 | AI功能 |
-|------|---------|--------|
-| 30 | **SmartWardCarePlan** | AI护理计划建议 |
-| 31 | **SmartWardAlerts** | AI预警分析 |
-| 32 | **SmartWardDevices** | AI设备诊断 |
-| 33 | **SmartWardCarePlanSimple** | 简化版护理AI |
-| 34 | **SmartWardAlertsSimple** | 简化版警报AI |
-| 35 | **SmartWardDevicesSimple** | 简化版设备AI |
-
-#### 医护端AI（4个页面）
-
-| 序号 | 页面名称 | AI功能 |
-|------|---------|--------|
-| 36 | **DoctorChatPage** | AI诊断辅助 |
-| 37 | **DoctorFamilyChatPage** | AI沟通辅助 |
-| 38 | **NurseChatPage** | AI护理建议 |
-| 39 | **PatientNurseChatPage** | AI问答辅助 |
-
-#### 其他页面（12个页面）
-
-| 序号 | 页面名称 | AI功能 |
-|------|---------|--------|
-| 40 | **FamilyChatListPage** | AI消息摘要 |
-| 41 | **HealthPage** | AI综合健康建议 |
-| 42 | **EmergencyPage** | AI急救响应指导 |
-| 43 | **RehabilitationPage** | AI康复方案推荐 |
-| 44 | **RiskAssessmentPage** | AI风险计算 |
-| 45 | **ImageAnalysisPage** | AI影像识别 |
-| 46 | **AITestPage** | AI功能调试 |
-| 47 | **AIAssistantPage** | AI综合助手 |
-| 48 | **VoiceAssistantPage** | 语音识别+意图理解 |
-| 49 | **HealthRecordDetail** | AI数据分析 |
-| 50 | **ConsultationPage** | AI科室推荐+分诊 |
-| 51 | **PatientDoctorChatPage** | AI聊天辅助 |
+> **重要**: 如果页面代码中设置了 `preferredAgent`，则**强制使用指定智能体**，忽略路由规则。
 
 ---
 
-## 📝 详细测试指南
+## 🎯 全部AI页面 - 按智能体分类
+
+### 🔵 强制指定 DeepSeek 的页面（代码中写死了 `preferredAgent: 'deepseek'`）
+
+| 页面 | 文件 | AI功能 | 怎么测试 |
+|------|------|--------|---------|
+| **AI智能问诊** | `AiConsultationPage.ets` | 流式对话(L91)、诊断报告(L171)、治疗建议(L187) | 底部导航→AI问诊→输入症状→观察流式输出 |
+| **AI通用聊天** | `AiChatPage.ets` | 普通对话(L202)、流式对话(L484) | AI助手→输入任意问题→观察回复 |
+| **语音助手** | `VoiceAssistantPage.ets` | 语音转文字后AI回答(L319) | 语音助手→说话→观察AI回复 |
+| **AI测试页** | `AITestPage.ets` | DeepSeek测试(L80)、Coze测试(L91)、HiAI测试(L99) | AITestPage→点击对应测试按钮 |
+
+### 🔴 强制指定 HiAI 的页面
+
+| 页面 | 文件 | AI功能 | 怎么测试 |
+|------|------|--------|---------|
+| **AI测试页** | `AITestPage.ets` | HiAI图像识别测试(L99) | AITestPage→点击"测试HiAI"按钮 |
+
+### 🟣 强制指定 Coze 的页面
+
+| 页面 | 文件 | AI功能 | 怎么测试 |
+|------|------|--------|---------|
+| **AI测试页** | `AITestPage.ets` | Coze医疗问答测试(L91) | AITestPage→点击"测试Coze"按钮 |
+
+### 🔴🟠 混合智能体页面（HiAI + DeepSeek 三层架构）
+
+| 页面 | 文件 | AI功能 | 怎么测试 |
+|------|------|--------|---------|
+| **医学影像分析** | `ImageAnalysisPage.ets` | HiAI图像分类→规则引擎→DeepSeek深度解读 | 影像分析→上传/拍摄图片→等待三层分析完成→查看结果 |
+
+### 🟠 MindSpore 端侧推理页面
+
+| 页面 | 文件 | AI功能 | 怎么测试 |
+|------|------|--------|---------|
+| **风险评估** | `RiskAssessmentPage.ets` | MindSpore本地风险计算(降级到规则引擎) | 风险评估→填写健康数据→提交→查看雷达图和风险等级 |
+
+### 🔵 自动路由页面（无 preferredAgent，由 IntentRouter 决定）
+
+这些页面**没有**指定 `preferredAgent`，AI请求会经过 `IntentRouter` 根据输入内容自动路由。由于输入内容多为健康咨询/分析类文本，**实际大部分会路由到 DeepSeek**（默认兜底智能体）。
+
+#### 手表系列
+
+| 页面 | AI功能 | 实际路由 | 怎么测试 |
+|------|--------|---------|---------|
+| **WatchHomePage** | 健康摘要(L55)、智能推荐(L72) | 🔵 DeepSeek | 手表首页→点击"AI摘要"按钮 |
+| **WatchSportPage** | 运动分析(L141)、训练建议(L158) | 🔵 DeepSeek | 手表运动页→点击"AI分析" |
+| **WatchSleepPage** | 睡眠分析(L75)、改善建议(L92) | 🔵 DeepSeek | 手表睡眠页→点击"AI分析" |
+| **WatchEmergencyPage** | 紧急分析(L97)、急救指导(L114)、分诊建议(L131) | 🟢 小艺(含"急救"关键词) | 手表紧急页→触发紧急情况→查看AI指导 |
+| **WatchMedicationPage** | 用药指导(L102)、药物信息(L119) | 🟢 小艺(含"用药"关键词) | 手表用药页→选择药品→点击"AI指导" |
+| **WatchHealthMonitorPage** | 健康分析(L147)、异常预警(L166)、趋势预测(L183) | 🟠 MindSpore(含"分析/预测"关键词) | 手表监测页→点击"AI分析" |
+| **WatchMessagePage** | 消息摘要(L121)、紧急评估(L140) | 🔵 DeepSeek | 手表消息页→点击"AI摘要" |
+
+#### 家庭医生模块
+
+| 页面 | AI功能 | 实际路由 | 怎么测试 |
+|------|--------|---------|---------|
+| **FamilyDoctorPage** | 医生推荐(L98) | 🔵 DeepSeek | 家庭医生→点击"AI推荐医生" |
+| **FamilyNurseListPage** | 护士推荐(L115) | 🔵 DeepSeek | 选择护士→点击"AI推荐" |
+| **FamilyHome** | 健康仪表盘(L200)、护理建议(L217) | 🔵 DeepSeek | 家庭首页→点击"AI健康概览" |
+| **FamilyDoctorChatPage** | 健康咨询(L295)、医疗建议(L309) | 🔵 DeepSeek | 家庭医生聊天→输入问题→查看AI建议 |
+
+#### 家庭病历模块
+
+| 页面 | AI功能 | 实际路由 | 怎么测试 |
+|------|--------|---------|---------|
+| **FamilyFollowUp** | 随访建议(L132)、康复计划(L149) | 🔵 DeepSeek | 复诊管理→点击"AI随访建议" |
+| **FamilyPrescription** | 用药指导(L128)、药物相互作用(L146) | 🟢 小艺(含"用药"关键词) | 处方详情→点击"AI用药指导" |
+| **FamilyMedication** | 用药优化(L124)、智能提醒(L141) | 🟢 小艺(含"用药"关键词) | 用药管理→点击"AI优化" |
+| **FamilyMedicalRecords** | 记录摘要(L131)、健康趋势(L148) | 🔵 DeepSeek | 病历记录→点击"AI摘要" |
+| **FamilyHealthRecords** | 记录分析(L188)、趋势预测(L205) | 🟠 MindSpore(含"预测"关键词) | 健康记录→点击"AI分析" |
+| **FamilyPatientDetail** | 护理方案(L137)、风险评估(L152) | 🟠 MindSpore(含"风险"关键词) | 患者详情→点击"AI评估" |
+| **FamilyDiagnosis** | 诊断分析(L102)、治疗建议(L116) | 🔵 DeepSeek | 诊断记录→点击"AI分析" |
+
+#### 智能病房系列
+
+| 页面 | AI功能 | 实际路由 | 怎么测试 |
+|------|--------|---------|---------|
+| **SmartWardCarePlan** | 护理优化(L126)、任务建议(L142) | 🔵 DeepSeek | 病房护理计划→点击"AI优化" |
+| **SmartWardAlerts** | 警报分析(L97)、紧急响应(L113) | 🟢 小艺(含"紧急"关键词) | 病房警报→点击"AI分析" |
+| **SmartWardDevices** | 设备诊断(L77)、设备优化(L91) | 🔵 DeepSeek | 病房设备→点击"AI诊断" |
+| **SmartWardCarePlanSimple** | 护理建议(L22) | 🔵 DeepSeek | 简化护理→点击"AI建议" |
+| **SmartWardAlertsSimple** | 警报摘要(L22) | 🔵 DeepSeek | 简化警报→点击"AI摘要" |
+| **SmartWardDevicesSimple** | 设备状态(L22) | 🔵 DeepSeek | 简化设备→点击"AI检查" |
+
+#### 医护端AI
+
+| 页面 | AI功能 | 实际路由 | 怎么测试 |
+|------|--------|---------|---------|
+| **DoctorChatPage** | 症状分析(L435)、诊断辅助(L455)、追问建议(L473) | 🔵 DeepSeek(intent=pre_diagnosis) | 医生聊天→输入症状→点击"AI辅助诊断" |
+| **NurseChatPage** | 护理知识(L330)、操作规范(L345) | 🔵 DeepSeek(intent=health_consultation) | 护士聊天→输入问题→查看AI回答 |
+| **PatientNurseChatPage** | 护理建议(L289)、护理指导(L304) | 🔵 DeepSeek(intent=health_consultation) | 患者护士聊天→点击"AI护理建议" |
+| **PatientDoctorChatPage** | 聊天辅助(L300)、消息优化(L315) | 🔵 DeepSeek(intent=health_consultation) | 患者医生聊天→输入模糊描述→点击"AI帮我完善" |
+
+#### 其他AI页面
+
+| 页面 | AI功能 | 实际路由 | 怎么测试 |
+|------|--------|---------|---------|
+| **AIAssistantPage** | 通用对话(L88) | 🔵 DeepSeek(默认) | AI助手→输入任意问题 |
+| **FamilyChatListPage** | 智能摘要(L136)、紧急提醒(L151) | 🔵 DeepSeek | 聊天列表→点击"AI摘要" |
+| **HealthPage** | 健康分析(L200)、风险检测(L215)、个性化建议(L230) | 🟠 MindSpore(含"风险"关键词) | 健康页→点击"AI分析" |
+| **HealthRecordDetail** | 数据分析(L130)、趋势预测(L148)、健康建议(L163) | 🔵 DeepSeek(intent=health_consultation) | 健康记录详情→点击"AI分析" |
+| **HealthRecords** | AI摘要(L287)、异常检测(L303) | 🟠 MindSpore(含"风险/分析"关键词) | 健康记录列表→点击"AI摘要" |
+| **AddHealthRecord** | AI自动填充(L171)、异常检测(L186) | 🟠 MindSpore(含"风险"关键词) | 添加健康记录→点击"AI建议" |
+| **MedicationDetailPage** | 详细指导(L146)、AI问答(L162)、副作用(L178) | 🔵 DeepSeek(intent=medication_guidance) | 药品详情→点击"AI指导" |
+| **RehabPage** | AI训练计划(L39) | 🔵 DeepSeek(intent=rehabilitation_guidance) | 康复服务→点击"AI生成训练计划" |
+| **RehabListPage** | AI课程推荐(L267)、AI筛选(L284) | 🔵 DeepSeek | 康复课程列表→点击"AI推荐" |
+| **Rehab3DPage** | AI动作评分(L188)、AI纠正(L207) | 🔵 DeepSeek | 3D康复训练→完成训练→查看AI评分 |
+| **RehabilitationPage** | AI推荐(L95)、AI方案(L110) | 🔵 DeepSeek(intent=rehabilitation_guidance) | 康复管理→点击"AI推荐" |
+| **ConsultationPage** | AI预问诊(L156)、AI科室推荐(L173) | 🔵 DeepSeek | 在线问诊→输入症状→点击"AI预问诊" |
+| **FamilyNurseChatPage** | AI护理指导(L304)、AI健康提醒(L321) | 🔵 DeepSeek | 家庭护士聊天→点击"AI护理指导" |
+| **EmergencyPage** | 急救指南展示 | 无AI调用(纯静态数据) | 急救页→浏览指南列表 |
 
 ---
 
-### 1️⃣ AI智能问诊
+## 📝 重点页面详细测试指南
 
-**📍 页面位置**: `entry/src/main/ets/pages/AiConsultationPage.ets`
-**🚀 路由地址**: `pages/AiConsultationPage`
+---
 
-#### AI功能说明
+### 1️⃣ AI智能问诊 — 🔵 DeepSeek（强制指定）
 
-| 功能 | 方法名 | 行号 | 说明 |
-|------|--------|------|------|
-| **流式对话** | `sendQuestion()` | L50 | 使用 `orchestrator.processStream()` 实现打字机效果 |
-| **生成诊断报告** | `generateReport()` | L171 | AI分析症状并生成结构化报告 |
-| **治疗建议** | `generateTreatmentSuggestion()` | L187 | AI提供个性化治疗方案 |
+**📍 文件**: `entry/src/main/ets/pages/AiConsultationPage.ets`
+**🚀 路由**: `pages/AiConsultationPage`
+**🤖 智能体**: DeepSeek（代码L91写死 `preferredAgent: 'deepseek'`）
+
+#### AI调用点
+
+| 行号 | 方法 | 说明 |
+|------|------|------|
+| L91 | `sendQuestion()` | 流式对话，`preferredAgent: 'deepseek'` |
+| L167-171 | `generateReport()` | 生成诊断报告，intent=`pre_diagnosis` |
+| L183-187 | `generateTreatmentSuggestion()` | 治疗建议，intent=`pre_diagnosis` |
 
 #### 测试步骤
 
 ```
-步骤1: 打开应用 → 底部导航栏 → "AI问诊" 或 "智能问诊"
-步骤2: 在输入框输入症状描述，例如:
-       ✅ "头痛，持续3天，伴有恶心"
-       ✅ "血压高，最近经常头晕"
-       ✅ "咳嗽一周，有痰，低烧"
-步骤3: 点击"发送"按钮
-步骤4: 观察AI回复是否以流式方式逐字显示
-步骤5: 查看"诊断报告"和"治疗建议"卡片是否自动生成
+步骤1: 打开应用 → 底部导航 → "AI问诊"
+步骤2: 输入症状: "头痛3天，伴有恶心"
+步骤3: 点击发送 → 观察DeepSeek流式输出（逐字出现）
+步骤4: 点击"生成诊断报告" → 查看AI报告
+步骤5: 点击"治疗建议" → 查看AI建议
 ```
 
-#### 预期结果
+#### 验证要点
 
-- ✅ AI回复在2-5秒内开始显示
-- ✅ 回复内容以打字机效果逐字出现
-- ✅ 诊断报告包含可能的疾病、紧急程度、建议科室
-- ✅ 治疗建议包含用药、饮食、注意事项
-- ❌ 如果显示"AI暂时不可用"，检查网络和API配置
+- ✅ 回复逐字出现（流式输出是DeepSeek独有功能）
+- ✅ 日志显示: `[AIOrchestrator] ✅ 强制使用用户指定智能体: deepseek`
+- ✅ 如果DeepSeek不可用，会fallback到小艺→MindSpore
 
 ---
 
-### 2️⃣ AI通用聊天
+### 2️⃣ AI通用聊天 — 🔵 DeepSeek（强制指定）
 
-**📍 页面位置**: `entry/src/main/ets/pages/AiChatPage.ets`
-**🚀 路由地址**: `pages/AiChatPage`
+**📍 文件**: `entry/src/main/ets/pages/AiChatPage.ets`
+**🚀 路由**: `pages/AiChatPage`
+**🤖 智能体**: DeepSeek（代码L200、L482写死 `preferredAgent: 'deepseek'`）
 
-#### AI功能说明
+#### AI调用点
 
-| 功能 | 方法名 | 行号 | 说明 |
-|------|--------|------|------|
-| **普通对话** | `sendMessage()` | L202 | 标准AI对话 |
-| **流式对话** | `sendStreamMessage()` | L484 | 流式输出体验 |
+| 行号 | 方法 | 说明 |
+|------|------|------|
+| L200 | `sendMessage()` | 普通对话，`preferredAgent: 'deepseek'` |
+| L482-484 | `sendStreamMessage()` | 流式对话，`preferredAgent: 'deepseek'` |
 
 #### 测试步骤
 
 ```
-步骤1: 打开应用 → "AI助手" 或 "智能聊天"
-步骤2: 输入各种类型的问题测试AI路由能力:
-
-  【小艺Skill测试】(语音/导航类)
-  → "帮我挂号张医生明天上午"
-  → "导航去内科"
-  
-  【DeepSeek测试】(医学知识类)
-  → "高血压饮食注意什么"
-  → "感冒了吃什么药好"
-  
-  【Coze Bot测试】(专科问题)
-  → "眼科专家，我的视力模糊"
-  → "康复科，术后如何恢复"
-
-步骤3: 观察回复底部显示的 "AI来源" 标识
+步骤1: 打开应用 → "AI助手" / "智能聊天"
+步骤2: 输入: "高血压饮食注意什么"
+步骤3: 观察回复（DeepSeek强制调用）
+步骤4: 切换到流式模式 → 输入问题 → 观察逐字输出
 ```
-
-#### AI自动路由规则
-
-| 输入关键词 | 路由到 | AI标识 |
-|-----------|--------|--------|
-| 挂号、预约、导航、AR | 小艺 (Xiaoyi) | `xiaoyi` |
-| 为什么、怎么办、副作用 | DeepSeek | `deepseek` |
-| 专科、手术、详细诊断 | Coze Bot | `coze_bot` |
-| 风险、评估、预测 | MindSpore | `mindspore` |
 
 ---
 
-### 3️⃣ 康复课程推荐
+### 3️⃣ 医学影像分析 — 🔴HiAI + 🔵DeepSeek（三层混合架构）
 
-**📍 页面位置**: `entry/src/main/ets/pages/RehabListPage.ets`
-**🚀 路由地址**: `pages/RehabListPage`
+**📍 文件**: `entry/src/main/ets/pages/ImageAnalysisPage.ets`
+**🚀 路由**: `pages/ImageAnalysisPage`
+**🤖 智能体**: HiAI NPU图像分类 + DeepSeek深度解读
 
-#### AI功能说明
+#### 三层分析流程
 
-| 功能 | 方法名 | 行号 | 说明 |
-|------|--------|------|------|
-| **AI推荐** | `getAICourseRecommendation()` | L265 | AI根据用户情况推荐康复课程 |
-| **AI筛选** | `filterCoursesWithAI()` | L289 | AI智能过滤不合适的课程 |
+```
+第1层: HiAI NPU → 图像分类识别（识别X光/CT/MRI类型）
+第2层: 规则引擎 → 基于HiAI结果生成基础分析
+第3层: DeepSeek → 大模型深度解读，生成专业诊断报告
+```
 
 #### 测试步骤
 
 ```
-步骤1: 打开应用 → "康复训练" → "康复课程列表"
-步骤2: 找到并点击 "AI智能推荐" 按钮
-步骤3: 观察AI推荐的课程列表（会有高亮标记）
-步骤4: 尝试点击 "AI筛选" 按钮（如果有）
-步骤5: 对比筛选前后的课程数量变化
+步骤1: 打开应用 → "影像分析"
+步骤2: 选择影像类型（如胸部X光）
+步骤3: 上传图片或使用示例图片
+步骤4: 点击"开始分析"
+步骤5: 观察进度条:
+  - 0%-30%: HiAI NPU图像分类
+  - 30%-70%: 规则引擎分析
+  - 70%-100%: DeepSeek深度解读
+步骤6: 查看最终报告（包含HiAI分类+DeepSeek诊断）
 ```
+
+#### 验证要点
+
+- ✅ 日志显示: `[ImageAnalysis] HiAI分类结果: ...`
+- ✅ 日志显示: `[ImageAnalysis] DeepSeek分析完成`
+- ✅ 报告显示模型版本: `Hybrid-HiAI-DeepSeek-v1.0`
+- ❌ 如果HiAI不可用，降级为默认类型+DeepSeek解读
 
 ---
 
-### 4️⃣ 3D康复训练
+### 4️⃣ 风险评估 — 🟠 MindSpore Lite（端侧推理）
 
-**📍 页面位置**: `entry/src/main/ets/pages/Rehab3DPage.ets`
-**🚀 路由地址**: `pages/Rehab3DPage`
+**📍 文件**: `entry/src/main/ets/pages/RiskAssessmentPage.ets`
+**🚀 路由**: `pages/RiskAssessmentPage`
+**🤖 智能体**: MindSpore Lite（端侧NPU推理，降级到规则引擎）
 
-#### AI功能说明
+#### 工作流程
 
-| 功能 | 方法名 | 行号 | 说明 |
-|------|--------|------|------|
-| **AI动作评分** | `analyzeMovementWithAI()` | L192 | 分析用户动作标准度 |
-| **AI纠正指导** | `getAICorrectionGuidance()` | L204 | 实时纠正错误姿势 |
+```
+RiskAssessmentEngine.assessRisk()
+  → 尝试 MindSpore Lite 端侧推理
+  → 失败则降级到规则引擎（纯本地计算）
+  → 输出: 心血管/糖尿病/肿瘤风险概率
+```
 
 #### 测试步骤
 
 ```
-步骤1: 打开应用 → "康复训练" → "3D康复训练"
-步骤2: 选择一个康复课程（如颈椎康复）
-步骤3: 开始训练，按照屏幕提示做动作
-步骤4: 训练结束后查看AI评分和纠正建议
-步骤5: 观察3D模型是否同步显示动作
+步骤1: 打开应用 → "风险评估"
+步骤2: 填写健康数据: 年龄、性别、身高、体重、血压、血糖等
+步骤3: 选择既往病史
+步骤4: 点击"开始评估"
+步骤5: 查看雷达图和各维度风险等级
 ```
 
-#### 预期结果
+#### 验证要点
 
-- ✅ AI给出0-100的动作评分
-- ✅ 提供具体的纠正建议（如"手臂抬得更高一点"）
-- ✅ 3D模型与AI分析联动
-- ✅ 显示改进建议和下次训练重点
+- ✅ 日志显示: `RiskAssessmentEngine: MindSpore Lite集成完成`
+- ✅ 或降级日志: `MindSpore Lite初始化失败，使用降级引擎`
+- ✅ 风险结果包含: 心血管/糖尿病/肿瘤风险概率
+- ✅ 无需网络即可运行（端侧推理）
 
 ---
 
-### 5️⃣ 在线问诊辅助
+### 5️⃣ 在线问诊辅助 — 🔵 DeepSeek（自动路由）
 
-**📍 页面位置**: `entry/src/main/ets/pages/ConsultationPage.ets`
-**🚀 路由地址**: `pages/ConsultationPage`
-
-#### AI功能说明
-
-| 功能 | 方法名 | 行号 | 说明 |
-|------|--------|------|------|
-| **AI科室推荐** | `getAIDepartmentRecommendation()` | L171 | 根据症状推荐就诊科室 |
-| **AI分诊指导** | `getAITriageGuidance()` | L186 | 判断紧急程度并给出建议 |
+**📍 文件**: `entry/src/main/ets/pages/ConsultationPage.ets`
+**🚀 路由**: `pages/ConsultationPage`
+**🤖 智能体**: DeepSeek（输入含"症状/诊断"→路由到DeepSeek）
 
 #### 测试步骤
 
 ```
 步骤1: 打开应用 → "在线问诊"
-步骤2: 在症状描述框输入:
-       "胸口疼痛，呼吸困难，持续10分钟"
-步骤3: 点击 "AI推荐科室" 按钮
-步骤4: 查看AI推荐的科室和建议
-步骤5: 点击 "AI分诊" 查看紧急程度判断
+步骤2: 输入: "胸口疼痛，呼吸困难"
+步骤3: 点击"AI预问诊" → 查看DeepSeek分析
+步骤4: 点击"AI推荐科室" → 查看科室推荐
 ```
 
 ---
 
-### 6️⃣ 家庭护士聊天
+### 6️⃣ 语音助手 — 🟢小艺 + 🔵DeepSeek
 
-**📍 页面位置**: `entry/src/main/ets/pages/FamilyNurseChatPage.ets`
-**🚀 路由地址**: `pages/FamilyNurseChatPage`
+**📍 文件**: `entry/src/main/ets/pages/VoiceAssistantPage.ets`
+**🚀 路由**: `pages/VoiceAssistantPage`
+**🤖 智能体**: 默认DeepSeek(L319)，但路由规则会根据内容切换
 
-#### AI功能说明
+#### 路由逻辑
 
-| 功能 | 方法名 | 行号 | 说明 |
-|------|--------|------|------|
-| **AI护理指导** | `getNursingGuidanceFromAI()` | L304 | 针对特定护理问题的专业指导 |
-| **AI健康提醒** | `generateHealthReminder()` | L324 | 自动生成个性化健康提醒 |
+| 语音输入 | 实际智能体 | 原因 |
+|---------|-----------|------|
+| "帮我挂号张医生" | 🟢 小艺 | 匹配"挂号"关键词 |
+| "导航去内科" | 🟢 小艺 | 匹配"导航"关键词 |
+| "救命！我不舒服" | 🟢 小艺 | 匹配"救命"关键词 |
+| "高血压饮食注意什么" | 🔵 DeepSeek | 匹配"饮食"关键词 |
+| "我的风险有多大" | 🟠 MindSpore | 匹配"风险"关键词 |
 
 #### 测试步骤
 
 ```
-步骤1: 打开应用 → "家庭医护" → "护士聊天"
-步骤2: 找到 "获取AI护理指导" 按钮并点击
-步骤3: 选择或输入护理主题（如"糖尿病护理"、"术后护理"）
-步骤4: 查看AI生成的详细护理指导
-步骤5: 点击 "生成今日健康提醒" 
-步骤6: 查看个性化的健康建议
+步骤1: 打开应用 → "语音助手"
+步骤2: 测试小艺: 说"帮我挂号张医生明天上午"
+步骤3: 测试DeepSeek: 说"高血压饮食注意什么"
+步骤4: 测试急救: 说"救命，我胸口疼"
+步骤5: 观察日志中显示的智能体ID
 ```
 
 ---
 
-### 7️⃣ 患者医生聊天
+### 7️⃣ AI测试页 — 全部5个智能体可测
 
-**📍 页面位置**: `entry/src/main/ets/pages/PatientDoctorChatPage.ets`
-**🚀 路由地址**: `pages/PatientDoctorChatPage`
+**📍 文件**: `entry/src/main/ets/pages/AITestPage.ets`
+**🚀 路由**: `pages/AITestPage`
 
-#### AI功能
+#### 测试按钮
 
-- **AI聊天辅助** (`getAIChatAssistance()`, L298): 帮助患者更好地表达症状
-- **AI消息优化** (`optimizeMessageWithAI()`, L319): 优化患者发送的消息
+| 按钮 | 智能体 | 测试内容 |
+|------|--------|---------|
+| "测试小艺" | 🟢 小艺 | "帮我挂号张医生明天上午" |
+| "测试DeepSeek" | 🔵 DeepSeek | "高血压患者饮食注意什么" |
+| "测试Coze" | 🟣 Coze | "血压高怎么办" |
+| "测试HiAI" | 🔴 HiAI | "识别这张医疗图片" |
+| "运行全部测试" | 全部 | 依次测试4个智能体 |
 
 #### 测试步骤
 
 ```
-步骤1: 打开应用 → "我的医生" → 选择医生 → 进入聊天
-步骤2: 输入模糊描述如 "我不舒服"
-步骤3: 点击 "AI帮我完善" 按钮
-步骤4: 查看AI优化后的更专业的描述
+步骤1: 导航到 AITestPage
+步骤2: 逐个点击测试按钮
+步骤3: 观察每个智能体的响应和日志
+步骤4: 点击"运行全部测试" → 查看完整测试结果
 ```
 
 ---
 
-### 8️⃣ 语音助手
-
-**📍 页面位置**: `entry/src/main/ets/pages/VoiceAssistantPage.ets`
-**🚀 路由地址**: `pages/VoiceAssistantPage`
-
-#### 测试命令
-
-```
-【挂号类】"帮我挂明天的号"、"预约张医生周三上午"
-【导航类】"导航去内科"、"药房在哪里"
-【查询类】"我的预约有哪些"、"今天有什么药要吃"
-【紧急类】"救命！我不舒服"、"拨打120"
-```
-
----
-
-### 9️⃣ 健康记录分析
-
-**📍 页面位置**: `entry/src/main/ets/pages/HealthRecordDetail.ets`
-**🚀 路由地址**: `pages/HealthRecordDetail`
-
-#### AI功能: **AI数据解读** (`analyzeWithAI()`, L128)
-
-测试步骤: 打开健康记录详情页 → 点击 "AI分析" 按钮 → 查看数据分析和建议
-
----
-
-### 🔟 康复方案生成
-
-**📍 页面位置**: `entry/src/main/ets/pages/RehabPage.ets`
-**🚀 路由地址**: `pages/RehabPage`
-
-#### AI功能: **AI训练计划** (`generateAITrainingPlan()`, L40)
-
-测试步骤: 打开康复服务页 → 点击 "AI生成训练计划" → 查看个性化方案
-
----
-
-## 🔧 AI配置与调试
+## 🔧 智能体配置与调试
 
 ### API密钥配置
 
-| AI引擎 | 配置文件 | 配置项 |
-|--------|---------|--------|
-| **DeepSeek** | `DeepSeekConfig.ts` | `DEEPSEEK_API_KEY` |
-| **硅基流动** | `SiliconFlowClient.ts` | `SILICONFLOW_API_KEY` |
-| **Coze** | `CozeApiClient.ts` | `COZE_API_KEY`, `COZE_BOT_ID` |
-| **HiAI** | `HiAIVisionClient.ts` | NPU端侧（无需API Key） |
+| 智能体 | 配置文件 | 必需配置 |
+|--------|---------|---------|
+| 🔵 **DeepSeek** | `ai/agents/DeepSeekAgent.ts` → `DeepSeekConfig.ts` | `DEEPSEEK_API_KEY` |
+| 🟣 **Coze** | `ai/agents/CozeAgent.ts` → `CozeApiClient.ts` | `COZE_API_KEY` + `COZE_BOT_ID` |
+| 🟢 **小艺** | 系统内置 | 无需配置（HarmonyOS原生） |
+| 🟠 **MindSpore** | `ai/MindSporeLiteAdapter.ets` | 需加载 `.ms` 模型文件 |
+| 🔴 **HiAI** | `hiai/HiAIVisionClient.ts` | NPU硬件（无需API Key） |
+
+### Fallback降级链
+
+当主智能体不可用时，自动降级：
+
+| 主智能体 | 降级顺序 |
+|---------|---------|
+| 🟢 小艺 | → 🔵 DeepSeek → 🟠 MindSpore |
+| 🔵 DeepSeek | → 🟢 小艺 → 🟠 MindSpore |
+| 🟣 Coze | → 🔵 DeepSeek → 🟢 小艺 → 🟠 MindSpore |
+| 🟠 MindSpore | → 🔴 HiAI → 🟢 小艺 → 🔵 DeepSeek |
+| 🔴 HiAI | → 🟠 MindSpore → 🟢 小艺 → 🔵 DeepSeek |
 
 ### 查看AI日志
 
-在DevEco Studio的Log窗口搜索: `[AIOrchestrator]`, `[DeepSeekAgent]`, `[XiaoyiAgent]`, `[CozeAgent]`
+在DevEco Studio的Log窗口搜索：
+
+| 搜索关键词 | 查看内容 |
+|-----------|---------|
+| `[AIOrchestrator]` | 路由决策、智能体选择 |
+| `[IntentRouter]` | 意图识别结果、路由到哪个智能体 |
+| `[DeepSeekAgent]` | DeepSeek调用详情 |
+| `[XiaoyiAgent]` | 小艺调用详情 |
+| `[CozeAgent]` | Coze调用详情 |
+| `[ImageAnalysis]` | HiAI+DeepSeek影像分析流程 |
+| `RiskAssessmentEngine` | MindSpore风险评估流程 |
 
 ### 常见问题排查
 
 | 问题 | 可能原因 | 解决方案 |
 |------|---------|---------|
-| 显示"AI暂时不可用" | 网络问题/API未配置 | 检查网络和API密钥 |
-| AI回复很慢 | API超时/服务器繁忙 | 增加超时时间或重试 |
-| 路由到错误的AI | IntentRouter配置 | 检查关键词匹配规则 |
-
----
-
-## 📈 AI性能基准
-
-| 指标 | 目标值 |
-|------|--------|
-| **首字响应时间** | <2秒 |
-| **完整响应时间** | <10秒 |
-| **流式输出延迟** | <500ms |
-| **准确率** | >85% |
+| "AI暂时不可用" | DeepSeek API未配置/网络问题 | 检查 `DEEPSEEK_API_KEY` 和网络 |
+| 回复很慢(>10秒) | 云端API超时 | 查看日志，等待fallback降级 |
+| 路由到错误智能体 | IntentRouter关键词匹配不准 | 检查输入是否包含特定关键词 |
+| MindSpore初始化失败 | 模型文件未加载 | 检查 `.ms` 模型文件是否存在 |
+| HiAI不可用 | 设备无NPU | 降级到DeepSeek处理 |
+| 影像分析只有基础报告 | DeepSeek调用失败 | 检查API Key和网络 |
 
 ---
 
 ## ✅ 测试清单
 
-### P0核心功能（必测）
+### 🔵 DeepSeek 测试（使用最多，14+页面）
 
 - [ ] **AiConsultationPage** - 流式对话正常
-- [ ] **AiConsultationPage** - 诊断报告生成正常
-- [ ] **AiChatPage** - 多Agent路由正确
-- [ ] **AiChatPage** - 流式输出流畅
-- [ ] **RehabListPage** - AI课程推荐有效
-- [ ] **Rehab3DPage** - AI动作评分合理
-- [ ] **ConsultationPage** - 科室推荐准确
+- [ ] **AiChatPage** - 普通对话+流式对话正常
+- [ ] **VoiceAssistantPage** - 语音输入后DeepSeek回复
+- [ ] **ConsultationPage** - AI预问诊+科室推荐
+- [ ] **DoctorChatPage** - AI症状分析+诊断辅助
+- [ ] **AITestPage** - DeepSeek测试按钮通过
 
-### P1重要功能（建议测试）
+### 🔴 HiAI 测试（1个页面）
 
-- [ ] **FamilyNurseChatPage** - 护理指导专业
-- [ ] **VoiceAssistantPage** - 语音识别可用
-- [ ] **HealthRecordDetail** - 数据分析有价值
+- [ ] **ImageAnalysisPage** - HiAI图像分类+DeepSeek解读
+- [ ] **AITestPage** - HiAI测试按钮通过
+
+### 🟠 MindSpore 测试（1个页面）
+
+- [ ] **RiskAssessmentPage** - 风险评估计算正常
+- [ ] **WatchHealthMonitorPage** - 健康趋势预测
+
+### 🟣 Coze 测试（1个页面）
+
+- [ ] **AITestPage** - Coze测试按钮通过
+
+### 🟢 小艺 测试（路由触发）
+
+- [ ] **VoiceAssistantPage** - 说"帮我挂号"→路由到小艺
+- [ ] **WatchEmergencyPage** - 紧急情况→路由到小艺
+- [ ] **WatchMedicationPage** - 用药咨询→路由到小艺
 
 ### 配置验证
 
-- [ ] DeepSeek API Key 已配置
-- [ ] Coze Bot ID 已配置
-- [ ] 网络连接正常
-- [ ] 日志无报错
+- [ ] DeepSeek API Key 已配置（必须，最常用）
+- [ ] Coze Bot ID 已配置（可选）
+- [ ] MindSpore模型文件已加载（可选，降级到规则引擎）
+- [ ] HiAI NPU可用（可选，降级到DeepSeek）
+- [ ] 网络连接正常（DeepSeek/Coze需要）
 
 ---
 

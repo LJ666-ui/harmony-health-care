@@ -56,11 +56,11 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
-        <!-- OpenAPI 接口文档（推荐，移除冲突的Swagger3） -->
+        <!-- Swagger 接口文档 -->
         <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-ui</artifactId>
-            <version>1.7.0</version>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-boot-starter</artifactId>
+            <version>3.0.0</version>
         </dependency>
 
         <!-- Swagger2 API文档注解支持（兼容旧代码） -->

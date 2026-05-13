@@ -1,13 +1,7 @@
 import { router } from '@kit.ArkUI';
-import { Header } from '../components/Header';
-import { Loading } from '../components/Loading';
-import { EmptyState } from '../components/EmptyState';
 import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { ToastUtil } from '../common/utils/ToastUtil';
-import { Appointment } from '../models/HealthData';
-import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
-import { GlobalTheme } from '../global';
 
 interface DepartmentInfo {
   id: number;
@@ -17,13 +11,25 @@ interface DepartmentInfo {
   location?: string;
 }
 
-interface DepartmentPageRouteParams {
-  hospitalId: number | string;
-  hospitalName: string;
-}
-
-interface DepartmentQueryParams {
-  hospitalId: number;
+interface DoctorWithSchedule {
+  id: number;
+  userId: number;
+  realName: string;
+  phone: string;
+  hospital: string;
+  department: string;
+  licenseNumber: string;
+  title: string;
+  specialty: string;
+  avatar: string;
+  description: string;
+  rating: number;
+  status: number;
+  createTime: string;
+  updateTime: string;
+  scheduleId?: number;
+  remainingStock?: number;
+  scheduleDate?: string;
 }
 
 @Entry
@@ -32,238 +38,51 @@ struct DepartmentListPage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
 
   @State hospitalId: number = 0;
-  @State hospitalName: string = '医院科室列表';
+  @State hospitalName: string = '挂号选择科室';
   @State departments: DepartmentInfo[] = [];
-  @State filteredDepartments: DepartmentInfo[] = [];
+  @State selectedDeptIndex: number = 0;
   @State searchKeyword: string = '';
   @State isLoading: boolean = false;
-  @State hasError: boolean = false;
-  @State errorMessage: string = '';
-  @State isInitialized: boolean = false;
-  @State appointments: Appointment[] = [];
-  @State bookedDepartments: number[] = [];
-  @State showDoctorPicker: boolean = false;
-  @State deptDoctors: DoctorInfo[] = [];
-  @State selectedDeptForBooking: DepartmentInfo | null = null;
+  @State doctors: DoctorWithSchedule[] = [];
   @State isLoadingDoctors: boolean = false;
 
   aboutToAppear(): void {
-    console.log('DepartmentListPage aboutToAppear 开始');
-
     try {
-      const params: DepartmentPageRouteParams = router.getParams() as DepartmentPageRouteParams;
-      console.log('路由参数:', params);
-
+      const params: Object | undefined = router.getParams();
       if (params) {
-        const id: number | string = params.hospitalId;
-        const name: string = params.hospitalName;
-
-        console.log('原始ID:', id, '类型:', typeof id);
-        console.log('原始名称:', name);
-
-        if (id !== undefined && id !== null) {
-          this.hospitalId = typeof id === 'number' ? id : Number(id);
-          console.log('转换后hospitalId:', this.hospitalId);
-        }
-
-        if (name && name.length > 0) {
-          this.hospitalName = name;
-          console.log('设置hospitalName:', this.hospitalName);
-        }
+        const p: Record<string, Object> = params as Record<string, Object>;
+        this.hospitalId = Number(p['hospitalId'] || '0');
+        this.hospitalName = String(p['hospitalName'] || '挂号选择科室');
       }
     } catch (error) {
       console.error('获取参数失败:', error);
     }
 
-    console.log('DepartmentListPage aboutToAppear 完成');
-    console.log('最终hospitalId:', this.hospitalId, 'hospitalName:', this.hospitalName);
-  }
-
-  onPageShow(): void {
-    console.log('DepartmentListPage onPageShow');
-
-    this.loadAppointments();
-
-    if (!this.isInitialized) {
-      this.isInitialized = true;
-      this.loadDepartments();
-    }
-  }
-
-  loadAppointments(): void {
-    const storedAppointments = AppStorage.get<Appointment[]>('appointments');
-    if (storedAppointments && storedAppointments.length > 0) {
-      this.appointments = storedAppointments;
-      this.bookedDepartments = [];
-      for (let i = 0; i < this.appointments.length; i++) {
-        const apt = this.appointments[i];
-        if (apt.hospital === this.hospitalName &&
-            (apt.status === 'pending' || apt.status === 'confirmed')) {
-          const deptId = this.findDepartmentIdByName(apt.specialty);
-          if (deptId > 0 && !this.bookedDepartments.includes(deptId)) {
-            this.bookedDepartments.push(deptId);
-          }
-        }
-      }
-      console.log('已加载预约数量:', this.appointments.length, '当前医院已预约科室:', this.bookedDepartments.length);
-    } else {
-      this.appointments = [];
-      this.bookedDepartments = [];
-    }
-  }
-
-  findDepartmentIdByName(deptName: string): number {
-    for (let i = 0; i < this.departments.length; i++) {
-      if (this.departments[i].deptName === deptName) {
-        return this.departments[i].id;
-      }
-    }
-    return 0;
-  }
-
-  isDepartmentBooked(department: DepartmentInfo): boolean {
-    return this.bookedDepartments.includes(department.id);
-  }
-
-  onBookAppointment(department: DepartmentInfo): void {
-    this.selectedDeptForBooking = department;
-    this.showDoctorPicker = true;
-    this.loadDoctorsForDepartment(department);
-  }
-
-  async loadDoctorsForDepartment(department: DepartmentInfo): Promise<void> {
-    this.isLoadingDoctors = true;
-    this.deptDoctors = [];
-    try {
-      const queryParams: Record<string, string> = { 'department': department.deptName };
-      const res: BaseResponse<Object[]> = await HttpUtil.request<Object[]>(
-        HttpMethod.GET,
-        ApiConstants.DOCTOR_LIST,
-        undefined,
-        queryParams as Object,
-        { showLoading: false }
-      );
-      if (res.code === 200 && res.data && res.data.length > 0) {
-        const list: DoctorInfo[] = [];
-        for (let i = 0; i < res.data.length; i++) {
-          list.push(DoctorInfoHelper.fromJson(res.data[i] as Record<string, Object>));
-        }
-        this.deptDoctors = list;
-      } else {
-        const fallback: DoctorInfo = new DoctorInfo();
-        fallback.realName = department.deptName + '医生';
-        fallback.department = department.deptName;
-        fallback.title = '主治医师';
-        fallback.hospital = this.hospitalName;
-        fallback.id = -1;
-        this.deptDoctors = [fallback];
-      }
-    } catch (e) {
-      console.error('加载医生列表失败:', e);
-      const fallback: DoctorInfo = new DoctorInfo();
-      fallback.realName = department.deptName + '医生';
-      fallback.department = department.deptName;
-      fallback.title = '主治医师';
-      fallback.hospital = this.hospitalName;
-      fallback.id = -1;
-      this.deptDoctors = [fallback];
-    } finally {
-      this.isLoadingDoctors = false;
-    }
-  }
-
-  onDoctorSelected(doctor: DoctorInfo): void {
-    this.showDoctorPicker = false;
-    try {
-      router.pushUrl({
-        url: 'pages/BookingPage',
-        params: {
-          doctorId: doctor.id || 0,
-          doctorName: doctor.realName || '医生',
-          fee: 10
-        }
-      }).then(() => {
-        console.log('跳转到挂号页面成功');
-      }).catch((err: Error) => {
-        console.error('跳转失败:', err.message);
-        ToastUtil.showError('页面跳转失败', 1500);
-      });
-    } catch (error) {
-      console.error('路由异常:', error);
-      ToastUtil.showError('系统错误', 1500);
-    }
-  }
-
-  onCancelAppointment(department: DepartmentInfo): void {
-    let index = -1;
-    for (let i = 0; i < this.appointments.length; i++) {
-      const apt = this.appointments[i];
-      if (apt.hospital === this.hospitalName &&
-          apt.specialty === department.deptName &&
-          (apt.status === 'pending' || apt.status === 'confirmed')) {
-        index = i;
-        break;
-      }
-    }
-
-    if (index !== -1) {
-      this.appointments[index].status = 'cancelled';
-      AppStorage.setOrCreate<Appointment[]>('appointments', this.appointments);
-
-      const bookedIndex = this.bookedDepartments.indexOf(department.id);
-      if (bookedIndex > -1) {
-        this.bookedDepartments.splice(bookedIndex, 1);
-      }
-
-      ToastUtil.showSuccess(`已取消 ${department.deptName} 预约`, 2000);
-      console.log('取消预约成功');
-    } else {
-      ToastUtil.showError('未找到可取消的预约', 1500);
-    }
+    this.loadDepartments();
   }
 
   async loadDepartments(): Promise<void> {
-    console.log('loadDepartments 开始, hospitalId:', this.hospitalId);
-
-    if (!this.hospitalId || this.hospitalId <= 0) {
-      console.warn('hospitalId无效，使用默认值');
-      this.hasError = true;
-      this.errorMessage = '正在加载科室信息...';
-      this.loadDefaultDepartments();
-      return;
-    }
-
     this.isLoading = true;
-    this.hasError = false;
-
     try {
-      const queryParams: DepartmentQueryParams = { hospitalId: this.hospitalId };
-      console.log('发送请求参数:', JSON.stringify(queryParams));
-
+      const queryParams: Record<string, string> = { 'hospitalId': String(this.hospitalId) };
       const response: BaseResponse<DepartmentInfo[]> = await HttpUtil.request<DepartmentInfo[]>(
         HttpMethod.GET,
         ApiConstants.HOSPITAL_DEPARTMENT_LIST,
         undefined,
-        queryParams,
-        { showLoading: false }
+        queryParams as Object
       );
-
-      console.log('API响应成功:', response.success, '数据长度:', response.data?.length);
 
       if (response.success && response.data && response.data.length > 0) {
         this.departments = response.data;
-        this.filteredDepartments = response.data;
-        console.log('科室列表加载成功，数量:', this.departments.length);
+        if (this.departments.length > 0) {
+          this.selectedDeptIndex = 0;
+          this.loadDoctorsForDepartment(this.departments[0]);
+        }
       } else {
-        console.warn('API返回空数据或失败，使用默认数据');
-        this.errorMessage = response.message || '';
         this.loadDefaultDepartments();
       }
     } catch (error) {
-      console.error('API请求异常:', error);
-      this.hasError = true;
-      this.errorMessage = '网络连接异常';
-      console.log('使用默认科室数据作为备选');
+      console.error('加载科室列表失败:', error);
       this.loadDefaultDepartments();
     } finally {
       this.isLoading = false;
@@ -271,322 +90,439 @@ struct DepartmentListPage {
   }
 
   loadDefaultDepartments(): void {
-    console.log('加载默认科室数据');
-
-    const defaultDepts: DepartmentInfo[] = [
-      {
-        id: 1,
-        hospitalId: this.hospitalId || 1,
-        deptName: '内科',
-        location: '门诊楼3层',
-        deptIntro: '诊治各种内科疾病'
-      },
-      {
-        id: 2,
-        hospitalId: this.hospitalId || 1,
-        deptName: '外科',
-        location: '门诊楼5层',
-        deptIntro: '开展各类外科手术'
-      },
-      {
-        id: 3,
-        hospitalId: this.hospitalId || 1,
-        deptName: '儿科',
-        location: '门诊楼2层',
-        deptIntro: '儿童疾病诊疗中心'
-      },
-      {
-        id: 4,
-        hospitalId: this.hospitalId || 1,
-        deptName: '妇产科',
-        location: '住院部4层',
-        deptIntro: '妇女儿童健康服务'
-      },
-      {
-        id: 5,
-        hospitalId: this.hospitalId || 1,
-        deptName: '骨科',
-        location: '门诊楼6层',
-        deptIntro: '骨关节疾病诊疗'
-      },
-      {
-        id: 6,
-        hospitalId: this.hospitalId || 1,
-        deptName: '眼科',
-        location: '门诊楼3层',
-        deptIntro: '眼部疾病诊断与治疗'
-      }
+    this.departments = [
+      { id: 1, hospitalId: this.hospitalId || 1, deptName: '心血管内科', location: '门诊楼3层' },
+      { id: 2, hospitalId: this.hospitalId || 1, deptName: '血液/肿瘤科', location: '门诊楼3层' },
+      { id: 3, hospitalId: this.hospitalId || 1, deptName: '神经内科(脑病科)', location: '门诊楼4层' },
+      { id: 4, hospitalId: this.hospitalId || 1, deptName: '睡眠医学科门诊', location: '门诊楼5层' },
+      { id: 5, hospitalId: this.hospitalId || 1, deptName: '精神医学科', location: '门诊楼5层' },
+      { id: 6, hospitalId: this.hospitalId || 1, deptName: '全科', location: '门诊楼2层' },
+      { id: 7, hospitalId: this.hospitalId || 1, deptName: '外科', location: '门诊楼6层' },
+      { id: 8, hospitalId: this.hospitalId || 1, deptName: '神经外科中心', location: '住院部8层' },
+      { id: 9, hospitalId: this.hospitalId || 1, deptName: '妇孺国医堂', location: '住院部3层' },
+      { id: 10, hospitalId: this.hospitalId || 1, deptName: '妇产科/生殖/男性', location: '住院部4层' },
+      { id: 11, hospitalId: this.hospitalId || 1, deptName: '儿科', location: '门诊楼2层' },
+      { id: 12, hospitalId: this.hospitalId || 1, deptName: '眼科', location: '门诊楼3层' },
+      { id: 13, hospitalId: this.hospitalId || 1, deptName: '口腔科', location: '门诊楼4层' },
+      { id: 14, hospitalId: this.hospitalId || 1, deptName: '耳鼻咽喉科', location: '门诊楼4层' },
+      { id: 15, hospitalId: this.hospitalId || 1, deptName: '皮肤/医美', location: '门诊楼5层' }
     ];
 
-    this.departments = defaultDepts;
-    this.filteredDepartments = defaultDepts;
-    this.hasError = false;
-    this.isLoading = false;
-
-    console.log('默认科室数据加载完成，数量:', this.departments.length);
+    if (this.departments.length > 0) {
+      this.selectedDeptIndex = 0;
+      this.loadDoctorsForDepartment(this.departments[0]);
+    }
   }
 
-  onSearchInput(value: string): void {
-    this.searchKeyword = value;
-    this.filterDepartments();
+  onDepartmentSelected(index: number): void {
+    if (index !== this.selectedDeptIndex) {
+      this.selectedDeptIndex = index;
+      this.loadDoctorsForDepartment(this.departments[index]);
+    }
   }
 
-  filterDepartments(): void {
+  async loadDoctorsForDepartment(department: DepartmentInfo): Promise<void> {
+    this.isLoadingDoctors = true;
+    this.doctors = [];
+
+    try {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + 7);
+      const futureYear = futureDate.getFullYear();
+      const futureMonth = String(futureDate.getMonth() + 1).padStart(2, '0');
+      const futureDay = String(futureDate.getDate()).padStart(2, '0');
+      const futureStr = `${futureYear}-${futureMonth}-${futureDay}`;
+
+      const queryParams: Record<string, string> = {
+        'department': department.deptName,
+        'hospitalId': String(this.hospitalId),
+        'startDate': todayStr,
+        'endDate': futureStr
+      };
+
+      const res: BaseResponse<Object[]> = await HttpUtil.request<Object[]>(
+        HttpMethod.GET,
+        ApiConstants.SCHEDULE_LIST,
+        undefined,
+        queryParams as Object,
+        { showLoading: false }
+      );
+
+      if (res.success && res.data && res.data.length > 0) {
+        const doctorMap: Map<string, DoctorWithSchedule> = new Map();
+
+        for (let i = 0; i < res.data.length; i++) {
+          const raw = res.data[i] as Record<string, Object>;
+          const doctorId = String(raw['doctorId'] || raw['id'] || '0');
+          const doctorName = String(raw['doctorName'] || raw['realName'] || '未知医生');
+          const remainingStock = Number(raw['remainingStock'] || raw['stock'] || '0');
+          const scheduleDate = String(raw['scheduleDate'] || todayStr);
+
+          if (!doctorMap.has(doctorId) || remainingStock > (doctorMap.get(doctorId)?.remainingStock || 0)) {
+            const doctor: DoctorWithSchedule = {
+              id: Number(raw['doctorId'] || raw['id'] || '0'),
+              userId: Number(raw['userId'] || '0'),
+              realName: doctorName,
+              phone: String(raw['phone'] || ''),
+              hospital: String(raw['hospital'] || this.hospitalName),
+              department: String(raw['department'] || department.deptName),
+              licenseNumber: String(raw['licenseNumber'] || ''),
+              title: String(raw['title'] || '主治医师'),
+              specialty: String(raw['specialty'] || ''),
+              avatar: String(raw['avatar'] || ''),
+              description: String(raw['description'] || ''),
+              rating: Number(raw['rating'] || '5.0'),
+              status: Number(raw['status'] || '1'),
+              createTime: String(raw['createTime'] || ''),
+              updateTime: String(raw['updateTime'] || ''),
+              scheduleId: Number(raw['scheduleId'] || raw['id'] || '0'),
+              remainingStock: remainingStock,
+              scheduleDate: scheduleDate
+            };
+            doctorMap.set(doctorId, doctor);
+          }
+        }
+
+        this.doctors = Array.from(doctorMap.values());
+      } else {
+        console.log(`科室 ${department.deptName} 近期暂无排班医生`);
+      }
+    } catch (e) {
+      console.error('加载排班医生列表失败:', e);
+    } finally {
+      this.isLoadingDoctors = false;
+    }
+  }
+
+  onDoctorClick(doctor: DoctorWithSchedule): void {
+    const selectedDept = this.departments.length > this.selectedDeptIndex ? this.departments[this.selectedDeptIndex] : null;
+
+    router.pushUrl({
+      url: 'pages/DoctorDetailPage',
+      params: {
+        doctorId: doctor.id || 0,
+        doctorName: doctor.realName || '医生',
+        hospitalId: this.hospitalId,
+        hospitalName: this.hospitalName,
+        departmentId: selectedDept?.id || 0,
+        departmentName: selectedDept?.deptName || doctor.department || '',
+        departmentLocation: selectedDept?.location || '',
+        scheduleId: doctor.scheduleId || 0,
+        remainingStock: doctor.remainingStock || 0
+      }
+    }).then(() => {
+      console.log('跳转到医生详情页成功');
+    }).catch((err: Error) => {
+      console.error('跳转失败:', err.message);
+      ToastUtil.showError('页面跳转失败', 1500);
+    });
+  }
+
+  getFilteredDepartments(): DepartmentInfo[] {
     if (!this.searchKeyword || this.searchKeyword.trim() === '') {
-      this.filteredDepartments = this.departments;
-      return;
+      return this.departments;
     }
 
     const keyword = this.searchKeyword.trim().toLowerCase();
-    this.filteredDepartments = this.departments.filter(dept =>
-      dept.deptName.toLowerCase().includes(keyword) ||
-      (dept.location && dept.location.toLowerCase().includes(keyword))
+    return this.departments.filter(dept =>
+      dept.deptName.toLowerCase().includes(keyword)
     );
   }
 
-  @Builder
-  DepartmentCard(department: DepartmentInfo) {
-    Column() {
-      Row() {
-        Column() {
-          Text(department.deptName)
-            .fontSize(this.isElderMode ? 19 : 16)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(GlobalTheme.TEXT_PRIMARY)
-
-          if (department.location) {
-            Text(`位置：${department.location}`)
-              .fontSize(this.isElderMode ? 15 : 12)
-              .fontColor(GlobalTheme.TEXT_HINT)
-              .margin({ top: 4 })
-          }
-        }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
-
-        if (this.isDepartmentBooked(department)) {
-          Button('取消预约')
-            .fontSize(this.isElderMode ? 15 : 12)
-            .backgroundColor('#FFFFFF')
-            .fontColor(GlobalTheme.ERROR_COLOR)
-            .height(this.isElderMode ? 40 : 32)
-            .padding({ left: 12, right: 12 })
-            .borderRadius(6)
-            .border({ width: 1, color: GlobalTheme.ERROR_COLOR })
-            .onClick(() => {
-              this.onCancelAppointment(department);
-            })
-        } else {
-          Button('预约')
-            .fontSize(this.isElderMode ? 15 : 12)
-            .backgroundColor(GlobalTheme.THEME_COLOR)
-            .fontColor('#FFFFFF')
-            .height(this.isElderMode ? 40 : 32)
-            .padding({ left: 16, right: 16 })
-            .borderRadius(6)
-            .onClick(() => {
-              this.onBookAppointment(department);
-            })
-        }
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Center)
-
-      if (department.deptIntro) {
-        Text(department.deptIntro)
-          .fontSize(this.isElderMode ? 15 : 12)
-          .fontColor(GlobalTheme.TEXT_SECONDARY)
-          .width('100%')
-          .maxLines(2)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .margin({ top: 8 })
-      }
-    }
-    .width('100%')
-    .padding(16)
-    .backgroundColor(GlobalTheme.CARD_BG)
-    .borderRadius(8)
-    .alignItems(HorizontalAlign.Start)
-  }
-
   build() {
-    Stack() {
-      Column() {
-        Header({ title: this.hospitalName + ' - 科室' })
+    Column() {
+      this.TitleBar();
 
-        if (this.isLoading) {
-          Loading({ text: '加载中...' })
-            .layoutWeight(1)
-        } else if (this.departments.length === 0 && this.hasError) {
-          EmptyState({
-            icon: '🏥',
-            title: '暂无科室',
-            description: this.errorMessage || '该医院暂无可用科室',
-            buttonText: '重新加载',
-            onAdd: () => {
-              this.loadDepartments();
-            }
-          })
-            .layoutWeight(1)
-        } else {
-        Column() {
-          Row() {
-            Text(`${this.hospitalName}`)
-              .fontSize(this.isElderMode ? 20 : 17)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(GlobalTheme.THEME_COLOR)
-              .layoutWeight(1)
+      this.SearchBar();
 
-            Text(`共 ${this.departments.length} 个科室`)
-              .fontSize(this.isElderMode ? 16 : 13)
-              .fontColor(GlobalTheme.TEXT_HINT)
-          }
-          .width('100%')
-          .padding({ left: 16, top: 16, right: 16, bottom: 12 })
+      if (this.isLoading) {
+        this.LoadingView()
+      } else {
+        Row() {
+          this.DepartmentListPanel();
 
-          Row() {
-            TextInput({ placeholder: '搜索科室...', text: this.searchKeyword })
-              .fontSize(this.isElderMode ? 17 : 14)
-              .height(this.isElderMode ? 44 : 36)
-              .backgroundColor('#FFFFFF')
-              .borderRadius(20)
-              .padding({ left: 16, right: 16 })
-              .layoutWeight(1)
-              .onChange((value: string) => {
-                this.onSearchInput(value);
-              })
-
-            if (this.searchKeyword.length > 0) {
-              Button('清除')
-                .fontSize(this.isElderMode ? 15 : 12)
-                .backgroundColor('#F5F5F5')
-                .fontColor('#666666')
-                .height(this.isElderMode ? 44 : 36)
-                .borderRadius(6)
-                .margin({ left: 8 })
-                .onClick(() => {
-                  this.searchKeyword = '';
-                  this.filteredDepartments = this.departments;
-                })
-            }
-          }
-          .width('100%')
-          .padding({ left: 16, right: 16, bottom: 12 })
-
-          Scroll() {
-            List({ space: 12 }) {
-              ForEach(this.filteredDepartments, (department: DepartmentInfo) => {
-                ListItem() {
-                  this.DepartmentCard(department)
-                }
-              }, (dept: DepartmentInfo) => dept.id.toString())
-            }
-            .width('100%')
-            .height('100%')
-            .padding({ left: 16, right: 16, bottom: 20 })
-          }
-          .scrollBar(BarState.Off)
-          .layoutWeight(1)
+          this.DoctorListPanel();
         }
         .layoutWeight(1)
-        }
-      }
-      .width('100%')
-      .height('100%')
-
-      if (this.showDoctorPicker) {
-        this.buildDoctorPickerDialog();
       }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(GlobalTheme.BG_COLOR)
+    .backgroundColor('#F5F7FA');
   }
 
   @Builder
-  buildDoctorPickerDialog() {
-    Stack() {
-      Column()
-        .width('100%')
-        .height('100%')
-        .backgroundColor('#00000080')
-        .onClick(() => { this.showDoctorPicker = false; });
-
-      Column({ space: 16 }) {
-        Text('选择医生')
+  TitleBar() {
+    Row() {
+      Button({ type: ButtonType.Normal }) {
+        Text('✕')
           .fontSize(18)
+          .fontColor('#333333');
+      }
+      .width(40)
+      .height(40)
+      .backgroundColor('transparent')
+      .onClick(() => router.back());
+
+      Column() {
+        Text(this.hospitalName)
+          .fontSize(17)
           .fontWeight(FontWeight.Bold)
           .fontColor('#333333');
 
-        if (this.isLoadingDoctors) {
-          Text('加载医生列表...')
-            .fontSize(14)
-            .fontColor('#999999')
-            .padding({ top: 20, bottom: 20 })
-            .width('100%')
-            .textAlign(TextAlign.Center);
-        } else {
-          Scroll() {
-            Column({ space: 10 }) {
-              ForEach(this.deptDoctors, (doctor: DoctorInfo) => {
-                Row() {
-                  Column() {
-                    Text(doctor.realName || '未知医生')
-                      .fontSize(16)
-                      .fontWeight(FontWeight.Medium)
-                      .fontColor('#333333');
-                    if (doctor.title) {
-                      Text(doctor.title)
-                        .fontSize(12)
-                        .fontColor('#999999')
-                        .margin({ top: 2 });
-                    }
-                    if (doctor.specialty) {
-                      Text('擅长: ' + doctor.specialty)
-                        .fontSize(11)
-                        .fontColor('#BBBBBB')
-                        .margin({ top: 2 })
-                        .maxLines(1)
-                        .textOverflow({ overflow: TextOverflow.Ellipsis });
-                    }
-                  }
-                  .alignItems(HorizontalAlign.Start)
-                  .layoutWeight(1);
+        Text('mp.mhealth100.com')
+          .fontSize(11)
+          .fontColor('#999999')
+          .margin({ top: 2 });
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Center);
 
-                  Text('选择 >')
-                    .fontSize(14)
-                    .fontColor('#1677FF')
-                    .fontWeight(FontWeight.Medium);
-                }
-                .width('100%')
-                .padding(14)
-                .backgroundColor('#F8F9FA')
-                .borderRadius(10)
-                .onClick(() => this.onDoctorSelected(doctor));
-              }, (doc: DoctorInfo) => '' + doc.id);
-            }
-            .width('100%')
-            .constraintSize({ maxHeight: 300 });
+      Button({ type: ButtonType.Normal }) {
+        Text('···')
+          .fontSize(18)
+          .fontColor('#333333');
+      }
+      .width(40)
+      .height(40)
+      .backgroundColor('transparent');
+    }
+    .width('100%')
+    .height(56)
+    .padding({ left: 16, right: 16 })
+    .backgroundColor('#FFFFFF')
+    .justifyContent(FlexAlign.SpaceBetween)
+    .alignItems(VerticalAlign.Center);
+  }
+
+  @Builder
+  SearchBar() {
+    Row() {
+      Text('🔍')
+        .fontSize(14)
+        .fontColor('#BBBBBB')
+        .margin({ right: 8 });
+
+      TextInput({
+        placeholder: '科室、医生姓名或拼音首字母',
+        text: this.searchKeyword
+      })
+        .layoutWeight(1)
+        .height(36)
+        .fontSize(14)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(18)
+        .placeholderFont({ size: 13 })
+        .padding({ left: 12, right: 12 })
+        .onChange((value: string) => {
+          this.searchKeyword = value;
+        });
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .backgroundColor('#FFFFFF');
+  }
+
+  @Builder
+  DepartmentListPanel() {
+    Column() {
+      Scroll() {
+        Column() {
+          ForEach(this.getFilteredDepartments(), (dept: DepartmentInfo, index: number) => {
+            this.DepartmentItem(dept, index);
+          }, (dept: DepartmentInfo) => `${dept.id}`);
+        }
+        .width('100%');
+      }
+      .scrollBar(BarState.Off)
+      .width('100%')
+      .layoutWeight(1);
+    }
+    .width('35%')
+    .height('100%')
+    .backgroundColor('#F8F9FA');
+  }
+
+  @Builder
+  DepartmentItem(dept: DepartmentInfo, index: number) {
+    Row() {
+      Text(dept.deptName)
+        .fontSize(14)
+        .fontColor(this.selectedDeptIndex === index ? '#1677FF' : '#333333')
+        .fontWeight(this.selectedDeptIndex === index ? FontWeight.Medium : FontWeight.Normal)
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .layoutWeight(1);
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+    .backgroundColor(this.selectedDeptIndex === index ? '#FFFFFF' : '#F8F9FA')
+    .border({
+      width: { left: this.selectedDeptIndex === index ? 3 : 0, right: 0, top: 0, bottom: 0.5 },
+      color: { left: '#1677FF', right: 'transparent', top: 'transparent', bottom: '#EEEEEE' }
+    })
+    .onClick(() => {
+      const realIndex = this.departments.indexOf(dept);
+      if (realIndex >= 0) {
+        this.onDepartmentSelected(realIndex);
+      }
+    });
+  }
+
+  @Builder
+  DoctorListPanel() {
+    Column() {
+      Column() {
+        Text(this.departments.length > 0 ? this.departments[this.selectedDeptIndex].deptName : '')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+          .width('100%')
+          .padding({ left: 20, top: 20, bottom: 16 });
+      }
+      .width('100%')
+      .backgroundColor('#FFFFFF');
+
+      if (this.isLoadingDoctors) {
+        this.LoadingView()
+      } else if (this.doctors.length === 0) {
+        this.EmptyDoctorsView()
+      } else {
+        Scroll() {
+          Column({ space: 0 }) {
+            ForEach(this.doctors, (doctor: DoctorWithSchedule) => {
+              this.DoctorItem(doctor);
+            }, (doc: DoctorWithSchedule) => `${doc.id}`);
           }
+          .width('100%')
+          .padding({ bottom: 20 });
+        }
+        .scrollBar(BarState.Off)
+        .width('100%')
+        .width('100%')
+        .layoutWeight(1)
+        .backgroundColor('#FFFFFF');
+      }
+    }
+    .width('65%')
+    .height('100%')
+    .backgroundColor('#FFFFFF');
+  }
 
-          Button('取消')
-            .width('100%')
-            .height(40)
-            .fontSize(14)
-            .fontColor('#666666')
-            .backgroundColor('#F5F5F5')
-            .borderRadius(20)
-            .onClick(() => { this.showDoctorPicker = false; });
+  @Builder
+  DoctorItem(doctor: DoctorWithSchedule) {
+    Row() {
+      Column({ space: 6 }) {
+        Text(doctor.realName || '未知医生')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#333333');
+
+        if (doctor.title) {
+          Text(doctor.title)
+            .fontSize(12)
+            .fontColor('#666666');
         }
       }
-      .width('85%')
-      .constraintSize({ maxHeight: '70%' })
-      .padding(20)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(16);
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1);
+
+      Text('>')
+        .fontSize(14)
+        .fontColor('#CCCCCC')
+        .margin({ left: 4 });
+    }
+    .width('100%')
+    .padding({ left: 20, right: 20, top: 16, bottom: 16 })
+    .border({ width: { bottom: 0.5 }, color: '#F0F0F0' })
+    .onClick(() => {
+      if (doctor.remainingStock !== undefined && doctor.remainingStock > 0) {
+        this.onDoctorClick(doctor);
+      } else {
+        ToastUtil.showError('该医生今日号源已满', 1500);
+      }
+    });
+  }
+
+  @Builder
+  LoadingView() {
+    Column({ space: 12 }) {
+      LoadingProgress()
+        .width(36)
+        .height(36)
+        .color('#1677FF');
+
+      Text('加载中...')
+        .fontSize(14)
+        .fontColor('#999999');
     }
     .width('100%')
     .height('100%')
-    .position({ x: 0, y: 0 });
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .backgroundColor('#FFFFFF');
+  }
+
+  @Builder
+  EmptyDoctorsView() {
+    Column({ space: 20 }) {
+      Column({ space: 16 }) {
+        Text('🏥')
+          .fontSize(56);
+
+        Column({ space: 8 }) {
+          Text('该科室暂无医生排号')
+            .fontSize(17)
+            .fontColor('#333333')
+            .fontWeight(FontWeight.Bold);
+
+          Text('当前科室未安排出诊医生或号源已全部约满')
+            .fontSize(13)
+            .fontColor('#999999')
+            .textAlign(TextAlign.Center)
+            .width('80%');
+        }
+        .alignItems(HorizontalAlign.Center);
+      }
+
+      Column({ space: 12 }) {
+        Button('刷新列表')
+          .width(140)
+          .height(40)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#FFFFFF')
+          .backgroundColor('#1677FF')
+          .borderRadius(20)
+          .onClick(() => {
+            if (this.departments.length > this.selectedDeptIndex) {
+              this.loadDoctorsForDepartment(this.departments[this.selectedDeptIndex]);
+            }
+          });
+
+        Button('选择其他科室')
+          .width(140)
+          .height(40)
+          .fontSize(14)
+          .fontColor('#666666')
+          .backgroundColor('#F5F5F5')
+          .borderRadius(20)
+          .onClick(() => {
+            ToastUtil.showInfo('请在左侧选择其他科室', 1500);
+          });
+      }
+    }
+    .width('100%')
+    .layoutWeight(1)
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .backgroundColor('#FAFBFC')
+    .padding({ left: 24, right: 24 });
   }
 }

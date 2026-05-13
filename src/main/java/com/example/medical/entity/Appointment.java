@@ -24,7 +24,7 @@ public class Appointment {
     private Long userId;
 
     @TableField("schedule_date")
-    @JsonFormat(pattern = "yyyyMMdd", timezone = "GMT+8")
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
     private Date scheduleDate;
 
     @TableField("schedule_period")
@@ -38,6 +38,10 @@ public class Appointment {
     private Integer status;
 
     private String reason;
+
+    @TableField("check_in_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private Date checkInTime;
 
     @TableField("create_time")
     private Date createTime;

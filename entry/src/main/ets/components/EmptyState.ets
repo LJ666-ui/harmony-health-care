@@ -4,7 +4,7 @@ export struct EmptyState {
   @Prop title: string = '暂无数据';
   @Prop description: string = '点击下方按钮添加内容';
   @Prop buttonText: string = '添加';
-  onAdd: () => void = () => {};
+  @State showButton: boolean = true;
 
   build() {
     Column({ space: 20 }) {
@@ -14,7 +14,7 @@ export struct EmptyState {
 
       Text(this.title)
         .fontSize(18)
-        .fontWeight('bold')
+        .fontWeight(FontWeight.Bold)
         .fontColor('#333333');
 
       Text(this.description)
@@ -23,15 +23,16 @@ export struct EmptyState {
         .textAlign(TextAlign.Center)
         .width('80%');
 
-      Button(this.buttonText)
-        .height(44)
-        .padding({ left: 28, right: 28 })
-        .fontSize(15)
-        .fontColor('#FFFFFF')
-        .backgroundColor('#1677FF')
-        .borderRadius(22)
-        .margin({ top: 8 })
-        .onClick(() => this.onAdd());
+      if (this.showButton) {
+        Button(this.buttonText)
+          .height(44)
+          .padding({ left: 28, right: 28 })
+          .fontSize(15)
+          .fontColor('#FFFFFF')
+          .backgroundColor('#1677FF')
+          .borderRadius(22)
+          .margin({ top: 8 });
+      }
     }
     .width('100%')
     .height(350)

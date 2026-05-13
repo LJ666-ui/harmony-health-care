@@ -241,7 +241,7 @@ export class HttpUtil {
       'Content-Type': 'application/json'
     };
     if (token) {
-      headers['Authorization'] = 'Bearer ' + token;
+      headers['Token'] = token;
     }
 
     const requestOptions: HttpRequestOptions = {
@@ -305,7 +305,7 @@ export class HttpUtil {
           'Content-Type': 'multipart/form-data'
         };
         if (token) {
-          reqHeaders['Authorization'] = 'Bearer ' + token;
+          reqHeaders['Token'] = token;
         }
         httpRequest.request(fullUrl, {
           method: http.RequestMethod.POST,

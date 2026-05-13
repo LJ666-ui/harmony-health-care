@@ -13,9 +13,9 @@ interface EnvConfig {
 
 // 保留第一套网络地址
 const ENV_MAP: Record<EnvType, EnvConfig> = {
-  [EnvType.DEV]: { BASE_URL: 'http://192.168.108.1:8080', UPLOAD_URL: 'http://192.168.108.1:8080/upload' },
+  [EnvType.DEV]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
   [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
-  [EnvType.DEV_DEVICE]: { BASE_URL: 'http://192.168.108.1:8080', UPLOAD_URL: 'http://192.168.108.1:8080/upload' },
+  [EnvType.DEV_DEVICE]: { BASE_URL: 'http://10.0.9.202:8080', UPLOAD_URL: 'http://10.0.9.202:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
@@ -284,6 +284,16 @@ interface ApiConstantsInterface {
   APPOINTMENT_USER_LIST: string;
   APPOINTMENT_CHECK_AVAILABILITY: string;
   APPOINTMENT_STATISTICS: string;
+  APPOINTMENT_QUEUE_INFO: string;
+  APPOINTMENT_QUEUE_REALTIME: string;
+  APPOINTMENT_CHECK_IN: string;
+  APPOINTMENT_COMPLETE: string;
+  APPOINTMENT_CHECK_EXPIRED: string;
+
+  EXAMINATION_REPORT_LIST: string;
+  EXAMINATION_REPORT_DETAIL: string;
+  EXAMINATION_REPORT_GENERATE: string;
+  EXAMINATION_REPORT_INIT_DEMO: string;
 
   // 支付
   PAY_CREATE: string;
@@ -294,6 +304,7 @@ interface ApiConstantsInterface {
   SCHEDULE_ADD: string;
   SCHEDULE_LIST: string;
   SCHEDULE_DOCTOR_DATE: string;
+  SCHEDULE_STOCK_QUERY: string;
 
   // 管理员
   ADMIN_LOGIN: string;
@@ -308,6 +319,7 @@ interface ApiConstantsInterface {
   NURSING_RECORD_DETAIL: string;
   NURSING_RECORD_UPDATE: string;
   NURSING_RECORD_DELETE: string;
+  ADMIN_USER_LIST: string;
 }
 
 // 完整接口实现
@@ -379,18 +391,18 @@ export const ApiConstants: ApiConstantsInterface = {
   KNOWLEDGE_STATS: '/api/knowledge/stats',
   KNOWLEDGE_RELATED: '/api/knowledge/related',
 
-  REHAB_PLAN_LIST: '/rehab/list',
-  REHAB_PLAN_DETAIL: '/rehab/get/',
-  REHAB_PLAN_ADD: '/rehab/add',
-  REHAB_PLAN_UPDATE: '/rehab/update',
-  REHAB_PLAN_DELETE: '/rehab/delete/',
-  REHAB_ACTION_LIST: '/rehab/action/list',
-  REHAB_ACTION_DETAIL: '/rehab/action/detail/',
-  REHAB_START: '/rehab/start/',
-  REHAB_COMPLETE: '/rehab/complete/',
-  REHAB_HISTORY: '/rehab/history',
-  REHAB_SEARCH: '/rehab/search',
-  REHAB_FUZZY: '/rehab/fuzzy',
+  REHAB_PLAN_LIST: '/api/rehab/list',
+  REHAB_PLAN_DETAIL: '/api/rehab/get/',
+  REHAB_PLAN_ADD: '/api/rehab/add',
+  REHAB_PLAN_UPDATE: '/api/rehab/update',
+  REHAB_PLAN_DELETE: '/api/rehab/delete/',
+  REHAB_ACTION_LIST: '/api/rehab/action/list',
+  REHAB_ACTION_DETAIL: '/api/rehab/action/detail/',
+  REHAB_START: '/api/rehab/start/',
+  REHAB_COMPLETE: '/api/rehab/complete/',
+  REHAB_HISTORY: '/api/rehab/history',
+  REHAB_SEARCH: '/api/rehab/search',
+  REHAB_FUZZY: '/api/rehab/fuzzy',
 
   ARTICLE_LIST: '/healthArticle/list',
   ARTICLE_PAGE: '/healthArticle/page',
@@ -537,16 +549,9 @@ export const ApiConstants: ApiConstantsInterface = {
   SCHEDULE_ADD: '/schedule/add',
   SCHEDULE_LIST: '/schedule/list',
   SCHEDULE_DOCTOR_DATE: '/schedule/doctor/',
+  SCHEDULE_STOCK_QUERY: '/schedule/stock/query',
 
   ADMIN_LOGIN: '/admin/login',
   ADMIN_INFO: '/admin/info',
-  ADMIN_LOGOUT: '/admin/logout',
-
-  NURSING_RECORD_CREATE: '/api/nursing-record',
-  NURSING_RECORD_LIST: '/api/nursing-record/list',
-  NURSING_RECORD_BY_PATIENT: '/api/nursing-record/patient/',
-  NURSING_RECORD_BY_NURSE: '/api/nursing-record/nurse/',
-  NURSING_RECORD_DETAIL: '/api/nursing-record/',
-  NURSING_RECORD_UPDATE: '/api/nursing-record/',
-  NURSING_RECORD_DELETE: '/api/nursing-record/'
+  ADMIN_LOGOUT: '/admin/logout'
 };

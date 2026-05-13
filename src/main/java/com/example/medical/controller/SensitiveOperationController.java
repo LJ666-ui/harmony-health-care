@@ -3,8 +3,8 @@ package com.example.medical.controller;
 import com.example.medical.common.Result;
 import com.example.medical.entity.SensitiveOperation;
 import com.example.medical.service.SensitiveOperationService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * 敏感操作确认控制器
  */
-@Api(tags = "敏感操作确认管理")
+@Tag(name = "敏感操作确认管理")
 @RestController
 @RequestMapping("/api/security")
 public class SensitiveOperationController {
@@ -24,7 +24,7 @@ public class SensitiveOperationController {
     /**
      * 发起敏感操作
      */
-    @ApiOperation("发起敏感操作")
+    @Operation(summary = "发起敏感操作")
     @PostMapping("/sensitive-operation")
     public Result<SensitiveOperation> initiate(@RequestBody SensitiveOperation operation) {
         SensitiveOperation result = sensitiveOperationService.initiate(operation);
@@ -34,7 +34,7 @@ public class SensitiveOperationController {
     /**
      * 确认敏感操作
      */
-    @ApiOperation("确认敏感操作")
+    @Operation(summary = "确认敏感操作")
     @PostMapping("/sensitive-operation/confirm")
     public Result<SensitiveOperation> confirm(@RequestParam Long operationId,
                                                @RequestParam String confirmationCode) {
@@ -45,7 +45,7 @@ public class SensitiveOperationController {
     /**
      * 取消敏感操作
      */
-    @ApiOperation("取消敏感操作")
+    @Operation(summary = "取消敏感操作")
     @PostMapping("/sensitive-operation/cancel")
     public Result<SensitiveOperation> cancel(@RequestParam Long operationId) {
         SensitiveOperation result = sensitiveOperationService.cancel(operationId);
@@ -55,7 +55,7 @@ public class SensitiveOperationController {
     /**
      * 获取操作详情
      */
-    @ApiOperation("获取操作详情")
+    @Operation(summary = "获取操作详情")
     @GetMapping("/sensitive-operation/{id}")
     public Result<SensitiveOperation> getById(@PathVariable Long id) {
         SensitiveOperation result = sensitiveOperationService.getById(id);
@@ -65,7 +65,7 @@ public class SensitiveOperationController {
     /**
      * 获取用户的待确认操作列表
      */
-    @ApiOperation("获取用户的待确认操作列表")
+    @Operation(summary = "获取用户的待确认操作列表")
     @GetMapping("/sensitive-operation/user/{userId}/pending")
     public Result<List<SensitiveOperation>> getPendingByUserId(@PathVariable Long userId) {
         List<SensitiveOperation> result = sensitiveOperationService.getPendingByUserId(userId);

@@ -1,548 +1,848 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
-import { AdminMock, AdminInfo, UserInfo, FamilyMemberInfo } from '../mock/adminMock';
+import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import { ToastUtil } from '../common/utils/ToastUtil';
+import promptAction from '@ohos.promptAction';
+
+const PRIMARY = '#1677FF';
+const SUCCESS = '#52C41A';
+const WARNING = '#FAAD14';
+const DANGER = '#FF4D4F';
+const PURPLE = '#8B5CF6';
+
+interface UserInfo {
+  id: number;
+  username: string;
+  phone?: string;
+  age?: number;
+  idCard?: string;
+  userType?: number;
+  createTime?: string;
+}
+
+interface ScheduleForm {
+  doctorId: number | null;
+  scheduleDate: string;
+  schedulePeriod: number;
+  maxCount: number;
+}
+
+interface DoctorOption {
+  id: number;
+  realName: string;
+  department: string;
+  hospital: string;
+}
 
 @Entry
 @Component
 struct AdminUsers {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @State currentAdmin: AdminInfo | null = null;
+
   @State searchText: string = '';
   @State filterType: number = -1;
-  @State filteredUsers: UserInfo[] = [];
+  @State users: UserInfo[] = [];
+  @State totalRecords: number = 0;
   @State currentPage: number = 1;
-  @State pageSize: number = 10;
-  @State showAddModal: boolean = false;
+  @State pageSize: number = 15;
+  @State isLoading: boolean = false;
   @State showDetailModal: boolean = false;
   @State selectedUser: UserInfo | null = null;
-  @State editMode: boolean = false;
+  @State activeTab: number = 0;
 
-  @State formUsername: string = '';
-  @State formPhone: string = '';
-  @State formAge: string = '';
-  @State formIdCard: string = '';
-  @State formUserType: number = 0;
+  @State scheduleDoctorId: number | null = null;
+  @State scheduleDate: string = '';
+  @State schedulePeriod: number = 1;
+  @State scheduleMaxCount: number = 20;
+  @State scheduleLoading: boolean = false;
+  @State doctors: DoctorOption[] = [];
+  @State showSchedulePanel: boolean = false;
 
   aboutToAppear(): void {
-    this.currentAdmin = AppStorage.get<AdminInfo>('currentAdmin') || null;
-    this.filterUsers();
+    this.loadUsers();
+    this.loadDoctors();
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    this.scheduleDate = `${y}-${m}-${d}`;
   }
 
-  private filterUsers(): void {
-    let result: UserInfo[] = [...AdminMock.users];
-    if (this.searchText) {
-      const keyword: string = this.searchText.toLowerCase();
-      result = result.filter(u =>
-        u.username.toLowerCase().includes(keyword) ||
-        u.phone.includes(keyword) ||
-        u.id_card.includes(keyword)
+  async loadUsers(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const params: Record<string, Object> = {
+        'page': String(this.currentPage),
+        'size': String(this.pageSize)
+      };
+      if (this.searchText.trim()) {
+        params['keyword'] = this.searchText.trim();
+      }
+      if (this.filterType >= 0) {
+        params['userType'] = this.filterType;
+      }
+
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.GET,
+        ApiConstants.ADMIN_USER_LIST,
+        undefined,
+        params as Object
       );
+
+      if (response.success && response.data) {
+        const data = response.data as Record<string, Object>;
+        const records = data['records'];
+        if (Array.isArray(records)) {
+          this.users = records.map((r: Object): UserInfo => {
+            const item = r as Record<string, Object>;
+            return {
+              id: Number(item['id']) || 0,
+              username: String(item['username'] || ''),
+              phone: item['phone'] ? String(item['phone']) : undefined,
+              age: item['age'] ? Number(item['age']) : undefined,
+              idCard: item['idCard'] || item['id_card'] ? String(item['idCard'] || item['id_card']) : undefined,
+              userType: item['userType'] || item['user_type'] ? Number(item['userType'] || item['user_type']) : undefined,
+              createTime: item['createTime'] || item['create_time'] ? String(item['createTime'] || item['create_time']) : undefined
+            };
+          });
+          this.totalRecords = Number(data['total']) || 0;
+        }
+      } else {
+        ToastUtil.showError(response.message || '加载用户列表失败', 2000);
+      }
+    } catch (error) {
+      console.error('[AdminUsers] 加载失败:', error);
+      ToastUtil.showError('网络错误，请检查后端服务', 2000);
+    } finally {
+      this.isLoading = false;
     }
-    if (this.filterType >= 0) {
-      result = result.filter(u => u.user_type === this.filterType);
+  }
+
+  async loadDoctors(): Promise<void> {
+    try {
+      const response: BaseResponse<Object[]> = await HttpUtil.request<Object[]>(
+        HttpMethod.GET,
+        ApiConstants.DOCTOR_LIST,
+        undefined,
+        undefined
+      );
+      if (response.success && Array.isArray(response.data)) {
+        this.doctors = response.data.map((d: Object): DoctorOption => {
+          const item = d as Record<string, Object>;
+          return {
+            id: Number(item['id']) || 0,
+            realName: String(item['realName'] || item['real_name'] || item['name'] || ''),
+            department: String(item['department'] || ''),
+            hospital: String(item['hospital'] || '')
+          };
+        }).filter((d: DoctorOption) => d.id > 0);
+      }
+    } catch (e) {
+      console.error('[AdminUsers] 加载医生列表失败:', e);
     }
-    this.filteredUsers = result;
+  }
+
+  onSearchChange(value: string): void {
+    this.searchText = value;
     this.currentPage = 1;
+    this.loadUsers();
   }
 
-  private getPagedUsers(): UserInfo[] {
-    const start: number = (this.currentPage - 1) * this.pageSize;
-    return this.filteredUsers.slice(start, start + this.pageSize);
+  onFilterChange(type: number): void {
+    this.filterType = type;
+    this.currentPage = 1;
+    this.loadUsers();
   }
 
-  private getTotalPages(): number {
-    return Math.max(1, Math.ceil(this.filteredUsers.length / this.pageSize));
+  getTotalPages(): number {
+    return Math.max(1, Math.ceil(this.totalRecords / this.pageSize));
   }
 
-  private openAddModal(): void {
-    this.editMode = false;
-    this.formUsername = '';
-    this.formPhone = '';
-    this.formAge = '';
-    this.formIdCard = '';
-    this.formUserType = 0;
-    this.showAddModal = true;
+  getUserTypeName(type: number | undefined): string {
+    if (type === 1) return '医生';
+    if (type === 2) return '管理员';
+    return '普通用户';
   }
 
-  private openEditModal(user: UserInfo): void {
-    this.editMode = true;
-    this.selectedUser = user;
-    this.formUsername = user.username;
-    this.formPhone = user.phone;
-    this.formAge = user.age.toString();
-    this.formIdCard = user.id_card;
-    this.formUserType = user.user_type;
-    this.showAddModal = true;
+  getUserTypeColor(type: number | undefined): string {
+    if (type === 1) return PRIMARY;
+    if (type === 2) return PURPLE;
+    return SUCCESS;
   }
 
-  private saveUser(): void {
-    if (!this.formUsername.trim() || !this.formPhone.trim()) {
+  formatTime(time: string | undefined): string {
+    if (!time) return '-';
+    return time.replace('T', ' ').substring(0, 16);
+  }
+
+  async addSchedule(): Promise<void> {
+    if (!this.scheduleDoctorId) {
+      ToastUtil.showError('请选择医生', 1500);
       return;
     }
-    if (this.editMode && this.selectedUser) {
-      const idx: number = AdminMock.users.findIndex(u => u.id === this.selectedUser!.id);
-      if (idx >= 0) {
-        AdminMock.users[idx].username = this.formUsername;
-        AdminMock.users[idx].phone = this.formPhone;
-        AdminMock.users[idx].age = parseInt(this.formAge) || 0;
-        AdminMock.users[idx].id_card = this.formIdCard;
-        AdminMock.users[idx].user_type = this.formUserType;
-      }
-    } else {
-      const newId: number = AdminMock.users.length > 0 ? AdminMock.users[AdminMock.users.length - 1].id + 1 : 1;
-      AdminMock.users.push({
-        id: newId,
-        username: this.formUsername,
-        password: '123456',
-        phone: this.formPhone,
-        age: parseInt(this.formAge) || 0,
-        id_card: this.formIdCard,
-        user_type: this.formUserType,
-        create_time: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        is_deleted: 0
-      });
+    if (!this.scheduleDate) {
+      ToastUtil.showError('请选择日期', 1500);
+      return;
     }
-    this.showAddModal = false;
-    this.filterUsers();
-  }
+    if (this.scheduleMaxCount <= 0) {
+      ToastUtil.showError('号源数必须大于0', 1500);
+      return;
+    }
 
-  private deleteUser(user: UserInfo): void {
-    const idx: number = AdminMock.users.findIndex(u => u.id === user.id);
-    if (idx >= 0) {
-      AdminMock.users.splice(idx, 1);
-      this.filterUsers();
+    this.scheduleLoading = true;
+    try {
+      const body: Record<string, Object> = {
+        'doctorId': this.scheduleDoctorId,
+        'scheduleDate': this.scheduleDate,
+        'schedulePeriod': this.schedulePeriod,
+        'maxCount': this.scheduleMaxCount
+      };
+
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.POST,
+        ApiConstants.SCHEDULE_ADD,
+        body as Object
+      );
+
+      if (response.success) {
+        ToastUtil.showSuccess('放号成功！', 2000);
+        this.schedulePeriod = 1;
+        this.scheduleMaxCount = 20;
+      } else {
+        ToastUtil.showError(response.message || '放号失败', 2000);
+      }
+    } catch (error) {
+      console.error('[AdminUsers] 放号失败:', error);
+      ToastUtil.showError('网络错误', 2000);
+    } finally {
+      this.scheduleLoading = false;
     }
   }
 
   build() {
     Column() {
-      this.TitleBar();
-      this.SearchBar();
-      this.UserList();
-      this.Pagination();
+      this.HeaderBar();
 
-      if (this.showAddModal) {
-        this.AddModal();
+      Tabs({ index: this.activeTab }) {
+        TabContent() {
+          this.UserManagementTab()
+        }.tabBar(this.TabBarBuilder('👥 用户管理', 0));
+
+        TabContent() {
+          this.ScheduleTab()
+        }.tabBar(this.TabBarBuilder('📅 放号管理', 1));
       }
+      .layoutWeight(1)
+      .barPosition(BarPosition.Start)
+      .barBackgroundColor('#FFFFFF')
+      .barMode(BarMode.Fixed)
+      .onChange((index: number) => {
+        this.activeTab = index;
+      });
+
       if (this.showDetailModal && this.selectedUser) {
         this.DetailModal();
       }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F7FA');
+    .backgroundColor('#F0F2F5');
   }
 
   @Builder
-  TitleBar() {
+  HeaderBar() {
     Row() {
       Button({ type: ButtonType.Normal }) {
         Text('←')
-          .fontSize(20)
+          .fontSize(18)
           .fontColor('#FFFFFF');
       }
-      .width(40)
-      .height(40)
-      .backgroundColor('#334155')
+      .width(38)
+      .height(38)
+      .backgroundColor('rgba(255,255,255,0.15)')
       .borderRadius(10)
-      .onClick(() => {
-        router.back();
-      });
+      .onClick(() => router.back());
 
-      Text('用户管理')
-        .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
+      Text('用户管理中心')
+        .fontSize(17)
         .fontWeight(FontWeight.Bold)
         .fontColor('#FFFFFF')
         .layoutWeight(1)
         .textAlign(TextAlign.Center);
 
-      Button({ type: ButtonType.Normal }) {
-        Text('+ 新增')
-          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-          .fontColor('#FFFFFF');
+      Row({ space: 4 }) {
+        Text(`共${this.totalRecords}人`)
+          .fontSize(12)
+          .fontColor('rgba(255,255,255,0.7)')
+          .backgroundColor('rgba(255,255,255,0.12)')
+          .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+          .borderRadius(10);
       }
-      .height(36)
-      .padding({ left: 12, right: 12 })
-      .backgroundColor('#1677FF')
-      .borderRadius(8)
-      .onClick(() => {
-        this.openAddModal();
-      });
     }
     .width('100%')
     .height(56)
     .padding({ left: 16, right: 16 })
-    .backgroundColor('#1E293B')
+    .linearGradient({
+      direction: GradientDirection.Right,
+      colors: [[PRIMARY, 0], ['#722ED1', 1]]
+    })
     .justifyContent(FlexAlign.SpaceBetween)
     .alignItems(VerticalAlign.Center);
   }
 
   @Builder
-  SearchBar() {
-    Column({ space: 10 }) {
-      Row() {
-        TextInput({ placeholder: '搜索用户名、手机号、身份证...', text: this.searchText })
-          .layoutWeight(1)
-          .height(40)
-          .backgroundColor('#FFFFFF')
-          .borderRadius(8)
-          .padding({ left: 12 })
-          .onChange((value: string) => {
-            this.searchText = value;
-            this.filterUsers();
-          });
-        if (this.searchText) {
-          Button({ type: ButtonType.Normal }) {
-            Text('✕')
-              .fontSize(14)
-              .fontColor('#999');
-          }
-          .width(32)
-          .height(32)
-          .backgroundColor('#F5F5F5')
-          .borderRadius(6)
-          .margin({ left: 8 })
-          .onClick(() => {
-            this.searchText = '';
-            this.filterUsers();
-          });
-        }
+  TabBarBuilder(title: string, index: number) {
+    Column({ space: 4 }) {
+      Text(title)
+        .fontSize(13)
+        .fontColor(this.activeTab === index ? PRIMARY : '#999')
+        .fontWeight(this.activeTab === index ? FontWeight.Bold : FontWeight.Normal);
+
+      if (this.activeTab === index) {
+        Row()
+          .width(20)
+          .height(3)
+          .borderRadius(2)
+          .backgroundColor(PRIMARY);
+      } else {
+        Row().width(20).height(3);
       }
-
-      Row({ space: 8 }) {
-        Text('类型筛选：')
-          .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-          .fontColor(GlobalTheme.TEXT_SECONDARY);
-
-        Button('全部')
-          .height(30)
-          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-          .padding({ left: 10, right: 10 })
-          .backgroundColor(this.filterType === -1 ? '#1677FF' : '#F0F0F0')
-          .fontColor(this.filterType === -1 ? '#FFFFFF' : '#666666')
-          .borderRadius(6)
-          .onClick(() => {
-            this.filterType = -1;
-            this.filterUsers();
-          });
-
-        Button('医生')
-          .height(30)
-          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-          .padding({ left: 10, right: 10 })
-          .backgroundColor(this.filterType === 1 ? '#1677FF' : '#F0F0F0')
-          .fontColor(this.filterType === 1 ? '#FFFFFF' : '#666666')
-          .borderRadius(6)
-          .onClick(() => {
-            this.filterType = 1;
-            this.filterUsers();
-          });
-
-        Button('普通用户')
-          .height(30)
-          .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-          .padding({ left: 10, right: 10 })
-          .backgroundColor(this.filterType === 0 ? '#1677FF' : '#F0F0F0')
-          .fontColor(this.filterType === 0 ? '#FFFFFF' : '#666666')
-          .borderRadius(6)
-          .onClick(() => {
-            this.filterType = 0;
-            this.filterUsers();
-          });
-      }
-
-      Text(`共 ${this.filteredUsers.length} 条记录`)
-        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-        .fontColor(GlobalTheme.TEXT_HINT)
-        .width('100%');
     }
     .width('100%')
-    .padding(16)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .margin({ top: 12, left: 12, right: 12 });
+    .height(48)
+    .justifyContent(FlexAlign.Center)
   }
 
   @Builder
-  UserList() {
-    Column({ space: 8 }) {
-      ForEach(this.getPagedUsers(), (user: UserInfo) => {
-        Row() {
-          Column({ space: 4 }) {
-            Row({ space: 8 }) {
-              Text(user.username)
-                .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-                .fontWeight(FontWeight.Medium)
-                .fontColor(GlobalTheme.TEXT_PRIMARY);
-              Text(AdminMock.getUserTypeName(user.user_type))
-                .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                .fontColor(AdminMock.getUserTypeColor(user.user_type))
-                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                .backgroundColor(AdminMock.getUserTypeColor(user.user_type) + '15')
-                .borderRadius(4);
-            }
+  UserManagementTab() {
+    Column({ space: 0 }) {
+      this.SearchAndFilterSection();
 
-            Row({ space: 16 }) {
-              Text(`📱 ${user.phone}`)
-                .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                .fontColor(GlobalTheme.TEXT_SECONDARY);
-              Text(`🎂 ${user.age}岁`)
-                .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                .fontColor(GlobalTheme.TEXT_SECONDARY);
-            }
-
-            Text(`🕐 ${user.create_time}`)
-              .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-              .fontColor(GlobalTheme.TEXT_HINT);
-          }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1);
-
-          Column({ space: 6 }) {
-            Button({ type: ButtonType.Normal }) {
-              Text('查看')
-                .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                .fontColor('#1677FF');
-            }
-            .height(28)
-            .padding({ left: 10, right: 10 })
-            .backgroundColor('#1677FF15')
-            .borderRadius(6)
-            .onClick(() => {
-              this.selectedUser = user;
-              this.showDetailModal = true;
-            });
-
-            Row({ space: 6 }) {
-              Button({ type: ButtonType.Normal }) {
-                Text('✏️')
-                  .fontSize(14);
-              }
-              .width(28)
-              .height(28)
-              .backgroundColor('#FAAD1415')
-              .borderRadius(6)
-              .onClick(() => {
-                this.openEditModal(user);
-              });
-
-              Button({ type: ButtonType.Normal }) {
-                Text('🗑️')
-                  .fontSize(14);
-              }
-              .width(28)
-              .height(28)
-              .backgroundColor('#FF4D4F15')
-              .borderRadius(6)
-              .onClick(() => {
-                this.deleteUser(user);
-              });
-            }
-          }
-          .alignItems(HorizontalAlign.End);
-        }
-        .width('100%')
-        .padding(14)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(10)
-        .border({ width: 1, color: '#E2E8F0', style: BorderStyle.Solid });
-      }, (user: UserInfo) => `${user.id}`);
+      if (this.isLoading) {
+        this.LoadingView();
+      } else if (this.users.length === 0) {
+        this.EmptyView();
+      } else {
+        this.UserListSection();
+        this.PaginationBar();
+      }
     }
     .width('100%')
-    .padding({ left: 12, right: 12, top: 8 })
+    .height('100%')
     .layoutWeight(1);
   }
 
   @Builder
-  Pagination() {
-    Row({ space: 8 }) {
-      Button('上一页')
-        .height(32)
-        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-        .padding({ left: 12, right: 12 })
-        .backgroundColor(this.currentPage > 1 ? '#1677FF' : '#E8ECF2')
-        .fontColor(this.currentPage > 1 ? '#FFFFFF' : '#999999')
-        .borderRadius(6)
-        .enabled(this.currentPage > 1)
-        .onClick(() => {
-          if (this.currentPage > 1) {
-            this.currentPage--;
+  SearchAndFilterSection() {
+    Column({ space: 12 }) {
+      Row() {
+        TextInput({ placeholder: '搜索用户名 / 手机号 / 身份证...', text: this.searchText })
+          .layoutWeight(1)
+          .height(40)
+          .backgroundColor('#F5F7FA')
+          .borderRadius(10)
+          .placeholderFont({ size: 13 })
+          .fontSize(14)
+          .padding({ left: 36, right: 12 })
+          .onChange((v: string) => this.onSearchChange(v));
+
+        if (this.searchText.length > 0) {
+          Button({ type: ButtonType.Normal }) {
+            Text('✕').fontSize(14).fontColor('#999');
           }
-        });
+            .width(34).height(34)
+            .backgroundColor('#EEE')
+            .borderRadius(8)
+            .margin({ left: 8 })
+            .onClick(() => { this.searchText = ''; this.loadUsers(); });
+        }
+      }
+
+      Scroll() {
+        Row({ space: 8 }) {
+          this.FilterChip('全部', -1);
+          this.FilterChip('普通用户', 0);
+          this.FilterChip('医生', 1);
+          this.FilterChip('管理员', 2);
+        }
+      }
+      .scrollable(ScrollDirection.Horizontal)
+      .scrollBar(BarState.Off)
+      .width('100%');
+
+      Row() {
+        Text(`找到 ${this.totalRecords} 条记录`)
+          .fontSize(12)
+          .fontColor('#999');
+        Blank();
+        Text(`第 ${this.currentPage}/${this.getTotalPages()} 页`)
+          .fontSize(12)
+          .fontColor('#999');
+      }
+      .width('100%');
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor('#FFFFFF')
+    .margin({ top: 12, left: 12, right: 12 })
+    .borderRadius(14);
+  }
+
+  @Builder
+  FilterChip(label: string, type: number) {
+    Text(label)
+      .fontSize(13)
+      .fontColor(this.filterType === type ? '#FFFFFF' : '#555')
+      .padding({ left: 16, right: 16, top: 6, bottom: 6 })
+      .borderRadius(20)
+      .backgroundColor(this.filterType === type ? PRIMARY : '#F0F0F0')
+      .onClick(() => this.onFilterChange(type));
+  }
+
+  @Builder
+  LoadingView() {
+    Column({ space: 12 }) {
+      LoadingProgress().width(36).height(36).color(PRIMARY);
+      Text('加载中...').fontSize(13).fontColor('#999');
+    }
+    .width('100%')
+    .height(300)
+    .justifyContent(FlexAlign.Center);
+  }
+
+  @Builder
+  EmptyView() {
+    Column({ space: 12 }) {
+      Text('📋').fontSize(48);
+      Text('暂无用户数据').fontSize(15).fontColor('#666').fontWeight(FontWeight.Medium);
+      Text(this.searchText ? '尝试更换搜索关键词' : '数据库中暂无注册用户')
+        .fontSize(12).fontColor('#AAA');
+    }
+    .width('100%')
+    .height(280)
+    .justifyContent(FlexAlign.Center);
+  }
+
+  @Builder
+  UserListSection() {
+    List({ space: 10 }) {
+      ForEach(this.users, (user: UserInfo) => {
+        ListItem() {
+          Row() {
+            Column({ space: 6 }) {
+              Text(user.username)
+                .fontSize(15)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#1A1A2E')
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis });
+
+              Row({ space: 8 }) {
+                Text(this.getUserTypeName(user.userType))
+                  .fontSize(11)
+                  .fontColor(this.getUserTypeColor(user.userType))
+                  .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                  .backgroundColor(this.getUserTypeColor(user.userType) + '18')
+                  .borderRadius(4);
+
+                if (user.phone) {
+                  Text(`📱 ${user.phone}`)
+                    .fontSize(12)
+                    .fontColor('#888');
+                }
+              }
+
+              Row({ space: 12 }) {
+                if (user.age != null) {
+                  Text(`${user.age}岁`).fontSize(11).fontColor('#AAA');
+                }
+                Text(`🕐 ${this.formatTime(user.createTime)}`)
+                  .fontSize(11)
+                  .fontColor('#BBB')
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis });
+              }
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+            .margin({ right: 8 });
+
+            Button({ type: ButtonType.Normal }) {
+              Text('详情').fontSize(12).fontColor(PRIMARY);
+            }
+            .height(32)
+            .padding({ left: 14, right: 14 })
+            .backgroundColor(PRIMARY + '12')
+            .borderRadius(8)
+            .onClick(() => { this.selectedUser = user; this.showDetailModal = true; });
+          }
+          .width('100%')
+          .padding(14)
+          .backgroundColor('#FFFFFF')
+          .borderRadius(12)
+          .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 2 });
+        }
+      }, (user: UserInfo) => `${user.id}_${user.username}`);
+    }
+    .width('100%')
+    .layoutWeight(1)
+    .padding({ left: 12, right: 12, top: 8 });
+  }
+
+  @Builder
+  PaginationBar() {
+    Row({ space: 10 }) {
+      Button({ type: ButtonType.Normal }) {
+        Text('◀ 上一页').fontSize(12);
+      }
+      .height(34)
+      .fontSize(12)
+      .padding({ left: 14, right: 14 })
+      .backgroundColor(this.currentPage > 1 ? PRIMARY : '#E8ECF2')
+      .fontColor(this.currentPage > 1 ? '#FFF' : '#BBB')
+      .borderRadius(8)
+      .enabled(this.currentPage > 1)
+      .onClick(() => { if (this.currentPage > 1) { this.currentPage--; this.loadUsers(); } });
 
       Text(`${this.currentPage} / ${this.getTotalPages()}`)
-        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-        .fontColor(GlobalTheme.TEXT_SECONDARY);
+        .fontSize(13)
+        .fontColor('#666')
+        .width(60)
+        .textAlign(TextAlign.Center);
 
-      Button('下一页')
-        .height(32)
-        .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-        .padding({ left: 12, right: 12 })
-        .backgroundColor(this.currentPage < this.getTotalPages() ? '#1677FF' : '#E8ECF2')
-        .fontColor(this.currentPage < this.getTotalPages() ? '#FFFFFF' : '#999999')
-        .borderRadius(6)
-        .enabled(this.currentPage < this.getTotalPages())
-        .onClick(() => {
-          if (this.currentPage < this.getTotalPages()) {
-            this.currentPage++;
-          }
-        });
+      Button({ type: ButtonType.Normal }) {
+        Text('下一页 ▶').fontSize(12);
+      }
+      .height(34)
+      .fontSize(12)
+      .padding({ left: 14, right: 14 })
+      .backgroundColor(this.currentPage < this.getTotalPages() ? PRIMARY : '#E8ECF2')
+      .fontColor(this.currentPage < this.getTotalPages() ? '#FFF' : '#BBB')
+      .borderRadius(8)
+      .enabled(this.currentPage < this.getTotalPages())
+      .onClick(() => { if (this.currentPage < this.getTotalPages()) { this.currentPage++; this.loadUsers(); } });
     }
     .width('100%')
     .height(56)
     .justifyContent(FlexAlign.Center)
     .backgroundColor('#FFFFFF')
-    .border({ width: 0.5, color: '#E2E8F0', style: BorderStyle.Solid });
+    .padding({ left: 16, right: 16 })
+    .border({ width: { top: 0.5 }, color: '#EEE' });
   }
 
   @Builder
-  AddModal() {
-    Stack() {
-      Column()
-        .width('100%')
-        .height('100%')
-        .backgroundColor('#00000066')
-        .onClick(() => {
-          this.showAddModal = false;
-        });
-
+  ScheduleTab() {
+    Scroll() {
       Column({ space: 16 }) {
-        Text(this.editMode ? '编辑用户' : '新增用户')
-          .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
-          .fontWeight(FontWeight.Bold)
-          .fontColor(GlobalTheme.TEXT_PRIMARY);
-
-        Column({ space: 6 }) {
-          Text('用户名 *')
-            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-            .fontColor(GlobalTheme.TEXT_SECONDARY)
-            .width('100%');
-          TextInput({ placeholder: '请输入用户名', text: this.formUsername })
-            .height(44)
-            .backgroundColor('#F8FAFC')
-            .borderRadius(8)
-            .border({ width: 1, color: '#E2E8F0', style: BorderStyle.Solid })
-            .padding({ left: 12 })
-            .onChange((value: string) => {
-              this.formUsername = value;
-            });
-        }
-
-        Column({ space: 6 }) {
-          Text('手机号 *')
-            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-            .fontColor(GlobalTheme.TEXT_SECONDARY)
-            .width('100%');
-          TextInput({ placeholder: '请输入手机号', text: this.formPhone })
-            .type(InputType.PhoneNumber)
-            .maxLength(11)
-            .height(44)
-            .backgroundColor('#F8FAFC')
-            .borderRadius(8)
-            .border({ width: 1, color: '#E2E8F0', style: BorderStyle.Solid })
-            .padding({ left: 12 })
-            .onChange((value: string) => {
-              this.formPhone = value;
-            });
-        }
-
-        Column({ space: 6 }) {
-          Text('年龄')
-            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-            .fontColor(GlobalTheme.TEXT_SECONDARY)
-            .width('100%');
-          TextInput({ placeholder: '请输入年龄', text: this.formAge })
-            .type(InputType.Number)
-            .maxLength(3)
-            .height(44)
-            .backgroundColor('#F8FAFC')
-            .borderRadius(8)
-            .border({ width: 1, color: '#E2E8F0', style: BorderStyle.Solid })
-            .padding({ left: 12 })
-            .onChange((value: string) => {
-              this.formAge = value;
-            });
-        }
-
-        Column({ space: 6 }) {
-          Text('身份证号')
-            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-            .fontColor(GlobalTheme.TEXT_SECONDARY)
-            .width('100%');
-          TextInput({ placeholder: '请输入身份证号', text: this.formIdCard })
-            .maxLength(18)
-            .height(44)
-            .backgroundColor('#F8FAFC')
-            .borderRadius(8)
-            .border({ width: 1, color: '#E2E8F0', style: BorderStyle.Solid })
-            .padding({ left: 12 })
-            .onChange((value: string) => {
-              this.formIdCard = value;
-            });
-        }
-
-        Column({ space: 6 }) {
-          Text('用户类型')
-            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-            .fontColor(GlobalTheme.TEXT_SECONDARY)
-            .width('100%');
-          Row({ space: 8 }) {
-            Button('普通用户')
-              .height(36)
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .padding({ left: 14, right: 14 })
-              .backgroundColor(this.formUserType === 0 ? '#1677FF' : '#F0F0F0')
-              .fontColor(this.formUserType === 0 ? '#FFFFFF' : '#666666')
-              .borderRadius(8)
-              .onClick(() => {
-                this.formUserType = 0;
-              });
-            Button('医生')
-              .height(36)
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .padding({ left: 14, right: 14 })
-              .backgroundColor(this.formUserType === 1 ? '#1677FF' : '#F0F0F0')
-              .fontColor(this.formUserType === 1 ? '#FFFFFF' : '#666666')
-              .borderRadius(8)
-              .onClick(() => {
-                this.formUserType = 1;
-              });
-          }
-        }
-
-        Row({ space: 12 }) {
-          Button('取消')
-            .layoutWeight(1)
-            .height(44)
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .backgroundColor('#F0F0F0')
-            .fontColor('#666666')
-            .borderRadius(10)
-            .onClick(() => {
-              this.showAddModal = false;
-            });
-          Button('保存')
-            .layoutWeight(1)
-            .height(44)
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .backgroundColor('#1677FF')
-            .fontColor('#FFFFFF')
-            .borderRadius(10)
-            .onClick(() => {
-              this.saveUser();
-            });
-        }
-        .width('100%');
+        this.ScheduleHeader();
+        this.ScheduleFormCard();
+        this.DoctorListPreview();
       }
-      .width('85%')
-      .padding(20)
-      .backgroundColor('#FFFFFF')
-      .borderRadius(16)
-      .shadow({ radius: 20, color: '#00000033', offsetX: 0, offsetY: 4 });
+      .width('100%')
+      .padding(16);
     }
     .width('100%')
     .height('100%')
-    .position({ x: 0, y: 0 });
+    .scrollBar(BarState.Off)
+    .edgeEffect(EdgeEffect.Spring);
+  }
+
+  @Builder
+  ScheduleHeader() {
+    Row() {
+      Column({ space: 4 }) {
+        Text('放号管理')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1A1A2E');
+        Text('为医生设置排班和号源，支持上午/下午/晚上三个时段')
+          .fontSize(12)
+          .fontColor('#888');
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1);
+
+      Text(`可分配 ${this.doctors.length} 位医生`)
+        .fontSize(12)
+        .fontColor(PRIMARY)
+        .backgroundColor(PRIMARY + '12')
+        .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+        .borderRadius(10);
+    }
+    .width('100%')
+    .padding(20)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(14)
+    .linearGradient({
+      angle: 135,
+      colors: [['#FFFFFF', 0], ['#F0F5FF', 1]]
+    });
+  }
+
+  @Builder
+  ScheduleFormCard() {
+    Column({ space: 16 }) {
+      Text('新增排班')
+        .fontSize(15)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#1A1A2E')
+        .width('100%');
+
+      Column({ space: 6 }) {
+        Text('选择医生 *')
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%');
+
+        if (this.doctors.length === 0) {
+          Text('暂无医生数据，无法放号')
+            .fontSize(13)
+            .fontColor('#999')
+            .width('100%')
+            .height(44)
+            .textAlign(TextAlign.Center)
+            .backgroundColor('#F5F7FA')
+            .borderRadius(8);
+        } else {
+          Row() {
+            Text(this.scheduleDoctorId
+              ? (this.doctors.find((d: DoctorOption) => d.id === this.scheduleDoctorId)?.realName || '请选择')
+              : '请选择医生')
+              .fontSize(14)
+              .fontColor(this.scheduleDoctorId ? '#333' : '#BBB')
+              .layoutWeight(1);
+
+            Text('▼').fontSize(12).fontColor('#999').margin({ left: 8 });
+          }
+          .width('100%')
+          .height(44)
+          .padding({ left: 14, right: 14 })
+          .backgroundColor('#F5F7FA')
+          .borderRadius(8)
+          .border({ width: 1, color: this.scheduleDoctorId ? PRIMARY : '#E0E0E0' })
+          .onClick(() => { this.showSchedulePanel = !this.showSchedulePanel; });
+        }
+      }
+
+      if (this.showSchedulePanel && this.doctors.length > 0) {
+        Column({ space: 2 }) {
+          ForEach(this.doctors, (doc: DoctorOption) => {
+            Row() {
+              Text(doc.realName)
+                .fontSize(13)
+                .fontColor(this.scheduleDoctorId === doc.id ? PRIMARY : '#333')
+                .fontWeight(this.scheduleDoctorId === doc.id ? FontWeight.Bold : FontWeight.Normal)
+                .layoutWeight(1);
+
+              Text(doc.department)
+                .fontSize(11)
+                .fontColor('#AAA');
+
+              if (this.scheduleDoctorId === doc.id) {
+                Text('✓').fontSize(14).fontColor(PRIMARY).margin({ left: 6 });
+              }
+            }
+            .width('100%')
+            .padding({ left: 14, right: 14, top: 10, bottom: 10 })
+            .backgroundColor(this.scheduleDoctorId === doc.id ? PRIMARY + '0A' : '#FAFAFA')
+            .borderRadius(8)
+            .onClick(() => { this.scheduleDoctorId = doc.id; this.showSchedulePanel = false; });
+          }, (doc: DoctorOption) => `${doc.id}`);
+        }
+        .width('100%')
+        .constraintSize({ maxHeight: 180 })
+        .border({ width: 1, color: '#EEE', style: BorderStyle.Solid })
+        .borderRadius(8);
+      }
+
+      Column({ space: 6 }) {
+        Text('排班日期 *')
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%');
+        TextInput({ placeholder: 'YYYY-MM-DD', text: this.scheduleDate })
+          .height(44)
+          .fontSize(14)
+          .backgroundColor('#F5F7FA')
+          .borderRadius(8)
+          .padding({ left: 14 })
+          .onChange((v: string) => { this.scheduleDate = v; });
+      }
+
+      Column({ space: 6 }) {
+        Text('时段 *')
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%');
+        Row({ space: 8 }) {
+          this.PeriodButton('上午 8:00-12:00', 1);
+          this.PeriodButton('下午 14:00-18:00', 2);
+          this.PeriodButton('晚上 19:00-21:00', 3);
+        }
+      }
+
+      Column({ space: 6 }) {
+        Text(`号源数量 (${this.scheduleMaxCount})`)
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%');
+
+        Row({ space: 12 }) {
+          Button({ type: ButtonType.Normal }) {
+            Text('-').fontSize(18).fontColor(PRIMARY).fontWeight(FontWeight.Bold);
+          }
+            .width(38).height(38)
+            .backgroundColor('#F0F5FF')
+            .borderRadius(8)
+            .enabled(this.scheduleMaxCount > 1)
+            .onClick(() => { if (this.scheduleMaxCount > 1) this.scheduleMaxCount--; });
+
+          Text(`${this.scheduleMaxCount}`)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1A1A2E')
+            .width(50)
+            .textAlign(TextAlign.Center);
+
+          Button({ type: ButtonType.Normal }) {
+            Text('+').fontSize(18).fontColor('#FFF').fontWeight(FontWeight.Bold);
+          }
+            .width(38).height(38)
+            .backgroundColor(PRIMARY)
+            .borderRadius(8)
+            .enabled(this.scheduleMaxCount < 99)
+            .onClick(() => { if (this.scheduleMaxCount < 99) this.scheduleMaxCount++; });
+
+          Blank();
+
+          Text('个号源')
+            .fontSize(13)
+            .fontColor('#888');
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center);
+      }
+
+      Button(this.scheduleLoading ? '提交中...' : '确认放号')
+        .width('100%')
+        .height(46)
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#FFFFFF')
+        .linearGradient(this.scheduleLoading
+          ? { angle: 90, colors: [['#AAC', 0], ['#99B', 1]] }
+          : { angle: 135, colors: [[PRIMARY, 0], ['#69B1FF', 1]] })
+        .borderRadius(12)
+        .enabled(!this.scheduleLoading)
+        .onClick(() => this.addSchedule());
+    }
+    .width('100%')
+    .padding(20)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(14)
+    .shadow({ radius: 12, color: '#0000000A', offsetX: 0, offsetY: 4 });
+  }
+
+  @Builder
+  PeriodButton(label: string, period: number) {
+    Text(label)
+      .fontSize(12)
+      .fontColor(this.schedulePeriod === period ? '#FFFFFF' : '#555')
+      .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+      .borderRadius(8)
+      .backgroundColor(this.schedulePeriod === period ? PRIMARY : '#F5F5F5')
+      .onClick(() => { this.schedulePeriod = period; });
+  }
+
+  @Builder
+  DoctorListPreview() {
+    Column({ space: 12 }) {
+      Row() {
+        Text('可用医生列表')
+          .fontSize(15)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#1A1A2E');
+        Blank();
+        Text(`${this.doctors.length} 位`)
+          .fontSize(12)
+          .fontColor('#999');
+      }
+      .width('100%');
+
+      if (this.doctors.length === 0) {
+        Column({ space: 8 }) {
+          Text('📭').fontSize(36);
+          Text('暂无医生数据')
+            .fontSize(13)
+            .fontColor('#AAA');
+          Text('请先在系统中添加医生信息')
+            .fontSize(11)
+            .fontColor('#CCC');
+        }
+        .width('100%')
+        .padding(30)
+        .backgroundColor('#FAFAFA')
+        .borderRadius(10)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center);
+      } else {
+        Column({ space: 6 }) {
+          ForEach(this.doctors.slice(0, 10), (doc: DoctorOption) => {
+            Row({ space: 10 }) {
+              Column() {
+                Text(String(doc.realName.charAt(0)))
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FFFFFF')
+                  .width(34)
+                  .height(34)
+                  .borderRadius(10)
+                  .backgroundColor(PRIMARY);
+              }
+              .width(34)
+              .height(34)
+              .justifyContent(FlexAlign.Center);
+
+              Column({ space: 2 }) {
+                Text(doc.realName)
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor('#333');
+                Text(`${doc.department} · ${doc.hospital}`)
+                  .fontSize(11)
+                  .fontColor('#AAA')
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis });
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1);
+
+              Text('ID:' + doc.id)
+                .fontSize(11)
+                .fontColor('#CCC');
+            }
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#FAFAFA')
+            .borderRadius(10);
+          }, (doc: DoctorOption) => `${doc.id}`);
+
+          if (this.doctors.length > 10) {
+            Text(`还有 ${this.doctors.length - 10} 位医生未显示...`)
+              .fontSize(12)
+              .fontColor('#999')
+              .width('100%')
+              .textAlign(TextAlign.Center)
+              .padding({ top: 4 });
+          }
+        }
+      }
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor('#FFFFFF')
+    .borderRadius(14);
   }
 
   @Builder
@@ -551,82 +851,54 @@ struct AdminUsers {
       Column()
         .width('100%')
         .height('100%')
-        .backgroundColor('#00000066')
-        .onClick(() => {
-          this.showDetailModal = false;
-        });
+        .backgroundColor('#00000055')
+        .onClick(() => { this.showDetailModal = false; });
 
-      Column({ space: 12 }) {
+      Column({ space: 16 }) {
         Row() {
           Text('用户详情')
-            .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
+            .fontSize(17)
             .fontWeight(FontWeight.Bold)
-            .fontColor(GlobalTheme.TEXT_PRIMARY);
+            .fontColor('#1A1A2E');
           Blank();
-          Text('✕')
-            .fontSize(20)
-            .fontColor(GlobalTheme.TEXT_HINT)
-            .onClick(() => {
-              this.showDetailModal = false;
-            });
+          Button({ type: ButtonType.Normal }) {
+            Text('✕').fontSize(16).fontColor('#999');
+          }
+          .width(32).height(32)
+          .backgroundColor('#F5F5F5')
+          .borderRadius(8)
+          .onClick(() => { this.showDetailModal = false; });
         }
         .width('100%');
 
-        Divider().color('#E2E8F0');
-
-        this.DetailRow('用户ID', `${this.selectedUser!.id}`);
-        this.DetailRow('用户名', this.selectedUser!.username);
-        this.DetailRow('手机号', this.selectedUser!.phone);
-        this.DetailRow('年龄', `${this.selectedUser!.age}岁`);
-        this.DetailRow('身份证', this.selectedUser!.id_card);
-        this.DetailRow('类型', AdminMock.getUserTypeName(this.selectedUser!.user_type));
-        this.DetailRow('注册时间', this.selectedUser!.create_time);
-
-        Divider().color('#E2E8F0');
-
-        Row({ space: 8 }) {
-          Text('家属信息')
-            .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(GlobalTheme.TEXT_PRIMARY);
-          Text(`(${AdminMock.familyMembers.filter(f => f.user_id === this.selectedUser!.id).length}人)`)
-            .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-            .fontColor(GlobalTheme.TEXT_HINT);
+        Column({ space: 12 }) {
+          this.InfoRow('用户ID', String(this.selectedUser!.id));
+          this.InfoRow('用户名', this.selectedUser!.username);
+          this.InfoRow('手机号', this.selectedUser!.phone || '-');
+          this.InfoRow('年龄', this.selectedUser!.age != null ? `${this.selectedUser!.age}岁` : '-');
+          this.InfoRow('身份证', this.selectedUser!.idCard || '-');
+          this.InfoRow('用户类型', this.getUserTypeName(this.selectedUser!.userType), this.getUserTypeColor(this.selectedUser!.userType));
+          this.InfoRow('注册时间', this.formatTime(this.selectedUser!.createTime));
         }
-
-        ForEach(AdminMock.familyMembers.filter(f => f.user_id === this.selectedUser!.id), (fm: FamilyMemberInfo) => {
-          Row({ space: 8 }) {
-            Text('•')
-              .fontSize(14)
-              .fontColor(GlobalTheme.TEXT_SECONDARY);
-            Text(`${fm.name}（${fm.relation}）`)
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor(GlobalTheme.TEXT_PRIMARY);
-            Text(fm.phone)
-              .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-              .fontColor(GlobalTheme.TEXT_HINT);
-          }
-          .width('100%')
-          .padding({ left: 8, top: 4, bottom: 4 });
-        }, (fm: FamilyMemberInfo) => `${fm.id}`);
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#F8FAFC')
+        .borderRadius(12);
 
         Button('关闭')
           .width('100%')
-          .height(44)
-          .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+          .height(42)
+          .fontSize(15)
           .backgroundColor('#F0F0F0')
-          .fontColor('#666666')
+          .fontColor('#555')
           .borderRadius(10)
-          .margin({ top: 4 })
-          .onClick(() => {
-            this.showDetailModal = false;
-          });
+          .onClick(() => { this.showDetailModal = false; });
       }
-      .width('85%')
+      .width('88%')
       .padding(20)
       .backgroundColor('#FFFFFF')
       .borderRadius(16)
-      .shadow({ radius: 20, color: '#00000033', offsetX: 0, offsetY: 4 });
+      .shadow({ radius: 24, color: '#00000025', offsetX: 0, offsetY: 8 });
     }
     .width('100%')
     .height('100%')
@@ -634,18 +906,19 @@ struct AdminUsers {
   }
 
   @Builder
-  DetailRow(label: string, value: string) {
+  InfoRow(label: string, value: string, valueColor?: string) {
     Row() {
       Text(label)
-        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-        .fontColor(GlobalTheme.TEXT_SECONDARY)
+        .fontSize(13)
+        .fontColor('#888')
         .width(80);
       Text(value)
-        .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-        .fontColor(GlobalTheme.TEXT_PRIMARY)
+        .fontSize(13)
+        .fontColor(valueColor || '#333')
+        .fontWeight(FontWeight.Medium)
         .layoutWeight(1);
     }
     .width('100%')
-    .padding({ top: 4, bottom: 4 });
+    .alignItems(VerticalAlign.Top);
   }
 }

@@ -274,13 +274,17 @@ struct TransferApplyPage {
       if (this.isLoading) {
         Loading();
       } else if (this.hasError) {
-        EmptyState({
-          icon: '❌',
-          title: '加载失败',
-          description: '数据加载出现问题，请重试',
-          buttonText: '重新加载',
-          onAdd: () => this.loadHospitals()
-        });
+        Column() {
+          EmptyState({
+            icon: '❌',
+            title: '加载失败',
+            description: '数据加载出现问题，请重试',
+            buttonText: '重新加载',
+            showButton: true
+          })
+        }
+        .width('100%')
+        .onClick(() => this.loadHospitals());
       } else {
         if (this.currentStep === 1) {
           // 第一步：选择目标医院
@@ -299,17 +303,21 @@ struct TransferApplyPage {
 
             // 医院列表
             if (this.filteredHospitals.length === 0) {
-              EmptyState({
-                icon: '🏥',
-                title: '暂无医院',
-                description: '没有找到符合条件的医院',
-                buttonText: '清除搜索',
-                onAdd: () => {
-                  this.searchKeyword = '';
-                  this.filteredHospitals = [];
-                  for (let i = 0; i < this.hospitals.length; i++) {
-                    this.filteredHospitals.push(this.hospitals[i]);
-                  }
+              Column() {
+                EmptyState({
+                  icon: '🏥',
+                  title: '暂无医院',
+                  description: '没有找到符合条件的医院',
+                  buttonText: '清除搜索',
+                  showButton: true
+                })
+              }
+              .width('100%')
+              .onClick(() => {
+                this.searchKeyword = '';
+                this.filteredHospitals = [];
+                for (let i = 0; i < this.hospitals.length; i++) {
+                  this.filteredHospitals.push(this.hospitals[i]);
                 }
               });
             } else {
@@ -548,13 +556,17 @@ struct TransferApplyPage {
             .margin({ top: AccessibilityConfig.getSpacingLG(), bottom: AccessibilityConfig.getSpacingMD() });
 
           if (this.applications.length === 0) {
-            EmptyState({
-              icon: '📋',
-              title: '暂无申请',
-              description: '您还没有提交过转院申请',
-              buttonText: '发起申请',
-              onAdd: () => this.currentStep = 1
-            });
+            Column() {
+              EmptyState({
+                icon: '📋',
+                title: '暂无申请',
+                description: '您还没有提交过转院申请',
+                buttonText: '发起申请',
+                showButton: true
+              })
+            }
+            .width('100%')
+            .onClick(() => this.currentStep = 1);
           } else {
             List() {
               ForEach(this.applications, (application: TransferApplication) => {

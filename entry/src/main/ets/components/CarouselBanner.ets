@@ -69,8 +69,8 @@ export struct CarouselBanner {
           .linearGradient({
             angle: 135,
             colors: [
-              [banner.gradientColors[0].color, banner.gradientColors[0].offset],
-              [banner.gradientColors[1].color, banner.gradientColors[1].offset]
+              [(banner.gradientColors && banner.gradientColors[0]) ? banner.gradientColors[0].color : '#1677FF', (banner.gradientColors && banner.gradientColors[0]) ? banner.gradientColors[0].offset : 0],
+              [(banner.gradientColors && banner.gradientColors[1]) ? banner.gradientColors[1].color : '#36CFC9', (banner.gradientColors && banner.gradientColors[1]) ? banner.gradientColors[1].offset : 1]
             ] as [string, number][]
           })
           .borderRadius(12)

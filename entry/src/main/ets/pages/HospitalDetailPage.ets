@@ -213,21 +213,25 @@ struct HospitalDetailPage {
   }
 
   onDepartmentClick(department: DepartmentInfo): void {
-    console.log('开始跳转到预约时间选择页面');
+    console.log('开始跳转到科室医生列表页面');
+    console.log('医院ID:', this.hospitalId);
     console.log('医院名称:', this.hospitalName);
     console.log('科室名称:', department.deptName);
     console.log('科室位置:', department.location);
 
     try {
       router.pushUrl({
-        url: 'pages/AppointmentTimeSelectPage',
+        url: 'pages/DepartmentDoctorsPage',
         params: {
+          hospitalId: this.hospitalId,
           hospitalName: this.hospitalName,
+          departmentId: department.id,
           departmentName: department.deptName,
-          departmentLocation: department.location || `${department.deptName}诊室`
+          departmentLocation: department.location || `${department.deptName}诊室`,
+          departmentIntro: department.deptIntro || ''
         }
       }).then(() => {
-        console.log('成功跳转到预约时间选择页面');
+        console.log('成功跳转到科室医生列表页面');
       }).catch((error: Error) => {
         console.error('跳转失败:', error.message);
         ToastUtil.showError('页面跳转失败，请重试', 2000);
@@ -323,6 +327,18 @@ struct HospitalDetailPage {
     this.filteredDepartments = filtered;
   }
 
+  openARNavigation(): void {
+    console.log('打开院内AR导航, 医院:', this.hospitalName);
+
+    try {
+      router.pushUrl({ url: 'pages/DestinationSelectPage' }).catch((error: Error) => {
+        console.error('AR导航跳转失败:', error.message);
+      });
+    } catch (navError) {
+      console.error('openARNavigation 异常:', navError);
+    }
+  }
+
   build() {
     Column() {
       Header({ title: this.hospitalName || '医院详情' })
@@ -330,14 +346,19 @@ struct HospitalDetailPage {
       if (this.isLoading) {
         Loading({ text: '加载中...' })
       } else if (this.hasError) {
-        EmptyState({
-          title: '加载失败',
-          description: this.errorMessage,
-          buttonText: '重新加载',
-          onAdd: () => {
-            this.loadHospitalDetail();
-            this.loadDepartments();
-          }
+        Column() {
+          EmptyState({
+            title: '加载失败',
+            description: this.errorMessage,
+            buttonText: '重新加载',
+            showButton: true
+          })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .onClick(() => {
+          this.loadHospitalDetail();
+          this.loadDepartments();
         })
       } else {
         Scroll() {
@@ -481,6 +502,19 @@ struct HospitalDetailPage {
           .margin({ top: 12 })
           .lineHeight(20)
       }
+
+      Button('🧭 院内AR导航')
+        .width('100%')
+        .height(GlobalTheme.getButtonHeight(this.isElderMode))
+        .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
+        .fontWeight('bold')
+        .fontColor('#FFFFFF')
+        .backgroundColor(GlobalTheme.THEME_COLOR)
+        .borderRadius(GlobalTheme.RADIUS_LG)
+        .margin({ top: 12 })
+        .onClick(() => {
+          this.openARNavigation();
+        })
     }
     .width('100%')
     .padding(16)

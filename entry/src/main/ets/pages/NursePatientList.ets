@@ -165,7 +165,7 @@ struct NursePatientList {
     
     const patientDataObj: PatientInfo = {
       id: patient.id,
-      userId: patient.userId || 0,
+      userId: patient.userId || patient.id,
       username: patient.username || '',
       realName: patient.realName || '',
       phone: patient.phone || '',

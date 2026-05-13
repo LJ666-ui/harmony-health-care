@@ -8,6 +8,7 @@ class RdbHelper {
   private static instance: RdbHelper;
   private rdbStore: relationalStore.RdbStore | null = null;
   private dbPath: string = 'harmony_medical.db';  // 使用现有数据库
+  private initialized: boolean = false;
 
   private constructor() {}
 
@@ -18,39 +19,40 @@ class RdbHelper {
     return RdbHelper.instance;
   }
 
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
   public async init(context: common.UIAbilityContext): Promise<void> {
     try {
       hilog.info(0x0000, TAG, '开始初始化数据库...');
       hilog.info(0x0000, TAG, '数据库名称: %{public}s', this.dbPath);
       hilog.info(0x0000, TAG, '数据库路径: %{public}s', context.databaseDir);
-      
+
       const config: relationalStore.StoreConfig = {
         name: this.dbPath,
         securityLevel: relationalStore.SecurityLevel.S1
       };
       this.rdbStore = await relationalStore.getRdbStore(context, config);
-      
+      this.initialized = true;
       hilog.info(0x0000, TAG, 'SQLite DB initialized successfully');
       hilog.info(0x0000, TAG, '数据库文件位置: %{public}s/%{public}s', context.databaseDir, this.dbPath);
     } catch (error) {
+      this.initialized = false;
       hilog.error(0x0000, TAG, 'Failed to initialize database: %{public}s', JSON.stringify(error));
       throw new Error('Failed to initialize database: ' + JSON.stringify(error));
     }
   }
 
   public getRdb(): relationalStore.RdbStore {
-    if (!this.rdbStore) {
+    if (!this.initialized || !this.rdbStore) {
       hilog.error(0x0000, TAG, 'Database not initialized! rdbStore is null');
       throw new Error('Database not initialized');
     }
     return this.rdbStore;
   }
 
-  public isInitialized(): boolean {
-    return this.rdbStore !== null;
-  }
-
-  public async executeSql(sql: string, bindArgs?: string[]): Promise<void> {
+  public async executeSql(sql: string, bindArgs?: Array<string | number | null>): Promise<void> {
     try {
       hilog.info(0x0000, TAG, '执行SQL: %{public}s', sql);
       if (bindArgs && bindArgs.length > 0) {
@@ -65,7 +67,7 @@ class RdbHelper {
     }
   }
 
-  public async query(sql: string, bindArgs?: string[]): Promise<relationalStore.ResultSet> {
+  public async query(sql: string, bindArgs?: Array<string | number | null>): Promise<relationalStore.ResultSet> {
     try {
       return await this.getRdb().querySql(sql, bindArgs);
     } catch (error) {
@@ -174,6 +176,7 @@ class RdbHelper {
       try {
         this.rdbStore.close();
         this.rdbStore = null;
+        this.initialized = false;
         hilog.info(0x0000, TAG, 'Database closed successfully');
       } catch (error) {
         hilog.error(0x0000, TAG, 'Failed to close database');

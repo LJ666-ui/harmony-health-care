@@ -134,24 +134,106 @@ public class UserController {
     }
 
     @GetMapping("/doctor/list")
-    public Result<List<Doctor>> getDoctorList(@RequestParam(required = false) String keyword) {
+    public Result<?> getDoctorList(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) Long hospitalId) {
         try {
             LambdaQueryWrapper<Doctor> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Doctor::getIsDeleted, 0);
             if (keyword != null && !keyword.isEmpty()) {
                 final String kw = keyword.trim().toLowerCase();
-                wrapper.and(w -> w.like(Doctor::getRealName, kw)
-                    .or()
-                    .like(Doctor::getHospital, kw)
-                    .or()
-                    .like(Doctor::getDepartment, kw));
+                wrapper.and(w -> w.like(Doctor::getHospital, kw)
+                        .or()
+                        .like(Doctor::getDepartment, kw)
+                        .or()
+                        .like(Doctor::getTitle, kw)
+                        .or()
+                        .like(Doctor::getSpecialty, kw));
+            }
+            if (department != null && !department.isEmpty()) {
+                wrapper.eq(Doctor::getDepartment, department);
+            }
+            if (hospitalId != null && hospitalId > 0) {
+                wrapper.eq(Doctor::getHospital, hospitalId.toString());
             }
             wrapper.orderByDesc(Doctor::getCreateTime);
             List<Doctor> doctors = doctorService.list(wrapper);
-            return Result.success(doctors);
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Doctor doctor : doctors) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", doctor.getId());
+                item.put("userId", doctor.getUserId());
+                item.put("hospital", doctor.getHospital());
+                item.put("department", doctor.getDepartment());
+                item.put("licenseNumber", doctor.getLicenseNumber());
+                item.put("title", doctor.getTitle());
+                item.put("specialty", doctor.getSpecialty());
+                item.put("description", doctor.getDescription());
+                item.put("rating", doctor.getRating());
+                item.put("status", doctor.getStatus());
+
+                User user = (doctor.getUserId() != null) ? userService.getById(doctor.getUserId()) : null;
+                if (user != null) {
+                    item.put("realName", user.getRealName());
+                    item.put("phone", user.getPhone());
+                    item.put("avatar", user.getAvatar());
+                    item.put("username", user.getUsername());
+                } else {
+                    item.put("realName", "未知医生");
+                    item.put("phone", "");
+                    item.put("avatar", "");
+                    item.put("username", "");
+                }
+
+                result.add(item);
+            }
+
+            return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("获取医生列表失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/doctor/detail/{id}")
+    public Result<?> getDoctorDetail(@PathVariable Long id) {
+        try {
+            Doctor doctor = doctorService.findById(id);
+            if (doctor == null) {
+                return Result.error("医生不存在");
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", doctor.getId());
+            result.put("userId", doctor.getUserId());
+            result.put("hospital", doctor.getHospital());
+            result.put("department", doctor.getDepartment());
+            result.put("licenseNumber", doctor.getLicenseNumber());
+            result.put("title", doctor.getTitle());
+            result.put("specialty", doctor.getSpecialty());
+            result.put("description", doctor.getDescription());
+            result.put("rating", doctor.getRating());
+            result.put("status", doctor.getStatus());
+
+            User user = (doctor.getUserId() != null) ? userService.getById(doctor.getUserId()) : null;
+            if (user != null) {
+                result.put("realName", user.getRealName());
+                result.put("phone", user.getPhone());
+                result.put("avatar", user.getAvatar());
+                result.put("username", user.getUsername());
+            } else {
+                result.put("realName", "未知医生");
+                result.put("phone", "");
+                result.put("avatar", "");
+                result.put("username", "");
+            }
+
+            return Result.success(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取医生详情失败：" + e.getMessage());
         }
     }
 
@@ -161,8 +243,13 @@ public class UserController {
             if (doctor.getUserId() == null) {
                 return Result.error("用户ID不能为空");
             }
-            if (doctor.getRealName() == null || doctor.getRealName().trim().isEmpty()) {
-                return Result.error("请填写真实姓名");
+
+            User user = userService.getById(doctor.getUserId());
+            if (user == null) {
+                return Result.error("用户不存在");
+            }
+            if (user.getRealName() == null || user.getRealName().trim().isEmpty()) {
+                return Result.error("请先完善个人信息（填写真实姓名）");
             }
             if (doctor.getHospital() == null || doctor.getHospital().trim().isEmpty()) {
                 return Result.error("请填写所属医院");
@@ -201,7 +288,33 @@ public class UserController {
             if (doctor == null) {
                 return Result.error("医生信息不存在");
             }
-            return Result.success(doctor);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", doctor.getId());
+            result.put("userId", doctor.getUserId());
+            result.put("hospital", doctor.getHospital());
+            result.put("department", doctor.getDepartment());
+            result.put("licenseNumber", doctor.getLicenseNumber());
+            result.put("title", doctor.getTitle());
+            result.put("specialty", doctor.getSpecialty());
+            result.put("description", doctor.getDescription());
+            result.put("rating", doctor.getRating());
+            result.put("status", doctor.getStatus());
+
+            User user = (doctor.getUserId() != null) ? userService.getById(doctor.getUserId()) : null;
+            if (user != null) {
+                result.put("realName", user.getRealName());
+                result.put("phone", user.getPhone());
+                result.put("avatar", user.getAvatar());
+                result.put("username", user.getUsername());
+            } else {
+                result.put("realName", "未知医生");
+                result.put("phone", "");
+                result.put("avatar", "");
+                result.put("username", "");
+            }
+
+            return Result.success(result);
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("获取医生信息失败：" + e.getMessage());
@@ -269,8 +382,8 @@ public class UserController {
             if (messages != null && !messages.isEmpty()) {
                 for (DoctorMessage m : messages) {
                     System.out.println("  msg id=" + m.getId() + " sender=" + m.getSenderId()
-                        + " receiver=" + m.getReceiverId() + " content=" + m.getContent()
-                        + " expireTime=" + m.getExpireTime());
+                            + " receiver=" + m.getReceiverId() + " content=" + m.getContent()
+                            + " expireTime=" + m.getExpireTime());
                 }
             }
             LambdaQueryWrapper<DoctorMessage> readWrapper = new LambdaQueryWrapper<>();
@@ -305,7 +418,7 @@ public class UserController {
             long userB = Long.parseLong(body.get("userB").toString());
             LambdaQueryWrapper<DoctorMessage> wrapper = new LambdaQueryWrapper<>();
             wrapper.and(w -> w.eq(DoctorMessage::getSenderId, userA).eq(DoctorMessage::getReceiverId, userB))
-                .or(w -> w.eq(DoctorMessage::getSenderId, userB).eq(DoctorMessage::getReceiverId, userA));
+                    .or(w -> w.eq(DoctorMessage::getSenderId, userB).eq(DoctorMessage::getReceiverId, userA));
             if (doctorMessageService.remove(wrapper)) {
                 return Result.success("删除成功");
             } else {
@@ -433,8 +546,8 @@ public class UserController {
         try {
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(User::getUserType, 0)
-                   .eq(User::getIsDeleted, 0)
-                   .orderByDesc(User::getCreateTime);
+                    .eq(User::getIsDeleted, 0)
+                    .orderByDesc(User::getCreateTime);
 
             List<User> patients = userService.list(wrapper);
 
@@ -529,9 +642,9 @@ public class UserController {
 
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
             wrapper.in(User::getId, patientIds)
-                   .eq(User::getUserType, 0)
-                   .eq(User::getIsDeleted, 0)
-                   .orderByDesc(User::getCreateTime);
+                    .eq(User::getUserType, 0)
+                    .eq(User::getIsDeleted, 0)
+                    .orderByDesc(User::getCreateTime);
 
             List<User> patients = userService.list(wrapper);
             System.out.println("[NursePatients] Total patients found: " + (patients != null ? patients.size() : 0));
@@ -609,7 +722,7 @@ public class UserController {
                 debugInfo.put("warning", "No patients in relation table");
                 LambdaQueryWrapper<NursePatientRelation> allRelations = new LambdaQueryWrapper<>();
                 allRelations.eq(NursePatientRelation::getNurseId, nurseId)
-                           .eq(NursePatientRelation::getIsDeleted, 0);
+                        .eq(NursePatientRelation::getIsDeleted, 0);
                 List<NursePatientRelation> allRel = nursePatientRelationService.list(allRelations);
                 debugInfo.put("allRelationsForThisNurse", allRel);
                 return Result.success(debugInfo);
@@ -617,8 +730,8 @@ public class UserController {
 
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
             wrapper.in(User::getId, patientIds)
-                   .eq(User::getUserType, 0)
-                   .eq(User::getIsDeleted, 0);
+                    .eq(User::getUserType, 0)
+                    .eq(User::getIsDeleted, 0);
 
             List<User> patients = userService.list(wrapper);
             System.out.println("[DebugNursePatients] Patients found: " + (patients != null ? patients.size() : 0));
@@ -645,9 +758,9 @@ public class UserController {
                         userInfo.put("userType", u.getUserType());
                         userInfo.put("isDeleted", u.getIsDeleted());
                         System.out.println("[DebugNursePatients] User check - ID:" + u.getId()
-                            + " Username:" + u.getUsername()
-                            + " Type:" + u.getUserType()
-                            + " Deleted:" + u.getIsDeleted());
+                                + " Username:" + u.getUsername()
+                                + " Type:" + u.getUserType()
+                                + " Deleted:" + u.getIsDeleted());
                     });
                 }
             }
@@ -672,8 +785,8 @@ public class UserController {
         try {
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(User::getUserType, 0)
-                   .eq(User::getIsDeleted, 0)
-                   .orderByDesc(User::getId);
+                    .eq(User::getIsDeleted, 0)
+                    .orderByDesc(User::getId);
 
             List<User> patients = userService.list(wrapper);
             System.out.println("[AllPatients] Total patients: " + (patients != null ? patients.size() : 0));

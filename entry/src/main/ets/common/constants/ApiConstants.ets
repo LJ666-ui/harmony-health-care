@@ -1,3 +1,4 @@
+// 环境枚举
 export enum EnvType {
   DEV = 'DEV',
   DEV_EMULATOR = 'DEV_EMULATOR',
@@ -6,22 +7,25 @@ export enum EnvType {
   PROD = 'PROD'
 }
 
+// 环境配置接口
 interface EnvConfig {
   BASE_URL: string;
   UPLOAD_URL: string;
 }
 
-// 保留第一套网络地址
+// 最终环境地址（合并后保留第二套优化配置）
 const ENV_MAP: Record<EnvType, EnvConfig> = {
-  [EnvType.DEV]: { BASE_URL: 'http://10.0.9.202:8080', UPLOAD_URL: 'http://10.0.9.202:8080/upload' },
-  [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://10.0.9.202:8080', UPLOAD_URL: 'http://10.0.9.202:8080/upload' },
+  [EnvType.DEV]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
+  [EnvType.DEV_EMULATOR]: { BASE_URL: 'http://10.0.2.2:8080', UPLOAD_URL: 'http://10.0.2.2:8080/upload' },
   [EnvType.DEV_DEVICE]: { BASE_URL: 'http://10.0.9.202:8080', UPLOAD_URL: 'http://10.0.9.202:8080/upload' },
   [EnvType.TEST]: { BASE_URL: 'http://test.health-care.com', UPLOAD_URL: 'http://test.health-care.com/upload' },
   [EnvType.PROD]: { BASE_URL: 'https://api.health-care.com', UPLOAD_URL: 'https://api.health-care.com/upload' }
 };
 
-let currentEnv: EnvType = EnvType.DEV;
+// 当前环境默认值
+let currentEnv: EnvType = EnvType.DEV_EMULATOR;
 
+// 环境操作方法
 export function setEnv(env: EnvType): void {
   currentEnv = env;
 }
@@ -38,7 +42,7 @@ export function getCurrentEnv(): EnvType {
   return currentEnv;
 }
 
-// 合并所有接口字段，无重复、无冲突
+// 完整接口定义（合并所有字段，无重复、无冲突）
 interface ApiConstantsInterface {
   BASE_URL: string;
   LOGIN_PATH: string;
@@ -118,6 +122,7 @@ interface ApiConstantsInterface {
   REHAB_PLAN_DETAIL: string;
   REHAB_PLAN_ADD: string;
   REHAB_PLAN_UPDATE: string;
+  REHAB_PLAN_DETAIL: string;
   REHAB_PLAN_DELETE: string;
   REHAB_ACTION_LIST: string;
   REHAB_ACTION_DETAIL: string;
@@ -212,6 +217,8 @@ interface ApiConstantsInterface {
 
   // 药品
   MEDICINE_LIST: string;
+  MEDICATION_LIST: string;
+  MEDICATION_CONFIRM: string;
   MEDICINE_PAGE: string;
   MEDICINE_SEARCH: string;
   MEDICINE_DETAIL: string;
@@ -274,7 +281,7 @@ interface ApiConstantsInterface {
   // 上传
   UPLOAD_3D: string;
 
-  // 预约
+  // 预约（完整版）
   APPOINTMENT_CREATE: string;
   APPOINTMENT_LIST: string;
   APPOINTMENT_DETAIL: string;
@@ -282,6 +289,17 @@ interface ApiConstantsInterface {
   APPOINTMENT_USER_LIST: string;
   APPOINTMENT_CHECK_AVAILABILITY: string;
   APPOINTMENT_STATISTICS: string;
+  APPOINTMENT_QUEUE_INFO: string;
+  APPOINTMENT_QUEUE_REALTIME: string;
+  APPOINTMENT_CHECK_IN: string;
+  APPOINTMENT_COMPLETE: string;
+  APPOINTMENT_CHECK_EXPIRED: string;
+
+  // 检查报告
+  EXAMINATION_REPORT_LIST: string;
+  EXAMINATION_REPORT_DETAIL: string;
+  EXAMINATION_REPORT_GENERATE: string;
+  EXAMINATION_REPORT_INIT_DEMO: string;
 
   // 支付
   PAY_CREATE: string;
@@ -292,14 +310,25 @@ interface ApiConstantsInterface {
   SCHEDULE_ADD: string;
   SCHEDULE_LIST: string;
   SCHEDULE_DOCTOR_DATE: string;
+  SCHEDULE_STOCK_QUERY: string;
 
   // 管理员
   ADMIN_LOGIN: string;
   ADMIN_INFO: string;
   ADMIN_LOGOUT: string;
+  ADMIN_USER_LIST: string;
+
+  // 护理记录
+  NURSING_RECORD_CREATE: string;
+  NURSING_RECORD_LIST: string;
+  NURSING_RECORD_BY_PATIENT: string;
+  NURSING_RECORD_BY_NURSE: string;
+  NURSING_RECORD_DETAIL: string;
+  NURSING_RECORD_UPDATE: string;
+  NURSING_RECORD_DELETE: string;
 }
 
-// 完整接口实现
+// 最终接口常量实现（统一路径、补全所有新增接口）
 export const ApiConstants: ApiConstantsInterface = {
   BASE_URL: getBaseUrl(),
   LOGIN_PATH: '/user/login',
@@ -368,18 +397,18 @@ export const ApiConstants: ApiConstantsInterface = {
   KNOWLEDGE_STATS: '/api/knowledge/stats',
   KNOWLEDGE_RELATED: '/api/knowledge/related',
 
-  REHAB_PLAN_LIST: '/rehab/list',
-  REHAB_PLAN_DETAIL: '/rehab/get/',
-  REHAB_PLAN_ADD: '/rehab/add',
-  REHAB_PLAN_UPDATE: '/rehab/update',
-  REHAB_PLAN_DELETE: '/rehab/delete/',
-  REHAB_ACTION_LIST: '/rehab/action/list',
-  REHAB_ACTION_DETAIL: '/rehab/action/detail/',
-  REHAB_START: '/rehab/start/',
-  REHAB_COMPLETE: '/rehab/complete/',
-  REHAB_HISTORY: '/rehab/history',
-  REHAB_SEARCH: '/rehab/search',
-  REHAB_FUZZY: '/rehab/fuzzy',
+  REHAB_PLAN_LIST: '/api/rehab/list',
+  REHAB_PLAN_DETAIL: '/api/rehab/get/',
+  REHAB_PLAN_ADD: '/api/rehab/add',
+  REHAB_PLAN_UPDATE: '/api/rehab/update',
+  REHAB_PLAN_DELETE: '/api/rehab/delete/',
+  REHAB_ACTION_LIST: '/api/rehab/action/list',
+  REHAB_ACTION_DETAIL: '/api/rehab/action/detail/',
+  REHAB_START: '/api/rehab/start/',
+  REHAB_COMPLETE: '/api/rehab/complete/',
+  REHAB_HISTORY: '/api/rehab/history',
+  REHAB_SEARCH: '/api/rehab/search',
+  REHAB_FUZZY: '/api/rehab/fuzzy',
 
   ARTICLE_LIST: '/healthArticle/list',
   ARTICLE_PAGE: '/healthArticle/page',
@@ -455,6 +484,8 @@ export const ApiConstants: ApiConstantsInterface = {
   PRESCRIPTION_PAGE: '/prescription/page',
 
   MEDICINE_LIST: '/medicine/list',
+  MEDICATION_LIST: '/medicine/medication-list',
+  MEDICATION_CONFIRM: '/medicine/medication-confirm/',
   MEDICINE_PAGE: '/medicine/page',
   MEDICINE_SEARCH: '/medicine/search',
   MEDICINE_DETAIL: '/medicine/detail/',
@@ -509,6 +540,7 @@ export const ApiConstants: ApiConstantsInterface = {
 
   UPLOAD_3D: '/api/upload/3d',
 
+  // 预约完整实现
   APPOINTMENT_CREATE: '/appointment/create',
   APPOINTMENT_LIST: '/appointment/list',
   APPOINTMENT_DETAIL: '/appointment/',
@@ -516,6 +548,17 @@ export const ApiConstants: ApiConstantsInterface = {
   APPOINTMENT_USER_LIST: '/appointment/user/',
   APPOINTMENT_CHECK_AVAILABILITY: '/appointment/check-availability',
   APPOINTMENT_STATISTICS: '/appointment/statistics/',
+  APPOINTMENT_QUEUE_INFO: '/appointment/queue/info',
+  APPOINTMENT_QUEUE_REALTIME: '/appointment/queue/realtime',
+  APPOINTMENT_CHECK_IN: '/appointment/check-in',
+  APPOINTMENT_COMPLETE: '/appointment/complete',
+  APPOINTMENT_CHECK_EXPIRED: '/appointment/check-expired',
+
+  // 检查报告
+  EXAMINATION_REPORT_LIST: '/examination/report/list',
+  EXAMINATION_REPORT_DETAIL: '/examination/report/detail',
+  EXAMINATION_REPORT_GENERATE: '/examination/report/generate',
+  EXAMINATION_REPORT_INIT_DEMO: '/examination/report/init-demo',
 
   PAY_CREATE: '/pay/create',
   PAY_STATUS: '/pay/status',
@@ -524,8 +567,19 @@ export const ApiConstants: ApiConstantsInterface = {
   SCHEDULE_ADD: '/schedule/add',
   SCHEDULE_LIST: '/schedule/list',
   SCHEDULE_DOCTOR_DATE: '/schedule/doctor/',
+  SCHEDULE_STOCK_QUERY: '/schedule/stock/query',
 
   ADMIN_LOGIN: '/admin/login',
   ADMIN_INFO: '/admin/info',
-  ADMIN_LOGOUT: '/admin/logout'
+  ADMIN_LOGOUT: '/admin/logout',
+  ADMIN_USER_LIST: '/admin/user/list',
+
+  // 护理记录
+  NURSING_RECORD_CREATE: '/nursing/record/create',
+  NURSING_RECORD_LIST: '/nursing/record/list',
+  NURSING_RECORD_BY_PATIENT: '/nursing/record/patient',
+  NURSING_RECORD_BY_NURSE: '/nursing/record/nurse',
+  NURSING_RECORD_DETAIL: '/nursing/record/detail',
+  NURSING_RECORD_UPDATE: '/nursing/record/update',
+  NURSING_RECORD_DELETE: '/nursing/record/delete',
 };

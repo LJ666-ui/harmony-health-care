@@ -5,7 +5,7 @@ import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { HttpUtil, BaseResponse, RequestOptions } from '../common/utils/HttpUtil';
 import { SettingsUtil } from '../utils/SettingsUtil';
-import { DoctorInfo } from '../models/DoctorModel';
+import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
 
 interface DoctorLoginResponseData {
   token: string;
@@ -94,18 +94,28 @@ struct DoctorLogin {
 
       if (response.success && response.data) {
         const settings = SettingsUtil.getInstance();
+
+        // 安全转换 doctorInfo 对象
+        let doctorInfo: DoctorInfo = new DoctorInfo();
+        if (response.data.doctorInfo) {
+          // 使用 JSON 序列化/反序列化进行安全类型转换
+          const rawDoctorInfo: Record<string, Object> = 
+            JSON.parse(JSON.stringify(response.data.doctorInfo));
+          doctorInfo = DoctorInfoHelper.fromJson(rawDoctorInfo);
+        }
+        
         await settings.saveDoctorToken(response.data.token);
-        await settings.saveDoctorInfo(response.data.doctorInfo);
+        await settings.saveDoctorInfo(doctorInfo);
 
         AppStorage.setOrCreate<string>('doctorToken', response.data.token);
-        AppStorage.setOrCreate<DoctorInfo>('doctorInfo', response.data.doctorInfo);
+        AppStorage.setOrCreate<DoctorInfo>('doctorInfo', doctorInfo);
         AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', true);
 
         // 设置userId供其他页面使用
-        if (response.data.doctorInfo.id) {
-          AppStorage.setOrCreate<number>('userId', response.data.doctorInfo.id);
-        } else if (response.data.doctorInfo.userId) {
-          AppStorage.setOrCreate<number>('userId', response.data.doctorInfo.userId);
+        if (doctorInfo.id) {
+          AppStorage.setOrCreate<number>('userId', doctorInfo.id);
+        } else if (doctorInfo.userId) {
+          AppStorage.setOrCreate<number>('userId', doctorInfo.userId);
         }
 
         ToastUtil.showSuccess('登录成功');

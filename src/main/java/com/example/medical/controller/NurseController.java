@@ -1,22 +1,28 @@
 package com.example.medical.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.medical.common.JwtUtil;
 import com.example.medical.common.Result;
 import com.example.medical.dto.NurseLoginRequest;
 import com.example.medical.dto.NurseLoginResponse;
 import com.example.medical.dto.NurseUpdateRequest;
+import com.example.medical.entity.FamilyMember;
 import com.example.medical.entity.Nurse;
+import com.example.medical.entity.NursePatientRelation;
+import com.example.medical.entity.User;
+import com.example.medical.service.FamilyAuthService;
+import com.example.medical.service.NursePatientRelationService;
 import com.example.medical.service.NurseService;
+import com.example.medical.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 护士控制器
@@ -29,6 +35,15 @@ public class NurseController {
 
     @Autowired
     private NurseService nurseService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private FamilyAuthService familyAuthService;
+
+    @Autowired
+    private NursePatientRelationService nursePatientRelationService;
 
     /**
      * 护士登录
@@ -84,19 +99,29 @@ public class NurseController {
             LambdaQueryWrapper<Nurse> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Nurse::getStatus, 1);
             wrapper.eq(Nurse::getIsDeleted, 0);
-            
+
             if (keyword != null && !keyword.trim().isEmpty()) {
-                wrapper.and(w -> w.like(Nurse::getName, keyword)
-                        .or().like(Nurse::getNurseNo, keyword));
+                wrapper.like(Nurse::getNurseNo, keyword);
             }
-            
+
             if (department != null && !department.trim().isEmpty()) {
                 wrapper.like(Nurse::getDepartment, department);
             }
-            
+
             wrapper.orderByAsc(Nurse::getId);
-            
+
             List<Nurse> nurses = nurseService.list(wrapper);
+
+            for (Nurse nurse : nurses) {
+                if (nurse.getUserId() != null) {
+                    User nurseUser = userService.getById(nurse.getUserId());
+                    if (nurseUser != null) {
+                        nurse.setName(nurseUser.getRealName());
+                        nurse.setPhone(nurseUser.getPhone());
+                    }
+                }
+            }
+
             return Result.success(nurses);
         } catch (Exception e) {
             e.printStackTrace();
@@ -180,6 +205,76 @@ public class NurseController {
             return Result.success(nurse);
         } catch (Exception e) {
             return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取护士负责的所有患者的家属列表
+     * GET /nurse/families
+     */
+    @GetMapping("/families")
+    public Result<?> getFamiliesByNurse(HttpServletRequest request) {
+        try {
+            Long nurseId = null;
+
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+
+                if (JwtUtil.isNurseToken(token)) {
+                    nurseId = JwtUtil.getNurseId(token);
+                }
+            }
+
+            if (nurseId == null) {
+                return Result.error("无法获取护士信息");
+            }
+
+            List<Long> patientIds = nursePatientRelationService.getPatientIdsByNurseId(nurseId);
+
+            if (patientIds == null || patientIds.isEmpty()) {
+                return Result.success(new ArrayList<>());
+            }
+
+            QueryWrapper<FamilyMember> wrapper = new QueryWrapper<>();
+            wrapper.in("user_id", patientIds);
+            wrapper.eq("is_deleted", 0);
+            wrapper.orderByDesc("is_emergency_contact");
+            wrapper.orderByAsc("create_time");
+
+            List<FamilyMember> familyMembers = familyAuthService.list(wrapper);
+
+            Map<Long, User> userMap = new HashMap<>();
+            for (Long patientId : patientIds) {
+                User patient = userService.getById(patientId);
+                if (patient != null) {
+                    userMap.put(patientId, patient);
+                }
+            }
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (FamilyMember member : familyMembers) {
+                Map<String, Object> familyInfo = new HashMap<>();
+                familyInfo.put("id", member.getId());
+                familyInfo.put("name", member.getName());
+                familyInfo.put("phone", member.getPhone());
+                familyInfo.put("relation", member.getRelation());
+                familyInfo.put("relatedPatientId", member.getUserId());
+
+                User relatedUser = userMap.get(member.getUserId());
+                if (relatedUser != null) {
+                    familyInfo.put("relatedPatientName", relatedUser.getRealName());
+                } else {
+                    familyInfo.put("relatedPatientName", "未知患者");
+                }
+
+                result.add(familyInfo);
+            }
+
+            return Result.success(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取家属列表失败：" + e.getMessage());
         }
     }
 }

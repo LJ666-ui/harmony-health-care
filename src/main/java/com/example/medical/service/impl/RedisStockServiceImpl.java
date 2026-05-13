@@ -1,5 +1,8 @@
 package com.example.medical.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.medical.entity.DoctorSchedule;
+import com.example.medical.service.DoctorScheduleService;
 import com.example.medical.service.RedisStockInterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -20,6 +23,9 @@ public class RedisStockServiceImpl implements RedisStockInterface {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private DoctorScheduleService doctorScheduleService;
 
     private static final String GRAB_SLOT_LUA =
             "local stockKey = KEYS[1] " +
@@ -83,7 +89,56 @@ public class RedisStockServiceImpl implements RedisStockInterface {
         String dateStr = DATE_FORMAT.format(scheduleDate);
         String stockKey = buildStockKey(doctorId, dateStr, schedulePeriod);
         String bookedKey = buildBookedKey(doctorId, dateStr, schedulePeriod);
+
         System.out.println("[Redis调试] grabSlot → stockKey=" + stockKey + " bookedKey=" + bookedKey + " userId=" + userId);
+
+        Boolean hasKey = redisTemplate.hasKey(stockKey);
+        if (hasKey == null || !hasKey) {
+            System.out.println("[Redis调试] Redis中不存在库存key，从数据库初始化...");
+            LambdaQueryWrapper<DoctorSchedule> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(DoctorSchedule::getDoctorId, doctorId)
+                   .eq(DoctorSchedule::getStatus, 1);
+
+            java.util.List<DoctorSchedule> schedules = doctorScheduleService.list(wrapper);
+            for (DoctorSchedule schedule : schedules) {
+                java.text.SimpleDateFormat checkFormat = new java.text.SimpleDateFormat("yyyyMMdd");
+                String scheduleDateStr = checkFormat.format(schedule.getScheduleDate());
+                if (scheduleDateStr.equals(dateStr) && schedule.getSchedulePeriod().equals(schedulePeriod)) {
+                    int maxCount = schedule.getMaxCount() != null ? schedule.getMaxCount() : 20;
+                    int currentCount = schedule.getCurrentCount() != null ? schedule.getCurrentCount() : 0;
+                    int remainingStock = maxCount - currentCount;
+                    System.out.println("[Redis调试] 从数据库加载: doctorId=" + doctorId +
+                        " date=" + dateStr + " period=" + schedulePeriod +
+                        " maxCount=" + maxCount + " currentCount=" + currentCount +
+                        " remainingStock=" + remainingStock);
+                    
+                    Boolean existingStock = redisTemplate.hasKey(stockKey);
+                    if (existingStock == null || !existingStock) {
+                        redisTemplate.opsForValue().set(stockKey, String.valueOf(remainingStock), STOCK_TTL_DAYS, TimeUnit.DAYS);
+                        System.out.println("[Redis调试] 设置Redis库存: " + stockKey + " = " + remainingStock);
+                    } else {
+                        System.out.println("[Redis调试] Redis库存key已存在，跳过设置: " + stockKey);
+                    }
+                    
+                    Boolean existingBooked = redisTemplate.hasKey(bookedKey);
+                    if (existingBooked == null || !existingBooked) {
+                        redisTemplate.delete(bookedKey);
+                        System.out.println("[Redis调试] 确保booked集合为空: " + bookedKey);
+                    } else {
+                        System.out.println("[Redis调试] booked集合已存在，保留现有数据: " + bookedKey + 
+                            " (成员数=" + redisTemplate.opsForSet().size(bookedKey) + ")");
+                    }
+                    break;
+                }
+            }
+
+            hasKey = redisTemplate.hasKey(stockKey);
+            if (hasKey == null || !hasKey) {
+                System.out.println("[Redis调试] 数据库中也未找到排班记录，设置默认库存=20");
+                redisTemplate.opsForValue().set(stockKey, "20", STOCK_TTL_DAYS, TimeUnit.DAYS);
+            }
+        }
+
         Long result = redisTemplate.execute(GRAB_SCRIPT,
                 Arrays.asList(stockKey, bookedKey),
                 String.valueOf(userId));

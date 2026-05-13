@@ -30,7 +30,7 @@ struct DoctorMainPage {
   @StorageLink('userId') currentUserId: number = 0;
 
   @State doctorName: string = '医生';
-  @State doctorInfo: DoctorInfo | null = null;
+  @State doctorInfo: DoctorInfo = new DoctorInfo();  // ✅ 改为初始化空对象，而不是 null
   @State conversations: PatientConvItem[] = [];
   @State isLoading: boolean = true;
   @State showDeleteDialog: boolean = false;
@@ -52,9 +52,15 @@ struct DoctorMainPage {
   ];
 
   aboutToAppear(): void {
+    console.log('[DoctorMainPage] ========== 页面开始加载 ==========');
+    console.log('[DoctorMainPage] 初始状态 - userId:', this.currentUserId);
+    console.log('[DoctorMainPage] 初始状态 - doctorName:', this.doctorName);
+    
     this.loadDoctorInfo();
     this.loadConversations();
     this.startPolling();
+    
+    console.log('[DoctorMainPage] ========== 页面加载方法已调用 ==========');
   }
 
   aboutToDisappear(): void {
@@ -75,69 +81,158 @@ struct DoctorMainPage {
   }
 
   private loadDoctorInfo(): void {
+    console.log('[DoctorMainPage] loadDoctorInfo 开始执行');
+    
     // 从 AppStorage 中读取医生信息
     const doctorInfoFromStorage = AppStorage.get<DoctorInfo>('doctorInfo');
+    console.log('[DoctorMainPage] 从AppStorage获取的doctorInfo:', doctorInfoFromStorage ? '存在' : '不存在');
+    
+    // ✅ 始终确保 doctorInfo 是有效的 DoctorInfo 对象
     if (doctorInfoFromStorage) {
-      this.doctorInfo = doctorInfoFromStorage;
-      this.doctorName = doctorInfoFromStorage.realName || '医生';
+      console.log('[DoctorMainPage] doctorInfoFromStorage 类型:', typeof doctorInfoFromStorage);
+      
+      // 确保是 DoctorInfo 类型，如果不是则进行转换
+      if (doctorInfoFromStorage instanceof DoctorInfo) {
+        console.log('[DoctorMainPage] 直接使用 DoctorInfo 实例');
+        this.doctorInfo = doctorInfoFromStorage;
+      } else {
+        console.log('[DoctorMainPage] 需要类型转换，原始数据:', JSON.stringify(doctorInfoFromStorage));
+        this.doctorInfo = DoctorInfoHelper.fromJson(doctorInfoFromStorage as Record<string, Object>);
+      }
+      this.doctorName = this.doctorInfo.realName || '医生';
+      console.log('[DoctorMainPage] 医生姓名已设置:', this.doctorName);
     } else {
+      // ✅ 如果没有存储的信息，使用空的 DoctorInfo 对象（已通过初始化保证不为 null）
+      console.log('[DoctorMainPage] AppStorage中无doctorInfo，使用默认值');
+      this.doctorName = '医生';
+      
       // 尝试从 SettingsUtil 读取
+      console.log('[DoctorMainPage] 尝试从 SettingsUtil 读取...');
       const settings: SettingsUtil = SettingsUtil.getInstance();
       settings.getUserInfo().then((info: PersistedUserInfo | null) => {
+        console.log('[DoctorMainPage] SettingsUtil 返回:', info ? '有数据' : '无数据');
+        
         if (info && info.doctorInfo) {
           this.doctorName = info.doctorInfo.realName || info.username || '医生';
-          const docInfo: DoctorInfo = new DoctorInfo();
-          docInfo.realName = info.doctorInfo.realName || '';
-          docInfo.phone = info.doctorInfo.phone || '';
-          docInfo.hospital = info.doctorInfo.hospital || '';
-          docInfo.department = info.doctorInfo.department || '';
-          docInfo.licenseNumber = info.doctorInfo.licenseNumber || '';
-          docInfo.title = info.doctorInfo.title || '';
-          docInfo.specialty = info.doctorInfo.specialty || '';
-          docInfo.avatar = info.doctorInfo.avatar || '';
-          docInfo.description = info.doctorInfo.description || '';
-          docInfo.rating = info.doctorInfo.rating || 0;
-          docInfo.status = info.doctorInfo.status || 0;
-          if (info.doctorInfo.id) { docInfo.id = info.doctorInfo.id; }
+          
+          // 安全地从 PersistedDoctorInfo 转换为 DoctorInfo
+          const rawInfo = info.doctorInfo as Record<string, Object>;
+          console.log('[DoctorMainPage] 原始 doctorInfo 数据:', JSON.stringify(rawInfo));
+          const docInfo: DoctorInfo = DoctorInfoHelper.fromJson(rawInfo);
+          
+          if (info.doctorInfo.id) { docInfo.id = info.doctorInfo.id as number; }
           if (info.userId) { docInfo.userId = info.userId; }
+          
           this.doctorInfo = docInfo;
+          console.log('[DoctorMainPage] 从SettingsUtil加载完成，姓名:', this.doctorName);
         } else if (info && info.username) {
           this.doctorName = info.username;
+          console.log('[DoctorMainPage] 使用 username 作为显示名:', this.doctorName);
         }
-      }).catch(() => {});
+      }).catch((err: Error) => {
+        console.error('[DoctorMainPage] 从SettingsUtil读取失败:', err.message);
+      });
     }
   }
 
   private loadConversations(): void {
+    console.log('[DoctorMainPage] 开始加载患者列表, userId:', this.currentUserId);
+    
+    // ✅ 安全检查：确保 userId 有效
+    if (!this.currentUserId || this.currentUserId <= 0) {
+      console.warn('[DoctorMainPage] userId 无效:', this.currentUserId);
+      this.isLoading = false;
+      return;
+    }
+    
     const params: Record<string, string> = {
       'doctorId': this.currentUserId.toString()
     };
+    
+    console.log('[DoctorMainPage] 请求参数:', JSON.stringify(params));
+    
     HttpUtil.get<PatientConvItem[]>(ApiConstants.DOCTOR_PATIENTS, params as Object)
       .then((response) => {
+        console.log('[DoctorMainPage] API 响应成功:', response.success);
+        
         if (response.success && response.data) {
-          const rawData: Object[] = response.data as Object[];
+          console.log('[DoctorMainPage] 原始数据类型:', typeof response.data);
+          console.log('[DoctorMainPage] 原始数据:', JSON.stringify(response.data));
+          
+          // ✅ 安全的类型检查
+          let rawData: Object[] = [];
+          if (Array.isArray(response.data)) {
+            rawData = response.data as Object[];
+          } else if (typeof response.data === 'object') {
+            // 如果不是数组，尝试包装成数组
+            rawData = [response.data as Object];
+            console.warn('[DoctorMainPage] 数据不是数组，已转换为单元素数组');
+          } else {
+            console.error('[DoctorMainPage] 数据格式异常:', typeof response.data);
+            return;
+          }
+          
           const list: PatientConvItem[] = [];
           let unread: number = 0;
+          
           for (let i: number = 0; i < rawData.length; i++) {
-            const item: PatientConvItem = new PatientConvItem();
-            const raw: Record<string, Object> = rawData[i] as Record<string, Object>;
-            if (raw['otherUserId'] !== undefined) { item.otherUserId = raw['otherUserId'] as number; }
-            if (raw['otherUserName'] !== undefined) { item.otherUserName = raw['otherUserName'] as string; }
-            if (raw['otherUserType'] !== undefined) { item.otherUserType = raw['otherUserType'] as number; }
-            if (raw['lastMessage'] !== undefined) { item.lastMessage = raw['lastMessage'] as string; }
-            if (raw['lastTime'] !== undefined) { item.lastTime = raw['lastTime'] as string; }
-            if (raw['unreadCount'] !== undefined) { item.unreadCount = raw['unreadCount'] as number; }
-            if (raw['remainHours'] !== undefined) { item.remainHours = raw['remainHours'] as number; }
-            if (raw['expireTime'] !== undefined) { item.expireTime = raw['expireTime'] as string; }
-            list.push(item);
-            unread += item.unreadCount;
+            try {
+              const item: PatientConvItem = new PatientConvItem();
+              const raw: Record<string, Object> = rawData[i] as Record<string, Object>;
+              
+              console.log('[DoctorMainPage] 处理第 ' + (i+1) + ' 条数据:', JSON.stringify(raw).substring(0, 100));
+              
+              // ✅ 安全的字段赋值，带类型检查
+              if (raw['otherUserId'] !== undefined && raw['otherUserId'] !== null) { 
+                const val = Number(raw['otherUserId']);
+                if (!isNaN(val)) { item.otherUserId = val; }
+              }
+              if (raw['otherUserName'] !== undefined && raw['otherUserName'] !== null) { 
+                item.otherUserName = String(raw['otherUserName'] || '');
+              }
+              if (raw['otherUserType'] !== undefined && raw['otherUserType'] !== null) { 
+                const val = Number(raw['otherUserType']);
+                if (!isNaN(val)) { item.otherUserType = val; }
+              }
+              if (raw['lastMessage'] !== undefined && raw['lastMessage'] !== null) { 
+                item.lastMessage = String(raw['lastMessage'] || '');
+              }
+              if (raw['lastTime'] !== undefined && raw['lastTime'] !== null) { 
+                item.lastTime = String(raw['lastTime'] || '');
+              }
+              if (raw['unreadCount'] !== undefined && raw['unreadCount'] !== null) { 
+                const val = Number(raw['unreadCount']);
+                if (!isNaN(val)) { item.unreadCount = val; }
+              }
+              if (raw['remainHours'] !== undefined && raw['remainHours'] !== null) { 
+                const val = Number(raw['remainHours']);
+                if (!isNaN(val)) { item.remainHours = val; }
+              }
+              if (raw['expireTime'] !== undefined && raw['expireTime'] !== null) { 
+                item.expireTime = String(raw['expireTime'] || '');
+              }
+              
+              list.push(item);
+              unread += item.unreadCount;
+              
+              console.log('[DoctorMainPage] 第 ' + (i+1) + ' 条数据处理完成:', 
+                'userId=' + item.otherUserId + ', name=' + item.otherUserName);
+                
+            } catch (parseError) {
+              console.error('[DoctorMainPage] 解析第 ' + (i+1) + ' 条数据失败:', parseError);
+            }
           }
+          
+          console.log('[DoctorMainPage] 总共处理了 ' + list.length + ' 条患者数据');
           this.conversations = list;
           this.totalUnread = unread;
+        } else {
+          console.warn('[DoctorMainPage] API 返回失败或无数据:', response.message);
         }
       })
       .catch((err: Error) => {
         console.error('[DoctorMainPage] 加载患者列表失败:', err.message);
+        console.error('[DoctorMainPage] 错误堆栈:', err.stack);
       })
       .finally(() => {
         this.isLoading = false;
@@ -204,7 +299,9 @@ struct DoctorMainPage {
           .fontWeight(FontWeight.Bold)
           .fontColor('#FFFFFF')
           .margin({ left: 8 });
-        if (this.doctorInfo) {
+
+        // ✅ doctorInfo 现在永远不为 null，直接使用
+        if (DoctorInfoHelper.getDisplayTitle(this.doctorInfo)) {
           Text(DoctorInfoHelper.getDisplayTitle(this.doctorInfo))
             .fontSize(13)
             .fontColor('#FFFFFFCC')
@@ -284,9 +381,8 @@ struct DoctorMainPage {
   buildHomePage() {
     Scroll() {
       Column({ space: 12 }) {
-        // 医生信息卡片
-        if (this.doctorInfo) {
-          Row({ space: 12 }) {
+        // ✅ 医生信息卡片 - doctorInfo 现在永远不为 null
+        Row({ space: 12 }) {
             Column({ space: 4 }) {
               Text(DoctorInfoHelper.getDisplayHospital(this.doctorInfo) || '未填写')
                 .fontSize(13)
@@ -334,8 +430,7 @@ struct DoctorMainPage {
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 12, bottom: 6 });
-        }
-
+        
         // 快捷功能入口
         Column({ space: 12 }) {
           Text('快捷功能')
@@ -598,7 +693,7 @@ struct DoctorMainPage {
     } else {
       Scroll(this.scroller) {
         Column() {
-          ForEach(this.conversations, (conv: PatientConvItem) => {
+          ForEach(this.conversations, (conv: PatientConvItem, index: number) => {
             Column() {
               Row() {
                 Stack({ alignContent: Alignment.Center }) {
@@ -606,7 +701,8 @@ struct DoctorMainPage {
                     .width(50)
                     .height(50)
                     .fill('#36CFC9');
-                  Text(conv.otherUserName.charAt(0))
+                  // ✅ 安全访问 otherUserName，确保不为空
+                  Text((conv.otherUserName && conv.otherUserName.length > 0) ? conv.otherUserName.charAt(0) : '?')
                     .fontSize(20)
                     .fontWeight(FontWeight.Bold)
                     .fontColor('#FFFFFF');
@@ -615,7 +711,8 @@ struct DoctorMainPage {
 
                 Column({ space: 4 }) {
                   Row() {
-                    Text(conv.otherUserName)
+                    // ✅ 安全显示用户名，提供默认值
+                    Text(conv.otherUserName || '未知用户')
                       .fontSize(16)
                       .fontWeight(FontWeight.Bold)
                       .fontColor('#333333');
@@ -637,7 +734,10 @@ struct DoctorMainPage {
                   .width('100%');
 
                   Row() {
-                    Text(conv.lastMessage.length > 20 ? conv.lastMessage.substring(0, 20) + '...' : conv.lastMessage)
+                    // ✅ 安全截取消息文本，防止空字符串问题（不能在 build 中使用 const）
+                    Text(((conv.lastMessage || '暂无消息').length > 20) ? 
+                      (conv.lastMessage || '暂无消息').substring(0, 20) + '...' : 
+                      (conv.lastMessage || '暂无消息'))
                       .fontSize(13)
                       .fontColor('#888888')
                       .layoutWeight(1)
@@ -656,9 +756,10 @@ struct DoctorMainPage {
                   .width('100%');
 
                   Row() {
-                    Text('⏱️ ' + this.formatRemainHours(conv.remainHours))
+                    // ✅ 安全格式化剩余时间
+                    Text('⏱️ ' + this.formatRemainHours(conv.remainHours >= 0 ? conv.remainHours : 0))
                       .fontSize(11)
-                      .fontColor(conv.remainHours < 6 ? '#FF4D4F' : (conv.remainHours < 12 ? '#FAAD14' : '#52C41A'));
+                      .fontColor((conv.remainHours >= 0 ? conv.remainHours : 0) < 6 ? '#FF4D4F' : ((conv.remainHours >= 0 ? conv.remainHours : 0) < 12 ? '#FAAD14' : '#52C41A'));
                   }
                   .width('100%');
                 }
@@ -680,7 +781,7 @@ struct DoctorMainPage {
                   url: 'pages/DoctorPatientManagementPage',
                   params: {
                     patientId: conv.otherUserId,
-                    patientName: conv.otherUserName,
+                    patientName: conv.otherUserName || '未知用户',
                     doctorId: this.currentUserId,
                     doctorName: this.doctorName
                   }
@@ -704,7 +805,7 @@ struct DoctorMainPage {
                           doctorName: this.doctorName,
                           currentUserId: this.currentUserId,
                           otherUserId: conv.otherUserId,
-                          otherUserName: conv.otherUserName,
+                          otherUserName: conv.otherUserName || '未知用户',
                           otherUserType: 'family'
                         }
                       });
@@ -716,7 +817,7 @@ struct DoctorMainPage {
                           doctorName: this.doctorName,
                           currentUserId: this.currentUserId,
                           otherUserId: conv.otherUserId,
-                          otherUserName: conv.otherUserName,
+                          otherUserName: conv.otherUserName || '未知用户',
                           isDoctor: true
                         }
                       });
@@ -733,7 +834,7 @@ struct DoctorMainPage {
             .borderRadius(16)
             .margin({ bottom: 10 })
             .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 3 });
-          }, (conv: PatientConvItem) => conv.otherUserId.toString());
+          }, (conv: PatientConvItem) => conv.otherUserId.toString() + '_' + (conv.lastTime || ''));
         }
         .width('85%')
         .padding({ top: 8, bottom: 48 });
@@ -755,13 +856,14 @@ struct DoctorMainPage {
             .fontColor('#333333')
             .width('100%');
 
+          // ✅ doctorInfo 现在永远不为 null，安全访问所有属性
           Column({ space: 12 }) {
             Row({ space: 12 }) {
               Text('姓名')
                 .fontSize(14)
                 .fontColor('#666666')
                 .width(80);
-              Text(this.doctorInfo?.realName || '-')
+              Text(this.doctorInfo.realName || '-')
                 .fontSize(14)
                 .fontColor('#333333')
                 .layoutWeight(1);
@@ -773,7 +875,7 @@ struct DoctorMainPage {
                 .fontSize(14)
                 .fontColor('#666666')
                 .width(80);
-              Text(this.doctorInfo?.phone || '-')
+              Text(this.doctorInfo.phone || '-')
                 .fontSize(14)
                 .fontColor('#333333')
                 .layoutWeight(1);
@@ -785,7 +887,7 @@ struct DoctorMainPage {
                 .fontSize(14)
                 .fontColor('#666666')
                 .width(80);
-              Text(this.doctorInfo?.hospital || '-')
+              Text(this.doctorInfo.hospital || '-')
                 .fontSize(14)
                 .fontColor('#333333')
                 .layoutWeight(1);
@@ -797,7 +899,7 @@ struct DoctorMainPage {
                 .fontSize(14)
                 .fontColor('#666666')
                 .width(80);
-              Text(this.doctorInfo?.department || '-')
+              Text(this.doctorInfo.department || '-')
                 .fontSize(14)
                 .fontColor('#333333')
                 .layoutWeight(1);
@@ -809,7 +911,7 @@ struct DoctorMainPage {
                 .fontSize(14)
                 .fontColor('#666666')
                 .width(80);
-              Text(this.doctorInfo?.title || '-')
+              Text(this.doctorInfo.title || '-')
                 .fontSize(14)
                 .fontColor('#333333')
                 .layoutWeight(1);
@@ -821,7 +923,7 @@ struct DoctorMainPage {
                 .fontSize(14)
                 .fontColor('#666666')
                 .width(80);
-              Text(this.doctorInfo?.licenseNumber || '-')
+              Text(this.doctorInfo.licenseNumber || '-')
                 .fontSize(14)
                 .fontColor('#333333')
                 .layoutWeight(1);
@@ -833,7 +935,7 @@ struct DoctorMainPage {
                 .fontSize(14)
                 .fontColor('#666666')
                 .width(80);
-              Text(this.doctorInfo?.specialty || '-')
+              Text(this.doctorInfo.specialty || '-')
                 .fontSize(14)
                 .fontColor('#333333')
                 .layoutWeight(1);
@@ -848,7 +950,7 @@ struct DoctorMainPage {
               Row() {
                 Text('⭐')
                   .fontSize(14);
-                Text(this.doctorInfo?.rating?.toFixed(1) || '-')
+                Text((this.doctorInfo.rating > 0 ? this.doctorInfo.rating.toFixed(1) : '-'))
                   .fontSize(14)
                   .fontColor('#333333')
                   .margin({ left: 4 });
@@ -857,7 +959,7 @@ struct DoctorMainPage {
             }
             .width('100%');
 
-            if (this.doctorInfo?.description) {
+            if (this.doctorInfo.description) {
               Column({ space: 8 }) {
                 Row() {
                   Text('个人简介')

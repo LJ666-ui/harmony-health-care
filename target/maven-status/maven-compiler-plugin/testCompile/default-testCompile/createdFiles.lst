@@ -1,8 +1,0 @@
-com\example\medical\integration\PrescriptionTemplateIntegrationTest.class
-com\example\medical\integration\DataAccessApprovalIntegrationTest.class
-com\example\medical\integration\ConsultationIntegrationTest.class
-com\medical\DatabaseConnectionTest.class
-com\example\medical\util\DesensitizationUtilTest.class
-com\example\medical\integration\DoctorScheduleIntegrationTest.class
-com\medical\PasswordHashGenerator.class
-com\example\medical\integration\SensitiveOperationIntegrationTest.class

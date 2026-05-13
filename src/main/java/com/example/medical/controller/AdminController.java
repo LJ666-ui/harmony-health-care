@@ -208,4 +208,48 @@ public class AdminController {
             return Result.error("获取仪表盘统计数据失败：" + e.getMessage());
         }
     }
+
+    @GetMapping("/user/list")
+    public Result<?> getUserList(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer userType,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(User::getIsDeleted, 0);
+
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String kw = keyword.trim();
+                wrapper.and(w -> w.like(User::getUsername, kw)
+                    .or().like(User::getPhone, kw)
+                    .or().like(User::getIdCard, kw));
+            }
+
+            if (userType != null && userType >= 0) {
+                wrapper.eq(User::getUserType, userType);
+            }
+
+            wrapper.orderByDesc(User::getCreateTime);
+
+            long total = userService.count(wrapper);
+
+            int start = (page - 1) * size;
+            wrapper.last("LIMIT " + size + " OFFSET " + start);
+
+            List<User> users = userService.list(wrapper);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("records", users);
+            result.put("total", total);
+            result.put("page", page);
+            result.put("size", size);
+            result.put("pages", Math.max(1, (int) Math.ceil((double) total / size)));
+
+            return Result.success(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取用户列表失败：" + e.getMessage());
+        }
+    }
 }

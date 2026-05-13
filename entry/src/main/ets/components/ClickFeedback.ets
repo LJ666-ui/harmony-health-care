@@ -1,5 +1,3 @@
-// 全局点击反馈组件 - 统一所有可点击元素的交互动画
-
 @Component
 export struct ClickFeedback {
   @BuilderParam content: () => void = this.defaultContent;
@@ -7,10 +5,10 @@ export struct ClickFeedback {
   @Builder
   private defaultContent() {}
 
-  @Prop onItemClick?: () => void;
-  @Prop scaleFactor: number = 0.97; // 缩放比例
-  @Prop opacityValue: number = 0.9; // 透明度
-  @Prop duration: number = 150; // 动画时长(ms)
+  onItemClick?: () => void;
+  @Prop scaleFactor: number = 0.97;
+  @Prop opacityValue: number = 0.9;
+  @Prop duration: number = 150;
   @Prop isEnabled: boolean = true;
 
   @State isPressed: boolean = false;
@@ -33,7 +31,6 @@ export struct ClickFeedback {
   }
 }
 
-// 按钮点击反馈包装器
 @Component
 export struct ButtonWithFeedback {
   @Prop text: string = '';
@@ -41,7 +38,7 @@ export struct ButtonWithFeedback {
   @Prop btnSize: 'small' | 'medium' | 'large' = 'medium';
   @Prop disabled: boolean = false;
   @Prop loading: boolean = false;
-  @Prop onItemClick?: () => void;
+  onItemClick?: () => void;
 
   @State isPressed: boolean = false;
 
@@ -129,7 +126,6 @@ export struct ButtonWithFeedback {
   }
 }
 
-// 列表项点击反馈组件
 @Component
 export struct ListItemWithFeedback {
   @BuilderParam content: () => void = this.defaultContent;
@@ -137,7 +133,7 @@ export struct ListItemWithFeedback {
   @Builder
   private defaultContent() {}
 
-  @Prop onItemClick?: () => void;
+  onItemClick?: () => void;
   @Prop showRipple: boolean = true;
 
   @State isPressed: boolean = false;

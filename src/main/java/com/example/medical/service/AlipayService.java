@@ -5,6 +5,7 @@ import com.alipay.api.AlipayClient;
 import com.alipay.api.internal.util.AlipaySignature;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
+import com.alipay.api.request.AlipayTradeWapPayRequest;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.example.medical.config.AlipayConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -37,10 +38,35 @@ public class AlipayService {
 
         try {
             String form = alipayClient.pageExecute(request).getBody();
-            log.info("[支付宝] 创建支付订单成功 outTradeNo={}", outTradeNo);
+            log.info("[支付宝] 创建PC网页支付订单成功 outTradeNo={}", outTradeNo);
             return form;
         } catch (AlipayApiException e) {
-            log.error("[支付宝] 创建支付订单失败 outTradeNo={} error={}", outTradeNo, e.getErrMsg());
+            log.error("[支付宝] 创建PC网页支付订单失败 outTradeNo={} error={}", outTradeNo, e.getErrMsg());
+            return null;
+        }
+    }
+
+    public String createMobilePayment(String outTradeNo, String subject, String totalAmount, String description) {
+        AlipayTradeWapPayRequest request = new AlipayTradeWapPayRequest();
+        request.setReturnUrl(AlipayConfig.RETURN_URL);
+        request.setNotifyUrl(AlipayConfig.NOTIFY_URL);
+
+        String bizContent = "{" +
+                "\"out_trade_no\":\"" + outTradeNo + "\"," +
+                "\"total_amount\":\"" + totalAmount + "\"," +
+                "\"subject\":\"" + subject + "\"," +
+                "\"product_code\":\"QUICK_WAP_WAY\"," +
+                "\"body\":\"" + description + "\"" +
+                "}";
+
+        request.setBizContent(bizContent);
+
+        try {
+            String form = alipayClient.pageExecute(request).getBody();
+            log.info("[支付宝] 创建手机H5支付订单成功 outTradeNo={}", outTradeNo);
+            return form;
+        } catch (AlipayApiException e) {
+            log.error("[支付宝] 创建手机H5支付订单失败 outTradeNo={} error={}", outTradeNo, e.getErrMsg());
             return null;
         }
     }

@@ -348,7 +348,10 @@ struct Appointments {
 
   formatDate(dateStr: string): string {
     if (!dateStr) return '';
-    if (dateStr.includes('-')) return dateStr;
+    if (dateStr.includes('-') && !dateStr.includes('T')) return dateStr;
+    if (dateStr.includes('T')) {
+      return dateStr.substring(0, 10);
+    }
     if (dateStr.length === 8) {
       return dateStr.substring(0, 4) + '-' + dateStr.substring(4, 6) + '-' + dateStr.substring(6, 8);
     }

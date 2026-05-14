@@ -62,7 +62,7 @@ struct HerbalDetailPage {
   @State isLoading: boolean = true;
   @State showBackToTop: boolean = false;
   private scroller: Scroller = new Scroller();
-  private herbalId: string = '';
+  private herbalName: string = '';
 
   async aboutToAppear(): Promise<void> {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
@@ -72,16 +72,17 @@ struct HerbalDetailPage {
     }
 
     const params: Record<string, Object> | undefined = router.getParams() as Record<string, Object> | undefined;
-    if (params && params['herbalId']) {
-      this.herbalId = params['herbalId'] as string;
+
+    if (params && params['herbalName']) {
+      this.herbalName = params['herbalName'] as string;
 
       try {
-        const response: BaseResponse<Object> = await HttpUtil.get<Object>('/herbal/info/' + this.herbalId);
+        const response: BaseResponse<Object> = await HttpUtil.get<Object>('/herbal/info/by-name?name=' + encodeURIComponent(this.herbalName));
         if (response.success && response.data) {
           const data: Record<string, Object> = response.data as Record<string, Object>;
           this.herbal = {
             id: String(data['id'] || 0),
-            name: (data['name'] as string) || '',
+            name: (data['name'] as string) || this.herbalName,
             pinyin: (data['pinyin'] as string) || '',
             alias: data['alias'] ? (data['alias'] as string).split(',') : [],
             category: (data['category'] as string) || '',
@@ -116,10 +117,10 @@ struct HerbalDetailPage {
   }
 
   async toggleCollect(): Promise<void> {
-    if (this.herbal && this.herbalId) {
+    if (this.herbal && this.herbal.id) {
       try {
         if (!this.isCollected) {
-          const response: BaseResponse<Object> = await HttpUtil.post<Object>('/herbal/' + this.herbalId + '/collect');
+          const response: BaseResponse<Object> = await HttpUtil.post<Object>('/herbal/' + this.herbal.id + '/collect');
           if (response.success) {
             this.isCollected = true;
             ToastUtil.operationSuccess();
@@ -127,7 +128,7 @@ struct HerbalDetailPage {
             ToastUtil.showError(response.message || '收藏失败', 2000);
           }
         } else {
-          const deleteRes: BaseResponse<Object> = await HttpUtil.delete<Object>('/herbal/' + this.herbalId + '/collect');
+          const deleteRes: BaseResponse<Object> = await HttpUtil.delete<Object>('/herbal/' + this.herbal.id + '/collect');
           if (deleteRes.success) {
             this.isCollected = false;
             ToastUtil.showInfo('已取消收藏');

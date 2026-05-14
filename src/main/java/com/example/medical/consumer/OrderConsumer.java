@@ -11,15 +11,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.TimeZone;
 
 @Component
-@Profile("rabbitmq")
 public class OrderConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(OrderConsumer.class);
@@ -36,11 +35,12 @@ public class OrderConsumer {
             Appointment appointment = new Appointment();
             appointment.setUserId(message.getUserId());
             appointment.setDoctorId(message.getDoctorId());
-            if (message.getScheduleDate() != null) {
-                appointment.setScheduleDate(message.getScheduleDate());
-            } else if (message.getScheduleDateStr() != null && !message.getScheduleDateStr().isEmpty()) {
+            if (message.getScheduleDateStr() != null && !message.getScheduleDateStr().isEmpty()) {
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+                sdf.setTimeZone(TimeZone.getTimeZone("GMT+8"));
                 appointment.setScheduleDate(sdf.parse(message.getScheduleDateStr()));
+            } else if (message.getScheduleDate() != null) {
+                appointment.setScheduleDate(message.getScheduleDate());
             }
             appointment.setSchedulePeriod(message.getSchedulePeriod());
             appointment.setFee(message.getFee());

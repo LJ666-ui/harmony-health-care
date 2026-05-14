@@ -30,10 +30,10 @@ public class ScheduleController {
     @Autowired
     private DoctorScheduleService scheduleService;
 
-    @Autowired(required = false)
+    @Autowired
     private RedisStockInterface redisStockService;
 
-    @Autowired(required = false)
+    @Autowired
     private StringRedisTemplate redisTemplate;
 
     @Autowired
@@ -70,13 +70,11 @@ public class ScheduleController {
             schedule.setUpdateTime(new Date());
 
             if (scheduleService.save(schedule)) {
-                if (redisStockService != null) {
-                    redisStockService.setStock(
-                            schedule.getDoctorId(),
-                            schedule.getScheduleDate(),
-                            schedule.getSchedulePeriod(),
-                            schedule.getMaxCount());
-                }
+                redisStockService.setStock(
+                        schedule.getDoctorId(),
+                        schedule.getScheduleDate(),
+                        schedule.getSchedulePeriod(),
+                        schedule.getMaxCount());
                 Map<String, Object> result = new HashMap<>();
                 result.put("scheduleId", schedule.getId());
                 result.put("message", "排班添加成功");

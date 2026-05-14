@@ -25,7 +25,13 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.TimeZone;
+import java.util.Date;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/appointment")
@@ -45,16 +51,16 @@ public class AppointmentController {
     @Autowired
     private PaymentRecordService paymentRecordService;
 
-    @Autowired(required = false)
+    @Autowired
     private RedisStockInterface redisStockService;
 
     @Autowired
     private UserService userService;
 
-    @Autowired(required = false)
+    @Autowired
     private StringRedisTemplate redisTemplate;
 
-    @Autowired(required = false)
+    @Autowired
     private RabbitTemplate rabbitTemplate;
 
     @PostMapping("/create")
@@ -76,46 +82,41 @@ public class AppointmentController {
             String traceId = UUID.randomUUID().toString().replace("-", "");
 
             System.out.println("[挂号调试] doctorId=" + appointment.getDoctorId()
-                    + " scheduleDate=" + appointment.getScheduleDate()
-                    + " period=" + appointment.getSchedulePeriod()
-                    + " userId=" + appointment.getUserId()
-                    + " traceId=" + traceId);
+                + " scheduleDate=" + appointment.getScheduleDate()
+                + " period=" + appointment.getSchedulePeriod()
+                + " userId=" + appointment.getUserId()
+                + " traceId=" + traceId);
 
             SimpleDateFormat checkFormat = new SimpleDateFormat("yyyyMMdd");
             String dateStr = checkFormat.format(appointment.getScheduleDate());
 
             String bookedKey = "booked:" + appointment.getDoctorId() + ":" + dateStr + ":" + appointment.getSchedulePeriod();
+            Boolean isMember = redisTemplate.boundSetOps(bookedKey).isMember(String.valueOf(appointment.getUserId()));
 
-            if (redisTemplate != null) {
-                Boolean isMember = redisTemplate.boundSetOps(bookedKey).isMember(String.valueOf(appointment.getUserId()));
-
-                if (isMember != null && isMember) {
-                    System.out.println("[挂号调试] Redis检测到重复预约！userId=" + appointment.getUserId() +
-                            " 已在 booked 集合中: " + bookedKey);
-                    return Result.error("您今天已预约该医生该时段，不可重复挂号");
-                }
+            if (isMember != null && isMember) {
+                System.out.println("[挂号调试] Redis检测到重复预约！userId=" + appointment.getUserId() +
+                    " 已在 booked 集合中: " + bookedKey);
+                return Result.error("您今天已预约该医生该时段，不可重复挂号");
             }
 
             LambdaQueryWrapper<Appointment> dupWrapper = new LambdaQueryWrapper<>();
             dupWrapper.eq(Appointment::getUserId, appointment.getUserId())
-                    .eq(Appointment::getDoctorId, appointment.getDoctorId())
-                    .eq(Appointment::getScheduleDate, appointment.getScheduleDate())
-                    .eq(Appointment::getSchedulePeriod, appointment.getSchedulePeriod())
-                    .eq(Appointment::getIsDeleted, 0)
-                    .in(Appointment::getStatus, 0, 1);
+                      .eq(Appointment::getDoctorId, appointment.getDoctorId())
+                      .eq(Appointment::getScheduleDate, appointment.getScheduleDate())
+                      .eq(Appointment::getSchedulePeriod, appointment.getSchedulePeriod())
+                      .eq(Appointment::getIsDeleted, 0)
+                      .in(Appointment::getStatus, 0, 1);
             long dupCount = appointmentService.count(dupWrapper);
 
             if (dupCount > 0) {
                 System.out.println("[挂号调试] 数据库检测到重复预约！userId=" + appointment.getUserId() +
-                        " 已有 " + dupCount + " 条有效预约记录");
+                    " 已有 " + dupCount + " 条有效预约记录");
 
-                if (redisTemplate != null) {
-                    try {
-                        redisTemplate.boundSetOps(bookedKey).add(String.valueOf(appointment.getUserId()));
-                        System.out.println("[挂号调试] 已将用户同步到Redis booked集合: " + bookedKey);
-                    } catch (Exception syncEx) {
-                        System.err.println("[挂号调试] 同步Redis失败: " + syncEx.getMessage());
-                    }
+                try {
+                    redisTemplate.boundSetOps(bookedKey).add(String.valueOf(appointment.getUserId()));
+                    System.out.println("[挂号调试] 已将用户同步到Redis booked集合: " + bookedKey);
+                } catch (Exception syncEx) {
+                    System.err.println("[挂号调试] 同步Redis失败: " + syncEx.getMessage());
                 }
 
                 return Result.error("您今天已预约该医生该时段，不可重复挂号");
@@ -125,43 +126,20 @@ public class AppointmentController {
             message.setUserId(appointment.getUserId());
             message.setDoctorId(appointment.getDoctorId());
             message.setScheduleDate(appointment.getScheduleDate());
+            message.setScheduleDateStr(new SimpleDateFormat("yyyyMMdd").format(appointment.getScheduleDate()));
             message.setSchedulePeriod(appointment.getSchedulePeriod());
             message.setFee(appointment.getFee());
             message.setTraceId(traceId);
 
-            if (rabbitTemplate != null) {
-                rabbitTemplate.convertAndSend(
-                        RabbitMQConfig.EXCHANGE_NAME,
-                        RabbitMQConfig.STOCK_ROUTING_KEY,
-                        message);
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_NAME,
+                    RabbitMQConfig.STOCK_ROUTING_KEY,
+                    message);
 
-                rabbitTemplate.convertAndSend(
-                        RabbitMQConfig.EXCHANGE_NAME,
-                        RabbitMQConfig.ORDER_ROUTING_KEY,
-                        message);
-            } else {
-                if (redisStockService != null) {
-                    int grabResult = redisStockService.grabSlot(
-                            appointment.getDoctorId(),
-                            appointment.getScheduleDate(),
-                            appointment.getSchedulePeriod(),
-                            appointment.getUserId());
-
-                    if (grabResult != 1) {
-                        return Result.error("该时段号源已满或重复挂号");
-                    }
-                }
-
-                Appointment newAppointment = new Appointment();
-                newAppointment.setUserId(appointment.getUserId());
-                newAppointment.setDoctorId(appointment.getDoctorId());
-                newAppointment.setScheduleDate(appointment.getScheduleDate());
-                newAppointment.setSchedulePeriod(appointment.getSchedulePeriod());
-                newAppointment.setFee(appointment.getFee());
-                newAppointment.setStatus(0);
-
-                appointmentService.createAppointment(newAppointment);
-            }
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_NAME,
+                    RabbitMQConfig.ORDER_ROUTING_KEY,
+                    message);
 
             Map<String, Object> result = new HashMap<>();
             result.put("traceId", traceId);
@@ -186,11 +164,11 @@ public class AppointmentController {
 
             LambdaUpdateWrapper<Appointment> expireWrapper = new LambdaUpdateWrapper<>();
             expireWrapper.eq(Appointment::getStatus, 0)
-                    .eq(Appointment::getIsDeleted, 0)
-                    .lt(Appointment::getScheduleDate, sdf.parse(todayStr))
-                    .set(Appointment::getStatus, 3)
-                    .set(Appointment::getReason, "该号已超出时效")
-                    .set(Appointment::getUpdateTime, new Date());
+                         .eq(Appointment::getIsDeleted, 0)
+                         .lt(Appointment::getScheduleDate, sdf.parse(todayStr))
+                         .set(Appointment::getStatus, 3)
+                         .set(Appointment::getReason, "该号已超出时效")
+                         .set(Appointment::getUpdateTime, new Date());
             appointmentService.update(expireWrapper);
 
             LambdaQueryWrapper<Appointment> wrapper = new LambdaQueryWrapper<>();
@@ -204,7 +182,7 @@ public class AppointmentController {
             Page<Appointment> pageParam = new Page<>(page, size);
             Page<Appointment> result = appointmentService.page(pageParam, wrapper);
 
-            List<Map<String, Object>> records = new ArrayList<>();
+            List<Map<String, Object>> records = new java.util.ArrayList<>();
             for (Appointment apt : result.getRecords()) {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id", apt.getId());
@@ -239,10 +217,10 @@ public class AppointmentController {
 
                 LambdaQueryWrapper<PaymentRecord> payWrapper = new LambdaQueryWrapper<>();
                 payWrapper.eq(PaymentRecord::getUserId, apt.getUserId())
-                        .eq(PaymentRecord::getDoctorId, apt.getDoctorId())
-                        .eq(PaymentRecord::getSchedulePeriod, apt.getSchedulePeriod())
-                        .orderByDesc(PaymentRecord::getCreateTime)
-                        .last("LIMIT 1");
+                          .eq(PaymentRecord::getDoctorId, apt.getDoctorId())
+                          .eq(PaymentRecord::getSchedulePeriod, apt.getSchedulePeriod())
+                          .orderByDesc(PaymentRecord::getCreateTime)
+                          .last("LIMIT 1");
                 PaymentRecord payRecord = paymentRecordService.getOne(payWrapper);
                 map.put("payStatus", payRecord != null ? payRecord.getStatus() : 0);
 
@@ -322,11 +300,11 @@ public class AppointmentController {
 
             LambdaUpdateWrapper<Appointment> expireWrapper = new LambdaUpdateWrapper<>();
             expireWrapper.eq(Appointment::getStatus, 0)
-                    .eq(Appointment::getIsDeleted, 0)
-                    .lt(Appointment::getScheduleDate, sdf.parse(todayStr))
-                    .set(Appointment::getStatus, 3)
-                    .set(Appointment::getReason, "该号已超出时效")
-                    .set(Appointment::getUpdateTime, new Date());
+                         .eq(Appointment::getIsDeleted, 0)
+                         .lt(Appointment::getScheduleDate, sdf.parse(todayStr))
+                         .set(Appointment::getStatus, 3)
+                         .set(Appointment::getReason, "该号已超出时效")
+                         .set(Appointment::getUpdateTime, new Date());
             appointmentService.update(expireWrapper);
 
             List<Appointment> appointments = appointmentService.getByUserId(userId);
@@ -371,9 +349,9 @@ public class AppointmentController {
                 }
 
                 PaymentRecord payRecord = paymentRecordService.getOne(
-                        new LambdaQueryWrapper<PaymentRecord>()
-                                .eq(PaymentRecord::getAppointmentId, appointment.getId())
-                                .last("LIMIT 1")
+                    new LambdaQueryWrapper<PaymentRecord>()
+                        .eq(PaymentRecord::getAppointmentId, appointment.getId())
+                        .last("LIMIT 1")
                 );
                 if (payRecord != null) {
                     item.put("payStatus", payRecord.getStatus());
@@ -404,148 +382,6 @@ public class AppointmentController {
         }
     }
 
-    @GetMapping("/doctor/{doctorId}/patients")
-    public Result<?> getDoctorPatients(@PathVariable Long doctorId) {
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-            String todayStr = sdf.format(new Date());
-            Date today = sdf.parse(todayStr);
-
-            LambdaQueryWrapper<Appointment> todayWrapper = new LambdaQueryWrapper<>();
-            todayWrapper.eq(Appointment::getDoctorId, doctorId)
-                    .eq(Appointment::getIsDeleted, 0)
-                    .eq(Appointment::getScheduleDate, today)
-                    .in(Appointment::getStatus, 0, 1, 2)
-                    .orderByAsc(Appointment::getSchedulePeriod)
-                    .orderByDesc(Appointment::getCreateTime);
-            List<Appointment> todayAppointments = appointmentService.list(todayWrapper);
-
-            LambdaQueryWrapper<Appointment> historyWrapper = new LambdaQueryWrapper<>();
-            historyWrapper.eq(Appointment::getDoctorId, doctorId)
-                    .eq(Appointment::getIsDeleted, 0)
-                    .ne(Appointment::getScheduleDate, today)
-                    .in(Appointment::getStatus, 1, 2)
-                    .orderByDesc(Appointment::getScheduleDate);
-            List<Appointment> historyAppointments = appointmentService.list(historyWrapper);
-
-            Set<Long> todayPatientIds = new HashSet<>();
-            Set<Long> allPatientIds = new HashSet<>();
-
-            for (Appointment apt : todayAppointments) {
-                if (apt.getUserId() != null) {
-                    todayPatientIds.add(apt.getUserId());
-                    allPatientIds.add(apt.getUserId());
-                }
-            }
-            for (Appointment apt : historyAppointments) {
-                if (apt.getUserId() != null) {
-                    allPatientIds.add(apt.getUserId());
-                }
-            }
-
-            List<Map<String, Object>> todayPatients = new ArrayList<>();
-            List<Map<String, Object>> historyPatients = new ArrayList<>();
-
-            Map<Long, User> userCache = new HashMap<>();
-
-            for (Long userId : todayPatientIds) {
-                User user = userCache.computeIfAbsent(userId, id -> userService.getById(id));
-                if (user == null) continue;
-
-                Appointment latestApt = todayAppointments.stream()
-                        .filter(a -> a.getUserId().equals(userId))
-                        .findFirst()
-                        .orElse(null);
-
-                Map<String, Object> patientMap = buildPatientInfo(user, latestApt, true);
-                todayPatients.add(patientMap);
-            }
-
-            for (Long userId : allPatientIds) {
-                if (todayPatientIds.contains(userId)) continue;
-
-                User user = userCache.get(userId);
-                if (user == null) {
-                    user = userService.getById(userId);
-                    userCache.put(userId, user);
-                }
-                if (user == null) continue;
-
-                Appointment latestApt = historyAppointments.stream()
-                        .filter(a -> a.getUserId().equals(userId))
-                        .findFirst()
-                        .orElse(null);
-
-                Map<String, Object> patientMap = buildPatientInfo(user, latestApt, false);
-                historyPatients.add(patientMap);
-            }
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("todayPatients", todayPatients);
-            result.put("historyPatients", historyPatients);
-            result.put("todayCount", todayPatients.size());
-            result.put("totalCount", allPatientIds.size());
-
-            return Result.success(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error("获取患者列表失败：" + e.getMessage());
-        }
-    }
-
-    private Map<String, Object> buildPatientInfo(User user, Appointment appointment, boolean isToday) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("patientId", user.getId());
-        map.put("name", user.getRealName() != null ? user.getRealName() : "未知");
-        map.put("phone", user.getPhone() != null ? user.getPhone() : "");
-        map.put("avatar", user.getAvatar() != null ? user.getAvatar() : "");
-        map.put("isToday", isToday);
-
-        if (appointment != null) {
-            map.put("appointmentId", appointment.getId());
-            map.put("scheduleDate", appointment.getScheduleDate());
-            map.put("schedulePeriod", appointment.getSchedulePeriod());
-            map.put("status", appointment.getStatus());
-            map.put("fee", appointment.getFee());
-            map.put("appointmentNo", appointment.getAppointmentNo());
-
-            String periodText = "";
-            if (appointment.getSchedulePeriod() != null) {
-                switch (appointment.getSchedulePeriod()) {
-                    case 1: periodText = "上午"; break;
-                    case 2: periodText = "下午"; break;
-                    case 3: periodText = "晚上"; break;
-                    default: periodText = ""; break;
-                }
-            }
-            map.put("periodText", periodText);
-
-            String statusText = "";
-            if (appointment.getStatus() != null) {
-                switch (appointment.getStatus()) {
-                    case 0: statusText = "待确认"; break;
-                    case 1: statusText = "已确认"; break;
-                    case 2: statusText = "就诊中"; break;
-                    case 3: statusText = "已取消"; break;
-                    case 4: statusText = "已完成"; break;
-                    default: statusText = "未知"; break;
-                }
-            }
-            map.put("statusText", statusText);
-        } else {
-            map.put("appointmentId", null);
-            map.put("scheduleDate", null);
-            map.put("schedulePeriod", null);
-            map.put("status", null);
-            map.put("fee", null);
-            map.put("appointmentNo", null);
-            map.put("periodText", "");
-            map.put("statusText", "");
-        }
-
-        return map;
-    }
-
     @PutMapping("/{id}/status")
     public Result<?> updateAppointmentStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
@@ -561,17 +397,17 @@ public class AppointmentController {
             if (status != null && status.intValue() == 2) {
                 System.out.println("[退号调试] 预约取消，开始归还Redis库存...");
                 System.out.println("[退号调试] appointmentId=" + id +
-                        " doctorId=" + existingAppointment.getDoctorId() +
-                        " userId=" + existingAppointment.getUserId() +
-                        " date=" + existingAppointment.getScheduleDate() +
-                        " period=" + existingAppointment.getSchedulePeriod());
+                    " doctorId=" + existingAppointment.getDoctorId() +
+                    " userId=" + existingAppointment.getUserId() +
+                    " date=" + existingAppointment.getScheduleDate() +
+                    " period=" + existingAppointment.getSchedulePeriod());
 
                 try {
                     boolean stockReturned = redisStockService.backStock(
-                            existingAppointment.getDoctorId(),
-                            existingAppointment.getScheduleDate(),
-                            existingAppointment.getSchedulePeriod(),
-                            existingAppointment.getUserId()
+                        existingAppointment.getDoctorId(),
+                        existingAppointment.getScheduleDate(),
+                        existingAppointment.getSchedulePeriod(),
+                        existingAppointment.getUserId()
                     );
 
                     if (stockReturned) {
@@ -581,9 +417,9 @@ public class AppointmentController {
 
                         try {
                             String dateStr = new java.text.SimpleDateFormat("yyyyMMdd")
-                                    .format(existingAppointment.getScheduleDate());
+                                .format(existingAppointment.getScheduleDate());
                             String stockKey = "stock:" + existingAppointment.getDoctorId() +
-                                    ":" + dateStr + ":" + existingAppointment.getSchedulePeriod();
+                                ":" + dateStr + ":" + existingAppointment.getSchedulePeriod();
 
                             Boolean hasStockKey = redisTemplate.hasKey(stockKey);
                             if (hasStockKey != null && hasStockKey) {
@@ -592,92 +428,39 @@ public class AppointmentController {
                             }
 
                             String bookedKey = "booked:" + existingAppointment.getDoctorId() +
-                                    ":" + dateStr + ":" + existingAppointment.getSchedulePeriod();
+                                ":" + dateStr + ":" + existingAppointment.getSchedulePeriod();
                             Boolean hasBookedKey = redisTemplate.hasKey(bookedKey);
                             if (hasBookedKey != null && hasBookedKey) {
-                                redisTemplate.boundSetOps(bookedKey).remove(
-                                        String.valueOf(existingAppointment.getUserId()));
+                                redisTemplate.boundSetOps(bookedKey).remove(String.valueOf(existingAppointment.getUserId()));
                                 System.out.println("[退号调试] 强制从booked集合移除用户 ✓ (key=" + bookedKey + ")");
                             }
                         } catch (Exception forceEx) {
-                            System.err.println("[退号调试] 强制归还失败: " + forceEx.getMessage());
+                            System.err.println("[退号调试] 强制归还库存失败: " + forceEx.getMessage());
                         }
                     }
                 } catch (Exception redisEx) {
                     System.err.println("[退号调试] Redis库存归还异常: " + redisEx.getMessage());
-                    redisEx.printStackTrace();
                 }
 
-                operationSuccess = appointmentService.removeById(id);
+                try {
+                    LambdaUpdateWrapper<DoctorSchedule> scheduleWrapper = new LambdaUpdateWrapper<>();
+                    scheduleWrapper.eq(DoctorSchedule::getDoctorId, existingAppointment.getDoctorId())
+                                   .eq(DoctorSchedule::getScheduleDate, existingAppointment.getScheduleDate())
+                                   .eq(DoctorSchedule::getSchedulePeriod, existingAppointment.getSchedulePeriod())
+                                   .ge(DoctorSchedule::getCurrentCount, 1)
+                                   .setSql("current_count = current_count - 1");
 
-                if (operationSuccess) {
-                    System.out.println("[退号调试] 数据库记录已物理删除 ✓ (appointmentId=" + id + ")");
-
-                    try {
-                        SimpleDateFormat dateFmt = new SimpleDateFormat("yyyyMMdd");
-                        String scheduleDateStr = dateFmt.format(existingAppointment.getScheduleDate());
-
-                        LambdaQueryWrapper<PaymentRecord> payWrapper = new LambdaQueryWrapper<>();
-                        payWrapper.eq(PaymentRecord::getUserId, existingAppointment.getUserId())
-                                .eq(PaymentRecord::getDoctorId, existingAppointment.getDoctorId())
-                                .eq(PaymentRecord::getScheduleDate, scheduleDateStr)
-                                .eq(PaymentRecord::getSchedulePeriod, existingAppointment.getSchedulePeriod())
-                                .orderByDesc(PaymentRecord::getCreateTime)
-                                .last("LIMIT 1");
-
-                        PaymentRecord payRecord = paymentRecordService.getOne(payWrapper);
-
-                        if (payRecord != null) {
-                            if (payRecord.getStatus() != null && payRecord.getStatus() == 1) {
-                                payRecord.setStatus(2);
-                                payRecord.setUpdateTime(new Date());
-                                boolean payUpdated = paymentRecordService.updateById(payRecord);
-                                if (payUpdated) {
-                                    System.out.println("[退号调试] payment_record状态已更新为已退款 ✓ " +
-                                            "(id=" + payRecord.getId() +
-                                            ", outTradeNo=" + payRecord.getOutTradeNo() +
-                                            ", status: 1→2)");
-                                } else {
-                                    System.err.println("[退号调试] payment_record状态更新失败 ✗ (id=" + payRecord.getId() + ")");
-                                }
-                            } else {
-                                boolean payDeleted = paymentRecordService.removeById(payRecord.getId());
-                                if (payDeleted) {
-                                    System.out.println("[退号调试] payment_record记录已删除（未支付）✓ " +
-                                            "(id=" + payRecord.getId() +
-                                            ", outTradeNo=" + payRecord.getOutTradeNo() +
-                                            ", 原status=" + payRecord.getStatus() + ")");
-                                } else {
-                                    System.err.println("[退号调试] payment_record记录删除失败 ✗ (id=" + payRecord.getId() + ")");
-                                }
-                            }
-                        } else {
-                            System.out.println("[退号调试] 未找到对应的payment_record记录");
-                        }
-                    } catch (Exception payEx) {
-                        System.err.println("[退号调试] 清理payment_record异常: " + payEx.getMessage());
+                    boolean scheduleUpdated = doctorScheduleService.update(scheduleWrapper);
+                    if (scheduleUpdated) {
+                        System.out.println("[退号调试] doctor_schedule.current_count 已 -1 ✓");
+                    } else {
+                        System.out.println("[退号调试] doctor_schedule.current_count 未更新（可能不存在或已为0）");
                     }
-
-                    try {
-                        LambdaUpdateWrapper<DoctorSchedule> scheduleWrapper = new LambdaUpdateWrapper<>();
-                        scheduleWrapper.eq(DoctorSchedule::getDoctorId, existingAppointment.getDoctorId())
-                                .eq(DoctorSchedule::getScheduleDate, existingAppointment.getScheduleDate())
-                                .eq(DoctorSchedule::getSchedulePeriod, existingAppointment.getSchedulePeriod())
-                                .ge(DoctorSchedule::getCurrentCount, 1)
-                                .setSql("current_count = current_count - 1");
-
-                        boolean scheduleUpdated = doctorScheduleService.update(scheduleWrapper);
-                        if (scheduleUpdated) {
-                            System.out.println("[退号调试] doctor_schedule.current_count 已 -1 ✓");
-                        } else {
-                            System.out.println("[退号调试] doctor_schedule.current_count 未更新（可能不存在或已为0）");
-                        }
-                    } catch (Exception scheduleEx) {
-                        System.err.println("[退号调试] 更新doctor_schedule异常: " + scheduleEx.getMessage());
-                    }
-                } else {
-                    System.err.println("[退号调试] 数据库记录删除失败 ✗ (appointmentId=" + id + ")");
+                } catch (Exception scheduleEx) {
+                    System.err.println("[退号调试] 更新doctor_schedule异常: " + scheduleEx.getMessage());
                 }
+
+                operationSuccess = appointmentService.updateStatus(id, 2);
             } else {
                 operationSuccess = appointmentService.updateStatus(id, status);
             }
@@ -717,8 +500,8 @@ public class AppointmentController {
 
             LambdaUpdateWrapper<Appointment> wrapper = new LambdaUpdateWrapper<>();
             wrapper.eq(Appointment::getId, id)
-                    .set(Appointment::getStatus, 1)
-                    .set(Appointment::getUpdateTime, new Date());
+                   .set(Appointment::getStatus, 1)
+                   .set(Appointment::getUpdateTime, new Date());
 
             if (appointmentService.update(wrapper)) {
                 return Result.success("就诊完成");
@@ -739,8 +522,8 @@ public class AppointmentController {
 
             LambdaQueryWrapper<Appointment> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Appointment::getStatus, 0)
-                    .eq(Appointment::getIsDeleted, 0)
-                    .lt(Appointment::getScheduleDate, sdf.parse(todayStr));
+                   .eq(Appointment::getIsDeleted, 0)
+                   .lt(Appointment::getScheduleDate, sdf.parse(todayStr));
 
             List<Appointment> expiredList = appointmentService.list(wrapper);
 
@@ -748,9 +531,9 @@ public class AppointmentController {
             for (Appointment apt : expiredList) {
                 LambdaUpdateWrapper<Appointment> updateWrapper = new LambdaUpdateWrapper<>();
                 updateWrapper.eq(Appointment::getId, apt.getId())
-                        .set(Appointment::getStatus, 3)
-                        .set(Appointment::getReason, "该号已超出时效")
-                        .set(Appointment::getUpdateTime, new Date());
+                             .set(Appointment::getStatus, 3)
+                             .set(Appointment::getReason, "该号已超出时效")
+                             .set(Appointment::getUpdateTime, new Date());
                 if (appointmentService.update(updateWrapper)) {
                     count++;
                 }
@@ -813,8 +596,8 @@ public class AppointmentController {
 
             LambdaUpdateWrapper<Appointment> updateWrapper = new LambdaUpdateWrapper<>();
             updateWrapper.eq(Appointment::getId, id)
-                    .set(Appointment::getCheckInTime, new Date())
-                    .set(Appointment::getUpdateTime, new Date());
+                          .set(Appointment::getCheckInTime, new Date())
+                          .set(Appointment::getUpdateTime, new Date());
 
             if (appointmentService.update(updateWrapper)) {
                 Map<String, Object> result = new HashMap<>();
@@ -838,19 +621,19 @@ public class AppointmentController {
 
             LambdaUpdateWrapper<Appointment> expireWrapper = new LambdaUpdateWrapper<>();
             expireWrapper.eq(Appointment::getStatus, 0)
-                    .eq(Appointment::getIsDeleted, 0)
-                    .lt(Appointment::getScheduleDate, sdfExpire.parse(todayStr))
-                    .set(Appointment::getStatus, 3)
-                    .set(Appointment::getReason, "该号已超出时效")
-                    .set(Appointment::getUpdateTime, new Date());
+                         .eq(Appointment::getIsDeleted, 0)
+                         .lt(Appointment::getScheduleDate, sdfExpire.parse(todayStr))
+                         .set(Appointment::getStatus, 3)
+                         .set(Appointment::getReason, "该号已超出时效")
+                         .set(Appointment::getUpdateTime, new Date());
             appointmentService.update(expireWrapper);
 
             LambdaQueryWrapper<Appointment> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Appointment::getUserId, userId)
-                    .eq(Appointment::getIsDeleted, 0)
-                    .eq(Appointment::getStatus, 0)
-                    .orderByAsc(Appointment::getScheduleDate)
-                    .orderByAsc(Appointment::getSchedulePeriod);
+                   .eq(Appointment::getIsDeleted, 0)
+                   .eq(Appointment::getStatus, 0)
+                   .orderByAsc(Appointment::getScheduleDate)
+                   .orderByAsc(Appointment::getSchedulePeriod);
             List<Appointment> pendingList = appointmentService.list(wrapper);
 
             List<Map<String, Object>> queueList = new java.util.ArrayList<>();
@@ -877,22 +660,22 @@ public class AppointmentController {
                 String dateStr = sdfCompact.format(apt.getScheduleDate());
                 LambdaQueryWrapper<Appointment> queueWrapper = new LambdaQueryWrapper<>();
                 queueWrapper.eq(Appointment::getDoctorId, apt.getDoctorId())
-                        .eq(Appointment::getScheduleDate, apt.getScheduleDate())
-                        .eq(Appointment::getSchedulePeriod, apt.getSchedulePeriod())
-                        .eq(Appointment::getIsDeleted, 0)
-                        .in(Appointment::getStatus, 0, 1)
-                        .isNotNull(Appointment::getCheckInTime)
-                        .orderByAsc(Appointment::getCheckInTime);
+                            .eq(Appointment::getScheduleDate, apt.getScheduleDate())
+                            .eq(Appointment::getSchedulePeriod, apt.getSchedulePeriod())
+                            .eq(Appointment::getIsDeleted, 0)
+                            .in(Appointment::getStatus, 0, 1)
+                            .isNotNull(Appointment::getCheckInTime)
+                            .orderByAsc(Appointment::getCheckInTime);
                 List<Appointment> checkedInList = appointmentService.list(queueWrapper);
 
                 LambdaQueryWrapper<Appointment> notCheckedInWrapper = new LambdaQueryWrapper<>();
                 notCheckedInWrapper.eq(Appointment::getDoctorId, apt.getDoctorId())
-                        .eq(Appointment::getScheduleDate, apt.getScheduleDate())
-                        .eq(Appointment::getSchedulePeriod, apt.getSchedulePeriod())
-                        .eq(Appointment::getIsDeleted, 0)
-                        .in(Appointment::getStatus, 0, 1)
-                        .isNull(Appointment::getCheckInTime)
-                        .orderByAsc(Appointment::getCreateTime);
+                                   .eq(Appointment::getScheduleDate, apt.getScheduleDate())
+                                   .eq(Appointment::getSchedulePeriod, apt.getSchedulePeriod())
+                                   .eq(Appointment::getIsDeleted, 0)
+                                   .in(Appointment::getStatus, 0, 1)
+                                   .isNull(Appointment::getCheckInTime)
+                                   .orderByAsc(Appointment::getCreateTime);
                 List<Appointment> notCheckedInList = appointmentService.list(notCheckedInWrapper);
 
                 List<Appointment> sameSlotList = new java.util.ArrayList<>();
@@ -962,15 +745,43 @@ public class AppointmentController {
                 return Result.error("预约不存在");
             }
 
+            long nowMs = System.currentTimeMillis();
+            long fiveMinutesMs = 5 * 60 * 1000;
+
             LambdaQueryWrapper<Appointment> checkedInWrapper = new LambdaQueryWrapper<>();
             checkedInWrapper.eq(Appointment::getDoctorId, myAppointment.getDoctorId())
-                    .eq(Appointment::getScheduleDate, myAppointment.getScheduleDate())
-                    .eq(Appointment::getSchedulePeriod, myAppointment.getSchedulePeriod())
-                    .eq(Appointment::getIsDeleted, 0)
-                    .in(Appointment::getStatus, 0, 1)
-                    .isNotNull(Appointment::getCheckInTime)
-                    .orderByAsc(Appointment::getCheckInTime);
+                           .eq(Appointment::getScheduleDate, myAppointment.getScheduleDate())
+                           .eq(Appointment::getSchedulePeriod, myAppointment.getSchedulePeriod())
+                           .eq(Appointment::getIsDeleted, 0)
+                           .in(Appointment::getStatus, 0, 1)
+                           .isNotNull(Appointment::getCheckInTime)
+                           .orderByAsc(Appointment::getCheckInTime);
             List<Appointment> checkedInList = appointmentService.list(checkedInWrapper);
+
+            if (checkedInList.size() > 1 && checkedInList.get(0).getCheckInTime() != null) {
+                long firstCheckInTime = checkedInList.get(0).getCheckInTime().getTime();
+                long waitDuration = nowMs - firstCheckInTime;
+                if (waitDuration > fiveMinutesMs) {
+                    Appointment firstPerson = checkedInList.get(0);
+                    checkedInList.remove(0);
+                    int dropPositions = 3;
+                    int newIndex = Math.min(dropPositions, checkedInList.size());
+                    long targetTime;
+                    if (newIndex < checkedInList.size()) {
+                        targetTime = checkedInList.get(newIndex).getCheckInTime().getTime() - 1000;
+                    } else {
+                        targetTime = nowMs;
+                    }
+                    LambdaUpdateWrapper<Appointment> dropWrapper = new LambdaUpdateWrapper<>();
+                    dropWrapper.eq(Appointment::getId, firstPerson.getId())
+                               .set(Appointment::getCheckInTime, new Date(targetTime));
+                    appointmentService.update(dropWrapper);
+                    firstPerson.setCheckInTime(new Date(targetTime));
+                    checkedInList.add(newIndex, firstPerson);
+                    checkedInList.sort((a, b) -> a.getCheckInTime().compareTo(b.getCheckInTime()));
+                    System.out.println("[排队调试] 第一名超时5分钟未响应，已下降" + dropPositions + "名 appointmentId=" + firstPerson.getId());
+                }
+            }
 
             List<Map<String, Object>> queueList = new java.util.ArrayList<>();
             int myPosition = 0;
@@ -983,6 +794,7 @@ public class AppointmentController {
                 item.put("appointmentId", apt.getId());
                 item.put("checkInTime", timeFormat.format(apt.getCheckInTime()));
                 item.put("isSelf", apt.getId().equals(appointmentId));
+                item.put("isOnline", apt.getVisitType() != null && apt.getVisitType() == 1);
 
                 User user = userService.getById(apt.getUserId());
                 if (user != null && user.getRealName() != null) {
@@ -995,6 +807,13 @@ public class AppointmentController {
                     item.put("patientName", name);
                 } else {
                     item.put("patientName", "患者");
+                }
+
+                if (i == 0 && apt.getCheckInTime() != null) {
+                    long waitMs = nowMs - apt.getCheckInTime().getTime();
+                    long remainingMs = Math.max(0, fiveMinutesMs - waitMs);
+                    item.put("waitSeconds", waitMs / 1000);
+                    item.put("remainingSeconds", remainingMs / 1000);
                 }
 
                 queueList.add(item);
@@ -1013,6 +832,91 @@ public class AppointmentController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("查询实时排队失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/online-join")
+    public Result<?> onlineJoin(@RequestBody Map<String, Object> body) {
+        try {
+            Long userId = Long.parseLong(body.get("userId").toString());
+            Long doctorId = Long.parseLong(body.get("doctorId").toString());
+            String scheduleDateStr = body.get("scheduleDate").toString();
+            Integer schedulePeriod = Integer.parseInt(body.get("schedulePeriod").toString());
+            BigDecimal fee = new BigDecimal(body.get("fee").toString());
+
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+            sdf.setTimeZone(TimeZone.getTimeZone("GMT+8"));
+            Date scheduleDate = sdf.parse(scheduleDateStr);
+
+            String bookedKey = "booked:" + doctorId + ":" + scheduleDateStr + ":" + schedulePeriod;
+            Boolean isMember = redisTemplate.boundSetOps(bookedKey).isMember(String.valueOf(userId));
+            if (isMember != null && isMember) {
+                return Result.error("您今天已预约该医生该时段，不可重复挂号");
+            }
+
+            LambdaQueryWrapper<Appointment> dupWrapper = new LambdaQueryWrapper<>();
+            dupWrapper.eq(Appointment::getUserId, userId)
+                      .eq(Appointment::getDoctorId, doctorId)
+                      .eq(Appointment::getScheduleDate, scheduleDate)
+                      .eq(Appointment::getSchedulePeriod, schedulePeriod)
+                      .eq(Appointment::getIsDeleted, 0)
+                      .in(Appointment::getStatus, 0, 1);
+            long dupCount = appointmentService.count(dupWrapper);
+            if (dupCount > 0) {
+                return Result.error("您今天已预约该医生该时段，不可重复挂号");
+            }
+
+            int grabResult = redisStockService.grabSlot(doctorId, scheduleDate, schedulePeriod, userId);
+            if (grabResult != 1) {
+                if (grabResult == -1) {
+                    return Result.error("您今天已预约该医生，不可重复挂号");
+                }
+                return Result.error("号源已满，请选择其他时段");
+            }
+
+            Appointment newAppointment = new Appointment();
+            newAppointment.setUserId(userId);
+            newAppointment.setDoctorId(doctorId);
+            newAppointment.setScheduleDate(scheduleDate);
+            newAppointment.setSchedulePeriod(schedulePeriod);
+            newAppointment.setFee(fee);
+            newAppointment.setStatus(0);
+            newAppointment.setVisitType(1);
+            newAppointment.setCheckInTime(new Date());
+
+            boolean saved = appointmentService.createAppointment(newAppointment);
+
+            if (saved && newAppointment.getId() != null) {
+                try {
+                    redisTemplate.boundSetOps(bookedKey).add(String.valueOf(userId));
+                } catch (Exception ignored) {}
+
+                AppointmentMessage message = new AppointmentMessage();
+                message.setUserId(userId);
+                message.setDoctorId(doctorId);
+                message.setScheduleDate(scheduleDate);
+                message.setScheduleDateStr(scheduleDateStr);
+                message.setSchedulePeriod(schedulePeriod);
+                message.setFee(fee);
+                message.setTraceId("ONLINE_" + System.currentTimeMillis());
+
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.EXCHANGE_NAME,
+                        RabbitMQConfig.ORDER_ROUTING_KEY,
+                        message);
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("appointmentId", newAppointment.getId());
+                result.put("message", "线上就诊已加入排队");
+                result.put("visitType", 1);
+                return Result.success(result);
+            } else {
+                redisStockService.backStock(doctorId, scheduleDate, schedulePeriod, userId);
+                return Result.error("创建线上就诊记录失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("线上就诊加入失败：" + e.getMessage());
         }
     }
 }

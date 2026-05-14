@@ -42,6 +42,7 @@
     "pages/PrivacyPage",
     "pages/ARNavigationPage",
     "pages/DestinationSelectPage",
+    "pages/PathPlannerTestPage",
     "pages/VoiceAssistantPage",
     "pages/AiChatPage",
     "pages/AiConsultationPage",

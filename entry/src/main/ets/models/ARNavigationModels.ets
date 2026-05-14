@@ -46,7 +46,12 @@ export enum DestinationCategory {
   EMERGENCY = 'EMERGENCY',         // 急诊(急诊科)
   REGISTRATION = 'REGISTRATION',   // 挂号处(挂号窗口)
   IMAGING = 'IMAGING',             // 影像科(X光/CT/MRI)
-  WARD = 'WARD'                    // 病房(住院部)
+  WARD = 'WARD',                   // 病房(住院部)
+  ENTRANCE = 'ENTRANCE',           // 入口(大门)
+  INFO_DESK = 'INFO_DESK',         // 导诊台/咨询台
+  PARKING = 'PARKING',             // 停车场
+  STAIRS = 'STAIRS',               // 楼梯
+  ESCALATOR = 'ESCALATOR'          // 自动扶梯
 }
 
 /**
@@ -311,6 +316,16 @@ export interface HospitalBuildingData {
   accessibilityRoutes: RouteOverride[]; // 无障碍路线覆盖列表
 }
 
+/**
+ * 搜索结果项接口
+ * 用于POI搜索结果的返回值
+ */
+export interface SearchResultItem {
+  poi: NavigationDestination;      // POI对象
+  relevanceScore: number;          // 相关性评分(0-100)
+  matchFields: string[];           // 匹配的字段列表(如['名称', '标签'])
+}
+
 // ==================== 图算法相关接口 ====================
 
 /**
@@ -403,4 +418,27 @@ export interface ArrowColorConfig {
   turn: string;     // 转弯状态颜色
   arrival: string;  // 到达状态颜色
   warning: string;  // 警告状态颜色
+}
+
+/**
+ * 系统状态信息接口（PathPlanner使用）
+ */
+export interface SystemStatusInfo {
+  isInitialized: boolean;
+  graphSize: number;
+  cacheSize: number;
+  historySize: number;
+  poiCount: number;
+  floorCount: number;
+  connectionCount: number;
+}
+
+/**
+ * 统计信息接口（PathPlanner使用）
+ */
+export interface StatisticsInfo {
+  totalPOIs: number;
+  categoryDistribution: Record<string, number>;
+  floorDistribution: Record<string, number>;
+  buildingDistribution: Record<string, number>;
 }

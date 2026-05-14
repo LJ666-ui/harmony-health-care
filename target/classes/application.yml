@@ -25,12 +25,10 @@ spring:
   tomcat:
     max-http-post-size: -1
 
-  # Redis配置（本地启用）
   redis:
-    host: localhost
+    host: 192.168.149.130
     port: 6379
 
-  # RabbitMQ配置
   rabbitmq:
     host: 192.168.149.130
     port: 5672

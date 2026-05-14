@@ -291,6 +291,7 @@ interface ApiConstantsInterface {
   APPOINTMENT_QUEUE_INFO: string;
   APPOINTMENT_QUEUE_REALTIME: string;
   APPOINTMENT_CHECK_IN: string;
+  APPOINTMENT_ONLINE_JOIN: string;
   APPOINTMENT_COMPLETE: string;
   APPOINTMENT_CHECK_EXPIRED: string;
 
@@ -546,9 +547,10 @@ export const ApiConstants: ApiConstantsInterface = {
   APPOINTMENT_USER_LIST: '/appointment/user/',
   APPOINTMENT_CHECK_AVAILABILITY: '/appointment/check-availability',
   APPOINTMENT_STATISTICS: '/appointment/statistics/',
-  APPOINTMENT_QUEUE_INFO: '/appointment/queue/info',
-  APPOINTMENT_QUEUE_REALTIME: '/appointment/queue/realtime',
+  APPOINTMENT_QUEUE_INFO: '/appointment/queue-info',
+  APPOINTMENT_QUEUE_REALTIME: '/appointment/queue-realtime',
   APPOINTMENT_CHECK_IN: '/appointment/check-in',
+  APPOINTMENT_ONLINE_JOIN: '/appointment/online-join',
   APPOINTMENT_COMPLETE: '/appointment/complete',
   APPOINTMENT_CHECK_EXPIRED: '/appointment/check-expired',
 

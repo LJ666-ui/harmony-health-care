@@ -25,7 +25,7 @@ class GraphData {
 
 class GraphRequestParams {
   centerId: number = 0;
-  depth: number = 2;
+  depth: number = 1;
 }
 
 @Component
@@ -36,7 +36,7 @@ export struct GraphCanvas {
   @State isLoading: boolean = true;
   @State loadError: string = '';
   @State centerId: number = 1;
-  @State depth: number = 2;
+  @State depth: number = 1;
   @State scaleValue: number = 1;
   @State panOffsetX: number = 0;
   @State panOffsetY: number = 0;
@@ -83,9 +83,7 @@ export struct GraphCanvas {
   fetchGraph(): void {
     this.isLoading = true;
     this.loadError = '';
-    this.panOffsetX = 0;
-    this.panOffsetY = 0;
-    this.scaleValue = 1;
+    this.resetGraphState();
     this.clearTimers();
 
     const graphParams: GraphRequestParams = new GraphRequestParams();
@@ -110,6 +108,24 @@ export struct GraphCanvas {
         this.loadError = error.message || '网络请求失败';
         this.isLoading = false;
       });
+  }
+
+  resetGraphState(): void {
+    this.panOffsetX = 0;
+    this.panOffsetY = 0;
+    this.scaleValue = 1;
+    this.autoScale = 1;
+    this.baseOffsetX = 0;
+    this.baseOffsetY = 0;
+    this.draggingNodeId = -1;
+    this.lastDragX = 0;
+    this.lastDragY = 0;
+    this.selectedNode = null;
+    this.showNodePanel = false;
+  }
+
+  refreshGraph(): void {
+    this.fetchGraph();
   }
 
   onExpandCenterChange(): void {
@@ -328,9 +344,30 @@ export struct GraphCanvas {
     this.showNodePanel = false;
     if (node.type === 'HERBAL') {
       try {
-        router.pushUrl({ url: 'pages/HerbalDetailPage', params: { herbalId: String(node.id) } });
-      } catch (e) {}
+        router.pushUrl({
+          url: 'pages/HerbalDetailPage',
+          params: {
+            herbalName: node.name
+          }
+        });
+      } catch (e) {
+        console.error('跳转药材详情失败:', e);
+      }
     }
+  }
+
+  showNodeDetailToast(typeName: string, nodeName: string, description: string): void {
+    this.showNodePanel = false;
+    const message: string = `${typeName}：${nodeName}\n${description || '暂无详细描述'}`;
+    console.log('[知识图谱]', message);
+    AlertDialog.show({
+      title: `${typeName}信息`,
+      message: message,
+      primaryButton: {
+        value: '确定',
+        action: () => {}
+      }
+    });
   }
 
   closeNodePanel(): void {
@@ -602,6 +639,62 @@ export struct GraphCanvas {
           }
           .width('100%')
           .height('100%');
+
+          Column({ space: 8 }) {
+            Button() {
+              Text('🔄')
+                .fontSize(18)
+            }
+            .width(40)
+            .height(40)
+            .backgroundColor('#52C41A')
+            .borderRadius(20)
+            .shadow({ radius: 6, color: '#00000020', offsetX: 0, offsetY: 2 })
+            .onClick(() => {
+              this.refreshGraph();
+            })
+
+            Button() {
+              Text('⊕')
+                .fontSize(18)
+                .fontColor('#FFFFFF')
+            }
+            .width(36)
+            .height(36)
+            .backgroundColor('#1677FF')
+            .borderRadius(18)
+            .onClick(() => { this.scaleValue = Math.min(this.scaleValue + 0.2, 2.5); })
+
+            Button() {
+              Text('⊖')
+                .fontSize(18)
+                .fontColor('#FFFFFF')
+            }
+            .width(36)
+            .height(36)
+            .backgroundColor('#1677FF')
+            .borderRadius(18)
+            .onClick(() => { this.scaleValue = Math.max(this.scaleValue - 0.2, 0.4); })
+
+            Button() {
+              Text('⊙')
+                .fontSize(16)
+                .fontColor('#FFFFFF')
+            }
+            .width(36)
+            .height(36)
+            .backgroundColor('#666666')
+            .borderRadius(18)
+            .onClick(() => {
+              this.panOffsetX = 0;
+              this.panOffsetY = 0;
+              this.scaleValue = 1;
+              this.calculateAutoFit();
+            })
+          }
+          .position({ x: '95%', y: '10%' })
+          .translate({ x: '-100%', y: '0%' })
+          .alignItems(HorizontalAlign.End)
         }
         .width('100%')
         .layoutWeight(1)
@@ -645,17 +738,19 @@ export struct GraphCanvas {
               .fontSize(17).fontColor('#1677FF').fontWeight(FontWeight.Bold)
               .padding({ left: 5, right: 5 })
               .onClick(() => { this.scaleValue = Math.max(this.scaleValue - 0.15, 0.4); });
-            Text('\u21BB')
-              .fontSize(14).fontColor('#52C41A')
-              .padding({ left: 5, right: 5 })
-              .onClick(() => {
-                this.panOffsetX = 0;
-                this.panOffsetY = 0;
-                this.scaleValue = 1;
-                this.calculateAutoFit();
-              });
           }
           .margin({ left: 8 });
+
+          Button('刷新图谱')
+            .height(24)
+            .fontSize(11)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#52C41A')
+            .borderRadius(12)
+            .padding({ left: 12, right: 12 })
+            .onClick(() => {
+              this.refreshGraph();
+            })
         }
         .width('100%')
         .padding({ left: 10, right: 8, top: 4, bottom: 4 })
@@ -713,21 +808,95 @@ export struct GraphCanvas {
               Divider().color('#F0F0F0');
 
               Row({ space: 12 }) {
-                Column({ space: 4 }) {
-                  Text('\uD83D\uDCC4')
-                    .fontSize(22);
-                  Text('显示详情')
-                    .fontSize(11)
-                    .fontColor('#1677FF');
+                if (this.selectedNode.type === 'HERBAL') {
+                  Column({ space: 4 }) {
+                    Text('\uD83D\uDCC4')
+                      .fontSize(22);
+                    Text('查看药材详情')
+                      .fontSize(11)
+                      .fontColor('#1677FF');
+                  }
+                  .layoutWeight(1)
+                  .height(64)
+                  .justifyContent(FlexAlign.Center)
+                  .backgroundColor('#F0F7FF')
+                  .borderRadius(12)
+                  .onClick(() => {
+                    this.navigateToDetail(this.selectedNode!);
+                  });
                 }
-                .layoutWeight(1)
-                .height(64)
-                .justifyContent(FlexAlign.Center)
-                .backgroundColor('#F0F7FF')
-                .borderRadius(12)
-                .onClick(() => {
-                  this.navigateToDetail(this.selectedNode!);
-                });
+
+                if (this.selectedNode.type === 'DISEASE') {
+                  Column({ space: 4 }) {
+                    Text('🏥')
+                      .fontSize(22);
+                    Text('查看疾病信息')
+                      .fontSize(11)
+                      .fontColor('#FF4D4F');
+                  }
+                  .layoutWeight(1)
+                  .height(64)
+                  .justifyContent(FlexAlign.Center)
+                  .backgroundColor('#FFF1F0')
+                  .borderRadius(12)
+                  .onClick(() => {
+                    this.showNodeDetailToast('疾病', this.selectedNode!.name, this.selectedNode!.description || '');
+                  });
+                }
+
+                if (this.selectedNode.type === 'SYMPTOM') {
+                  Column({ space: 4 }) {
+                    Text('🩺')
+                      .fontSize(22);
+                    Text('查看症状说明')
+                      .fontSize(11)
+                      .fontColor('#FA8C16');
+                  }
+                  .layoutWeight(1)
+                  .height(64)
+                  .justifyContent(FlexAlign.Center)
+                  .backgroundColor('#FFF7E6')
+                  .borderRadius(12)
+                  .onClick(() => {
+                    this.showNodeDetailToast('症状', this.selectedNode!.name, this.selectedNode!.description || '');
+                  });
+                }
+
+                if (this.selectedNode.type === 'PRESCRIPTION') {
+                  Column({ space: 4 }) {
+                    Text('💊')
+                      .fontSize(22);
+                    Text('查看方剂组成')
+                      .fontSize(11)
+                      .fontColor('#722ED1');
+                  }
+                  .layoutWeight(1)
+                  .height(64)
+                  .justifyContent(FlexAlign.Center)
+                  .backgroundColor('#F9F0FF')
+                  .borderRadius(12)
+                  .onClick(() => {
+                    this.showNodeDetailToast('方剂', this.selectedNode!.name, this.selectedNode!.description || '');
+                  });
+                }
+
+                if (this.selectedNode.type === 'THERAPY') {
+                  Column({ space: 4 }) {
+                    Text('💆')
+                      .fontSize(22);
+                    Text('查看疗法介绍')
+                      .fontSize(11)
+                      .fontColor('#13C2C2');
+                  }
+                  .layoutWeight(1)
+                  .height(64)
+                  .justifyContent(FlexAlign.Center)
+                  .backgroundColor('#E6FFFB')
+                  .borderRadius(12)
+                  .onClick(() => {
+                    this.showNodeDetailToast('疗法', this.selectedNode!.name, this.selectedNode!.description || '');
+                  });
+                }
 
                 Column({ space: 4 }) {
                   Text('\uD83D\uDD0D')

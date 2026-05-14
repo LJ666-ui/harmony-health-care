@@ -43,6 +43,9 @@ public class Appointment {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date checkInTime;
 
+    @TableField("visit_type")
+    private Integer visitType;
+
     @TableField("create_time")
     private Date createTime;
 

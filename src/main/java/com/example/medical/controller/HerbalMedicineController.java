@@ -250,6 +250,26 @@ public class HerbalMedicineController {
     }
 
     /**
+     * 14. 根据药材名称精确查询详情（用于知识图谱跳转）
+     */
+    @GetMapping("/info/by-name")
+    public Result<HerbalMedicine> getByName(@RequestParam String name) {
+        try {
+            QueryWrapper<HerbalMedicine> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("is_deleted", 0);
+            queryWrapper.eq("name", name);
+            queryWrapper.last("LIMIT 1");
+            HerbalMedicine medicine = herbalMedicineService.getOne(queryWrapper);
+            if (medicine == null) {
+                return Result.error("未找到药材：" + name);
+            }
+            return Result.success(medicine);
+        } catch (Exception e) {
+            return Result.error("查询失败：" + e.getMessage());
+        }
+    }
+
+    /**
      * 14. 收藏药材接口
      */
     @PostMapping("/{id}/collect")

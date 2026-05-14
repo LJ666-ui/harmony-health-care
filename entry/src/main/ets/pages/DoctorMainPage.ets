@@ -21,6 +21,7 @@ interface QuickAction {
   icon: string;
   title: string;
   color: string;
+  bgColor?: string;
   route: string;
   badge?: number;
   group?: string;
@@ -45,14 +46,14 @@ struct DoctorMainPage {
   private pollTimerId: number = -1;
 
   private quickActions: QuickAction[] = [
-    { id: 'patients', icon: '👥', title: '患者管理', color: '#1677FF', route: 'pages/DoctorPatientListPage', group: '核心业务' },
-    { id: 'medical_records', icon: '📋', title: '病历管理', color: '#52C41A', route: 'pages/DoctorMedicalRecordListPage', group: '核心业务' },
-    { id: 'prescriptions', icon: '💊', title: '处方管理', color: '#FA8C16', route: 'pages/DoctorPrescriptionListPage', group: '核心业务' },
-    { id: 'follow_up', icon: '🔔', title: '复诊管理', color: '#E74C3C', route: 'pages/DoctorFollowUpPage', group: '核心业务' },
-    { id: 'consultations', icon: '💬', title: '在线问诊', color: '#13C2C2', route: '', badge: 0, group: '沟通服务' },
-    { id: 'consultation_management', icon: '🏥', title: '会诊管理', color: '#52C41A', route: 'pages/ConsultationManagementPage', group: '协作交流' },
-    { id: 'notification', icon: '🔔', title: '通知中心', color: '#F5222D', route: '', group: '消息通知' },
-    { id: 'settings', icon: '⚙️', title: '系统设置', color: '#8C8C8C', route: '', group: '系统功能' }
+    { id: 'patients', icon: '👥', title: '患者管理', color: '#1677FF', bgColor: '#E6F4FF', route: 'pages/DoctorPatientListPage', group: '核心业务' },
+    { id: 'medical_records', icon: '📋', title: '病历管理', color: '#52C41A', bgColor: '#F6FFED', route: 'pages/DoctorMedicalRecordListPage', group: '核心业务' },
+    { id: 'prescriptions', icon: '💊', title: '处方管理', color: '#FA8C16', bgColor: '#FFF7E6', route: 'pages/DoctorPrescriptionListPage', group: '核心业务' },
+    { id: 'follow_up', icon: '🔔', title: '复诊管理', color: '#F5222D', bgColor: '#FFF1F0', route: 'pages/DoctorFollowUpPage', group: '核心业务' },
+    { id: 'consultations', icon: '💬', title: '在线问诊', color: '#13C2C2', bgColor: '#E6FFFB', route: '', badge: 0, group: '沟通服务' },
+    { id: 'consultation_management', icon: '🏥', title: '会诊管理', color: '#52C41A', bgColor: '#F6FFED', route: 'pages/ConsultationManagementPage', group: '协作交流' },
+    { id: 'notification', icon: '🔔', title: '通知中心', color: '#F5222D', bgColor: '#FFF1F0', route: '', group: '消息通知' },
+    { id: 'settings', icon: '⚙️', title: '系统设置', color: '#8C8C8C', bgColor: '#F5F5F5', route: '', group: '系统功能' }
   ];
 
   aboutToAppear(): void {
@@ -350,48 +351,64 @@ struct DoctorMainPage {
 
   build() {
     Column() {
-      Row() {
-        Text('👨‍⚕️')
-          .fontSize(24);
-        Text(this.doctorName)
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#FFFFFF')
-          .margin({ left: 8 });
+      Column() {
+        Row() {
+          Column({ space: 6 }) {
+            Text(`您好，${this.doctorName || '医生'}`)
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#FFFFFF');
 
-        // ✅ doctorInfo 现在永远不为 null，直接使用
-        if (DoctorInfoHelper.getDisplayTitle(this.doctorInfo)) {
-          Text(DoctorInfoHelper.getDisplayTitle(this.doctorInfo))
-            .fontSize(13)
-            .fontColor('#FFFFFFCC')
-            .margin({ left: 8 });
-        } else {
-          Text('医生工作台')
-            .fontSize(13)
-            .fontColor('#FFFFFFCC')
-            .margin({ left: 8 });
+            if (DoctorInfoHelper.getDisplayTitle(this.doctorInfo)) {
+              Text(DoctorInfoHelper.getDisplayTitle(this.doctorInfo))
+                .fontSize(14)
+                .fontColor('#FFFFFFCC');
+            } else {
+              Text('医生工作台')
+                .fontSize(14)
+                .fontColor('#FFFFFFCC');
+            }
+          }
+          .alignItems(HorizontalAlign.Start)
+
+          Blank()
+
+          Column({ space: 8 }) {
+            Text('退出登录')
+              .fontSize(13)
+              .fontColor('#1677FF')
+              .fontWeight(FontWeight.Medium)
+              .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+              .backgroundColor('#FFFFFF')
+              .borderRadius(20)
+              .onClick(() => {
+                const settings: SettingsUtil = SettingsUtil.getInstance();
+                settings.clearAllLoginData().then(() => {
+                  router.replaceUrl({ url: 'pages/Login' });
+                }).catch(() => {
+                  router.replaceUrl({ url: 'pages/Login' });
+                });
+              });
+          }
         }
-        Blank();
-        Text('退出')
-          .fontSize(14)
-          .fontColor('#FFFFFFCC')
-          .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-          .borderRadius(14)
-          .backgroundColor('#FFFFFF22')
-          .onClick(() => {
-            const settings: SettingsUtil = SettingsUtil.getInstance();
-            settings.clearAllLoginData().then(() => {
-              router.replaceUrl({ url: 'pages/Login' });
-            }).catch(() => {
-              router.replaceUrl({ url: 'pages/Login' });
-            });
-          });
+        .width('100%')
+        .padding(20)
+
+        Row({ space: 12 }) {
+          this.buildStatCard('今日患者', '28', '人')
+          this.buildStatCard('待处理', '5', '项')
+          this.buildStatCard('已完成', '23', '项')
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 8 })
       }
       .width('100%')
-      .height(56)
-      .padding({ left: 16, right: 16 })
-      .alignItems(VerticalAlign.Center)
-      .linearGradient({ angle: 135, colors: [['#1677FF', 0], ['#0958D9', 1]] });
+      .linearGradient({
+        angle: 135,
+        colors: [['#1677FF', 0], ['#0958D9', 0.5], ['#003A8C', 1]],
+        direction: GradientDirection.RightBottom
+      })
+      .borderRadius({ bottomLeft: 24, bottomRight: 24 })
 
       Tabs({ index: this.currentTab }) {
         TabContent() {
@@ -423,6 +440,7 @@ struct DoctorMainPage {
       .width('100%')
       .layoutWeight(1)
       .barMode(BarMode.Fixed)
+      .barBackgroundColor('#FFFFFF')
       .onChange((index: number) => {
         this.currentTab = index;
       });
@@ -433,94 +451,77 @@ struct DoctorMainPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F7FA');
+    .backgroundColor('#F5F7FA')
+  }
+
+  @Builder buildStatCard(title: string, value: string, unit: string): void {
+    Column({ space: 6 }) {
+      Text(value)
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#FFFFFF')
+
+      Text(`${title}${unit}`)
+        .fontSize(12)
+        .fontColor('#FFFFFFAA')
+    }
+    .layoutWeight(1)
+    .padding({ top: 12, bottom: 12 })
+    .backgroundColor('#FFFFFF15')
+    .borderRadius(12)
+    .alignItems(HorizontalAlign.Center)
   }
 
   @Builder
   buildHomePage() {
     Scroll() {
-      Column({ space: 8 }) {
-        Row() {
-          Column({ space: 6 }) {
-            Text(`您好，${this.doctorName || '医生'} ${this.doctorInfo.title || ''}`)
-              .fontSize(20)
+      Column({ space: 16 }) {
+        Column({ space: 0 }) {
+          Row() {
+            Text('医生信息')
+              .fontSize(18)
               .fontWeight(FontWeight.Bold)
-              .fontColor('#1677FF');
-            Text(new Date().getHours() < 12 ? '上午好，祝您工作愉快！' : new Date().getHours() < 18 ? '下午好，请注意休息！' : '晚上好，辛苦了！')
+              .fontColor('#262626')
+
+            Blank()
+
+            Text('编辑资料')
               .fontSize(13)
-              .fontColor('#666666');
-          }
-          .alignItems(HorizontalAlign.Start);
-
-          Blank();
-
-          Text('👨‍⚕️')
-            .fontSize(40);
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-        .backgroundColor('#FFFFFF')
-        .borderRadius(16)
-        .shadow({ radius: 6, color: '#00000008', offsetX: 0, offsetY: 2 });
-
-        // ✅ 医生信息卡片 - doctorInfo 现在永远不为 null
-        Row({ space: 12 }) {
-            Column({ space: 4 }) {
-              Text(DoctorInfoHelper.getDisplayHospital(this.doctorInfo) || '未填写')
-                .fontSize(13)
-                .fontWeight(FontWeight.Medium)
-                .fontColor('#333333');
-              Text('所属医院')
-                .fontSize(11)
-                .fontColor('#999999');
-            }
-            .layoutWeight(1)
-            .padding(12)
-            .borderRadius(10)
-            .backgroundColor('#FFFFFF')
-            .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
-
-            Column({ space: 4 }) {
-              Text(this.doctorInfo.department || '未填写')
-                .fontSize(13)
-                .fontWeight(FontWeight.Medium)
-                .fontColor('#333333');
-              Text('科室')
-                .fontSize(11)
-                .fontColor('#999999');
-            }
-            .layoutWeight(1)
-            .padding(12)
-            .borderRadius(10)
-            .backgroundColor('#FFFFFF')
-            .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
-
-            Column({ space: 4 }) {
-              Text(this.doctorInfo.title || '未填写')
-                .fontSize(13)
-                .fontWeight(FontWeight.Medium)
-                .fontColor('#333333');
-              Text('职称')
-                .fontSize(11)
-                .fontColor('#999999');
-            }
-            .layoutWeight(1)
-            .padding(12)
-            .borderRadius(10)
-            .backgroundColor('#FFFFFF')
-            .shadow({ radius: 4, color: '#00000008', offsetX: 0, offsetY: 2 });
+              .fontColor('#1677FF')
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/DoctorProfilePage' });
+              })
           }
           .width('100%')
-          .padding({ left: 16, right: 16, top: 8, bottom: 4 });
-        
-        // 快捷功能入口
+          .padding({ bottom: 12 })
+
+          Row({ space: 12 }) {
+            this.buildInfoItem('🏥', DoctorInfoHelper.getDisplayHospital(this.doctorInfo) || '未填写', '所属医院', '#1677FF')
+            this.buildInfoItem('🩺', this.doctorInfo.department || '未填写', '科室', '#52C41A')
+            this.buildInfoItem('⭐', this.doctorInfo.title || '未填写', '职称', '#FA8C16')
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(16)
+        .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 2 })
+
         Column({ space: 16 }) {
-          Text('快捷功能')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#1F2937')
-            .width('100%')
-            .padding({ left: 16, right: 16 });
+          Row() {
+            Text('快捷功能')
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#262626')
+
+            Blank()
+
+            Text('查看全部')
+              .fontSize(13)
+              .fontColor('#999999')
+          }
+          .width('100%')
 
           Grid() {
             ForEach(this.quickActions, (action: QuickAction) => {
@@ -533,24 +534,24 @@ struct DoctorMainPage {
                     Text(action.title)
                       .fontSize(12)
                       .fontWeight(FontWeight.Medium)
-                      .fontColor('#374151')
+                      .fontColor('#333333')
                       .textAlign(TextAlign.Center)
                       .maxLines(1)
                       .textOverflow({ overflow: TextOverflow.Ellipsis });
                   }
                   .width('100%')
                   .padding({ top: 16, bottom: 12 })
-                  .backgroundColor('#FFFFFF')
+                  .backgroundColor(action.bgColor || '#F7F8FA')
                   .borderRadius(16)
                   .shadow({
                     radius: 8,
-                    color: '#0000000D',
+                    color: '#00000008',
                     offsetX: 0,
                     offsetY: 4
                   })
                   .border({
                     width: action.id === 'consultations' ? 2 : 0,
-                    color: action.id === 'consultations' ? '#13C2C2' : '#FFFFFF'
+                    color: action.id === 'consultations' ? '#13C2C2' : 'transparent'
                   });
 
                   if (action.badge !== undefined && action.badge !== null && action.badge > 0) {
@@ -574,17 +575,44 @@ struct DoctorMainPage {
           .rowsGap(16)
           .columnsGap(12)
           .width('100%')
-          .padding({ left: 16, right: 16 });
         }
-        .width('100%');
+        .width('100%')
+        .padding(16)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(16)
+        .shadow({ radius: 8, color: '#00000008', offsetX: 0, offsetY: 2 })
       }
       .width('100%')
-      .alignItems(HorizontalAlign.Start);
+      .alignItems(HorizontalAlign.Start)
+      .padding({ left: 16, right: 16, top: 16, bottom: 16 });
     }
     .width('100%')
     .layoutWeight(1)
     .scrollBar(BarState.Off)
     .padding({ bottom: 16 });
+  }
+
+  @Builder buildInfoItem(icon: string, value: string, label: string, color: string): void {
+    Column({ space: 8 }) {
+      Text(icon)
+        .fontSize(24)
+
+      Text(value)
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#262626')
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+      Text(label)
+        .fontSize(11)
+        .fontColor('#8C8C8C')
+    }
+    .layoutWeight(1)
+    .padding(12)
+    .backgroundColor(color + '0A')
+    .borderRadius(12)
+    .alignItems(HorizontalAlign.Center)
   }
 
   @Builder

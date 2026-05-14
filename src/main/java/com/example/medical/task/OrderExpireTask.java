@@ -12,7 +12,6 @@ import com.example.medical.service.RedisStockInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -24,7 +23,6 @@ import java.util.List;
 import java.util.Set;
 
 @Component
-@Profile("redis")
 public class OrderExpireTask {
 
     private static final Logger log = LoggerFactory.getLogger(OrderExpireTask.class);
@@ -38,10 +36,10 @@ public class OrderExpireTask {
     @Autowired
     private DoctorScheduleService doctorScheduleService;
 
-    @Autowired(required = false)
+    @Autowired
     private RedisStockInterface redisStockService;
 
-    @Autowired(required = false)
+    @Autowired
     private StringRedisTemplate redisTemplate;
 
     @Scheduled(fixedRate = 60000)
@@ -80,13 +78,11 @@ public class OrderExpireTask {
                     record.getOutTradeNo(), record.getUserId(), record.getDoctorId());
 
             String payOrderKey = "pay:order:" + record.getOutTradeNo();
-            if (redisTemplate != null) {
-                Boolean hasKey = redisTemplate.hasKey(payOrderKey);
+            Boolean hasKey = redisTemplate.hasKey(payOrderKey);
 
-                if (hasKey != null && hasKey) {
-                    redisTemplate.delete(payOrderKey);
-                    log.info("[订单过期处理] Redis订单key已删除: {}", payOrderKey);
-                }
+            if (hasKey != null && hasKey) {
+                redisTemplate.delete(payOrderKey);
+                log.info("[订单过期处理] Redis订单key已删除: {}", payOrderKey);
             }
 
             LambdaQueryWrapper<Appointment> aptWrapper = new LambdaQueryWrapper<>();
@@ -107,21 +103,16 @@ public class OrderExpireTask {
                     log.info("[订单过期处理] 预约记录已删除 appointmentId={}", appointment.getId());
 
                     try {
-                        if (redisStockService != null) {
-                            boolean stockReturned = redisStockService.backStock(
-                                record.getDoctorId(),
-                                appointment.getScheduleDate(),
-                                record.getSchedulePeriod(),
-                                record.getUserId()
-                            );
+                        boolean stockReturned = redisStockService.backStock(
+                            record.getDoctorId(),
+                            appointment.getScheduleDate(),
+                            record.getSchedulePeriod(),
+                            record.getUserId()
+                        );
 
-                            if (stockReturned) {
-                                log.info("[订单过期处理] Redis库存已归还 ✓");
-                            } else {
-                                forceReturnStock(record, appointment);
-                            }
+                        if (stockReturned) {
+                            log.info("[订单过期处理] Redis库存已归还 ✓");
                         } else {
-                            log.info("[订单过期处理] Redis未启用，跳过库存归还");
                             forceReturnStock(record, appointment);
                         }
                     } catch (Exception redisEx) {
@@ -136,7 +127,7 @@ public class OrderExpireTask {
                                        .eq(DoctorSchedule::getSchedulePeriod, record.getSchedulePeriod())
                                        .ge(DoctorSchedule::getCurrentCount, 1)
                                        .setSql("current_count = current_count - 1");
-                        
+
                         doctorScheduleService.update(scheduleWrapper);
                         log.info("[订单过期处理] doctor_schedule已更新 ✓");
                     } catch (Exception scheduleEx) {
@@ -161,11 +152,6 @@ public class OrderExpireTask {
 
     private void forceReturnStock(PaymentRecord record, Appointment appointment) {
         try {
-            if (redisTemplate == null) {
-                log.info("[订单过期处理] Redis未启用，跳过强制库存归还");
-                return;
-            }
-
             SimpleDateFormat dateFmt = new SimpleDateFormat("yyyyMMdd");
             String dateStr = dateFmt.format(appointment.getScheduleDate());
 

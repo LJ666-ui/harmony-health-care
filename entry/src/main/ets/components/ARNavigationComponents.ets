@@ -147,6 +147,7 @@ export struct DestinationCard {
   @Prop isFavorite: boolean = false;
   private onCardClick: () => void = () => {};
   private onFavoriteToggle: () => void = () => {};
+  private onNavigateClick: () => void = () => {};  // 新增：导航按钮回调
   
   build() {
     if (this.destination !== null) {
@@ -154,63 +155,116 @@ export struct DestinationCard {
         // 左侧图标
         Column() {
           Text(this.getCategoryIcon(this.destination.category))
-            .fontSize(32)
+            .fontSize(28)
+          
+          Text(`${this.destination.floor}F`)
+            .fontSize(11)
+            .fontColor('#666666')
+            .fontWeight(FontWeight.Medium)
+            .margin({ top: 2 })
         }
-        .width(60)
-        .height(60)
+        .width(56)
+        .height(56)
         .justifyContent(FlexAlign.Center)
-        .backgroundColor('#F0F0F0')
-        .borderRadius(8)
+        .backgroundColor('#F0F5FF')
+        .borderRadius(12)
         
         // 中间信息
         Column() {
-          Text(this.destination.name)
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          
+          // 名称行
+          Row() {
+            Text(this.destination.name)
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .fontColor('#333333')
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .layoutWeight(1)
+
+            if (this.destination.isAccessible) {
+              Text('♿')
+                .fontSize(14)
+                .margin({ left: 4 })
+            }
+          }
+          .width('100%')
+
+          // 位置行
           Text(`${this.destination.building} ${this.destination.floor}层`)
             .fontSize(12)
-            .fontColor('#666666')
-            .margin({ top: 4 })
+            .fontColor('#888888')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .width('100%')
+            .margin({ top: 3 })
           
+          // 描述行
           if (this.destination.description !== '') {
             Text(this.destination.description)
               .fontSize(12)
               .fontColor('#999999')
-              .margin({ top: 4 })
-              .maxLines(2)
+              .margin({ top: 3 })
+              .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
           }
         }
         .layoutWeight(1)
         .alignItems(HorizontalAlign.Start)
-        .padding({ left: 12, right: 12 })
+        .padding({ left: 12, right: 8 })
         
-        // 右侧收藏按钮
+        // 右侧操作区
         Column() {
-          Text(this.isFavorite ? '★' : '☆')
+          // 收藏按钮
+          Text(this.isFavorite ? '⭐' : '☆')
             .fontSize(24)
             .fontColor(this.isFavorite ? '#FFB800' : '#CCCCCC')
+            .onClick(() => {
+              this.onFavoriteToggle();
+            })
+
+          // 导航按钮 - 新增！
+          Button('导航')
+            .backgroundColor('#52C41A')
+            .fontSize(12)
+            .height(32)
+            .width(60)
+            .borderRadius(16)
+            .margin({ top: 10 })
+            .onClick(() => {
+              console.log(`[DestinationCard] 点击导航按钮: ${this.destination?.name}`);
+              this.onNavigateClick();
+            })
         }
-        .width(40)
-        .height(40)
-        .justifyContent(FlexAlign.Center)
-        .onClick(() => this.onFavoriteToggle())
+        .alignItems(HorizontalAlign.Center)
+        .justifyContent(FlexAlign.Start)
+        .width(70)
       }
       .width('100%')
       .padding(12)
       .backgroundColor('#FFFFFF')
-      .borderRadius(8)
+      .borderRadius(12)
       .shadow({
-        radius: 4,
-        color: '#1A000000',
+        radius: 2,
+        color: '#00000008',
         offsetX: 0,
-        offsetY: 2
+        offsetY: 1
       })
-      .onClick(() => this.onCardClick())
+      .onClick(() => {
+        console.log(`[DestinationCard] 点击卡片: ${this.destination?.name}`);
+        this.onCardClick();
+      })
+      // 添加点击效果
+      .stateStyles({
+        normal: {
+          .scale({ x: 1.0, y: 1.0 })
+          .backgroundColor('#FFFFFF')
+        },
+        pressed: {
+          .scale({ x: 0.98, y: 0.98 })
+          .backgroundColor('#F5F5F5')
+        }
+      })
     }
   }
   

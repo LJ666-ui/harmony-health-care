@@ -1,237 +1,207 @@
 /**
- * 健康数据查询Skill
- * 触发词: "查血压"、"查血糖"、"健康数据"、"最近体检"
+ * S1 - 健康数据查询技能
+ * 
+ * 属性 | 属性值
+ * Skill ID | 医疗.query.health
+ * Skill 名称 | 健康数据查询
+ * 触发描述 | "查血压"、"血糖多少"、"心率情况"、"健康报告"、"血氧率"
+ * 支持指标 | 血压、血糖、心率、体重、血氧、体温、步数
+ * 输出形式 | 图表 + 报告 + 引导补充详情
+ * 所需权限 | ohos.permission.READ_HEALTH_DATA
+ * 预计耗时 | ~500ms
+ * 触发动作 | 调用 AddHealthRecord 实现页面引导用户录入
  */
 
-import {
-  XiaoyiSkillDefinition,
-  XiaoyiSkillRequest,
-  XiaoyiSkillResponse
-} from '../types/XiaoyiTypes';
-import { HealthDataManager } from '../../manager/HealthDataManager';
+import { HealthDataRecord, HealthDataType } from '../models/HealthDataModel';
+import { healthDataStore } from '../stores/HealthDataStore';
+
+export interface HealthQueryResult {
+  dataType: HealthDataType;
+  value: number | string;
+  unit: string;
+  timestamp: Date;
+  trend: 'normal' | 'high' | 'low' | 'critical';
+  suggestion?: string;
+}
 
 export class HealthQuerySkill {
+  private static readonly SKILL_ID = '医疗.query.health';
+  
+  /**
+   * 检查是否匹配该技能
+   */
+  static match(query: string): boolean {
+    const triggers = [
+      '查血压', '血压多少', '血压情况',
+      '血糖', '血糖多少', '血糖值',
+      '心率', '心跳', '脉搏',
+      '体重', '体重多少',
+      '血氧', '血氧率', '血氧饱和度',
+      '体温', '发烧', '温度',
+      '步数', '运动量', '走了多少',
+      '健康报告', '健康数据', '身体状况'
+    ];
+    
+    return triggers.some(trigger => query.includes(trigger));
+  }
 
-  getDefinition(): XiaoyiSkillDefinition {
+  /**
+   * 执行健康数据查询
+   */
+  static async execute(query: string): Promise<HealthQueryResult> {
+    const dataType = this.extractDataType(query);
+    const latestRecord = await healthDataStore.getLatest(dataType);
+    
+    if (!latestRecord) {
+      return {
+        dataType,
+        value: '暂无数据',
+        unit: '',
+        timestamp: new Date(),
+        trend: 'normal',
+        suggestion: `暂无${this.getDataTypeName(dataType)}数据，建议先录入数据`
+      };
+    }
+    
+    const analysis = this.analyzeValue(dataType, latestRecord.value);
+    
     return {
-      config: {
-        skillId: 'medical.query.health',
-        skillName: '健康数据查询',
-        skillDescription: '查询用户的最新健康指标数据，包括血压、血糖、心率等',
-        version: '1.0.0',
-        author: '星云医疗团队'
-      },
-      intentPatterns: [
-        {
-          pattern: '查.*血压|血压.*多少|血压.*情况',
-          confidence: 0.95,
-          parameters: ['metric'],
-          examples: ['小艺，帮我查一下血压', '我的血压是多少', '看看最近血压情况']
-        },
-        {
-          pattern: '查.*血糖|血糖.*多少|血糖.*情况',
-          confidence: 0.95,
-          parameters: ['metric'],
-          examples: ['小艺，查一下血糖', '血糖正常吗', '最近血糖怎么样']
-        },
-        {
-          pattern: '查.*心率|心率.*多少|心跳.*情况',
-          confidence: 0.9,
-          parameters: ['metric'],
-          examples: ['帮我查心率', '心跳多少', '最近心率情况']
-        },
-        {
-          pattern: '健康.*数据|体检.*结果|身体.*指标',
-          confidence: 0.85,
-          parameters: [],
-          examples: ['查看健康数据', '体检结果', '身体指标']
-        },
-        {
-          pattern: '最近.*体重|体重.*多少|体重.*变化',
-          confidence: 0.88,
-          parameters: ['metric'],
-          examples: ['最近体重', '体重多少', '体重有变化吗']
-        }
-      ],
-      handler: 'handleHealthQuery',
-      needAuth: true,
-      needPermission: ['ohos.permission.READ_HEALTH_DATA'],
-      responseType: 'voice+ui',
-      fallbackAction: 'openHealthPage',
-      estimatedTime: 500
+      dataType,
+      value: latestRecord.value,
+      unit: latestRecord.unit,
+      timestamp: latestRecord.timestamp,
+      trend: analysis.trend,
+      suggestion: analysis.suggestion
     };
   }
 
-  async handle(request: XiaoyiSkillRequest): Promise<XiaoyiSkillResponse> {
-    const startTime = Date.now();
+  /**
+   * 从查询语句中提取数据类型
+   */
+  private static extractDataType(query: string): HealthDataType {
+    if (query.includes('血压')) return 'blood_pressure';
+    if (query.includes('血糖')) return 'blood_glucose';
+    if (query.includes('心率') || query.includes('心跳') || query.includes('脉搏')) return 'heart_rate';
+    if (query.includes('体重')) return 'weight';
+    if (query.includes('血氧')) return 'blood_oxygen';
+    if (query.includes('体温') || query.includes('发烧') || query.includes('温度')) return 'temperature';
+    if (query.includes('步数') || query.includes('运动')) return 'steps';
+    return 'health_report';
+  }
 
-    try {
-      console.info(`[HealthQuerySkill] 处理请求: query=${request.query}`);
-
-      // 从参数或查询中提取要查询的指标类型
-      const metric = this.extractMetricType(request.query, request.parameters);
-      console.info(`[HealthQuerySkill] 查询指标类型: ${metric}`);
-
-      // 调用数据管理器获取最新健康数据
-      const healthData = await this.fetchLatestHealthData(request.userId, metric);
-
-      if (!healthData || Object.keys(healthData).length === 0) {
-        return {
-          skillId: request.skillId,
-          success: false,
-          voiceResponse: '抱歉，暂时没有找到您的健康数据。建议您先录入一些健康指标。',
-          uiResponse: {
-            pageRoute: 'pages/AddHealthRecord',
-            pageTitle: '添加健康记录',
-            data: { fromXiaoyi: true },
-            displayMode: 'fullScreen'
-          },
-          action: {
-            type: 'navigate',
-            target: 'pages/AddHealthRecord'
-          },
-          followUpSuggestions: ['录入血压', '录入血糖', '录入体重'],
-          processingTime: Date.now() - startTime
-        };
-      }
-
-      // 生成语音回复
-      const voiceResponse = this.generateVoiceResponse(healthData, metric);
-
-      // 构建UI响应数据
-      const uiResponse = {
-        pageRoute: 'pages/HealthRecordDetail',
-        pageTitle: '健康数据详情',
-        data: {
-          healthData,
-          metric,
-          queryTime: new Date().toISOString()
-        },
-        displayMode: 'card' as const
-      };
-
+  /**
+   * 分析数值是否正常
+   */
+  private static analyzeValue(type: HealthDataType, value: number): { trend: 'normal' | 'high' | 'low' | 'critical'; suggestion: string } {
+    const ranges = {
+      blood_pressure: { low: 90, high: 140, critical_low: 60, critical_high: 180 },
+      blood_glucose: { low: 3.9, high: 6.1, critical_low: 2.8, critical_high: 16.7 },
+      heart_rate: { low: 60, high: 100, critical_low: 40, critical_high: 150 },
+      blood_oxygen: { low: 95, high: 100, critical_low: 90, critical_high: 100 },
+      temperature: { low: 36.0, high: 37.3, critical_low: 35.0, critical_high: 39.0 }
+    };
+    
+    const range = ranges[type];
+    if (!range) return { trend: 'normal', suggestion: '数据正常' };
+    
+    if (value <= range.critical_low || value >= range.critical_high) {
       return {
-        skillId: request.skillId,
-        success: true,
-        voiceResponse,
-        uiResponse,
-        action: {
-          type: 'navigate',
-          target: 'pages/HealthRecordDetail',
-          params: { healthData }
-        },
-        followUpSuggestions: this.generateFollowUpSuggestions(healthData),
-        processingTime: Date.now() - startTime
+        trend: 'critical',
+        suggestion: `⚠️ 数值异常！${type === 'temperature' ? '请立即就医或采取降温措施' : '建议尽快就医检查'}`
       };
-    } catch (error) {
-      console.error('[HealthQuerySkill] 处理失败:', error);
+    }
+    
+    if (value < range.low) {
       return {
-        skillId: request.skillId,
-        success: false,
-        voiceResponse: '查询健康数据时出现错误，请稍后重试。',
-        processingTime: Date.now() - startTime,
-        errorCode: 'QUERY_ERROR',
-        errorMessage: error.message
+        trend: 'low',
+        suggestion: `数值偏低，建议${this.getLowSuggestion(type)}`
       };
     }
-  }
-
-  private extractMetricType(query: string, parameters: Record<string, string>): string {
-    if (parameters.metric) return parameters.metric;
-
-    const lowerQuery = query.toLowerCase();
-    if (lowerQuery.includes('血压')) return 'bloodPressure';
-    if (lowerQuery.includes('血糖')) return 'bloodSugar';
-    if (lowerQuery.includes('心率') || lowerQuery.includes('心跳')) return 'heartRate';
-    if (lowerQuery.includes('体重')) return 'weight';
-    if (lowerQuery.includes('血氧')) return 'bloodOxygen';
-    if (lowerQuery.includes('体温')) return 'temperature';
-    if (lowerQuery.includes('步数')) return 'steps';
-
-    return 'all'; // 查询所有指标
-  }
-
-  private async fetchLatestHealthData(userId: string, metric: string): Promise<any> {
-    try {
-      // 这里应该调用实际的API获取数据
-      // 目前返回模拟数据用于演示
-      const mockData: any = {
-        bloodPressure: { systolic: 125, diastolic: 82, unit: 'mmHg', time: '2026-05-11 08:30' },
-        bloodSugar: { value: 5.8, unit: 'mmol/L', time: '2026-05-11 07:00', type: '空腹' },
-        heartRate: { value: 72, unit: 'bpm', time: '2026-05-11 08:35' },
-        weight: { value: 68.5, unit: 'kg', time: '2026-05-11 08:00' },
-        bloodOxygen: { value: 98, unit: '%', time: '2026-05-11 08:35' },
-        steps: { value: 3250, unit: '步', time: '2026-05-11 08:40' }
+    
+    if (value > range.high) {
+      return {
+        trend: 'high',
+        suggestion: `数值偏高，建议${this.getHighSuggestion(type)}`
       };
-
-      if (metric === 'all') {
-        return mockData;
-      } else {
-        return { [metric]: mockData[metric] };
-      }
-    } catch (error) {
-      console.error('[HealthQuerySkill] 获取健康数据失败:', error);
-      return null;
     }
+    
+    return { trend: 'normal', suggestion: '✅ 数据在正常范围内' };
   }
 
-  private generateVoiceResponse(healthData: any, metric: string): string {
-    let response = '';
-
-    if (metric === 'all') {
-      const bp = healthData.bloodPressure;
-      const bs = healthData.bloodSugar;
-      const hr = healthData.heartRate;
-      const wt = healthData.weight;
-
-      response = `您最新的健康数据如下：`;
-      response += `血压${bp.systolic}比${bp.diastolic}毫米汞柱，`;
-      response += `空腹血糖${bs.value}毫摩尔每升，`;
-      response += `心率${hr.value}次每分钟，`;
-      response += `体重${wt.value}公斤。`;
-
-      // 简单的健康状态评估
-      if (bp.systolic < 120 && bp.diastolic < 80) {
-        response += '您的血压在正常范围内。';
-      } else if (bp.systolic < 140 && bp.diastolic < 90) {
-        response += '您的血压略偏高，建议注意低盐饮食。';
-      } else {
-        response += '您的血压偏高，建议及时就医检查。';
-      }
-    } else {
-      switch (metric) {
-        case 'bloodPressure':
-          response = `您最新的血压是${healthData.bloodPressure.systolic}比${healthData.bloodPressure.diastolic}毫米汞柱，测量时间是今天早上八点半。`;
-          break;
-        case 'bloodSugar':
-          response = `您最新的空腹血糖是${healthData.bloodSugar.value}毫摩尔每升，在正常范围内。`;
-          break;
-        case 'heartRate':
-          response = `您当前的心率是${healthData.heartRate.value}次每分钟，心律齐，状态良好。`;
-          break;
-        case 'weight':
-          response = `您今天的体重是${healthData.weight.value}公斤。`;
-          break;
-        default:
-          response = `已为您查询到最新的${metric}数据。`;
-      }
-    }
-
-    return response;
+  private static getLowSuggestion(type: HealthDataType): string {
+    const suggestions = {
+      blood_pressure: '适当休息，避免剧烈运动',
+      blood_glucose: '补充适量糖分，监测血糖变化',
+      heart_rate: '保持平静，如有不适请就医',
+      blood_oxygen: '保持通风，深呼吸',
+      temperature: '注意保暖，多喝温水'
+    };
+    return suggestions[type] || '注意观察';
   }
 
-  private generateFollowUpSuggestions(healthData: any): string[] {
-    const suggestions: string[] = [];
+  private static getHighSuggestion(type: HealthDataType): string {
+    const suggestions = {
+      blood_pressure: '低盐饮食，按时服药，定期监测',
+      blood_glucose: '控制饮食，适量运动，遵医嘱用药',
+      heart_rate: '放松心情，避免刺激性饮料',
+      blood_oxygen: '检查测量方式，如持续偏低请就医',
+      temperature: '物理降温，多喝水，必要时服用退烧药'
+    };
+    return suggestions[type] || '注意观察';
+  }
 
-    if (healthData.bloodPressure?.systolic > 130) {
-      suggestions.push('查看高血压风险');
-    }
-    if (healthData.bloodSugar?.value > 6.1) {
-      suggestions.push('查看糖尿病风险');
-    }
-    suggestions.push('进行健康风险评估');
-    suggestions.push('录入新数据');
+  private static getDataTypeName(type: HealthDataType): string {
+    const names = {
+      blood_pressure: '血压',
+      blood_glucose: '血糖',
+      heart_rate: '心率',
+      weight: '体重',
+      blood_oxygen: '血氧',
+      temperature: '体温',
+      steps: '步数',
+      health_report: '健康报告'
+    };
+    return names[type] || type;
+  }
 
-    return suggestions.slice(0, 3);
+  /**
+   * 格式化输出结果
+   */
+  static formatResult(result: HealthQueryResult): string {
+    const typeName = this.getDataTypeName(result.dataType);
+    const timeStr = result.timestamp.toLocaleString('zh-CN');
+    
+    let output = `📊 **${typeName}查询结果**\n\n`;
+    output += `📌 当前值: ${result.value} ${result.unit}\n`;
+    output += `⏰ 记录时间: ${timeStr}\n`;
+    output += `📈 状态: ${this.getTrendEmoji(result.trend)} ${this.getTrendText(result.trend)}\n\n`;
+    
+    if (result.suggestion) {
+      output += `💡 建议: ${result.suggestion}\n\n`;
+    }
+    
+    output += `➕ 如需录入新数据，请点击"添加健康记录"`;
+    
+    return output;
+  }
+
+  private static getTrendEmoji(trend: string): string {
+    const emojis = {
+      normal: '✅',
+      high: '🔴',
+      low: '🟡',
+      critical: '⚠️'
+    };
+    return emojis[trend] || '❓';
+  }
+
+  private static getTrendText(trend: string): string {
+    const texts = {
+      normal: '正常',
+      high: '偏高',
+      low: '偏低',
+      critical: '异常'
+    };
+    return texts[trend] || '未知';
   }
 }

@@ -459,15 +459,15 @@ struct DoctorMainPage {
       Text(value)
         .fontSize(24)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#FFFFFF')
+        .fontColor('#1677FF')
 
       Text(`${title}${unit}`)
         .fontSize(12)
-        .fontColor('#FFFFFFAA')
+        .fontColor('#666666')
     }
     .layoutWeight(1)
     .padding({ top: 12, bottom: 12 })
-    .backgroundColor('#FFFFFF15')
+    .backgroundColor('#E8F0FE')
     .borderRadius(12)
     .alignItems(HorizontalAlign.Center)
   }

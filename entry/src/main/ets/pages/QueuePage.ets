@@ -62,6 +62,8 @@ struct QueuePage {
   @State onlinePeriodText: string = '';
   @State onlineCountdown: number = 0;
   @State onlineAutoStarting: boolean = false;
+  @State offlineCountdown: number = 0;
+  @State showGoToClinic: boolean = false;
 
   private scroller: Scroller = new Scroller();
   private refreshTimer: number = -1;
@@ -320,7 +322,7 @@ struct QueuePage {
 
       const response: BaseResponse<Object> = await HttpUtil.request<Object>(
         HttpMethod.PUT,
-        ApiConstants.APPOINTMENT_CHECK_IN + item.appointmentId.toString() + '/check-in',
+        ApiConstants.APPOINTMENT_CHECK_IN + '/' + item.appointmentId.toString() + '/check-in',
         checkInData as Object,
         undefined,
         { showLoading: true, loadingText: '正在报到...' }
@@ -389,6 +391,10 @@ struct QueuePage {
           this.startOnlineCountdown();
         } else if (this.isOnlineMode && this.myRealtimePosition > 1) {
           this.stopOnlineCountdown();
+        } else if (!this.isOnlineMode && this.myRealtimePosition === 1 && !this.showGoToClinic) {
+          this.startOfflineCountdown();
+        } else if (!this.isOnlineMode && this.myRealtimePosition > 1) {
+          this.stopOfflineCountdown();
         }
       }
     } catch (error) {
@@ -418,6 +424,26 @@ struct QueuePage {
     }
     this.onlineCountdown = 0;
     this.onlineAutoStarting = false;
+  }
+
+  startOfflineCountdown(): void {
+    this.stopOfflineCountdown();
+    this.offlineCountdown = 10;
+    this.countdownTimer = setInterval(() => {
+      this.offlineCountdown--;
+      if (this.offlineCountdown <= 0) {
+        this.stopOfflineCountdown();
+        this.showGoToClinic = true;
+      }
+    }, 1000);
+  }
+
+  stopOfflineCountdown(): void {
+    if (this.countdownTimer !== -1) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = -1;
+    }
+    this.offlineCountdown = 0;
   }
 
   enterOnlineChat(): void {
@@ -472,7 +498,7 @@ struct QueuePage {
 
       const response: BaseResponse<Object> = await HttpUtil.request<Object>(
         HttpMethod.PUT,
-        ApiConstants.APPOINTMENT_COMPLETE + item.appointmentId.toString() + '/complete',
+        ApiConstants.APPOINTMENT_COMPLETE + '/' + item.appointmentId.toString() + '/complete',
         completeData as Object,
         undefined,
         { showLoading: true, loadingText: '正在确认就诊...' }
@@ -1222,6 +1248,87 @@ struct QueuePage {
           .backgroundColor('#E6F7FF')
           .borderRadius(12)
           .border({ width: 1.5, color: '#91D5FF', style: BorderStyle.Dashed })
+          .margin({ bottom: 12 })
+        }
+
+        if (!this.isOnlineMode && this.myRealtimePosition === 1) {
+          Column({ space: 10 }) {
+            if (this.showGoToClinic) {
+              Row({ space: 8 }) {
+                Text('🏥')
+                  .fontSize(24)
+                Text('请前往就诊室')
+                  .fontSize(this.isElderMode ? 22 : 18)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#52C41A')
+              }
+              .alignItems(VerticalAlign.Center)
+
+              Text('您已排在第一位，请尽快前往诊室等候就诊')
+                .fontSize(this.isElderMode ? 15 : 13)
+                .fontColor('#666666')
+
+              Button('我知道了')
+                .type(ButtonType.Normal)
+                .height(36)
+                .fontSize(this.isElderMode ? 15 : 13)
+                .fontColor('#FFFFFF')
+                .backgroundColor('#52C41A')
+                .borderRadius(18)
+                .onClick(() => { this.showGoToClinic = false; })
+                .margin({ top: 8 })
+            } else if (this.offlineCountdown > 0) {
+              Row({ space: 8 }) {
+                Text('🎯')
+                  .fontSize(24)
+                Text('即将轮到您就诊')
+                  .fontSize(this.isElderMode ? 20 : 17)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FA8C16')
+              }
+              .alignItems(VerticalAlign.Center)
+
+              Text(this.offlineCountdown + ' 秒后将提示您前往就诊室')
+                .fontSize(this.isElderMode ? 16 : 14)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#FA8C16')
+                .margin({ top: 4 })
+
+              Row() {
+                Progress({ value: (10 - this.offlineCountdown), total: 10, type: ProgressType.Ring })
+                  .width(44)
+                  .height(44)
+                  .color('#FA8C16')
+                  .backgroundColor('#FFF7E6')
+
+                Column({ space: 2 }) {
+                  Text(this.offlineCountdown.toString())
+                    .fontSize(this.isElderMode ? 26 : 22)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#FA8C16')
+                  Text('秒')
+                    .fontSize(this.isElderMode ? 12 : 10)
+                    .fontColor('#999999')
+                }
+              }
+              .alignItems(VerticalAlign.Center)
+              .margin({ top: 8 })
+            } else {
+              Text('您已排在第一位，前方无人等待')
+                .fontSize(this.isElderMode ? 15 : 13)
+                .fontColor('#666666')
+                .textAlign(TextAlign.Center)
+            }
+          }
+          .width('100%')
+          .padding({ top: 16, bottom: 16 })
+          .backgroundColor(this.showGoToClinic ? '#F6FFED' : '#FFF7E6')
+          .borderRadius(12)
+          .border({
+            width: 1.5,
+            color: this.showGoToClinic ? '#B7EB8F' : '#FFD591',
+            style: BorderStyle.Dashed
+          })
           .margin({ bottom: 12 })
         }
 

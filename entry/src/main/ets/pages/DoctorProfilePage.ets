@@ -1,11 +1,20 @@
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
-import { HttpUtil } from '../common/utils/HttpUtil';
+import { HttpUtil, BaseResponse, RequestOptions } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import promptAction from '@ohos.promptAction';
 
 const TAG: string = 'DoctorProfilePage';
+
+interface DoctorUpdateData {
+  realName?: string;
+  phone?: string;
+  department?: string;
+  title?: string;
+  specialty?: string;
+  description?: string;
+}
 
 @Entry
 @Component
@@ -16,6 +25,12 @@ struct DoctorProfilePage {
   @State isLoading: boolean = false;
 
   private tempDoctorInfo: DoctorInfo = new DoctorInfo();
+  private tempRealName: string = '';
+  private tempPhone: string = '';
+  private tempDepartment: string = '';
+  private tempTitle: string = '';
+  private tempSpecialty: string = '';
+  private tempDescription: string = '';
 
   aboutToAppear(): void {
     this.loadDoctorInfo();
@@ -30,6 +45,12 @@ struct DoctorProfilePage {
 
   private startEditing(): void {
     this.tempDoctorInfo = JSON.parse(JSON.stringify(this.doctorInfo));
+    this.tempRealName = this.tempDoctorInfo.realName;
+    this.tempPhone = this.tempDoctorInfo.phone;
+    this.tempDepartment = this.tempDoctorInfo.department;
+    this.tempTitle = this.tempDoctorInfo.title;
+    this.tempSpecialty = this.tempDoctorInfo.specialty;
+    this.tempDescription = this.tempDoctorInfo.description;
     this.isEditing = true;
   }
 
@@ -39,28 +60,33 @@ struct DoctorProfilePage {
 
   private saveChanges(): void {
     this.isLoading = true;
-    
-    const token: string | undefined = AppStorage.get<string>('doctorToken');
-    
-    const updateData = {
-      realName: this.tempDoctorInfo.realName,
-      phone: this.tempDoctorInfo.phone,
-      department: this.tempDoctorInfo.department,
-      title: this.tempDoctorInfo.title,
-      specialty: this.tempDoctorInfo.specialty,
-      description: this.tempDoctorInfo.description
+
+    const updateData: DoctorUpdateData = {
+      realName: this.tempRealName,
+      phone: this.tempPhone,
+      department: this.tempDepartment,
+      title: this.tempTitle,
+      specialty: this.tempSpecialty,
+      description: this.tempDescription
     };
 
-    HttpUtil.put(`${ApiConstants.DOCTOR_UPDATE.replace(/\/$/, '')}`, updateData, { 'Token': token || '' })
-      .then((response: object) => {
-        const res = response as Record<string, Object>;
-        if (res['code'] === 200) {
-          this.doctorInfo = JSON.parse(JSON.stringify(this.tempDoctorInfo));
+    const options: RequestOptions = {};
+    const url: string = `${ApiConstants.DOCTOR_UPDATE.replace(/\/$/, '')}`;
+
+    HttpUtil.put<BaseResponse<Object>>(url, updateData, options)
+      .then((response: BaseResponse<Object>) => {
+        if (response.code === 200 || response.success) {
+          this.doctorInfo.realName = this.tempRealName;
+          this.doctorInfo.phone = this.tempPhone;
+          this.doctorInfo.department = this.tempDepartment;
+          this.doctorInfo.title = this.tempTitle;
+          this.doctorInfo.specialty = this.tempSpecialty;
+          this.doctorInfo.description = this.tempDescription;
           AppStorage.setOrCreate<DoctorInfo>('doctorInfo', this.doctorInfo);
           this.isEditing = false;
           promptAction.showToast({ message: '保存成功' });
         } else {
-          promptAction.showToast({ message: (res['message'] as string) || '保存失败' });
+          promptAction.showToast({ message: (response.message as string) || '保存失败' });
         }
       })
       .catch((error: Error) => {
@@ -76,13 +102,13 @@ struct DoctorProfilePage {
       Scroll() {
         Column({ space: 0 }) {
           this.buildProfileHeader();
-          
+
           if (this.isEditing) {
             this.buildEditForm();
           } else {
             this.buildInfoList();
           }
-          
+
           this.buildMenuList();
         }
         .width('100%')
@@ -219,14 +245,14 @@ struct DoctorProfilePage {
         .fontColor('#333333')
         .width(80);
 
-      TextInput({ text: (this.tempDoctorInfo as Record<string, Object>)[field] as string || '' })
+      TextInput({ text: this.getFieldValue(field) })
         .fontSize(15)
         .fontColor('#333333')
         .layoutWeight(1)
         .textAlign(TextAlign.End)
         .type(isPhone ? InputType.PhoneNumber : InputType.Normal)
         .onChange((value: string) => {
-          (this.tempDoctorInfo as Record<string, Object>)[field] = value;
+          this.setFieldValue(field, value);
         });
     }
     .width('100%')
@@ -244,18 +270,53 @@ struct DoctorProfilePage {
       .width('100%')
       .padding({ left: 20, right: 20 });
 
-      TextArea({ text: (this.tempDoctorInfo as Record<string, Object>)[field] as string || '' })
+      TextArea({ text: this.getFieldValue(field) })
         .fontSize(15)
         .fontColor('#333333')
         .width('calc(100% - 40px)')
         .height(120)
         .margin({ left: 20, right: 20 })
         .onChange((value: string) => {
-          (this.tempDoctorInfo as Record<string, Object>)[field] = value;
+          this.setFieldValue(field, value);
         });
     }
     .width('100%')
     .padding({ top: 16, bottom: 16 });
+  }
+
+  private getFieldValue(field: string): string {
+    switch (field) {
+      case 'realName': return this.tempRealName;
+      case 'phone': return this.tempPhone;
+      case 'department': return this.tempDepartment;
+      case 'title': return this.tempTitle;
+      case 'specialty': return this.tempSpecialty;
+      case 'description': return this.tempDescription;
+      default: return '';
+    }
+  }
+
+  private setFieldValue(field: string, value: string): void {
+    switch (field) {
+      case 'realName':
+        this.tempRealName = value;
+        break;
+      case 'phone':
+        this.tempPhone = value;
+        break;
+      case 'department':
+        this.tempDepartment = value;
+        break;
+      case 'title':
+        this.tempTitle = value;
+        break;
+      case 'specialty':
+        this.tempSpecialty = value;
+        break;
+      case 'description':
+        this.tempDescription = value;
+        break;
+    }
   }
 
   @Builder
@@ -270,12 +331,12 @@ struct DoctorProfilePage {
       this.buildInfoItem('科室', this.doctorInfo.department || '-');
       this.buildDivider();
       this.buildInfoItem('职称', this.doctorInfo.title || '-');
-      
+
       if (this.doctorInfo.specialty && this.doctorInfo.specialty.trim() !== '') {
         this.buildDivider();
         this.buildInfoItem('专业领域', this.doctorInfo.specialty);
       }
-      
+
       if (this.doctorInfo.description && this.doctorInfo.description.trim() !== '') {
         this.buildDivider();
         this.buildDescriptionItem('个人简介', this.doctorInfo.description);
@@ -314,7 +375,7 @@ struct DoctorProfilePage {
       }
       .width('100%')
       .padding({ left: 20, right: 20 });
-      
+
       Text(value)
         .fontSize(14)
         .fontColor('#666666')

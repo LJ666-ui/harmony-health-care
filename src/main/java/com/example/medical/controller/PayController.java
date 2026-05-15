@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Slf4j
@@ -57,44 +56,63 @@ public class PayController {
             Integer schedulePeriod = Integer.parseInt(body.get("schedulePeriod").toString());
             BigDecimal fee = new BigDecimal(body.get("fee").toString());
 
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-            Date scheduleDate = sdf.parse(scheduleDateStr);
-
             log.info("[支付] 创建支付订单 userId={} doctorId={} date={} period={}",
                     userId, doctorId, scheduleDateStr, schedulePeriod);
 
-            String outTradeNo = "APPT" + System.currentTimeMillis() + userId;
+            PaymentRecord existingRecord = paymentRecordService.findUnpaidRecord(userId, doctorId, scheduleDateStr, schedulePeriod);
+            String outTradeNo;
+            PaymentRecord record;
 
-            PaymentRecord record = new PaymentRecord();
-            record.setOutTradeNo(outTradeNo);
-            record.setUserId(userId);
-            record.setAppointmentId(0L);
-            record.setAmount(fee);
-            record.setStatus(0);
-            record.setPayMethod("alipay");
-            record.setDoctorId(doctorId);
-            record.setScheduleDate(scheduleDateStr);
-            record.setSchedulePeriod(schedulePeriod);
-            record.setCreateTime(new Date());
-            record.setUpdateTime(new Date());
-            paymentRecordService.save(record);
+            if (existingRecord != null) {
+                outTradeNo = existingRecord.getOutTradeNo();
+                record = existingRecord;
+                log.info("[支付] 复用已有未支付订单 outTradeNo={}", outTradeNo);
 
-            String payOrderKey = "pay:order:" + outTradeNo;
-            String payOrderValue = userId + ":" + doctorId + ":" + scheduleDateStr + ":" + schedulePeriod;
-            redisTemplate.opsForValue().set(payOrderKey, payOrderValue, 20, java.util.concurrent.TimeUnit.MINUTES);
+                String payOrderKey = "pay:order:" + outTradeNo;
+                String existing = redisTemplate.opsForValue().get(payOrderKey);
+                if (existing == null) {
+                    String payOrderValue = userId + ":" + doctorId + ":" + scheduleDateStr + ":" + schedulePeriod;
+                    redisTemplate.opsForValue().set(payOrderKey, payOrderValue, 20, java.util.concurrent.TimeUnit.MINUTES);
+                    log.info("[支付] 已重新设置20分钟过期 outTradeNo={}", outTradeNo);
+                }
+            } else {
+                outTradeNo = "APPT" + System.currentTimeMillis() + userId;
 
-            log.info("[支付] 订单已设置20分钟过期 outTradeNo={}", outTradeNo);
+                record = new PaymentRecord();
+                record.setOutTradeNo(outTradeNo);
+                record.setUserId(userId);
+                record.setAppointmentId(0L);
+                record.setAmount(fee);
+                record.setStatus(0);
+                record.setPayMethod("alipay");
+                record.setDoctorId(doctorId);
+                record.setScheduleDate(scheduleDateStr);
+                record.setSchedulePeriod(schedulePeriod);
+                record.setCreateTime(new Date());
+                record.setUpdateTime(new Date());
+                paymentRecordService.save(record);
 
-            String subject = "挂号费 - 医生ID:" + doctorId;
-            String description = "挂号支付 日期:" + scheduleDate + " 时段:" + schedulePeriod;
+                String payOrderKey = "pay:order:" + outTradeNo;
+                String payOrderValue = userId + ":" + doctorId + ":" + scheduleDateStr + ":" + schedulePeriod;
+                redisTemplate.opsForValue().set(payOrderKey, payOrderValue, 20, java.util.concurrent.TimeUnit.MINUTES);
 
-            String form = alipayService.createMobilePayment(outTradeNo, subject, fee.toPlainString(), description);
+                log.info("[支付] 新订单已设置20分钟过期 outTradeNo={}", outTradeNo);
+            }
+
+            String subject = "挂号费-医生ID" + doctorId;
+            String description = "挂号支付 日期" + scheduleDateStr + " 时段" + schedulePeriod;
+            String feeStr = fee.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+
+            log.info("[支付] 支付参数 outTradeNo={} subject={} fee={} description={}",
+                outTradeNo, subject, feeStr, description);
+
+            String form = alipayService.createMobilePayment(outTradeNo, subject, feeStr, description);
 
             boolean mockPaymentEnabled = false;
 
             if (mockPaymentEnabled || form == null) {
                 if (form == null) {
-                    log.warn("[支付] 支付宝创建WAP订单失败，启用模拟支付 outTradeNo={}", outTradeNo);
+                    log.warn("[支付] 支付宝创建支付订单失败，启用模拟支付 outTradeNo={}", outTradeNo);
                 } else {
                     log.info("[支付] 模拟支付模式已启用 outTradeNo={}", outTradeNo);
                 }
@@ -117,7 +135,7 @@ public class PayController {
 
                 Map<String, Object> mockResult = new HashMap<>();
                 mockResult.put("outTradeNo", outTradeNo);
-                mockResult.put("payForm", "");
+                mockResult.put("payUrl", "");
                 mockResult.put("payType", "mock");
                 mockResult.put("doctorId", doctorId);
                 mockResult.put("scheduleDate", scheduleDateStr);
@@ -127,11 +145,11 @@ public class PayController {
                 return Result.success(mockResult);
             }
 
-            log.info("[支付] WAP支付表单长度={} outTradeNo={}", form.length(), outTradeNo);
+            log.info("[支付] 支付URL长度={} outTradeNo={}", form.length(), outTradeNo);
 
             Map<String, Object> result = new HashMap<>();
             result.put("outTradeNo", outTradeNo);
-            result.put("payForm", form);
+            result.put("payUrl", form);
             result.put("payType", "wap");
             result.put("doctorId", doctorId);
             result.put("scheduleDate", scheduleDateStr);
@@ -142,6 +160,93 @@ public class PayController {
         } catch (Exception e) {
             log.error("[支付] 创建支付订单异常: {}", e.getMessage(), e);
             return Result.error("创建支付订单失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/resume")
+    public Result<?> resumePayment(@RequestBody Map<String, Object> body) {
+        try {
+            String outTradeNo = body.get("outTradeNo").toString().trim();
+
+            if (outTradeNo == null || outTradeNo.isEmpty()) {
+                return Result.error("订单号不能为空");
+            }
+
+            log.info("[恢复支付] 查询已有订单 outTradeNo={}", outTradeNo);
+
+            PaymentRecord record = paymentRecordService.getByOutTradeNo(outTradeNo);
+            if (record == null) {
+                log.warn("[恢复支付] 未找到支付记录 outTradeNo={}", outTradeNo);
+                return Result.error("未找到支付记录，请重新预约");
+            }
+
+            if (record.getStatus() == 1) {
+                log.info("[恢复支付] 订单已支付 outTradeNo={}", outTradeNo);
+                return Result.error("该订单已完成支付");
+            }
+
+            String payOrderKey = "pay:order:" + outTradeNo;
+            String existing = redisTemplate.opsForValue().get(payOrderKey);
+            if (existing == null) {
+                String payOrderValue = record.getUserId() + ":" + record.getDoctorId() + ":"
+                    + record.getScheduleDate() + ":" + record.getSchedulePeriod();
+                redisTemplate.opsForValue().set(payOrderKey, payOrderValue, 20, java.util.concurrent.TimeUnit.MINUTES);
+                log.info("[恢复支付] 已重新设置20分钟过期 outTradeNo={}", outTradeNo);
+            }
+
+            String subject = "挂号费-医生ID" + record.getDoctorId();
+            String description = "挂号支付 日期" + record.getScheduleDate() + " 时段" + record.getSchedulePeriod();
+            String feeStr = record.getAmount().setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+
+            log.info("[恢复支付] 支付参数 outTradeNo={} subject={} fee={} description={}",
+                outTradeNo, subject, feeStr, description);
+
+            String form = alipayService.createMobilePayment(outTradeNo, subject, feeStr, description);
+
+            boolean mockPaymentEnabled = false;
+
+            if (mockPaymentEnabled || form == null) {
+                if (form == null) {
+                    log.warn("[恢复支付] 支付宝创建支付订单失败，启用模拟支付 outTradeNo={}", outTradeNo);
+                } else {
+                    log.info("[恢复支付] 模拟支付模式已启用 outTradeNo={}", outTradeNo);
+                }
+
+                paymentRecordService.markPaySuccess(outTradeNo, "MOCK_" + System.currentTimeMillis());
+
+                AppointmentMessage message = new AppointmentMessage();
+                message.setUserId(record.getUserId());
+                message.setDoctorId(record.getDoctorId());
+                message.setScheduleDateStr(record.getScheduleDate());
+                message.setSchedulePeriod(record.getSchedulePeriod());
+                message.setFee(record.getAmount());
+                message.setTraceId(outTradeNo);
+
+                rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_NAME,
+                    RabbitMQConfig.ORDER_ROUTING_KEY,
+                    message
+                );
+
+                Map<String, Object> mockResult = new HashMap<>();
+                mockResult.put("outTradeNo", outTradeNo);
+                mockResult.put("payUrl", "");
+                mockResult.put("payType", "mock");
+                mockResult.put("message", "模拟支付成功");
+                return Result.success(mockResult);
+            }
+
+            log.info("[恢复支付] 支付URL长度={} outTradeNo={}", form.length(), outTradeNo);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("outTradeNo", outTradeNo);
+            result.put("payUrl", form);
+            result.put("payType", "wap");
+            result.put("expireTime", System.currentTimeMillis() + 20 * 60 * 1000);
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("[恢复支付] 异常: {}", e.getMessage(), e);
+            return Result.error("恢复支付失败：" + e.getMessage());
         }
     }
 
@@ -270,6 +375,58 @@ public class PayController {
         } catch (Exception e) {
             log.error("[支付] 查询支付状态异常: {}", e.getMessage());
             return Result.error("查询支付状态失败");
+        }
+    }
+
+    @PostMapping("/mock")
+    public Result<?> mockPayment(@RequestBody Map<String, Object> body) {
+        try {
+            String outTradeNo = body.get("outTradeNo").toString().trim();
+
+            if (outTradeNo == null || outTradeNo.isEmpty()) {
+                return Result.error("订单号不能为空");
+            }
+
+            log.info("[模拟支付] 开始处理 outTradeNo={}", outTradeNo);
+
+            PaymentRecord record = paymentRecordService.getByOutTradeNo(outTradeNo);
+            if (record == null) {
+                log.warn("[模拟支付] 未找到支付记录 outTradeNo={}", outTradeNo);
+                return Result.error("未找到支付记录");
+            }
+
+            if (record.getStatus() == 1) {
+                log.info("[模拟支付] 订单已支付 outTradeNo={}", outTradeNo);
+                return Result.error("该订单已完成支付");
+            }
+
+            String mockTradeNo = "MOCK_" + System.currentTimeMillis();
+            paymentRecordService.markPaySuccess(outTradeNo, mockTradeNo);
+
+            AppointmentMessage message = new AppointmentMessage();
+            message.setUserId(record.getUserId());
+            message.setDoctorId(record.getDoctorId());
+            message.setScheduleDateStr(record.getScheduleDate());
+            message.setSchedulePeriod(record.getSchedulePeriod());
+            message.setFee(record.getAmount());
+            message.setTraceId(outTradeNo);
+
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.EXCHANGE_NAME,
+                    RabbitMQConfig.ORDER_ROUTING_KEY,
+                    message);
+
+            log.info("[模拟支付] 支付成功 outTradeNo={}", outTradeNo);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("outTradeNo", outTradeNo);
+            result.put("tradeNo", mockTradeNo);
+            result.put("status", 1);
+            result.put("message", "模拟支付成功");
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("[模拟支付] 异常: {}", e.getMessage(), e);
+            return Result.error("模拟支付失败：" + e.getMessage());
         }
     }
 }

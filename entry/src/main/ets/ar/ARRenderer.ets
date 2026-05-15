@@ -14,6 +14,11 @@
 
 import { ArrowColorConfig } from '../models/ARNavigationModels';
 
+interface Position2D {
+  x: number;
+  y: number;
+}
+
 /**
  * 导航信息接口
  */
@@ -40,9 +45,16 @@ export class ARRenderer {
   private renderFrameId: number = 0;
 
   // 箭头状态
-  private arrowDirection: number = 0; // 朝向角度(0-360度)
-  private arrowColor: string = '#52C41A'; // 绿色
+  private arrowDirection: number = 0;
+  private arrowColor: string = '#52C41A';
   private arrowScale: number = 1.0;
+
+  // 当前位置状态
+  private currentPosition: Position2D | null = null;
+  private targetPosition: Position2D | null = null;
+
+  // 动画相关
+  private animationTime: number = 0;
 
   // 导航信息
   private navigationInfo: NavigationInfo | null = null;
@@ -79,10 +91,10 @@ export class ARRenderer {
    * 初始化渲染引擎
    * @param context Canvas渲染上下文
    */
-  public async initialize(context: CanvasRenderingContext2D): Promise<void> {
+  public async initialize(context: CanvasRenderingContext2D, width?: number, height?: number): Promise<void> {
     this.canvasContext = context;
-    this.canvasWidth = context.width;
-    this.canvasHeight = context.height;
+    this.canvasWidth = width ?? 1080;
+    this.canvasHeight = height ?? 1920;
 
     console.log(
       '[ARRenderer] 初始化完成,画布尺寸:',
@@ -117,6 +129,11 @@ export class ARRenderer {
   public stopRendering(): void {
     this.isRendering = false;
 
+    if (this.renderFrameId !== 0) {
+      clearTimeout(this.renderFrameId);
+      this.renderFrameId = 0;
+    }
+
     console.log('[ARRenderer] 渲染已停止,平均帧率:', this.currentFps, 'fps');
   }
 
@@ -145,22 +162,22 @@ export class ARRenderer {
     if (!this.canvasContext) return;
 
     const ctx = this.canvasContext;
+    this.animationTime += 33;
 
-    // 1. 清空画布
     ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
 
-    // 2. 绘制背景(模拟相机画面)
     this.drawCameraBackground();
 
-    // 3. 绘制3D方向箭头
+    this.drawMiniMap();
+
+    this.drawCurrentPositionMarker();
+
     this.drawDirectionArrow();
 
-    // 4. 绘制导航信息叠加
     if (this.navigationInfo) {
       this.drawNavigationInfo(this.navigationInfo);
     }
 
-    // 5. 绘制帧率(调试)
     this.drawDebugInfo();
   }
 
@@ -207,62 +224,230 @@ export class ARRenderer {
     }
   }
 
-  /**
-   * 绘制3D方向箭头
-   */
   private drawDirectionArrow(): void {
     if (!this.canvasContext) return;
 
     const ctx = this.canvasContext;
     const centerX = this.canvasWidth / 2;
-    const centerY = this.canvasHeight / 2;
+    const centerY = this.canvasHeight * 0.38;
 
-    // 箭头大小
-    const arrowSize = 80 * this.arrowScale;
+    const arrowSize = Math.min(this.canvasWidth, this.canvasHeight) * 0.12 * this.arrowScale;
 
     ctx.save();
-
-    // 移动到中心
     ctx.translate(centerX, centerY);
-
-    // 旋转(根据朝向)
     ctx.rotate((this.arrowDirection * Math.PI) / 180);
 
-    // 绘制箭头阴影
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetX = 5;
-    ctx.shadowOffsetY = 5;
+    const pulseScale = 1 + Math.sin(this.animationTime / 300) * 0.05;
+    ctx.scale(pulseScale, pulseScale);
 
-    // 绘制箭头形状
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetX = 4;
+    ctx.shadowOffsetY = 4;
+
+    const glowGradient = ctx.createRadialGradient(0, 0, arrowSize * 0.3, 0, 0, arrowSize * 1.5);
+    glowGradient.addColorStop(0, this.arrowColor + '40');
+    glowGradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowGradient;
     ctx.beginPath();
-    ctx.moveTo(0, -arrowSize);        // 箭头尖端
-    ctx.lineTo(-arrowSize * 0.6, arrowSize * 0.3);  // 左侧
-    ctx.lineTo(-arrowSize * 0.2, arrowSize * 0.15); // 左侧内凹
-    ctx.lineTo(-arrowSize * 0.2, arrowSize * 0.5);  // 左侧底部
-    ctx.lineTo(arrowSize * 0.2, arrowSize * 0.5);   // 右侧底部
-    ctx.lineTo(arrowSize * 0.2, arrowSize * 0.15);  // 右侧内凹
-    ctx.lineTo(arrowSize * 0.6, arrowSize * 0.3);   // 右侧
-    ctx.closePath();
-
-    // 填充颜色
-    ctx.fillStyle = this.arrowColor;
+    ctx.arc(0, 0, arrowSize * 1.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // 边框
+    ctx.beginPath();
+    ctx.moveTo(0, -arrowSize);
+    ctx.lineTo(-arrowSize * 0.55, arrowSize * 0.35);
+    ctx.lineTo(-arrowSize * 0.2, arrowSize * 0.15);
+    ctx.lineTo(-arrowSize * 0.2, arrowSize * 0.55);
+    ctx.lineTo(arrowSize * 0.2, arrowSize * 0.55);
+    ctx.lineTo(arrowSize * 0.2, arrowSize * 0.15);
+    ctx.lineTo(arrowSize * 0.55, arrowSize * 0.35);
+    ctx.closePath();
+
+    const bodyGradient = ctx.createLinearGradient(0, -arrowSize, 0, arrowSize * 0.55);
+    bodyGradient.addColorStop(0, this.arrowColor);
+    bodyGradient.addColorStop(1, this.adjustColorBrightness(this.arrowColor, -30));
+    ctx.fillStyle = bodyGradient;
+    ctx.fill();
+
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // 绘制箭头内部高光
     ctx.beginPath();
-    ctx.moveTo(0, -arrowSize * 0.8);
-    ctx.lineTo(-arrowSize * 0.3, arrowSize * 0.1);
-    ctx.lineTo(arrowSize * 0.3, arrowSize * 0.1);
+    ctx.moveTo(0, -arrowSize * 0.75);
+    ctx.lineTo(-arrowSize * 0.25, arrowSize * 0.08);
+    ctx.lineTo(arrowSize * 0.25, arrowSize * 0.08);
     ctx.closePath();
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     ctx.fill();
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, arrowSize * 1.8, 0, Math.PI * 2);
+    const ringAlpha = 0.15 + Math.sin(this.animationTime / 500) * 0.1;
+    ctx.strokeStyle = `rgba(82, 196, 26, ${ringAlpha})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    for (let i = 0; i < 8; i++) {
+      const angle = (i * Math.PI * 2) / 8 + this.animationTime / 2000;
+      const innerR = arrowSize * 1.9;
+      const outerR = arrowSize * 2.1;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
+      ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
+      ctx.strokeStyle = `rgba(82, 196, 26, ${ringAlpha * 0.7})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  private adjustColorBrightness(hex: string, amount: number): string {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+    r = Math.max(0, Math.min(255, r + amount));
+    g = Math.max(0, Math.min(255, g + amount));
+    b = Math.max(0, Math.min(255, b + amount));
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  private drawCurrentPositionMarker(): void {
+    if (!this.canvasContext) return;
+
+    const ctx = this.canvasContext;
+    const centerX = this.canvasWidth / 2;
+    const markerY = this.canvasHeight * 0.62;
+
+    const baseRadius = 18;
+    const pulsePhase = (this.animationTime % 1500) / 1500;
+    const pulseRadius = baseRadius + pulsePhase * 20;
+    const pulseAlpha = 1 - pulsePhase;
+
+    ctx.save();
+
+    for (let i = 0; i < 3; i++) {
+      const phaseOffset = (i / 3);
+      const currentPhase = ((pulsePhase + phaseOffset) % 1);
+      const r = baseRadius + currentPhase * 25;
+      const a = (1 - currentPhase) * 0.4;
+      ctx.beginPath();
+      ctx.arc(centerX, markerY, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(24, 144, 255, ${a})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.arc(centerX, markerY, baseRadius + 6, 0, Math.PI * 2);
+    const markerGlow = ctx.createRadialGradient(
+      centerX, markerY, baseRadius,
+      centerX, markerY, baseRadius + 10
+    );
+    markerGlow.addColorStop(0, 'rgba(24, 144, 255, 0.4)');
+    markerGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = markerGlow;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(centerX, markerY, baseRadius, 0, Math.PI * 2);
+    const markerGradient = ctx.createRadialGradient(
+      centerX - baseRadius * 0.3, markerY - baseRadius * 0.3, 0,
+      centerX, markerY, baseRadius
+    );
+    markerGradient.addColorStop(0, '#69C0FF');
+    markerGradient.addColorStop(0.7, '#1890FF');
+    markerGradient.addColorStop(1, '#096DD9');
+    ctx.fillStyle = markerGradient;
+    ctx.fill();
+
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(centerX - baseRadius * 0.25, markerY - baseRadius * 0.25, baseRadius * 0.35, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fill();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('我', centerX, markerY + 1);
+
+    ctx.restore();
+  }
+
+  private drawMiniMap(): void {
+    if (!this.canvasContext || !this.currentPosition || !this.targetPosition) return;
+
+    const ctx = this.canvasContext;
+    const mapSize = Math.min(this.canvasWidth, this.canvasHeight) * 0.22;
+    const mapX = this.canvasWidth - mapSize - 20;
+    const mapY = this.canvasHeight * 0.28;
+
+    ctx.save();
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    this.roundRect(ctx, mapX, mapY, mapSize, mapSize, 16);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1.5;
+    this.roundRect(ctx, mapX, mapY, mapSize, mapSize, 16);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = `${Math.round(mapSize * 0.09)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('导航地图', mapX + mapSize / 2, mapY + mapSize * 0.1);
+
+    const padding = mapSize * 0.15;
+    const innerSize = mapSize - padding * 2;
+
+    const scaleX = (pos: Position2D) => {
+      return mapX + padding + ((pos.x - 20) / 80) * innerSize;
+    };
+    const scaleY = (pos: Position2D) => {
+      return mapY + padding + innerSize - ((pos.y + 10) / 60) * innerSize;
+    };
+
+    const pathLineX = scaleX(this.currentPosition);
+    const pathLineY = scaleY(this.currentPosition);
+    const targetLineX = scaleX(this.targetPosition);
+    const targetLineY = scaleY(this.targetPosition);
+
+    ctx.setLineDash([mapSize * 0.02, mapSize * 0.015]);
+    ctx.strokeStyle = 'rgba(82, 196, 26, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pathLineX, pathLineY);
+    ctx.lineTo(targetLineX, targetLineY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.arc(targetLineX, targetLineY, mapSize * 0.06, 0, Math.PI * 2);
+    ctx.fillStyle = '#FF4D4F';
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(pathLineX, pathLineY, mapSize * 0.05, 0, Math.PI * 2);
+    ctx.fillStyle = '#1890FF';
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
     ctx.restore();
   }
@@ -505,5 +690,13 @@ export class ARRenderer {
    */
   public isCurrentlyRendering(): boolean {
     return this.isRendering;
+  }
+
+  public updateCurrentPosition(x: number, z: number): void {
+    this.currentPosition = { x: x, y: z };
+  }
+
+  public updateTargetPosition(x: number, z: number): void {
+    this.targetPosition = { x: x, y: z };
   }
 }

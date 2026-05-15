@@ -1,42 +1,40 @@
-/**
- * AR院内导航系统 - AR导航主页面
- * 
- * AR实景导航主界面,显示相机画面和导航指引
- * 
- * @version 1.0
- * @date 2025-01-18
- * @author SDD Agent
- */
-
 import router from '@ohos.router';
 import {
   NavigationDestination,
   NavigationPath,
   ARNavigationState,
-  NavigationMode
+  NavigationMode,
+  WaypointType,
+  Waypoint,
+  FloorChange,
+  NavigationInstruction
 } from '../models/ARNavigationModels';
-import {
-  getMockDestinationById
-} from '../mock/arMock';
 import {
   ARNavigationService,
   NavigationEventType
 } from '../ar/ARNavigationService';
 import { ARRenderer } from '../ar/ARRenderer';
+import { PathPlanner } from '../ar/PathPlanner';
+import { IndoorLocator } from '../ar/IndoorLocator';
 import {
-  ARView,
   NavigationProgress
 } from '../components/ARNavigationComponents';
+
+interface ARNavigationPageParams {
+  destinationId?: string;
+  destinationName?: string;
+  pathData?: string;
+  totalDistance?: number;
+  estimatedTime?: number;
+}
 
 @Entry
 @Component
 struct ARNavigationPage {
-  // 路由参数
   private destinationId: string = '';
   private destinationName: string = '';
   private pathDataStr: string = '';
 
-  // 状态变量
   @State destination: NavigationDestination | null = null;
   @State navigationPath: NavigationPath | null = null;
   @State navigationState: ARNavigationState | null = null;
@@ -45,170 +43,251 @@ struct ARNavigationPage {
   @State currentMode: NavigationMode = NavigationMode.AR_MODE;
   @State isInitializing: boolean = true;
   @State hasArrived: boolean = false;
+  @State isCanvasReady: boolean = false;
+  @State currentInstruction: string = '正在计算路径...';
+  @State remainingDistance: number = 0;
+  @State totalDistance: number = 0;
+  @State estimatedTime: number = 0;
+  @State progress: number = 0;
 
-  // 服务实例
   private navService: ARNavigationService = ARNavigationService.getInstance();
   private arRenderer: ARRenderer = ARRenderer.getInstance();
+  private planner: PathPlanner = PathPlanner.getInstance();
 
-  // Canvas上下文
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
   private canvasContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
 
+  private stateUpdateTimer: number = -1;
+  private isNavigationStarted: boolean = false;
+
   async aboutToAppear() {
-    // 解析路由参数
     this.parseRouteParams();
-    
-    // 初始化导航
-    await this.initializeNavigation();
+    await this.prepareNavigation();
   }
 
   aboutToDisappear() {
-    // 结束导航
     this.endNavigation();
   }
 
-  /**
-   * 解析路由参数
-   */
   private parseRouteParams(): void {
     try {
-      const params = router.getParams();
-      
-      if (params !== null && params !== undefined) {
-        const paramsObj = params as Record<string, string>;
-        this.destinationId = paramsObj['destinationId'] ?? '';
-        this.destinationName = paramsObj['destinationName'] ?? '';
-        this.pathDataStr = paramsObj['pathData'] ?? '';
+      const params = router.getParams() as ARNavigationPageParams;
+      if (params) {
+        this.destinationId = params.destinationId ?? '';
+        this.destinationName = params.destinationName ?? '';
+        this.pathDataStr = params.pathData ?? '';
+        console.log(`[ARNavigationPage] parseRouteParams: destinationId=${this.destinationId}, destinationName=${this.destinationName}, pathDataLen=${this.pathDataStr.length}`);
+      } else {
+        console.warn('[ARNavigationPage] parseRouteParams: params is null');
       }
     } catch (error) {
-      console.error('[ARNavigationPage] 解析路由参数失败:', error);
+      console.error('[ARNavigationPage] parseRouteParams error:', error);
     }
   }
 
-  /**
-   * 初始化导航
-   */
-  private async initializeNavigation(): Promise<void> {
+  private async prepareNavigation(): Promise<void> {
     try {
-      // 1. 获取目的地信息
-      this.destination = getMockDestinationById(this.destinationId);
-      
+      await this.planner.autoInitialize();
+
+      this.destination = this.planner.getPOIById(this.destinationId);
+
       if (this.destination === null) {
-        console.error('[ARNavigationPage] 未找到目的地');
+        console.error('[ARNavigationPage] destination not found:', this.destinationId);
         router.back();
         return;
       }
 
-      // 2. 解析路径数据
       if (this.pathDataStr !== '') {
-        this.navigationPath = JSON.parse(this.pathDataStr) as NavigationPath;
+        try {
+          this.navigationPath = JSON.parse(this.pathDataStr) as NavigationPath;
+          this.totalDistance = this.navigationPath.totalDistance;
+          this.remainingDistance = this.navigationPath.totalDistance;
+          this.estimatedTime = this.navigationPath.estimatedTime;
+          if (this.navigationPath.instructions.length > 0) {
+            this.currentInstruction = this.navigationPath.instructions[0].text;
+          }
+        } catch (e) {
+          console.error('[ARNavigationPage] parse pathData error:', e);
+          this.navigationPath = null;
+        }
       }
 
-      // 3. 初始化AR渲染器
-      await this.arRenderer.initialize(this.canvasContext);
-
-      // 4. 启动导航服务
-      if (this.destination !== null) {
-        await this.navService.startNavigation(this.destination);
-      }
-
-      // 5. 设置事件监听
       this.setupEventListeners();
-
-      // 6. 启动状态更新循环
-      this.startStateUpdateLoop();
-
-      this.isInitializing = false;
-      console.log('[ARNavigationPage] 导航初始化完成');
     } catch (error) {
-      console.error('[ARNavigationPage] 初始化导航失败:', error);
+      console.error('[ARNavigationPage] prepareNavigation error:', error);
       router.back();
     }
   }
 
-  /**
-   * 设置事件监听器
-   */
+  private onCanvasReady(): void {
+    if (this.isCanvasReady) {
+      return;
+    }
+    this.isCanvasReady = true;
+    console.log('[ARNavigationPage] Canvas ready');
+
+    this.arRenderer.initialize(this.canvasContext, 1080, 1920);
+
+    if (!this.isNavigationStarted && this.destination !== null) {
+      this.startNavigation();
+    }
+  }
+
+  private async startNavigation(): Promise<void> {
+    if (this.isNavigationStarted) {
+      return;
+    }
+
+    try {
+      this.isNavigationStarted = true;
+      await this.navService.startNavigation(this.destination!);
+
+      if (this.currentMode === NavigationMode.AR_MODE && this.isCanvasReady) {
+        this.arRenderer.startRendering();
+      }
+
+      if (this.destination !== null) {
+        IndoorLocator.getInstance().startSimulationToTarget(this.destination.position);
+      }
+
+      this.startStateUpdateLoop();
+      this.isInitializing = false;
+      console.log('[ARNavigationPage] navigation started');
+    } catch (error) {
+      console.error('[ARNavigationPage] startNavigation error:', error);
+      this.isNavigationStarted = false;
+      this.isInitializing = false;
+    }
+  }
+
   private setupEventListeners(): void {
-    // 监听到达事件
     this.navService.addEventListener(NavigationEventType.ARRIVED, () => {
       this.hasArrived = true;
-      console.log('[ARNavigationPage] 已到达目的地');
+      console.log('[ARNavigationPage] arrived');
     });
 
-    // 监听错误事件
     this.navService.addEventListener(NavigationEventType.ERROR, (event) => {
-      console.error('[ARNavigationPage] 导航错误:', event);
+      console.error('[ARNavigationPage] navigation error:', event);
     });
   }
 
-  /**
-   * 启动状态更新循环
-   */
   private startStateUpdateLoop(): void {
-    // 每500ms更新一次UI状态
-    setInterval(() => {
+    if (this.stateUpdateTimer !== -1) {
+      clearInterval(this.stateUpdateTimer);
+    }
+    this.stateUpdateTimer = setInterval(() => {
       this.navigationState = this.navService.getNavigationState();
+
+      if (this.navigationState !== null) {
+        this.remainingDistance = this.navigationState.remainingDistance;
+        this.totalDistance = this.navigationState.totalDistance;
+        this.estimatedTime = this.navigationState.estimatedTime;
+        this.progress = this.totalDistance > 0 ? 1 - this.remainingDistance / this.totalDistance : 0;
+
+        if (this.navigationState.currentPath !== null &&
+            this.navigationState.currentWaypointIndex < this.navigationState.currentPath.instructions.length) {
+          this.currentInstruction = this.navigationState.currentPath.instructions[this.navigationState.currentWaypointIndex].text;
+        }
+
+        if (this.currentMode === NavigationMode.AR_MODE && this.isCanvasReady) {
+          const currentWaypoint = this.navigationState.currentPath !== null
+            ? this.navigationState.currentPath.waypoints[this.navigationState.currentWaypointIndex]
+            : null;
+
+          if (currentWaypoint !== null && currentWaypoint !== undefined) {
+            const dx = currentWaypoint.position.x - this.navigationState.currentPosition.x;
+            const dz = currentWaypoint.position.z - this.navigationState.currentPosition.z;
+            const direction = (Math.atan2(dx, dz) * 180 / Math.PI + 360) % 360;
+            this.arRenderer.updateArrowDirection(direction);
+
+            if (currentWaypoint.type === WaypointType.TURN_LEFT || currentWaypoint.type === WaypointType.TURN_RIGHT) {
+              this.arRenderer.setArrowStatus('turn');
+            } else if (currentWaypoint.type === WaypointType.ARRIVAL) {
+              this.arRenderer.setArrowStatus('arrival');
+            } else {
+              this.arRenderer.setArrowStatus('normal');
+            }
+          }
+
+          this.arRenderer.updateCurrentPosition(
+            this.navigationState.currentPosition.x,
+            this.navigationState.currentPosition.z
+          );
+
+          if (this.destination !== null) {
+            this.arRenderer.updateTargetPosition(
+              this.destination.position.x,
+              this.destination.position.z
+            );
+          }
+
+          this.arRenderer.updateNavigationInfo({
+            instruction: this.currentInstruction,
+            remainingDistance: this.remainingDistance,
+            estimatedTime: this.estimatedTime,
+            progress: this.progress
+          });
+        }
+      }
     }, 500);
   }
 
-  /**
-   * 结束导航
-   */
   private endNavigation(): void {
+    if (this.stateUpdateTimer !== -1) {
+      clearInterval(this.stateUpdateTimer);
+      this.stateUpdateTimer = -1;
+    }
     this.navService.endNavigation();
     this.arRenderer.stopRendering();
-    console.log('[ARNavigationPage] 导航已结束');
+    IndoorLocator.getInstance().stopSimulation();
+    this.isNavigationStarted = false;
+    console.log('[ARNavigationPage] navigation ended');
   }
 
-  /**
-   * 切换静音状态
-   */
   private toggleMute(): void {
     this.isMuted = !this.isMuted;
     this.navService.setMuted(this.isMuted);
   }
 
-  /**
-   * 切换导航模式
-   */
   private switchMode(mode: NavigationMode): void {
     this.currentMode = mode;
     this.navService.setNavigationMode(mode);
     this.showModeSelector = false;
+
+    if (mode === NavigationMode.AR_MODE && this.isCanvasReady) {
+      this.arRenderer.startRendering();
+    } else {
+      this.arRenderer.stopRendering();
+    }
   }
 
   build() {
     Stack() {
-      // 1. AR视图(底层)
       if (this.currentMode === NavigationMode.AR_MODE) {
-        ARView({
-          canvasWidth: 1080,
-          canvasHeight: 1920
-        })
-      } else {
-        // 非AR模式显示简单背景
-        Column()
+        Canvas(this.canvasContext)
           .width('100%')
           .height('100%')
-          .backgroundColor('#F5F5F5')
+          .backgroundColor('#1a1a1a')
+          .onReady(() => {
+            this.onCanvasReady();
+          })
+      } else if (this.currentMode === NavigationMode.MAP_2D) {
+        this.Map2DView()
+      } else {
+        this.TextNavigationView()
       }
 
-      // 2. 导航信息叠加层
       Column() {
-        // 顶部栏
         this.TopBar()
 
-        // 中间内容区
         Column() {
           if (this.isInitializing) {
-            // 加载中
             Column() {
               LoadingProgress()
                 .width(48)
                 .height(48)
                 .color('#52C41A')
-              
+
               Text('正在初始化导航...')
                 .fontSize(14)
                 .fontColor('#666666')
@@ -217,22 +296,18 @@ struct ARNavigationPage {
             .layoutWeight(1)
             .justifyContent(FlexAlign.Center)
           } else if (this.hasArrived) {
-            // 到达提示
             this.ArrivalView()
           } else {
-            // 导航中
             this.NavigationInfo()
           }
         }
         .layoutWeight(1)
 
-        // 底部控制栏
         this.BottomBar()
       }
       .width('100%')
       .height('100%')
 
-      // 3. 模式选择器(弹出层)
       if (this.showModeSelector) {
         this.ModeSelector()
       }
@@ -241,15 +316,9 @@ struct ARNavigationPage {
     .height('100%')
   }
 
-  // ==================== 子组件 ====================
-
-  /**
-   * 顶部栏
-   */
   @Builder
   TopBar() {
     Row() {
-      // 返回按钮
       Column() {
         Text('←')
           .fontSize(24)
@@ -264,7 +333,6 @@ struct ARNavigationPage {
 
       Blank()
 
-      // 目的地名称
       if (this.destination !== null) {
         Text(this.destination.name)
           .fontSize(16)
@@ -276,48 +344,47 @@ struct ARNavigationPage {
     .padding({ left: 16, right: 16, top: 48, bottom: 16 })
   }
 
-  /**
-   * 导航信息
-   */
   @Builder
   NavigationInfo() {
     Column() {
-      // 剩余距离和时间
-      if (this.navigationState !== null) {
-        NavigationProgress({
-          currentDistance: this.navigationState.remainingDistance,
-          totalDistance: this.navigationState.totalDistance,
-          estimatedTime: this.navigationState.estimatedTime
-        })
-      }
+      Text(this.currentInstruction)
+        .fontSize(18)
+        .fontColor('#FFFFFF')
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ bottom: 12 })
+
+      NavigationProgress({
+        currentDistance: this.remainingDistance,
+        totalDistance: this.totalDistance,
+        estimatedTime: Math.ceil(this.estimatedTime / 60)
+      })
     }
     .width('100%')
     .padding(16)
   }
 
-  /**
-   * 到达提示视图
-   */
   @Builder
   ArrivalView() {
     Column() {
       Text('✓')
         .fontSize(64)
         .fontColor('#52C41A')
-      
+
       Text('已到达目的地')
         .fontSize(20)
         .fontColor('#333333')
         .fontWeight(FontWeight.Bold)
         .margin({ top: 16 })
-      
+
       if (this.destination !== null) {
         Text(this.destination.name)
           .fontSize(16)
           .fontColor('#666666')
           .margin({ top: 8 })
       }
-      
+
       Button('结束导航')
         .width(200)
         .height(48)
@@ -334,13 +401,9 @@ struct ARNavigationPage {
     .borderRadius({ topLeft: 24, topRight: 24 })
   }
 
-  /**
-   * 底部控制栏
-   */
   @Builder
   BottomBar() {
     Row() {
-      // 静音按钮
       Column() {
         Text(this.isMuted ? '🔇' : '🔊')
           .fontSize(24)
@@ -354,7 +417,6 @@ struct ARNavigationPage {
 
       Blank()
 
-      // 模式切换按钮
       Column() {
         Text('切换')
           .fontSize(14)
@@ -374,9 +436,234 @@ struct ARNavigationPage {
     .backgroundColor('#33000000')
   }
 
-  /**
-   * 模式选择器
-   */
+  @Builder
+  Map2DView() {
+    Column() {
+      Scroll() {
+        Column() {
+          if (this.navigationPath !== null) {
+            Text('🗺️ 2D地图导航')
+              .fontSize(18)
+              .fontColor('#333333')
+              .fontWeight(FontWeight.Bold)
+              .margin({ bottom: 16 })
+
+            Column() {
+              Row() {
+                Text('起点')
+                  .fontSize(12)
+                  .fontColor('#52C41A')
+                  .fontWeight(FontWeight.Bold)
+                Blank()
+                Text(`→ ${this.navigationPath.waypoints.length}个途经点 →`)
+                  .fontSize(12)
+                  .fontColor('#666666')
+                Blank()
+                Text('终点')
+                  .fontSize(12)
+                  .fontColor('#FF4D4F')
+                  .fontWeight(FontWeight.Bold)
+              }
+              .width('100%')
+              .margin({ bottom: 12 })
+
+              ForEach(this.navigationPath.waypoints, (waypoint: Waypoint, index: number) => {
+                  Row() {
+                    Column() {
+                      if (waypoint.type === WaypointType.TURN_LEFT) {
+                        Text('↰')
+                          .fontSize(20)
+                          .fontColor('#FAAD14')
+                      } else if (waypoint.type === WaypointType.TURN_RIGHT) {
+                        Text('↱')
+                          .fontSize(20)
+                          .fontColor('#FAAD14')
+                      } else if (waypoint.type === WaypointType.TAKE_ELEVATOR) {
+                        Text('🛗')
+                          .fontSize(20)
+                      } else if (waypoint.type === WaypointType.TAKE_STAIRS) {
+                        Text('🪜')
+                          .fontSize(20)
+                      } else if (waypoint.type === WaypointType.ARRIVAL) {
+                        Text('📍')
+                          .fontSize(20)
+                      } else {
+                        Text('●')
+                          .fontSize(16)
+                          .fontColor('#52C41A')
+                      }
+                    }
+                    .width(40)
+                    .height(40)
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
+
+                    Column() {
+                      Text(waypoint.instruction)
+                        .fontSize(14)
+                        .fontColor('#333333')
+                        .maxLines(2)
+
+                      Text(`${waypoint.distanceFromPrev.toFixed(0)}米`)
+                        .fontSize(12)
+                        .fontColor('#999999')
+                        .margin({ top: 2 })
+                    }
+                    .layoutWeight(1)
+                    .alignItems(HorizontalAlign.Start)
+                    .margin({ left: 8 })
+
+                    if (this.navigationState !== null && index <= this.navigationState.currentWaypointIndex) {
+                      Text('✓')
+                        .fontSize(16)
+                        .fontColor('#52C41A')
+                    }
+                  }
+                  .width('100%')
+                  .padding({ top: 8, bottom: 8 })
+                }, (waypoint: Waypoint, index: number) => `${index}_${waypoint.id}`)
+
+              if (this.navigationPath.floorChanges.length > 0) {
+                Text('楼层切换')
+                  .fontSize(14)
+                  .fontColor('#666666')
+                  .fontWeight(FontWeight.Bold)
+                  .margin({ top: 16, bottom: 8 })
+
+                ForEach(this.navigationPath.floorChanges, (change: FloorChange) => {
+                  Row() {
+                    Text(change.method === 'ELEVATOR' ? '🛗 电梯' : '🪜 楼梯')
+                      .fontSize(14)
+                      .fontColor('#333333')
+
+                    Blank()
+
+                    Text(`${change.fromFloor}F → ${change.toFloor}F`)
+                      .fontSize(14)
+                      .fontColor('#1890FF')
+                  }
+                  .width('100%')
+                  .padding(8)
+                  .backgroundColor('#F0F5FF')
+                  .borderRadius(8)
+                  .margin({ bottom: 4 })
+                }, (change: FloorChange) => `${change.fromFloor}_${change.toFloor}_${change.method}`)
+              }
+            }
+            .width('100%')
+            .padding(16)
+            .backgroundColor('#FFFFFF')
+            .borderRadius(12)
+          } else {
+            Column() {
+              Text('🗺️')
+                .fontSize(48)
+                .margin({ bottom: 16 })
+
+              Text('正在加载路径数据...')
+                .fontSize(16)
+                .fontColor('#666666')
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.Center)
+            .padding(48)
+          }
+        }
+        .padding(16)
+      }
+      .layoutWeight(1)
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#F5F5F5')
+  }
+
+  @Builder
+  TextNavigationView() {
+    Column() {
+      Scroll() {
+        Column() {
+          if (this.navigationPath !== null) {
+            Text('📋 文字导航指引')
+              .fontSize(18)
+              .fontColor('#333333')
+              .fontWeight(FontWeight.Bold)
+              .margin({ bottom: 16 })
+
+            ForEach(this.navigationPath.instructions, (instruction: NavigationInstruction, index: number) => {
+              Row() {
+                Column() {
+                  Text(`${instruction.stepIndex + 1}`)
+                    .fontSize(16)
+                    .fontColor('#FFFFFF')
+                    .fontWeight(FontWeight.Bold)
+                }
+                .width(32)
+                .height(32)
+                .justifyContent(FlexAlign.Center)
+                .backgroundColor(
+                  this.navigationState !== null && index <= this.navigationState.currentWaypointIndex
+                    ? '#52C41A' : '#CCCCCC'
+                )
+                .borderRadius(16)
+
+                Column() {
+                  Text(instruction.text)
+                    .fontSize(14)
+                    .fontColor('#333333')
+                    .maxLines(3)
+
+                  Row() {
+                    Text(`${instruction.distance.toFixed(0)}米`)
+                      .fontSize(12)
+                      .fontColor('#999999')
+
+                    if (instruction.floorHint !== undefined && instruction.floorHint !== '') {
+                      Text(instruction.floorHint)
+                        .fontSize(12)
+                        .fontColor('#1890FF')
+                        .margin({ left: 8 })
+                    }
+                  }
+                  .margin({ top: 4 })
+                }
+                .layoutWeight(1)
+                .alignItems(HorizontalAlign.Start)
+                .margin({ left: 12 })
+              }
+              .width('100%')
+              .padding(12)
+              .backgroundColor(
+                this.navigationState !== null && index === this.navigationState.currentWaypointIndex
+                  ? '#E6F7FF' : '#FFFFFF'
+              )
+              .borderRadius(8)
+              .margin({ bottom: 8 })
+            }, (instruction: NavigationInstruction, index: number) => `${index}_${instruction.stepIndex}`)
+          } else {
+            Column() {
+              Text('📋')
+                .fontSize(48)
+                .margin({ bottom: 16 })
+
+              Text('正在加载导航指引...')
+                .fontSize(16)
+                .fontColor('#666666')
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.Center)
+            .padding(48)
+          }
+        }
+        .padding(16)
+      }
+      .layoutWeight(1)
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#F5F5F5')
+  }
+
   @Builder
   ModeSelector() {
     Column() {
@@ -387,7 +674,6 @@ struct ARNavigationPage {
           .fontWeight(FontWeight.Bold)
           .margin({ bottom: 16 })
 
-        // AR模式
         Row() {
           Text('AR实景')
             .fontSize(14)
@@ -400,7 +686,6 @@ struct ARNavigationPage {
         .borderRadius(8)
         .onClick(() => this.switchMode(NavigationMode.AR_MODE))
 
-        // 2D地图模式
         Row() {
           Text('2D地图')
             .fontSize(14)
@@ -414,7 +699,6 @@ struct ARNavigationPage {
         .margin({ top: 8 })
         .onClick(() => this.switchMode(NavigationMode.MAP_2D))
 
-        // 文字模式
         Row() {
           Text('文字导航')
             .fontSize(14)

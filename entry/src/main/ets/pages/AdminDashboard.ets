@@ -352,7 +352,11 @@ struct AdminDashboard {
               if (index === 3 && this.currentAdmin && this.currentAdmin.role !== 1) {
                 return;
               }
-              router.pushUrl({ url: this.tabRoutes[index] });
+              if (index === 2) {
+                router.pushUrl({ url: this.tabRoutes[index], params: { activeTab: 1 } });
+              } else {
+                router.pushUrl({ url: this.tabRoutes[index] });
+              }
             });
           }
         }, (tab: string, index: number) => `${index}`);

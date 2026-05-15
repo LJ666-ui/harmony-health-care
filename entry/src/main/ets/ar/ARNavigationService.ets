@@ -154,7 +154,10 @@ export class ARNavigationService {
     }
 
     try {
-      // 1. 获取当前位置
+      await this.pathPlanner.autoInitialize();
+
+      await this.indoorLocator.initialize();
+
       const currentPosition = await this.getCurrentPosition();
       if (!currentPosition) {
         throw new Error('无法获取当前位置');
@@ -413,8 +416,9 @@ export class ARNavigationService {
     }
 
     // 更新预计到达时间
-    const speed = 1.2; // 步行速度1.2m/s
+    const speed = 1.2;
     const remainingTime = this.navigationState.remainingDistance / speed;
+    this.navigationState.estimatedTime = remainingTime;
     this.navigationState.estimatedArrival = Date.now() + remainingTime * 1000;
 
     // 更新当前途经点索引
@@ -593,12 +597,10 @@ export class ARNavigationService {
    * 获取当前位置
    */
   private async getCurrentPosition(): Promise<Position3D | null> {
-    // 尝试从定位服务获取
     let position = this.indoorLocator.getCurrentPosition();
 
-    // 如果没有,使用模拟位置
     if (!position) {
-      position = { x: 0, y: 0, z: 0 };
+      position = { x: 40, y: 0, z: 5 };
     }
 
     return position;

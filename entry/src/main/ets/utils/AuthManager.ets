@@ -34,19 +34,21 @@ export class AuthManager {
   }
 
   getCurrentRole(): UserRole {
-    // 检查家属登录状态
+    const isPatientLoggedIn: boolean = AppStorage.get<boolean>('isPatientLoggedIn') || false;
+    if (isPatientLoggedIn) {
+      return UserRole.PATIENT;
+    }
+
     const isFamilyLoggedIn: boolean = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
     if (isFamilyLoggedIn) {
       return UserRole.FAMILY;
     }
 
-    // 检查护士登录状态
     const isNurseLoggedIn: boolean = AppStorage.get<boolean>('isNurseLoggedIn') || false;
     if (isNurseLoggedIn) {
       return UserRole.NURSE;
     }
 
-    // 检查管理员登录状态
     const adminSession: SessionInfo | null = this.getAdminSession();
     if (adminSession && SessionInfoHelper.isValid(adminSession)) {
       const adminInfo: AdminInfo | null = this.getAdminInfo();
@@ -55,7 +57,6 @@ export class AuthManager {
       }
     }
 
-    // 检查普通用户登录状态
     const userSession: SessionInfo | null = this.getUserSession();
     if (userSession && SessionInfoHelper.isValid(userSession)) {
       const userType: number | undefined = AppStorage.get<number>('userType');

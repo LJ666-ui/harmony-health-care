@@ -58,6 +58,8 @@ struct AdminUsers {
   @State scheduleLoading: boolean = false;
   @State doctors: DoctorOption[] = [];
   @State showSchedulePanel: boolean = false;
+  @State doctorCurrentPage: number = 1;
+  @State doctorPageSize: number = 15;
 
   aboutToAppear(): void {
     this.loadUsers();
@@ -67,6 +69,14 @@ struct AdminUsers {
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
     this.scheduleDate = `${y}-${m}-${d}`;
+    try {
+      const params = router.getParams() as Record<string, Object>;
+      if (params && params['activeTab'] !== undefined) {
+        this.activeTab = Number(params['activeTab']);
+      }
+    } catch (e) {
+      console.error('[AdminUsers] parseParams error:', e);
+    }
   }
 
   async loadUsers(): Promise<void> {
@@ -157,6 +167,16 @@ struct AdminUsers {
 
   getTotalPages(): number {
     return Math.max(1, Math.ceil(this.totalRecords / this.pageSize));
+  }
+
+  getDoctorTotalPages(): number {
+    return Math.max(1, Math.ceil(this.doctors.length / this.doctorPageSize));
+  }
+
+  getPagedDoctors(): DoctorOption[] {
+    const start: number = (this.doctorCurrentPage - 1) * this.doctorPageSize;
+    const end: number = start + this.doctorPageSize;
+    return this.doctors.slice(start, end);
   }
 
   getUserTypeName(type: number | undefined): string {
@@ -764,7 +784,7 @@ struct AdminUsers {
           .fontWeight(FontWeight.Bold)
           .fontColor('#1A1A2E');
         Blank();
-        Text(`${this.doctors.length} 位`)
+        Text(`共 ${this.doctors.length} 位`)
           .fontSize(12)
           .fontColor('#999');
       }
@@ -788,7 +808,7 @@ struct AdminUsers {
         .alignItems(HorizontalAlign.Center);
       } else {
         Column({ space: 6 }) {
-          ForEach(this.doctors.slice(0, 10), (doc: DoctorOption) => {
+          ForEach(this.getPagedDoctors(), (doc: DoctorOption) => {
             Row({ space: 10 }) {
               Column() {
                 Text(String(doc.realName.charAt(0)))
@@ -827,16 +847,50 @@ struct AdminUsers {
             .backgroundColor('#FAFAFA')
             .borderRadius(10);
           }, (doc: DoctorOption) => `${doc.id}`);
-
-          if (this.doctors.length > 10) {
-            Text(`还有 ${this.doctors.length - 10} 位医生未显示...`)
-              .fontSize(12)
-              .fontColor('#999')
-              .width('100%')
-              .textAlign(TextAlign.Center)
-              .padding({ top: 4 });
-          }
         }
+
+        Row({ space: 10 }) {
+          Button({ type: ButtonType.Normal }) {
+            Text('◀ 上一页').fontSize(12);
+          }
+          .height(34)
+          .fontSize(12)
+          .padding({ left: 14, right: 14 })
+          .backgroundColor(this.doctorCurrentPage > 1 ? PRIMARY : '#E8ECF2')
+          .fontColor(this.doctorCurrentPage > 1 ? '#FFF' : '#BBB')
+          .borderRadius(8)
+          .enabled(this.doctorCurrentPage > 1)
+          .onClick(() => {
+            if (this.doctorCurrentPage > 1) {
+              this.doctorCurrentPage--;
+            }
+          });
+
+          Text(`${this.doctorCurrentPage} / ${this.getDoctorTotalPages()}`)
+            .fontSize(13)
+            .fontColor('#666')
+            .width(60)
+            .textAlign(TextAlign.Center);
+
+          Button({ type: ButtonType.Normal }) {
+            Text('下一页 ▶').fontSize(12);
+          }
+          .height(34)
+          .fontSize(12)
+          .padding({ left: 14, right: 14 })
+          .backgroundColor(this.doctorCurrentPage < this.getDoctorTotalPages() ? PRIMARY : '#E8ECF2')
+          .fontColor(this.doctorCurrentPage < this.getDoctorTotalPages() ? '#FFF' : '#BBB')
+          .borderRadius(8)
+          .enabled(this.doctorCurrentPage < this.getDoctorTotalPages())
+          .onClick(() => {
+            if (this.doctorCurrentPage < this.getDoctorTotalPages()) {
+              this.doctorCurrentPage++;
+            }
+          });
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
+        .margin({ top: 8 });
       }
     }
     .width('100%')

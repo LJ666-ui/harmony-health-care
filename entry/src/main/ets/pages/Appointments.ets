@@ -4,7 +4,7 @@ import { webview } from '@kit.ArkWeb';
 import { Header } from '../components/Header';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
-import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
+import { HttpUtil, BaseResponse, HttpMethod, RequestOptions } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { AppointmentItem } from '../models/AppointmentModel';
@@ -32,9 +32,11 @@ struct Appointments {
   @State hasError: boolean = false;
   @State errorMessage: string = '';
   @State showPayDialog: boolean = false;
-  @State payForm: string = '';
+  @State payUrl: string = '';
   @State currentOutTradeNo: string = '';
   @State payingAppointmentId: number = 0;
+  @State payDialogReady: boolean = false;
+  @State payLoadError: boolean = false;
 
   private webController: webview.WebviewController = new webview.WebviewController();
 
@@ -116,6 +118,7 @@ struct Appointments {
           if (raw['departmentName'] !== undefined) item.departmentName = String(raw['departmentName']);
           if (raw['title'] !== undefined) item.title = String(raw['title']);
           if (raw['payStatus'] !== undefined) item.payStatus = Number(raw['payStatus']);
+          if (raw['outTradeNo'] !== undefined) item.outTradeNo = String(raw['outTradeNo']);
           list.push(item);
         }
         this.appointments = list;
@@ -213,7 +216,7 @@ struct Appointments {
 
       const res: BaseResponse<Object> = await HttpUtil.request<Object>(
         HttpMethod.PUT,
-        ApiConstants.APPOINTMENT_COMPLETE + item.id.toString() + '/complete',
+        ApiConstants.APPOINTMENT_COMPLETE + '/' + item.id.toString() + '/complete',
         completeData as Object,
         undefined,
         { showLoading: true, loadingText: '正在确认就诊...' }
@@ -247,50 +250,74 @@ struct Appointments {
     }
 
     try {
-      const rawDate = String(appointment.scheduleDate || '');
-      const dateOnly = rawDate.substring(0, 10);
-      const scheduleDateFormatted = dateOnly.replace(/-/g, '');
+      this.payingAppointmentId = appointment.id;
 
-      hilog.info(0x0000, TAG, '原始日期=%{public}s, 格式化后=%{public}s', rawDate, scheduleDateFormatted);
+      let payRes: BaseResponse<Object>;
 
-      const payData: Record<string, Object> = {
-        'userId': appointment.userId,
-        'doctorId': appointment.doctorId,
-        'scheduleDate': scheduleDateFormatted,
-        'schedulePeriod': appointment.schedulePeriod,
-        'fee': appointment.fee
-      };
+      if (appointment.outTradeNo && appointment.outTradeNo.length > 0) {
+        hilog.info(0x0000, TAG, '恢复支付: appointmentId=%{public}d, outTradeNo=%{public}s',
+          appointment.id, appointment.outTradeNo);
 
-      hilog.info(0x0000, TAG, '发起支付: appointmentId=%{public}d, doctorId=%{public}d, fee=%{public}f',
-        appointment.id, appointment.doctorId, appointment.fee);
+        const resumeData: Record<string, Object> = {
+          'outTradeNo': appointment.outTradeNo
+        };
 
-      const payRes: BaseResponse<Object> = await HttpUtil.request<Object>(
-        HttpMethod.POST,
-        ApiConstants.PAY_CREATE,
-        payData as Object,
-        undefined,
-        { showLoading: true, loadingText: '正在创建支付订单...' }
-      );
+        payRes = await HttpUtil.request<Object>(
+          HttpMethod.POST,
+          ApiConstants.PAY_RESUME,
+          resumeData as Object,
+          undefined,
+          { showLoading: true, loadingText: '正在恢复支付订单...' }
+        );
+      } else {
+        hilog.info(0x0000, TAG, '新建支付(兜底): appointmentId=%{public}d', appointment.id);
+
+        const rawDate = String(appointment.scheduleDate || '');
+        const dateOnly = rawDate.substring(0, 10);
+        const scheduleDateFormatted = dateOnly.replace(/-/g, '');
+
+        const payData: Record<string, Object> = {
+          'userId': appointment.userId,
+          'doctorId': appointment.doctorId,
+          'scheduleDate': scheduleDateFormatted,
+          'schedulePeriod': appointment.schedulePeriod,
+          'fee': appointment.fee
+        };
+
+        payRes = await HttpUtil.request<Object>(
+          HttpMethod.POST,
+          ApiConstants.PAY_CREATE,
+          payData as Object,
+          undefined,
+          { showLoading: true, loadingText: '正在创建支付订单...' }
+        );
+      }
 
       if (payRes.success && payRes.data) {
         const payDataResult = payRes.data as Record<string, Object>;
         this.currentOutTradeNo = String(payDataResult['outTradeNo'] || '');
-        this.payingAppointmentId = appointment.id;
 
-        if (payDataResult['payForm']) {
-          this.payForm = String(payDataResult['payForm']);
+        if (payDataResult['payUrl']) {
+          this.payUrl = String(payDataResult['payUrl']);
           this.showPayDialog = true;
 
-          hilog.info(0x0000, TAG, '显示支付页面: outTradeNo=%{public}s', this.currentOutTradeNo);
+          hilog.info(0x0000, TAG, '显示支付页面: outTradeNo=%{public}s, payUrl长度=%{public}d',
+            this.currentOutTradeNo, this.payUrl.length);
+
+          setTimeout(() => {
+            if (this.payDialogReady) {
+              this.loadPayUrlToWebView();
+            }
+          }, 300);
         } else if (String(payDataResult['payType'] || '') === 'mock') {
-          ToastUtil.showSuccess('✅ 模拟支付成功！', 2000);
+          ToastUtil.showSuccess('✅ 支付成功！', 2000);
           this.loadAppointments();
         } else {
           ToastUtil.showError('获取支付表单失败', 2000);
         }
       } else {
-        ToastUtil.showError('创建支付订单失败：' + String(payRes.message || '未知错误'), 2000);
-        hilog.error(0x0000, TAG, '创建支付订单失败: %{public}s', String(payRes.message));
+        ToastUtil.showError('支付失败：' + String(payRes.message || '未知错误'), 2000);
+        hilog.error(0x0000, TAG, '支付失败: %{public}s', String(payRes.message));
       }
     } catch (error) {
       ToastUtil.showError('网络错误，请稍后重试', 1500);
@@ -341,9 +368,56 @@ struct Appointments {
 
   closePayDialog(): void {
     this.showPayDialog = false;
-    this.payForm = '';
+    this.payUrl = '';
     this.currentOutTradeNo = '';
     this.payingAppointmentId = 0;
+    this.payDialogReady = false;
+    this.payLoadError = false;
+  }
+
+  private loadPayUrlToWebView(): void {
+    if (this.payUrl && this.payUrl.length > 0) {
+      try {
+        this.webController.loadUrl(this.payUrl);
+        hilog.info(0x0000, TAG, 'loadPayUrlToWebView: 已加载支付URL, 长度=%{public}d', this.payUrl.length);
+      } catch (error) {
+        hilog.error(0x0000, TAG, 'loadPayUrlToWebView: 加载失败 %{public}s', String(error));
+      }
+    } else {
+      hilog.warn(0x0000, TAG, 'loadPayUrlToWebView: payUrl为空');
+    }
+  }
+
+  private async mockPayment(): Promise<void> {
+    if (!this.currentOutTradeNo) {
+      ToastUtil.showError('订单号不存在', 1500);
+      return;
+    }
+
+    try {
+      hilog.info(0x0000, TAG, '模拟支付: outTradeNo=%{public}s', this.currentOutTradeNo);
+
+      const mockBody: Record<string, string> = { 'outTradeNo': this.currentOutTradeNo };
+
+      const res: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.POST,
+        ApiConstants.PAY_MOCK,
+        mockBody as Object,
+        undefined,
+        { showLoading: true, loadingText: '正在处理模拟支付...' } as RequestOptions
+      );
+
+      if (res.success) {
+        ToastUtil.showSuccess('模拟支付成功！', 2000);
+        this.closePayDialog();
+        this.loadAppointments();
+      } else {
+        ToastUtil.showError('模拟支付失败：' + String(res.message || '未知错误'), 2000);
+      }
+    } catch (error) {
+      ToastUtil.showError('网络错误，请稍后重试', 1500);
+      hilog.error(0x0000, TAG, '模拟支付异常: %{public}s', String(error));
+    }
   }
 
   formatDate(dateStr: string): string {
@@ -669,7 +743,7 @@ struct Appointments {
         this.buildCancelButtonDialog();
       }
 
-      if (this.showPayDialog && this.payForm) {
+      if (this.showPayDialog && this.payUrl) {
         this.buildPayDialog();
       }
     }
@@ -686,78 +760,97 @@ struct Appointments {
         .fontColor('#333333')
         .margin({ bottom: 16 })
 
-      Web({ src: 'about:blank', controller: this.webController })
+      if (this.payLoadError) {
+        Column() {
+          Text('⚠️ 支付宝沙箱暂不可用')
+            .fontSize(16)
+            .fontColor('#FF4D4F')
+            .fontWeight(FontWeight.Bold)
+            .margin({ bottom: 8 })
+
+          Text('支付宝沙箱环境不稳定，可能返回错误。您可以使用模拟支付完成测试。')
+            .fontSize(13)
+            .fontColor('#666666')
+            .textAlign(TextAlign.Center)
+            .margin({ bottom: 16 })
+
+          Text('订单号: ' + this.currentOutTradeNo)
+            .fontSize(12)
+            .fontColor('#999999')
+            .margin({ bottom: 20 })
+        }
         .width('100%')
-        .height('70%')
-        .domStorageAccess(true)
-        .javaScriptAccess(true)
-        .fileAccess(true)
-        .zoomAccess(true)
-        .onPageBegin((event) => {
-          const url = event?.url || '';
-          hilog.info(0x0000, TAG, 'WebView页面开始加载 url=%{public}s', url);
+        .height(200)
+        .justifyContent(FlexAlign.Center)
+        .padding({ left: 20, right: 20 })
+      } else {
+        Web({ src: '', controller: this.webController })
+          .width('100%')
+          .height('70%')
+          .domStorageAccess(true)
+          .javaScriptAccess(true)
+          .fileAccess(true)
+          .zoomAccess(true)
+          .mixedMode(MixedMode.All)
+          .onControllerAttached(() => {
+            hilog.info(0x0000, TAG, 'WebView onControllerAttached 触发');
+            this.payDialogReady = true;
+            this.loadPayUrlToWebView();
+          })
+          .onAppear(() => {
+            hilog.info(0x0000, TAG, 'WebView onAppear 触发, payDialogReady=%{public}b, payUrl长度=%{public}d',
+              this.payDialogReady, this.payUrl.length);
+            if (this.payDialogReady && this.payUrl) {
+              setTimeout(() => {
+                this.loadPayUrlToWebView();
+              }, 100);
+            }
+          })
+          .onPageBegin((event) => {
+            const url = event?.url || '';
+            hilog.info(0x0000, TAG, 'WebView页面开始加载 url=%{public}s', url);
 
-          if (url && url.includes('alipay.com')) {
-            hilog.info(0x0000, TAG, '检测到支付宝页面跳转');
-            ToastUtil.showInfo('正在跳转到支付宝...', 1500);
-          }
-        })
-        .onPageEnd((event) => {
-          const url = event?.url || '';
-          hilog.info(0x0000, TAG, 'WebView页面加载完成 url=%{public}s', url);
+            if (url && url.includes('alipay.com')) {
+              hilog.info(0x0000, TAG, '检测到支付宝页面跳转');
+              ToastUtil.showInfo('正在跳转到支付宝...', 1500);
+            }
+          })
+          .onPageEnd((event) => {
+            const url = event?.url || '';
+            hilog.info(0x0000, TAG, 'WebView页面加载完成 url=%{public}s', url);
 
-          if (url === 'about:blank' && this.payForm) {
-            const safeForm = this.payForm
-              .replace(/\\/g, '\\\\')
-              .replace(/'/g, "\\'")
-              .replace(/"/g, '\\"')
-              .replace(/\n/g, '\\n')
-              .replace(/\r/g, '\\r')
-              .replace(/\t/g, '\\t');
+            if (url && url.includes('alipaydev.com/error')) {
+              hilog.error(0x0000, TAG, '检测到支付宝沙箱错误页面');
+              this.payLoadError = true;
+              return;
+            }
 
-            this.webController.runJavaScript(`
-              (function() {
-                try {
-                  document.open();
-                  document.write('${safeForm}');
-                  document.close();
-                  
-                  setTimeout(function() {
-                    var forms = document.getElementsByTagName('form');
-                    if (forms.length > 0) {
-                      console.log('自动提交表单...');
-                      forms[0].submit();
-                    }
-                  }, 500);
-                } catch(e) {
-                  console.error('表单注入失败:', e.message);
-                }
-              })();
-            `);
+            if (url && (url.includes('return_url') || url.includes('success') || url.includes('payresult'))) {
+              hilog.info(0x0000, TAG, '检测到支付返回页面');
+              ToastUtil.showSuccess('支付完成，请确认支付状态', 2000);
+            }
+          })
+          .onErrorReceive((event) => {
+            const errorMsg = event?.error ? JSON.stringify(event.error) : 'unknown';
+            const requestUrl: string = (event?.request as Object)?.toString() || 'unknown';
+            hilog.error(0x0000, TAG, 'WebView加载错误 url=%{public}s error=%{public}s',
+              requestUrl, errorMsg);
 
-            hilog.info(0x0000, TAG, '已注入WAP支付宝表单到WebView，等待自动提交');
-          }
-        })
-        .onErrorReceive((event) => {
-          const errorMsg = event?.error ? JSON.stringify(event.error) : 'unknown';
-          const requestUrl: string = (event?.request as Object)?.toString() || 'unknown';
-          hilog.error(0x0000, TAG, 'WebView加载错误 url=%{public}s error=%{public}s',
-            requestUrl, errorMsg);
+            if ((requestUrl as string).includes('alipay.com')) {
+              this.payLoadError = true;
+            }
+          })
+          .onUrlLoadIntercept((data) => {
+            const url: string = typeof data === 'string' ? data : '';
+            hilog.info(0x0000, TAG, 'URL拦截 url=%{public}s', url);
 
-          if ((requestUrl as string).includes('alipay.com')) {
-            ToastUtil.showWarning('支付宝页面加载异常，请稍后重试', 2500);
-          }
-        })
-        .onUrlLoadIntercept((data) => {
-          const url: string = typeof data === 'string' ? data : '';
-          hilog.info(0x0000, TAG, 'URL拦截 url=%{public}s', url);
-
-          if (url.includes('alipay://') || url.includes('alipays://')) {
-            hilog.info(0x0000, TAG, '检测到支付宝APP跳转协议');
-            return true;
-          }
-          return false;
-        })
+            if (url.includes('alipay://') || url.includes('alipays://')) {
+              hilog.info(0x0000, TAG, '检测到支付宝APP跳转协议');
+              return true;
+            }
+            return false;
+          })
+      }
 
       Row({ space: 12 }) {
         Button('关闭')
@@ -769,14 +862,25 @@ struct Appointments {
           .borderRadius(8)
           .onClick(() => this.closePayDialog())
 
-        Button('我已支付')
-          .layoutWeight(1)
-          .height(40)
-          .fontSize(14)
-          .fontColor('#FFFFFF')
-          .backgroundColor('#52C41A')
-          .borderRadius(8)
-          .onClick(() => this.confirmPayment())
+        if (this.payLoadError) {
+          Button('模拟支付')
+            .layoutWeight(1)
+            .height(40)
+            .fontSize(14)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#1890FF')
+            .borderRadius(8)
+            .onClick(() => this.mockPayment())
+        } else {
+          Button('我已支付')
+            .layoutWeight(1)
+            .height(40)
+            .fontSize(14)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#52C41A')
+            .borderRadius(8)
+            .onClick(() => this.confirmPayment())
+        }
       }
       .width('100%')
       .margin({ top: 16 })

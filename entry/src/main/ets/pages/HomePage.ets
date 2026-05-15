@@ -1,8 +1,11 @@
 import { router } from '@kit.ArkUI';
 import { Footer } from '../components/Footer';
+import { GlobalVoiceAssistant } from '../components/GlobalVoiceAssistant';
 import { GlobalTheme } from '../global';
 import { AccessibilityConfig } from '../utils/AccessibilityConfig';
 import { BreakpointSystem, BreakpointType, BreakpointConstants } from '../utils/BreakpointSystem';
+import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 
 @Entry
 @Component
@@ -10,6 +13,10 @@ export struct HomePage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
   @StorageLink('currentBreakpoint') currentBreakpoint: BreakpointType = BreakpointType.SM;
   @State currentIndex: number = 0;
+  @State appointmentCount: string = '0';
+  @State consultationCount: string = '0';
+  @State healthConsultCount: string = '0';
+  @State todayServiceCount: string = '0';
   private theme: AccessibilityConfig = new AccessibilityConfig();
   private breakpointSystem: BreakpointSystem = BreakpointSystem.getInstance();
 
@@ -30,6 +37,7 @@ export struct HomePage {
     { id: 'ar_navigation', icon: '🗺️', title: 'AR导航', color: '#FA8C16', bgColor: '#FFF7E6', route: 'pages/DestinationSelectPage' },
     { id: 'digital_twin', icon: '🫀', title: '数字孪生', color: '#F5222D', bgColor: '#FFF1F0', route: 'pages/DigitalTwinPage' },
     { id: 'ai_assistant', icon: '🤖', title: 'AI助手', color: '#1677FF', bgColor: '#E6F4FF', route: 'pages/AIAssistantPage' },
+    { id: 'ai_consultation', icon: '🧠', title: 'AI多科会诊', color: '#722ED1', bgColor: '#F9F0FF', route: 'pages/AIConsultationPage' },
     { id: 'distributed', icon: '🔗', title: '跨院协同', color: '#FA541C', bgColor: '#FFF2E8', route: 'pages/DistributedCollaborationPage' },
     { id: 'insurance', icon: '🛡️', title: '医保服务', color: '#722ED1', bgColor: '#F9F0FF', route: 'pages/InsurancePage' },
 
@@ -55,8 +63,44 @@ export struct HomePage {
     { id: 'ai_test', icon: '🧪', title: 'AI功能测试', color: '#F5222D', bgColor: '#FFF1F0', route: 'pages/AITestPage' }
   ];
 
-  aboutToAppear(): void {
+  async aboutToAppear(): Promise<void> {
     this.theme = AccessibilityConfig.getInstance();
+    await this.loadHomeStatistics();
+  }
+
+  private async loadHomeStatistics(): Promise<void> {
+    try {
+      const userId = AppStorage.get<number>('userId');
+      if (userId) {
+        const appointmentResp = await HttpUtil.get<Object>(ApiConstants.APPOINTMENT_STATISTICS + userId);
+        if (appointmentResp.success && appointmentResp.data) {
+          const data = appointmentResp.data as Record<string, Object>;
+          this.appointmentCount = String(data['totalCount'] ?? data['count'] ?? 0);
+          this.consultationCount = String(data['consultationCount'] ?? 0);
+          this.healthConsultCount = String(data['healthConsultCount'] ?? 0);
+          this.todayServiceCount = String(data['todayServiceCount'] ?? 0);
+        }
+      }
+      
+      const systemStatsResp = await HttpUtil.get<Object>(ApiConstants.HEALTH_STATS_SYSTEM);
+      if (systemStatsResp.success && systemStatsResp.data) {
+        const data = systemStatsResp.data as Record<string, Object>;
+        if (this.appointmentCount === '0') {
+          this.appointmentCount = String(data['appointmentCount'] ?? 0);
+        }
+        if (this.consultationCount === '0') {
+          this.consultationCount = String(data['consultationCount'] ?? 0);
+        }
+        if (this.healthConsultCount === '0') {
+          this.healthConsultCount = String(data['healthConsultCount'] ?? 0);
+        }
+        if (this.todayServiceCount === '0') {
+          this.todayServiceCount = String(data['todayServiceCount'] ?? data['totalUsers'] ?? 0);
+        }
+      }
+    } catch (error) {
+      console.error('[HomePage] 加载统计数据失败:', error);
+    }
   }
 
   private getGridColumnsTemplate(): string {
@@ -106,29 +150,34 @@ export struct HomePage {
   }
 
   build() {
-    Column() {
-      Scroll() {
-        Column({ space: this.isElderMode ? 16 : 12 }) {
-          this.buildWelcomeCard()
-          this.buildQuickActions()
-          this.buildHealthTips()
+    Stack() {
+      Column() {
+        Scroll() {
+          Column({ space: this.isElderMode ? 16 : 12 }) {
+            this.buildWelcomeCard()
+            this.buildQuickActions()
+            this.buildHealthTips()
+          }
+          .width('100%')
+          .constraintSize({ maxWidth: this.getContentMaxWidth() })
+          .padding({
+            left: this.getHorizontalPadding(),
+            right: this.getHorizontalPadding()
+          })
         }
+        .layoutWeight(1)
+        .scrollBar(BarState.Auto)
         .width('100%')
-        .constraintSize({ maxWidth: this.getContentMaxWidth() })
-        .padding({
-          left: this.getHorizontalPadding(),
-          right: this.getHorizontalPadding()
-        })
-      }
-      .layoutWeight(1)
-      .scrollBar(BarState.Auto)
-      .width('100%')
-      .align(Alignment.Top)
+        .align(Alignment.Top)
 
-      Footer({ activeIndex: this.currentIndex })
+        Footer({ activeIndex: this.currentIndex })
+      }
+      .height('100%')
+      .backgroundColor('#F5F7FA')
+
+      GlobalVoiceAssistant()
     }
     .height('100%')
-    .backgroundColor('#F5F7FA')
   }
 
   @Builder buildWelcomeCard(): void {
@@ -157,7 +206,7 @@ export struct HomePage {
             .fontColor('#FFFFFF')
             .opacity(0.85)
 
-          Text('1,234 人')
+          Text(`${this.todayServiceCount} 人`)
             .fontSize(14)
             .fontWeight(FontWeight.Bold)
             .fontColor('#FFFFFF')
@@ -167,9 +216,9 @@ export struct HomePage {
       .width('100%')
 
       Row({ space: 12 }) {
-        this.buildStatItem('预约挂号', '128', '次')
-        this.buildStatItem('在线问诊', '56', '人')
-        this.buildStatItem('健康咨询', '234', '条')
+        this.buildStatItem('预约挂号', this.appointmentCount, '次')
+        this.buildStatItem('在线问诊', this.consultationCount, '人')
+        this.buildStatItem('健康咨询', this.healthConsultCount, '条')
       }
       .width('100%')
       .margin({ top: 20 })
@@ -245,23 +294,7 @@ export struct HomePage {
             .borderRadius(12)
             .onClick(() => {
               try {
-                if (action.id === 'consultation') {
-                  const today = new Date();
-                  const year = today.getFullYear();
-                  const month = String(today.getMonth() + 1).padStart(2, '0');
-                  const day = String(today.getDate()).padStart(2, '0');
-                  router.pushUrl({
-                    url: 'pages/QueuePage',
-                    params: {
-                      online: true,
-                      doctorId: 0,
-                      scheduleDate: `${year}${month}${day}`,
-                      schedulePeriod: 1
-                    }
-                  });
-                } else {
-                  router.pushUrl({ url: action.route });
-                }
+                router.pushUrl({ url: action.route });
               } catch (error) {
                 console.error('导航失败:', error);
               }
@@ -282,20 +315,6 @@ export struct HomePage {
             .fontSize(this.getSectionTitleFontSize())
             .fontWeight(FontWeight.Bold)
             .fontColor('#262626')
-
-          Blank()
-
-          Text('查看全部')
-            .fontSize(13)
-            .fontColor('#999999')
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/DiscoverPage' });
-            })
-
-          Text('>')
-            .fontSize(14)
-            .fontColor('#CCCCCC')
-            .margin({ left: 4 })
         }
         .width('100%')
 

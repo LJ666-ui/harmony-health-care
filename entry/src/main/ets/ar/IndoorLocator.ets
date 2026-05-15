@@ -44,39 +44,34 @@ interface PositioningResult {
 export class IndoorLocator {
   private static instance: IndoorLocator | null = null;
 
-  // 定位状态
   private currentPosition: Position3D | null = null;
   private lastUpdateTime: number = 0;
   private signalStrength: SignalStrength = SignalStrength.GOOD;
 
-  // 定位历史(用于卡尔曼滤波)
   private positionHistory: PositioningResult[] = [];
   private readonly maxHistoryLength: number = 10;
 
-  // 定位更新回调
   private positionUpdateCallback: ((pos: Position3D) => void) | null = null;
 
-  // 定位循环定时器
   private positioningTimer: number | null = null;
 
-  // 定位更新间隔(毫秒)
-  private readonly updateInterval: number = 1000; // 1秒
+  private readonly updateInterval: number = 1000;
 
-  // 权重配置
   private readonly weights: PositioningWeights = {
-    wifi: 0.3,  // WiFi定位权重
-    ble: 0.5,   // 蓝牙定位权重
-    ar: 0.2     // AR定位权重
+    wifi: 0.3,
+    ble: 0.5,
+    ar: 0.2
   };
 
-  /**
-   * 私有构造函数(单例模式)
-   */
+  private simulatedPosition: Position3D = { x: 40, y: 0, z: 5 };
+  private simulatedTarget: Position3D | null = null;
+  private simulationSpeed: number = 1.2;
+  private isSimulating: boolean = false;
+  private simulationTimer: number | null = null;
+  private readonly simulationInterval: number = 1000;
+
   private constructor() {}
 
-  /**
-   * 获取单例实例
-   */
   public static getInstance(): IndoorLocator {
     if (!IndoorLocator.instance) {
       IndoorLocator.instance = new IndoorLocator();
@@ -84,197 +79,141 @@ export class IndoorLocator {
     return IndoorLocator.instance;
   }
 
-  /**
-   * 初始化定位服务
-   */
   public async initialize(): Promise<void> {
-    console.log('[IndoorLocator] 初始化室内定位服务');
-
-    // 检查权限
-    const hasPermission = await this.checkPermissions();
-    if (!hasPermission) {
-      console.warn('[IndoorLocator] 缺少定位权限,定位功能将受限');
-    }
-
-    // 初始化各定位源
-    await this.initializePositioningSources();
-
-    console.log('[IndoorLocator] 初始化完成');
+    console.log('[IndoorLocator] 初始化室内定位服务(模拟模式)');
+    this.simulatedPosition = { x: 40, y: 0, z: 5 };
+    this.currentPosition = { x: this.simulatedPosition.x, y: this.simulatedPosition.y, z: this.simulatedPosition.z };
+    this.lastUpdateTime = Date.now();
+    console.log('[IndoorLocator] 初始化完成,初始位置:', JSON.stringify(this.currentPosition));
   }
 
-  /**
-   * 检查定位权限
-   */
-  private async checkPermissions(): Promise<boolean> {
-    // 简化实现:假设权限已授予
-    // 实际实现需要调用HarmonyOS权限API
-    return true;
-  }
-
-  /**
-   * 初始化定位源
-   */
-  private async initializePositioningSources(): Promise<void> {
-    // 初始化WiFi定位
-    // 初始化蓝牙定位
-    // 初始化AR定位
-    console.log('[IndoorLocator] 定位源初始化完成');
-  }
-
-  /**
-   * 启动定位追踪
-   */
   public async startTracking(): Promise<void> {
     console.log('[IndoorLocator] 启动定位追踪');
-
-    // 启动定位循环
     this.startPositioningLoop();
   }
 
-  /**
-   * 停止定位追踪
-   */
   public stopTracking(): void {
     console.log('[IndoorLocator] 停止定位追踪');
-
-    // 停止定位循环
     if (this.positioningTimer !== null) {
       clearInterval(this.positioningTimer);
       this.positioningTimer = null;
     }
-
-    // 清空历史
+    if (this.simulationTimer !== null) {
+      clearInterval(this.simulationTimer);
+      this.simulationTimer = null;
+    }
+    this.isSimulating = false;
     this.positionHistory = [];
   }
 
-  /**
-   * 启动定位循环
-   */
+  public startSimulationToTarget(target: Position3D): void {
+    this.simulatedTarget = { x: target.x, y: target.y, z: target.z };
+    this.isSimulating = true;
+    console.log('[IndoorLocator] 启动模拟移动,目标:', JSON.stringify(target));
+
+    if (this.simulationTimer !== null) {
+      clearInterval(this.simulationTimer);
+    }
+    this.simulationTimer = setInterval(() => {
+      this.stepSimulation();
+    }, this.simulationInterval);
+  }
+
+  public stopSimulation(): void {
+    this.isSimulating = false;
+    this.simulatedTarget = null;
+    if (this.simulationTimer !== null) {
+      clearInterval(this.simulationTimer);
+      this.simulationTimer = null;
+    }
+    console.log('[IndoorLocator] 停止模拟移动');
+  }
+
+  private stepSimulation(): void {
+    if (!this.isSimulating || !this.simulatedTarget) return;
+
+    const dx = this.simulatedTarget.x - this.simulatedPosition.x;
+    const dy = this.simulatedTarget.y - this.simulatedPosition.y;
+    const dz = this.simulatedTarget.z - this.simulatedPosition.z;
+    const totalDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (totalDist < 2) {
+      this.simulatedPosition = { x: this.simulatedTarget.x, y: this.simulatedTarget.y, z: this.simulatedTarget.z };
+      this.isSimulating = false;
+      if (this.simulationTimer !== null) {
+        clearInterval(this.simulationTimer);
+        this.simulationTimer = null;
+      }
+      console.log('[IndoorLocator] 模拟移动到达目标');
+      return;
+    }
+
+    const stepDist = this.simulationSpeed;
+    const ratio = stepDist / totalDist;
+    this.simulatedPosition = {
+      x: this.simulatedPosition.x + dx * ratio + (Math.random() - 0.5) * 0.3,
+      y: this.simulatedPosition.y + dy * ratio,
+      z: this.simulatedPosition.z + dz * ratio + (Math.random() - 0.5) * 0.3
+    };
+  }
+
   private startPositioningLoop(): void {
     this.positioningTimer = setInterval(() => {
       this.updatePosition();
     }, this.updateInterval);
   }
 
-  /**
-   * 更新位置
-   */
   private async updatePosition(): Promise<void> {
     try {
-      // 1. 获取各定位源的位置
-      const wifiPos = await this.locateByWiFi();
-      const blePos = await this.locateByBLE();
-      const arPos = await this.locateByAR();
+      const basePosition = this.simulatedPosition;
+      const noise: Position3D = {
+        x: (Math.random() - 0.5) * 0.8,
+        y: 0,
+        z: (Math.random() - 0.5) * 0.8
+      };
 
-      // 2. 融合定位结果
+      const wifiPos: PositioningResult = {
+        position: { x: basePosition.x + noise.x * 2, y: basePosition.y, z: basePosition.z + noise.z * 2 },
+        accuracy: 4,
+        source: PositioningSource.WIFI,
+        timestamp: Date.now()
+      };
+
+      const blePos: PositioningResult = {
+        position: { x: basePosition.x + noise.x, y: basePosition.y, z: basePosition.z + noise.z },
+        accuracy: 1.5,
+        source: PositioningSource.BLE,
+        timestamp: Date.now()
+      };
+
+      const arPos: PositioningResult | null = Math.random() < 0.3 ? null : {
+        position: { x: basePosition.x + noise.x * 0.3, y: basePosition.y, z: basePosition.z + noise.z * 0.3 },
+        accuracy: 0.5,
+        source: PositioningSource.AR,
+        timestamp: Date.now()
+      };
+
       const fusedPosition = this.fusePositions(wifiPos, blePos, arPos);
-
-      // 3. 卡尔曼滤波平滑
       const smoothedPosition = this.kalmanFilter(fusedPosition);
 
-      // 4. 更新当前位置
       this.currentPosition = smoothedPosition;
       this.lastUpdateTime = Date.now();
+      this.signalStrength = SignalStrength.GOOD;
 
-      // 5. 检查信号强度
-      this.checkSignalStrength();
-
-      // 6. 触发回调
       if (this.positionUpdateCallback) {
         this.positionUpdateCallback(this.currentPosition);
       }
 
-      // 7. 记录历史
       this.addToHistory({
         position: this.currentPosition,
         accuracy: this.calculateAccuracy(wifiPos, blePos, arPos),
-        source: PositioningSource.WIFI, // 融合结果
+        source: PositioningSource.WIFI,
         timestamp: this.lastUpdateTime
       });
     } catch (error) {
       console.error('[IndoorLocator] 定位更新失败:', error);
       this.handlePositioningError(error);
     }
-  }
-
-  /**
-   * WiFi指纹定位
-   */
-  private async locateByWiFi(): Promise<PositioningResult> {
-    // 简化实现:模拟WiFi定位
-    // 实际实现需要:
-    // 1. 扫描周围WiFi AP
-    // 2. 获取信号强度(RSSI)
-    // 3. 与指纹库匹配
-    // 4. 返回最匹配的位置
-
-    const mockPosition: Position3D = {
-      x: Math.random() * 80,  // 模拟位置
-      y: 0,
-      z: Math.random() * 60
-    };
-
-    return {
-      position: mockPosition,
-      accuracy: 4, // ±4米
-      source: PositioningSource.WIFI,
-      timestamp: Date.now()
-    };
-  }
-
-  /**
-   * 蓝牙Beacon定位
-   */
-  private async locateByBLE(): Promise<PositioningResult> {
-    // 简化实现:模拟蓝牙定位
-    // 实际实现需要:
-    // 1. 扫描周围BLE Beacon
-    // 2. 获取信号强度(RSSI)
-    // 3. 三点定位算法
-    // 4. 返回计算位置
-
-    const mockPosition: Position3D = {
-      x: Math.random() * 80,
-      y: 0,
-      z: Math.random() * 60
-    };
-
-    return {
-      position: mockPosition,
-      accuracy: 1.5, // ±1.5米
-      source: PositioningSource.BLE,
-      timestamp: Date.now()
-    };
-  }
-
-  /**
-   * AR视觉定位
-   */
-  private async locateByAR(): Promise<PositioningResult | null> {
-    // 简化实现:AR定位可能不可用
-    // 实际实现需要:
-    // 1. 获取相机画面
-    // 2. 特征点提取
-    // 3. 与预存地图匹配
-    // 4. 返回6DoF位姿
-
-    // 模拟AR定位不可用
-    if (Math.random() < 0.3) { // 30%概率不可用
-      return null;
-    }
-
-    const mockPosition: Position3D = {
-      x: Math.random() * 80,
-      y: 0,
-      z: Math.random() * 60
-    };
-
-    return {
-      position: mockPosition,
-      accuracy: 0.5, // ±0.5米
-      source: PositioningSource.AR,
-      timestamp: Date.now()
-    };
   }
 
   /**
@@ -446,7 +385,7 @@ export class IndoorLocator {
    * 获取定位历史
    */
   public getPositionHistory(): PositioningResult[] {
-    return [...this.positionHistory];
+    return this.positionHistory.slice();
   }
 
   /**

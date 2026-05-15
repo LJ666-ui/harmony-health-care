@@ -79,6 +79,11 @@ public class UserController {
         if (userService.findByUsername(user.getUsername()) != null) {
             return Result.error("用户名已存在");
         }
+        if (user.getPhone() != null && !user.getPhone().trim().isEmpty()) {
+            if (userService.findByPhone(user.getPhone()) != null) {
+                return Result.error("该手机号已注册");
+            }
+        }
         if (user.getUserType() == null) {
             user.setUserType(0);
         }
@@ -97,14 +102,38 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public Result<?> login(@Valid @RequestBody User user) {
-        User dbUser = userService.findByUsername(user.getUsername());
-        if (dbUser == null) {
-            return Result.error("用户名不存在");
+    public Result<?> login(@RequestBody Map<String, String> params) {
+        String phone = params.get("phone");
+        String username = params.get("username");
+        String password = params.get("password");
+
+        if (password == null || password.trim().isEmpty()) {
+            return Result.error("密码不能为空");
         }
-        if (!BCryptUtil.matches(user.getPassword(), dbUser.getPassword())) {
+
+        User dbUser = null;
+
+        if (phone != null && !phone.trim().isEmpty()) {
+            if (!phone.matches("^1[3-9]\\d{9}$")) {
+                return Result.error("手机号格式不正确");
+            }
+            dbUser = userService.findByPhone(phone);
+            if (dbUser == null) {
+                return Result.error("手机号未注册");
+            }
+        } else if (username != null && !username.trim().isEmpty()) {
+            dbUser = userService.findByUsername(username);
+            if (dbUser == null) {
+                return Result.error("用户名不存在");
+            }
+        } else {
+            return Result.error("请输入手机号或用户名");
+        }
+
+        if (!BCryptUtil.matches(password, dbUser.getPassword())) {
             return Result.error("密码错误");
         }
+
         String token = JwtUtil.generateToken(dbUser.getId(), dbUser.getUsername());
         Map<String, Object> result = new HashMap<>();
         result.put("token", token);

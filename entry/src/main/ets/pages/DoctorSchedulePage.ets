@@ -74,7 +74,7 @@ struct DoctorSchedulePage {
       if (!err && result && result.index === 1) {
         const requestOptions: RequestOptions = {} as RequestOptions;
         
-        HttpUtil.delete<void>(`${ApiConstants.SCHEDULE_LIST}/${id}`, requestOptions)
+        HttpUtil.delete<void>(`${ApiConstants.SCHEDULE_DELETE}/${id}`, requestOptions)
           .then(() => {
             promptAction.showToast({ message: '删除成功' });
             this.loadSchedules();

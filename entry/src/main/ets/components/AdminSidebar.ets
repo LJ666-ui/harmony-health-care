@@ -1,6 +1,7 @@
 import router from '@ohos.router';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import { AdminRole } from '../models/AdminInfo';
+import { CurrentAdmin } from '../services/AdminAuthService';
 
 interface MenuItem {
   name: string;
@@ -11,7 +12,7 @@ interface MenuItem {
 
 @Component
 export struct AdminSidebar {
-  @StorageLink('currentAdmin') currentAdmin: AdminInfo | null = null;
+  @StorageLink('currentAdmin') currentAdmin: CurrentAdmin | null = null;
   @Prop activeRoute: string = 'AdminDashboard';
 
   private menuItems: MenuItem[] = [

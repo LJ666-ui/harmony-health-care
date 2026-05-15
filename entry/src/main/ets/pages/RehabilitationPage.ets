@@ -15,6 +15,11 @@ interface TrainingPlan {
   completedDays: number;
   status: string;
   nextSession: string;
+  videoUrl?: string;
+  icon?: string;
+  duration?: string;
+  difficulty?: string;
+  description?: string;
 }
 
 interface TrainingRecord {
@@ -52,9 +57,12 @@ struct RehabilitationPage {
       await new Promise<void>(resolve => setTimeout(resolve, 500));
       
       this.plans = [
-        { id: 1, name: '膝关节康复训练', type: '骨科康复', progress: 75, totalDays: 30, completedDays: 22, status: '进行中', nextSession: '今天 15:00' },
-        { id: 2, name: '颈椎病康复训练', type: '脊柱康复', progress: 40, totalDays: 20, completedDays: 8, status: '进行中', nextSession: '明天 09:00' },
-        { id: 3, name: '心肺功能训练', type: '心肺康复', progress: 100, totalDays: 15, completedDays: 15, status: '已完成', nextSession: '-' }
+        { id: 1, name: '膝关节康复训练', type: '骨科康复', progress: 75, totalDays: 30, completedDays: 22, status: '进行中', nextSession: '今天 15:00',
+          videoUrl: 'https://media.w3.org/2010/05/sintel/trailer.mp4', icon: '🦵', duration: '20分钟', difficulty: '中级', description: '增强膝关节稳定性，减轻关节疼痛' },
+        { id: 2, name: '颈椎病康复训练', type: '脊柱康复', progress: 40, totalDays: 20, completedDays: 8, status: '进行中', nextSession: '明天 09:00',
+          videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4', icon: '🧘', duration: '15分钟', difficulty: '初级', description: '缓解颈椎僵硬，改善颈部活动度' },
+        { id: 3, name: '心肺功能训练', type: '心肺康复', progress: 100, totalDays: 15, completedDays: 15, status: '已完成', nextSession: '-',
+          videoUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4', icon: '❤️', duration: '25分钟', difficulty: '高级', description: '提升心肺功能，增强体能耐力' }
       ];
       
       this.records = [
@@ -77,12 +85,21 @@ struct RehabilitationPage {
       ToastUtil.showInfo('该训练计划已完成');
       return;
     }
-    router.pushUrl({ 
-      url: 'pages/Rehab3DPage',
-      params: { planId: plan.id }
+    router.pushUrl({
+      url: 'pages/RehabCourseVideoPage',
+      params: {
+        courseId: plan.id.toString(),
+        courseTitle: plan.name,
+        courseIcon: plan.icon || '🏥',
+        courseDescription: plan.description || '',
+        courseDuration: plan.duration || '',
+        courseDifficulty: plan.difficulty || '',
+        courseTargetGroup: plan.type,
+        videoUrl: plan.videoUrl
+      }
     }).catch((error: Error) => {
-      console.error('跳转训练页失败:', error.message);
-      ToastUtil.showError('功能开发中');
+      console.error('跳转视频播放页失败:', error.message);
+      ToastUtil.showError('视频加载失败');
     });
   }
 

@@ -148,6 +148,7 @@ com\example\medical\entity\MedicineCategory.class
 com\example\medical\service\impl\ExampleServiceImpl.class
 com\example\medical\config\RedisConfig.class
 com\example\medical\service\impl\PaymentRecordServiceImpl.class
+com\example\medical\controller\PayController.class
 com\example\medical\entity\HealthArticle.class
 com\example\medical\service\SensitiveOperationService.class
 com\example\medical\service\AppointmentService.class

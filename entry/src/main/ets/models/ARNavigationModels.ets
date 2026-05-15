@@ -203,7 +203,7 @@ export interface ARNavigationState {
   heading: number;                 // 当前朝向角度(0-360度,0=北,90=东)
   totalDistance: number;           // 总距离(米)
   remainingDistance: number;       // 剩余距离(米)
-  estimatedTime: number;           // 预计时间(分钟)
+  estimatedTime: number;           // 预计时间(秒)
   estimatedArrival: number;        // 预计到达时间(时间戳)
   navigationMode: NavigationMode;  // 当前导航模式
   isMuted: boolean;                // 是否静音

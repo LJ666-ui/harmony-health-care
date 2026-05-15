@@ -1,18 +1,39 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
-import { AdminMock, AdminInfo, FamilyMemberInfo } from '../mock/adminMock';
+import { HttpUtil, BaseResponse, HttpMethod, RequestOptions } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import { ToastUtil } from '../common/utils/ToastUtil';
+import { CurrentAdmin } from '../services/AdminAuthService';
+
+interface FamilyMemberInfo {
+  id: number;
+  userId: number;
+  name: string;
+  relation: string;
+  phone: string;
+  idCard: string;
+  gender: number;
+  age: number;
+  address: string;
+  isEmergencyContact: number;
+  healthCondition: string;
+  createTime: string;
+  updateTime: string;
+}
 
 @Entry
 @Component
 struct AdminFamily {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @State currentAdmin: AdminInfo | null = null;
+  @State currentAdmin: CurrentAdmin | null = null;
   @State searchText: string = '';
   @State filterRelation: string = '';
   @State filterEmergency: number = -1;
-  @State filteredList: FamilyMemberInfo[] = [];
+  @State familyList: FamilyMemberInfo[] = [];
+  @State totalRecords: number = 0;
   @State currentPage: number = 1;
   @State pageSize: number = 10;
+  @State isLoading: boolean = false;
   @State showAddModal: boolean = false;
   @State showDetailModal: boolean = false;
   @State selectedFamily: FamilyMemberInfo | null = null;
@@ -30,38 +51,90 @@ struct AdminFamily {
 
   private relations: string[] = ['配偶', '子女', '父母', '兄弟姐妹', '其他'];
 
+  private getRelationColor(relation: string): string {
+    const map: Record<string, string> = {
+      '配偶': '#E91E63',
+      '子女': '#2196F3',
+      '父母': '#FF9800',
+      '兄弟姐妹': '#4CAF50',
+      '其他': '#9E9E9E'
+    };
+    return map[relation] || '#9E9E9E';
+  }
+
+  private getGenderName(gender: number): string {
+    if (gender === 1) return '男';
+    if (gender === 2) return '女';
+    return '未知';
+  }
+
   aboutToAppear(): void {
-    this.currentAdmin = AppStorage.get<AdminInfo>('currentAdmin') || null;
-    this.filterList();
+    this.currentAdmin = AppStorage.get<CurrentAdmin>('currentAdmin') || null;
+    this.loadFamilyList();
   }
 
-  private filterList(): void {
-    let result: FamilyMemberInfo[] = [...AdminMock.familyMembers];
-    if (this.searchText) {
-      const keyword: string = this.searchText.toLowerCase();
-      result = result.filter(f =>
-        f.name.toLowerCase().includes(keyword) ||
-        f.phone.includes(keyword) ||
-        AdminMock.getUserNameById(f.user_id).toLowerCase().includes(keyword)
+  private async loadFamilyList(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const params: Record<string, Object> = {
+        'page': String(this.currentPage),
+        'size': String(this.pageSize)
+      };
+      if (this.searchText.trim()) {
+        params['keyword'] = this.searchText.trim();
+      }
+      if (this.filterRelation) {
+        params['relation'] = this.filterRelation;
+      }
+      if (this.filterEmergency >= 0) {
+        params['isEmergencyContact'] = String(this.filterEmergency);
+      }
+
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.GET,
+        ApiConstants.ADMIN_FAMILY_LIST,
+        undefined,
+        params as Object,
+        { isAdmin: true } as RequestOptions
       );
-    }
-    if (this.filterRelation) {
-      result = result.filter(f => f.relation === this.filterRelation);
-    }
-    if (this.filterEmergency >= 0) {
-      result = result.filter(f => f.is_emergency_contact === this.filterEmergency);
-    }
-    this.filteredList = result;
-    this.currentPage = 1;
-  }
 
-  private getPagedList(): FamilyMemberInfo[] {
-    const start: number = (this.currentPage - 1) * this.pageSize;
-    return this.filteredList.slice(start, start + this.pageSize);
+      if (response.success && response.data) {
+        const data = response.data as Record<string, Object>;
+        const records = data['records'];
+        if (Array.isArray(records)) {
+          this.familyList = records.map((r: Object): FamilyMemberInfo => {
+            const item = r as Record<string, Object>;
+            return {
+              id: Number(item['id']) || 0,
+              userId: Number(item['userId'] || item['user_id']) || 0,
+              name: String(item['name'] || ''),
+              relation: String(item['relation'] || ''),
+              phone: String(item['phone'] || ''),
+              idCard: String(item['idCard'] || item['id_card'] || ''),
+              gender: Number(item['gender']) || 0,
+              age: Number(item['age']) || 0,
+              address: String(item['address'] || ''),
+              isEmergencyContact: Number(item['isEmergencyContact'] || item['is_emergency_contact']) || 0,
+              healthCondition: String(item['healthCondition'] || item['health_condition'] || ''),
+              createTime: String(item['createTime'] || item['create_time'] || ''),
+              updateTime: String(item['updateTime'] || item['update_time'] || '')
+            };
+          });
+          this.totalRecords = Number(data['total']) || 0;
+        }
+      } else {
+        ToastUtil.showError(response.message || '加载家属列表失败', 2000);
+      }
+    } catch (error) {
+      console.error('[AdminFamily] 加载失败:', error);
+      ToastUtil.showError('网络错误，请检查后端服务', 2000);
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   private getTotalPages(): number {
-    return Math.max(1, Math.ceil(this.filteredList.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.totalRecords / this.pageSize));
   }
 
   private openAddModal(): void {
@@ -82,63 +155,89 @@ struct AdminFamily {
     this.editMode = true;
     this.selectedFamily = fm;
     this.formName = fm.name;
-    this.formUserId = fm.user_id.toString();
+    this.formUserId = fm.userId.toString();
     this.formRelation = fm.relation;
     this.formPhone = fm.phone;
     this.formGender = fm.gender;
     this.formAge = fm.age.toString();
     this.formAddress = fm.address;
-    this.formEmergency = fm.is_emergency_contact;
-    this.formHealth = fm.health_condition;
+    this.formEmergency = fm.isEmergencyContact;
+    this.formHealth = fm.healthCondition;
     this.showAddModal = true;
   }
 
-  private saveFamily(): void {
+  private async saveFamily(): Promise<void> {
     if (!this.formName.trim() || !this.formUserId.trim()) {
+      ToastUtil.showError('家属姓名和关联用户ID不能为空', 1500);
       return;
     }
-    if (this.editMode && this.selectedFamily) {
-      const idx: number = AdminMock.familyMembers.findIndex(f => f.id === this.selectedFamily!.id);
-      if (idx >= 0) {
-        AdminMock.familyMembers[idx].name = this.formName;
-        AdminMock.familyMembers[idx].user_id = parseInt(this.formUserId) || 0;
-        AdminMock.familyMembers[idx].relation = this.formRelation;
-        AdminMock.familyMembers[idx].phone = this.formPhone;
-        AdminMock.familyMembers[idx].gender = this.formGender;
-        AdminMock.familyMembers[idx].age = parseInt(this.formAge) || 0;
-        AdminMock.familyMembers[idx].address = this.formAddress;
-        AdminMock.familyMembers[idx].is_emergency_contact = this.formEmergency;
-        AdminMock.familyMembers[idx].health_condition = this.formHealth;
+
+    try {
+      const body: Record<string, Object> = {
+        'name': this.formName,
+        'userId': this.formUserId,
+        'relation': this.formRelation,
+        'phone': this.formPhone,
+        'gender': this.formGender,
+        'age': this.formAge || 0,
+        'address': this.formAddress,
+        'isEmergencyContact': this.formEmergency,
+        'healthCondition': this.formHealth
+      };
+
+      let response: BaseResponse<Object>;
+
+      if (this.editMode && this.selectedFamily) {
+        body['id'] = this.selectedFamily.id;
+        response = await HttpUtil.request<Object>(
+          HttpMethod.POST,
+          ApiConstants.ADMIN_FAMILY_UPDATE,
+          body as Object,
+          undefined,
+          { isAdmin: true } as RequestOptions
+        );
+      } else {
+        response = await HttpUtil.request<Object>(
+          HttpMethod.POST,
+          ApiConstants.ADMIN_FAMILY_ADD,
+          body as Object,
+          undefined,
+          { isAdmin: true } as RequestOptions
+        );
       }
-    } else {
-      const newId: number = AdminMock.familyMembers.length > 0 ?
-        AdminMock.familyMembers[AdminMock.familyMembers.length - 1].id + 1 : 1;
-      AdminMock.familyMembers.push({
-        id: newId,
-        user_id: parseInt(this.formUserId) || 0,
-        name: this.formName,
-        relation: this.formRelation,
-        phone: this.formPhone,
-        id_card: '',
-        gender: this.formGender,
-        age: parseInt(this.formAge) || 0,
-        address: this.formAddress,
-        is_emergency_contact: this.formEmergency,
-        health_condition: this.formHealth,
-        create_time: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        update_time: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        is_deleted: 0
-      });
+
+      if (response.success) {
+        ToastUtil.showSuccess(this.editMode ? '更新成功' : '添加成功', 1500);
+        this.showAddModal = false;
+        this.loadFamilyList();
+      } else {
+        ToastUtil.showError(response.message || '操作失败', 2000);
+      }
+    } catch (error) {
+      console.error('[AdminFamily] 保存失败:', error);
+      ToastUtil.showError('网络错误，请稍后重试', 2000);
     }
-    this.showAddModal = false;
-    this.filterList();
   }
 
-  private deleteFamily(fm: FamilyMemberInfo): void {
-    const idx: number = AdminMock.familyMembers.findIndex(f => f.id === fm.id);
-    if (idx >= 0) {
-      AdminMock.familyMembers.splice(idx, 1);
-      this.filterList();
+  private async deleteFamily(fm: FamilyMemberInfo): Promise<void> {
+    try {
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.POST,
+        ApiConstants.ADMIN_FAMILY_DELETE + fm.id,
+        undefined,
+        undefined,
+        { isAdmin: true } as RequestOptions
+      );
+
+      if (response.success) {
+        ToastUtil.showSuccess('删除成功', 1500);
+        this.loadFamilyList();
+      } else {
+        ToastUtil.showError(response.message || '删除失败', 2000);
+      }
+    } catch (error) {
+      console.error('[AdminFamily] 删除失败:', error);
+      ToastUtil.showError('网络错误', 2000);
     }
   }
 
@@ -217,7 +316,7 @@ struct AdminFamily {
           .padding({ left: 12 })
           .onChange((value: string) => {
             this.searchText = value;
-            this.filterList();
+            this.loadFamilyList();
           });
         if (this.searchText) {
           Button({ type: ButtonType.Normal }) {
@@ -232,7 +331,7 @@ struct AdminFamily {
           .margin({ left: 8 })
           .onClick(() => {
             this.searchText = '';
-            this.filterList();
+            this.loadFamilyList();
           });
         }
       }
@@ -251,7 +350,7 @@ struct AdminFamily {
           .borderRadius(6)
           .onClick(() => {
             this.filterRelation = '';
-            this.filterList();
+            this.loadFamilyList();
           });
 
         ForEach(this.relations, (rel: string) => {
@@ -264,7 +363,7 @@ struct AdminFamily {
             .borderRadius(6)
             .onClick(() => {
               this.filterRelation = rel;
-              this.filterList();
+              this.loadFamilyList();
             });
         }, (rel: string) => rel);
       }
@@ -283,7 +382,7 @@ struct AdminFamily {
           .borderRadius(6)
           .onClick(() => {
             this.filterEmergency = -1;
-            this.filterList();
+            this.loadFamilyList();
           });
 
         Button('是')
@@ -295,7 +394,7 @@ struct AdminFamily {
           .borderRadius(6)
           .onClick(() => {
             this.filterEmergency = 1;
-            this.filterList();
+            this.loadFamilyList();
           });
 
         Button('否')
@@ -307,11 +406,11 @@ struct AdminFamily {
           .borderRadius(6)
           .onClick(() => {
             this.filterEmergency = 0;
-            this.filterList();
+            this.loadFamilyList();
           });
       }
 
-      Text(`共 ${this.filteredList.length} 条记录`)
+      Text(`共 ${this.totalRecords} 条记录`)
         .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
         .fontColor(GlobalTheme.TEXT_HINT)
         .width('100%');
@@ -327,7 +426,7 @@ struct AdminFamily {
   FamilyList() {
     Scroll() {
       Column({ space: 8 }) {
-        ForEach(this.getPagedList(), (fm: FamilyMemberInfo) => {
+        ForEach(this.familyList, (fm: FamilyMemberInfo) => {
           Row() {
             Column({ space: 4 }) {
               Row({ space: 8 }) {
@@ -337,11 +436,11 @@ struct AdminFamily {
                   .fontColor(GlobalTheme.TEXT_PRIMARY);
                 Text(fm.relation)
                   .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                  .fontColor(AdminMock.getRelationColor(fm.relation))
+                  .fontColor(this.getRelationColor(fm.relation))
                   .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                  .backgroundColor(AdminMock.getRelationColor(fm.relation) + '15')
+                  .backgroundColor(this.getRelationColor(fm.relation) + '15')
                   .borderRadius(4);
-                if (fm.is_emergency_contact === 1) {
+                if (fm.isEmergencyContact === 1) {
                   Text('紧急')
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                     .fontColor('#FAAD14')
@@ -352,7 +451,7 @@ struct AdminFamily {
               }
 
               Row({ space: 12 }) {
-                Text(`👤 关联：${AdminMock.getUserNameById(fm.user_id)}`)
+                Text(`👤 关联用户ID：${fm.userId}`)
                   .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                   .fontColor(GlobalTheme.TEXT_SECONDARY);
                 Text(`📱 ${fm.phone || '未填写'}`)
@@ -361,11 +460,11 @@ struct AdminFamily {
               }
 
               Row({ space: 12 }) {
-                Text(`${AdminMock.getGenderName(fm.gender)} · ${fm.age}岁`)
+                Text(`${this.getGenderName(fm.gender)} · ${fm.age}岁`)
                   .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                   .fontColor(GlobalTheme.TEXT_HINT);
-                if (fm.health_condition) {
-                  Text(`健康：${fm.health_condition.length > 12 ? fm.health_condition.substring(0, 12) + '...' : fm.health_condition}`)
+                if (fm.healthCondition) {
+                  Text(`健康：${fm.healthCondition.length > 12 ? fm.healthCondition.substring(0, 12) + '...' : fm.healthCondition}`)
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                     .fontColor(GlobalTheme.TEXT_HINT)
                     .maxLines(1)
@@ -444,7 +543,10 @@ struct AdminFamily {
         .borderRadius(6)
         .enabled(this.currentPage > 1)
         .onClick(() => {
-          if (this.currentPage > 1) this.currentPage--;
+          if (this.currentPage > 1) {
+            this.currentPage--;
+            this.loadFamilyList();
+          }
         });
 
       Text(`${this.currentPage} / ${this.getTotalPages()}`)
@@ -460,7 +562,10 @@ struct AdminFamily {
         .borderRadius(6)
         .enabled(this.currentPage < this.getTotalPages())
         .onClick(() => {
-          if (this.currentPage < this.getTotalPages()) this.currentPage++;
+          if (this.currentPage < this.getTotalPages()) {
+            this.currentPage++;
+            this.loadFamilyList();
+          }
         });
     }
     .width('100%')
@@ -737,17 +842,17 @@ struct AdminFamily {
 
           this.DetailRow('ID', `${this.selectedFamily!.id}`);
           this.DetailRow('姓名', this.selectedFamily!.name);
-          this.DetailRow('关联用户', `${AdminMock.getUserNameById(this.selectedFamily!.user_id)}（ID: ${this.selectedFamily!.user_id}）`);
+          this.DetailRow('关联用户ID', `${this.selectedFamily!.userId}`);
           this.DetailRow('关系', this.selectedFamily!.relation);
-          this.DetailRow('性别', AdminMock.getGenderName(this.selectedFamily!.gender));
+          this.DetailRow('性别', this.getGenderName(this.selectedFamily!.gender));
           this.DetailRow('年龄', `${this.selectedFamily!.age}岁`);
           this.DetailRow('电话', this.selectedFamily!.phone || '未填写');
-          this.DetailRow('身份证', this.selectedFamily!.id_card || '未填写');
+          this.DetailRow('身份证', this.selectedFamily!.idCard || '未填写');
           this.DetailRow('地址', this.selectedFamily!.address || '未填写');
-          this.DetailRow('紧急联系人', this.selectedFamily!.is_emergency_contact === 1 ? '是' : '否');
-          this.DetailRow('健康状况', this.selectedFamily!.health_condition || '无');
-          this.DetailRow('创建时间', this.selectedFamily!.create_time);
-          this.DetailRow('更新时间', this.selectedFamily!.update_time);
+          this.DetailRow('紧急联系人', this.selectedFamily!.isEmergencyContact === 1 ? '是' : '否');
+          this.DetailRow('健康状况', this.selectedFamily!.healthCondition || '无');
+          this.DetailRow('创建时间', this.selectedFamily!.createTime);
+          this.DetailRow('更新时间', this.selectedFamily!.updateTime);
 
           Button('关闭')
             .width('100%')

@@ -1,16 +1,18 @@
 package com.example.medical.service;
 
+
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.internal.util.AlipaySignature;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
-import com.alipay.api.request.AlipayTradeWapPayRequest;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.example.medical.config.AlipayConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.alibaba.fastjson.JSONObject;
 
 import java.util.Map;
 
@@ -26,47 +28,52 @@ public class AlipayService {
         request.setReturnUrl(AlipayConfig.RETURN_URL);
         request.setNotifyUrl(AlipayConfig.NOTIFY_URL);
 
-        String bizContent = "{" +
-                "\"out_trade_no\":\"" + outTradeNo + "\"," +
-                "\"total_amount\":\"" + totalAmount + "\"," +
-                "\"subject\":\"" + subject + "\"," +
-                "\"product_code\":\"FAST_INSTANT_TRADE_PAY\"," +
-                "\"body\":\"" + description + "\"" +
-                "}";
-
-        request.setBizContent(bizContent);
+        JSONObject bizContent = new JSONObject();
+        bizContent.put("out_trade_no", outTradeNo);
+        bizContent.put("total_amount", totalAmount);
+        bizContent.put("subject", subject);
+        bizContent.put("product_code", "FAST_INSTANT_TRADE_PAY");
+        bizContent.put("body", description);
+        request.setBizContent(bizContent.toJSONString());
 
         try {
             String form = alipayClient.pageExecute(request).getBody();
             log.info("[支付宝] 创建PC网页支付订单成功 outTradeNo={}", outTradeNo);
             return form;
         } catch (AlipayApiException e) {
-            log.error("[支付宝] 创建PC网页支付订单失败 outTradeNo={} error={}", outTradeNo, e.getErrMsg());
+            log.error("[支付宝] 创建PC网页支付订单失败 outTradeNo={} errCode={} errMsg={}", outTradeNo, e.getErrCode(), e.getErrMsg());
             return null;
         }
     }
 
     public String createMobilePayment(String outTradeNo, String subject, String totalAmount, String description) {
-        AlipayTradeWapPayRequest request = new AlipayTradeWapPayRequest();
+        AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
         request.setReturnUrl(AlipayConfig.RETURN_URL);
         request.setNotifyUrl(AlipayConfig.NOTIFY_URL);
 
-        String bizContent = "{" +
-                "\"out_trade_no\":\"" + outTradeNo + "\"," +
-                "\"total_amount\":\"" + totalAmount + "\"," +
-                "\"subject\":\"" + subject + "\"," +
-                "\"product_code\":\"QUICK_WAP_WAY\"," +
-                "\"body\":\"" + description + "\"" +
-                "}";
+        JSONObject bizContent = new JSONObject();
+        bizContent.put("out_trade_no", outTradeNo);
+        bizContent.put("total_amount", totalAmount);
+        bizContent.put("subject", subject);
+        bizContent.put("product_code", "FAST_INSTANT_TRADE_PAY");
+        bizContent.put("body", description);
+        bizContent.put("timeout_express", "20m");
+        String bizContentStr = bizContent.toJSONString();
+        request.setBizContent(bizContentStr);
 
-        request.setBizContent(bizContent);
+        log.info("[支付宝] PC网页支付请求参数 outTradeNo={} bizContent={}", outTradeNo, bizContentStr);
 
         try {
-            String form = alipayClient.pageExecute(request).getBody();
-            log.info("[支付宝] 创建手机H5支付订单成功 outTradeNo={}", outTradeNo);
-            return form;
+            String payUrl = alipayClient.pageExecute(request, "GET").getBody();
+            if (payUrl != null && payUrl.length() > 0) {
+                log.info("[支付宝] 创建PC网页支付订单成功 outTradeNo={} payUrl={}", outTradeNo, payUrl);
+            } else {
+                log.error("[支付宝] 创建PC网页支付订单返回空URL outTradeNo={}", outTradeNo);
+            }
+            return payUrl;
         } catch (AlipayApiException e) {
-            log.error("[支付宝] 创建手机H5支付订单失败 outTradeNo={} error={}", outTradeNo, e.getErrMsg());
+            log.error("[支付宝] 创建PC网页支付订单失败 outTradeNo={} errCode={} errMsg={}",
+                outTradeNo, e.getErrCode(), e.getErrMsg());
             return null;
         }
     }

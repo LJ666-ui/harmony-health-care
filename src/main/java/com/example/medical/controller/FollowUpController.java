@@ -1,5 +1,6 @@
 package com.example.medical.controller;
 
+import com.example.medical.common.JwtUtil;
 import com.example.medical.common.Result;
 import com.example.medical.entity.FollowUp;
 import com.example.medical.service.DataShareAuthService;
@@ -21,11 +22,23 @@ public class FollowUpController {
     @Autowired
     private DataShareAuthService dataShareAuthService;
 
+    private Long getCurrentUserId(String token) {
+        if (token == null || token.isEmpty()) {
+            return null;
+        }
+        if (JwtUtil.isDoctorToken(token)) {
+            return JwtUtil.getDoctorId(token);
+        }
+        return JwtUtil.getUserId(token);
+    }
+
     @GetMapping("/follow-up/list")
-    public Result<List<FollowUp>> getPatientFollowUps(@RequestParam Long userId) {
+    public Result<List<FollowUp>> getPatientFollowUps(
+            @RequestParam Long userId,
+            @RequestHeader(value = "Token", required = false) String token) {
         try {
-            Long accessUserId = 1L;
-            if (!userId.equals(accessUserId)) {
+            Long accessUserId = getCurrentUserId(token);
+            if (accessUserId != null && !userId.equals(accessUserId)) {
                 boolean hasAuth = dataShareAuthService.checkAuth(accessUserId, userId, "follow_up");
                 if (!hasAuth) {
                     return Result.error("无权限查看该患者的复诊信息");
@@ -62,15 +75,17 @@ public class FollowUpController {
     }
 
     @GetMapping("/follow-up/{id}")
-    public Result<FollowUp> getFollowUpDetail(@PathVariable Long id) {
+    public Result<FollowUp> getFollowUpDetail(
+            @PathVariable Long id,
+            @RequestHeader(value = "Token", required = false) String token) {
         try {
             FollowUp followUp = followUpService.getById(id);
             if (followUp == null) {
                 return Result.error("复诊记录不存在");
             }
 
-            Long accessUserId = 1L;
-            if (!followUp.getPatientId().equals(accessUserId)) {
+            Long accessUserId = getCurrentUserId(token);
+            if (accessUserId != null && !followUp.getPatientId().equals(accessUserId)) {
                 boolean hasAuth = dataShareAuthService.checkAuth(accessUserId, followUp.getPatientId(), "follow_up");
                 if (!hasAuth) {
                     return Result.error("无权限查看该复诊记录");

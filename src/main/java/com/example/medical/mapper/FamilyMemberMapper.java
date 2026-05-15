@@ -14,6 +14,6 @@ public interface FamilyMemberMapper extends BaseMapper<FamilyMember> {
     /**
      * 根据手机号查询家属
      */
-    @Select("SELECT * FROM family_member WHERE phone = #{phone} AND is_deleted = 0")
+    @Select("SELECT * FROM family_member WHERE phone = #{phone} AND is_deleted = 0 ORDER BY id LIMIT 1")
     FamilyMember selectByPhone(String phone);
 }

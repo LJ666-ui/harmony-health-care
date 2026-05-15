@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
-import { AdminMock, UserInfo, FamilyMemberInfo } from '../mock/adminMock';
+import { HttpUtil, BaseResponse, HttpMethod, RequestOptions } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 import { AuthManager, UserRole } from '../utils/AuthManager';
 import EventPersistenceManager from '../utils/EventPersistenceManager';
 import promptAction from '@ohos.promptAction';
@@ -53,6 +54,7 @@ struct AdminDataDashboard {
   @State departmentStats: DepartmentStat[] = [];
   @State riskDistribution: RiskDistribution[] = [];
   @State isLoading: boolean = true;
+  @State userCount: number = 0;
 
   aboutToAppear(): void {
     this.checkAccess();
@@ -80,26 +82,39 @@ struct AdminDataDashboard {
     this.isLoading = true;
 
     try {
-      const users: UserInfo[] = AdminMock.users;
-      const familyMembers: FamilyMemberInfo[] = AdminMock.familyMembers;
-      const doctorCount: number = users.filter(u => u.user_type === 1).length;
-      const patientCount: number = users.filter(u => u.user_type === 0).length;
+      let doctorCount: number = 0;
+      let patientCount: number = 0;
+      let todayActiveUsers: number = 0;
 
-      const todayActiveUsers: number = Math.floor(users.length * 0.35);
-      const weekNewUsers: number = 5;
+      try {
+        const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+          HttpMethod.GET,
+          ApiConstants.ADMIN_DASHBOARD_DETAIL,
+          undefined,
+          undefined,
+          { isAdmin: true } as RequestOptions
+        );
+        if (response.success && response.data) {
+          const data = response.data as Record<string, Object>;
+          this.userCount = Number(data['userCount']) || 0;
+          doctorCount = Number(data['doctorCount']) || 0;
+          patientCount = Number(data['patientCount']) || 0;
+          todayActiveUsers = Number(data['todayActiveUsers']) || 0;
+        }
+      } catch (e) {
+        console.error('[AdminDataDashboard] API请求失败，使用默认值:', e);
+      }
+
       const totalHealthRecords: number = 1248;
-      const todayRecords: number = 67;
       const totalAppointments: number = 892;
-      const pendingAppointments: number = 23;
       const totalArticles: number = 356;
       const totalCollections: number = 1284;
-      const avgHealthScore: number = 76;
       const highRiskCount: number = 18;
       const mediumRiskCount: number = 42;
-      const lowRiskCount: number = users.length - highRiskCount - mediumRiskCount;
+      const lowRiskCount: number = Math.max(0, this.userCount - highRiskCount - mediumRiskCount);
 
       this.metrics = [
-        { label: '注册用户', value: users.length, change: 12.5, color: '#1677FF', icon: '👥' },
+        { label: '注册用户', value: this.userCount, change: 12.5, color: '#1677FF', icon: '👥' },
         { label: '今日活跃', value: todayActiveUsers, change: 8.3, color: '#52C41A', icon: '📈' },
         { label: '医生用户', value: doctorCount, change: 3.2, color: '#FAAD14', icon: '🏥' },
         { label: '患者用户', value: patientCount, change: 15.7, color: '#722ED1', icon: '❤️' },
@@ -519,7 +534,7 @@ struct AdminDataDashboard {
             .layoutWeight(1)
             .alignItems(HorizontalAlign.Start);
 
-            Text(((risk.count / AdminMock.users.length) * 100).toFixed(1) + '%')
+            Text(this.userCount > 0 ? ((risk.count / this.userCount) * 100).toFixed(1) + '%' : '0%')
               .fontSize(12)
               .fontColor('#64748B');
           }

@@ -1,7 +1,4 @@
 import { router } from '@kit.ArkUI';
-import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
-import { Input } from '../components/Input';
 import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
@@ -9,7 +6,6 @@ import { HttpUtil, BaseResponse, RequestOptions } from '../common/utils/HttpUtil
 import { SettingsUtil, PersistedUserInfo, PersistedDoctorInfo } from '../utils/SettingsUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import EventPersistenceManager from '../utils/EventPersistenceManager';
-import { findMockUser, createMockToken, createMockUserInfo } from '../mock/loginMock';
 
 interface LoginResponseData {
   token: string;
@@ -19,8 +15,14 @@ interface LoginResponseData {
   userInfo?: PersistedUserInfo;
 }
 
+interface RoleButtonParams {
+  title: string;
+  desc: string;
+  route: string;
+}
+
 interface LoginRequestData {
-  username: string;
+  phone: string;
   password: string;
 }
 
@@ -54,27 +56,37 @@ struct Login {
   @State phoneError: string = '';
   @State passwordError: string = '';
   @State showPassword: boolean = false;
+  @State roleButtons: RoleButtonParams[] = [];
 
-  // 手机号验证正则：11位，1开头，第二位3-9
   private phoneRegex: RegExp = /^1[3-9]\d{9}$/;
 
   async aboutToAppear(): Promise<void> {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+    
+    this.roleButtons = [
+      { title: '用户登录', desc: '患者账号', route: 'pages/PatientLoginPage' },
+      { title: '家属登录', desc: '陪护账号', route: 'pages/FamilyLogin' },
+      { title: '护士登录', desc: '医护人员', route: 'pages/NurseLogin' },
+      { title: '医生登录', desc: '医师账号', route: 'pages/DoctorLogin' },
+      { title: '管理员登录', desc: '系统管理', route: 'pages/AdminLogin' }
+    ];
+    
+    await this.checkAutoLogin();
+  }
 
+  private async checkAutoLogin(): Promise<void> {
     try {
       const settings: SettingsUtil = SettingsUtil.getInstance();
       const isLoggedIn: boolean = await settings.isLoggedIn();
       if (isLoggedIn) {
         const token: string = await settings.getToken();
         if (token && token.length > 0) {
-          // 先验证Token是否有效，再决定是否自动登录
           try {
             const options: RequestOptions = { skipAuth: false };
             const response = await HttpUtil.get<PersistedUserInfo>('/user/info', options);
             if (response.success) {
-              // Token有效，恢复登录状态
               AppStorage.setOrCreate<string>('token', token);
               AppStorage.setOrCreate<boolean>('isLoggedIn', true);
               const userInfo: PersistedUserInfo | null = await settings.getUserInfo();
@@ -84,21 +96,17 @@ struct Login {
                 if (userInfo.userId) {
                   AppStorage.setOrCreate<number>('userId', userInfo.userId);
                 }
-                if (userInfo.userType === 1) {
-                  router.replaceUrl({ url: 'pages/DoctorHomePage' });
-                } else {
-                  router.replaceUrl({ url: 'pages/HomePage' });
-                }
+                userInfo.userType === 1
+                  ? router.replaceUrl({ url: 'pages/DoctorHomePage' })
+                  : router.replaceUrl({ url: 'pages/HomePage' });
               } else {
                 router.replaceUrl({ url: 'pages/HomePage' });
               }
             } else {
-              // Token无效，清除登录状态
               console.info('[Login] Token已失效，清除登录状态');
               await settings.clearAllLoginData();
             }
           } catch (error) {
-            // 验证失败，清除登录状态
             console.error('[Login] Token验证失败:', error);
             await settings.clearAllLoginData();
           }
@@ -109,59 +117,35 @@ struct Login {
     }
   }
 
-  /**
-   * 实时验证手机号
-   */
   private validatePhone(): void {
-    if (!this.username) {
-      this.phoneError = '';
-    } else if (!this.phoneRegex.test(this.username)) {
-      this.phoneError = '请输入正确的11位手机号';
-    } else {
-      this.phoneError = '';
-    }
+    this.phoneError = !this.username ? '' :
+      !this.phoneRegex.test(this.username) ? '请输入正确的11位手机号' : '';
   }
 
-  /**
-   * 实时验证密码
-   */
   private validatePassword(): void {
-    if (!this.password) {
-      this.passwordError = '';
-    } else if (this.password.length < 6 || this.password.length > 20) {
-      this.passwordError = '密码长度为6-20位';
-    } else {
-      this.passwordError = '';
-    }
-  }
-
-  /**
-   * 检查表单是否有效
-   */
-  private isFormValid(): boolean {
-    return this.phoneRegex.test(this.username) &&
-           this.password.length >= 6 &&
-           this.password.length <= 20;
+    this.passwordError = !this.password ? '' :
+      (this.password.length < 6 || this.password.length > 20) ? '密码长度为6-20位' : '';
   }
 
   validateForm(): boolean {
     this.errorMessage = '';
 
-    if (!this.username || this.username.trim() === '') {
+    if (!this.username.trim()) {
       this.errorMessage = '请输入账号';
       return false;
     }
-
-    if (!this.password || this.password.trim() === '') {
+    if (!this.phoneRegex.test(this.username)) {
+      this.errorMessage = '请输入正确的11位手机号';
+      return false;
+    }
+    if (!this.password.trim()) {
       this.errorMessage = '请输入密码';
       return false;
     }
-
-    if (this.password.length < 6) {
-      this.errorMessage = '密码长度不能少于6位';
+    if (this.password.length < 6 || this.password.length > 20) {
+      this.errorMessage = '密码长度为6-20位';
       return false;
     }
-
     return true;
   }
 
@@ -172,116 +156,60 @@ struct Login {
     }
 
     this.isLoading = true;
-
     try {
-      const loginRequest: LoginRequestData = {
-        username: this.username,
-        password: this.password
-      };
+      const loginRequest: LoginRequestData = { phone: this.username, password: this.password };
       const response: BaseResponse<LoginResponseData> = await HttpUtil.post<LoginResponseData>(
-        '/user/login',
-        loginRequest,
-        {
-          showLoading: true,
-          loadingText: '登录中...',
-          retryCount: 1
-        }
+        '/user/login', loginRequest,
+        { showLoading: true, loadingText: '登录中...', retryCount: 1 }
       );
 
       if (response.success) {
-        if (response.data && response.data.token) {
-          try {
-            await HttpUtil.saveToken(response.data.token);
-          } catch (error) {
-            console.error('保存Token失败:', error);
-          }
-        }
+        response.data?.token && await HttpUtil.saveToken(response.data.token);
 
         if (response.data) {
-          try {
-            const settings: SettingsUtil = SettingsUtil.getInstance();
-            let userInfo: PersistedUserInfo;
-            if (response.data.userInfo) {
-              userInfo = response.data.userInfo;
-            } else {
-              userInfo = createPersistedUserInfo(
-                response.data.userId,
-                response.data.username || '',
-                response.data.userType,
-                '',
-                undefined,
-                undefined
-              );
-            }
+          const settings: SettingsUtil = SettingsUtil.getInstance();
+          const userInfo: PersistedUserInfo = response.data.userInfo || createPersistedUserInfo(
+            response.data.userId, response.data.username, response.data.userType
+          );
 
-            if (userInfo.userType === 1 && userInfo.userId) {
-              try {
-                const doctorInfoUrl: string = ApiConstants.DOCTOR_INFO + userInfo.userId;
-                const doctorResp: BaseResponse<Object> = await HttpUtil.get<Object>(doctorInfoUrl);
-                if (doctorResp.success && doctorResp.data) {
-                  const raw: Record<string, Object> = doctorResp.data as Record<string, Object>;
-                  const doctorInfo: PersistedDoctorInfo = {};
-                  if (raw['id'] !== undefined) { doctorInfo.id = raw['id'] as number; }
-                  if (raw['realName'] !== undefined) { doctorInfo.realName = raw['realName'] as string; }
-                  if (raw['phone'] !== undefined) { doctorInfo.phone = raw['phone'] as string; }
-                  if (raw['hospital'] !== undefined) { doctorInfo.hospital = raw['hospital'] as string; }
-                  if (raw['department'] !== undefined) { doctorInfo.department = raw['department'] as string; }
-                  if (raw['licenseNumber'] !== undefined) { doctorInfo.licenseNumber = raw['licenseNumber'] as string; }
-                  if (raw['title'] !== undefined) { doctorInfo.title = raw['title'] as string; }
-                  if (raw['specialty'] !== undefined) { doctorInfo.specialty = raw['specialty'] as string; }
-                  if (raw['avatar'] !== undefined) { doctorInfo.avatar = raw['avatar'] as string; }
-                  if (raw['description'] !== undefined) { doctorInfo.description = raw['description'] as string; }
-                  if (raw['rating'] !== undefined) { doctorInfo.rating = raw['rating'] as number; }
-                  if (raw['status'] !== undefined) { doctorInfo.status = raw['status'] as number; }
-                  userInfo.doctorInfo = doctorInfo;
-                }
-              } catch (doctorErr) {
-                console.error('获取医生信息失败:', JSON.stringify(doctorErr));
-              }
-            }
-
-            await settings.saveUserInfo(userInfo);
-
+          if (userInfo.userType === 1 && userInfo.userId) {
             try {
-              await EventPersistenceManager.cacheUserInfo(
-                userInfo.userId ?? 0,
-                response.data?.token ?? '',
-                userInfo.username,
-                userInfo.avatar,
-                String(userInfo.userType ?? 0)
-              );
-            } catch (cacheErr) {
-              console.warn('Login: 缓存用户信息到本地DB失败:', cacheErr);
+              const doctorResp = await HttpUtil.get<Object>(ApiConstants.DOCTOR_INFO + userInfo.userId);
+              if (doctorResp.success && doctorResp.data) {
+                const raw = doctorResp.data as Record<string, Object>;
+                userInfo.doctorInfo = {
+                  id: raw.id as number, realName: raw.realName as string, phone: raw.phone as string, hospital: raw.hospital as string,
+                  department: raw.department as string, licenseNumber: raw.licenseNumber as string, title: raw.title as string,
+                  specialty: raw.specialty as string, avatar: raw.avatar as string, description: raw.description as string,
+                  rating: raw.rating as number, status: raw.status as number
+                };
+              }
+            } catch (doctorErr) {
+              console.error('获取医生信息失败:', JSON.stringify(doctorErr));
             }
-
-            if (userInfo && userInfo.userId) {
-              AppStorage.setOrCreate<number>('userId', userInfo.userId);
-              console.info('登录成功，userId已保存:', userInfo.userId);
-            }
-          } catch (error) {
-            console.error('保存用户信息失败:', error);
           }
+
+          await settings.saveUserInfo(userInfo);
+          EventPersistenceManager.cacheUserInfo(
+            userInfo.userId ?? 0, response.data.token ?? '', userInfo.username, userInfo.avatar, String(userInfo.userType ?? 0)
+          ).catch((err: Error) => console.warn('缓存用户信息失败:', err));
+
+          userInfo.userId && AppStorage.setOrCreate<number>('userId', userInfo.userId);
         }
 
-        try {
-          AppStorage.setOrCreate<boolean>('isLoggedIn', true);
-        } catch (error) {
-          console.error('保存登录状态失败:', error);
-        }
+        AppStorage.setOrCreate<boolean>('isLoggedIn', true);
+        const userType = response.data?.userType;
+        AppStorage.setOrCreate<boolean>('isPatientLoggedIn', userType !== 1);
+        AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', false);
+        AppStorage.setOrCreate<boolean>('isNurseLoggedIn', false);
+        AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', false);
+        AppStorage.setOrCreate<boolean>('isAdminLoggedIn', false);
 
         ToastUtil.loginSuccess();
-
         setTimeout(() => {
-          try {
-            const userType: number | undefined = response.data?.userType;
-            if (userType === 1) {
-              router.replaceUrl({ url: 'pages/DoctorHomePage' });
-            } else {
-              router.replaceUrl({ url: 'pages/HomePage' });
-            }
-          } catch (error) {
-            console.error('跳转首页失败:', error);
-          }
+          userType === 1
+            ? router.replaceUrl({ url: 'pages/DoctorHomePage' })
+            : router.replaceUrl({ url: 'pages/HomePage' });
         }, 500);
       } else {
         this.errorMessage = response.message || '登录失败';
@@ -296,361 +224,65 @@ struct Login {
   }
 
   build() {
-    Column() {
-      Header({
-        title: '登录',
-        showBack: true
-      });
+    Stack() {
+      Image($r('app.media.login_bg'))
+        .width('100%')
+        .height('100%')
+        .objectFit(ImageFit.Cover);
 
-      Scroll() {
-        Column({ space: GlobalTheme.getSpacingLG(this.isElderMode) }) {
-          // 渐变头部区域
-          Column() {
-            Text('🏥')
-              .fontSize(48)
-              .margin({ bottom: 16 });
-            Text('星云医疗助手')
-              .fontSize(GlobalTheme.getFontSizeTitle(this.isElderMode))
-              .fontWeight('bold')
-              .fontColor('#FFFFFF')
-              .margin({ bottom: 8 });
-            Text('欢迎回来，请登录您的账号')
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor('#FFFFFFCC')
+      Column() {
+        Scroll() {
+          Column({ space: 16 }) {
+            Column()
+              .height(80)
+            
+            ForEach(this.roleButtons, (item: RoleButtonParams) => this.RoleButton(item), 
+              (item: RoleButtonParams): string => item.route)
           }
-          .width('100%')
-          .padding({ top: 40, bottom: 36 })
-          .linearGradient({
-            angle: 135,
-            colors: [['#1677FF', 0], ['#36CFC9', 1]]
-          })
-          .borderRadius({ bottomLeft: 32, bottomRight: 32 })
-          .margin({ top: -GlobalTheme.getSpacingLG(this.isElderMode), left: -GlobalTheme.getSpacingMD(this.isElderMode), right: -GlobalTheme.getSpacingMD(this.isElderMode) });
-
-          // 手机号输入框
-          Column({ space: 4 }) {
-            Row() {
-              Text('📱')
-                .fontSize(16)
-                .margin({ right: 8 });
-              TextInput({ placeholder: '请输入手机号', text: this.username })
-                .type(InputType.Number)
-                .maxLength(11)
-                .layoutWeight(1)
-                .height(44)
-                .backgroundColor('#FFFFFF')
-                .borderRadius(8)
-                .border({
-                  width: 1,
-                  color: this.phoneError ? '#F5222D' : '#E8ECF2',
-                  style: BorderStyle.Solid
-                })
-                .padding({ left: 12, right: 12 })
-                .onChange((value: string) => {
-                  this.username = value;
-                  this.validatePhone();
-                });
-              if (this.username) {
-                Button({ type: ButtonType.Circle }) {
-                  Text('✕')
-                    .fontSize(14)
-                    .fontColor('#999999');
-                }
-                .width(24)
-                .height(24)
-                .backgroundColor('#F5F5F5')
-                .margin({ left: 8 })
-                .onClick(() => {
-                  this.username = '';
-                  this.phoneError = '';
-                });
-              }
-            }
-            .width('100%');
-
-            if (this.phoneError) {
-              Text(this.phoneError)
-                .fontSize(12)
-                .fontColor('#F5222D')
-                .margin({ left: 24 });
-            }
-          }
-          .width('100%');
-
-          // 密码输入框
-          Column({ space: 4 }) {
-            Row() {
-              Text('🔒')
-                .fontSize(16)
-                .margin({ right: 8 });
-              TextInput({ placeholder: '请输入密码', text: this.password })
-                .type(this.showPassword ? InputType.Normal : InputType.Password)
-                .maxLength(20)
-                .layoutWeight(1)
-                .height(44)
-                .backgroundColor('#FFFFFF')
-                .borderRadius(8)
-                .border({
-                  width: 1,
-                  color: this.passwordError ? '#F5222D' : '#E8ECF2',
-                  style: BorderStyle.Solid
-                })
-                .padding({ left: 12, right: 12 })
-                .onChange((value: string) => {
-                  this.password = value;
-                  this.validatePassword();
-                });
-              Button({ type: ButtonType.Circle }) {
-                Text(this.showPassword ? '👁️' : '👁️‍🗨️')
-                  .fontSize(14);
-              }
-              .width(24)
-              .height(24)
-              .backgroundColor('#F5F5F5')
-              .margin({ left: 8 })
-              .onClick(() => {
-                this.showPassword = !this.showPassword;
-              });
-            }
-            .width('100%');
-
-            if (this.passwordError) {
-              Text(this.passwordError)
-                .fontSize(12)
-                .fontColor('#F5222D')
-                .margin({ left: 24 });
-            }
-          }
-          .width('100%');
-
-          if (this.errorMessage) {
-            Row() {
-              Text('⚠️ ')
-                .fontSize(14)
-                .fontColor(GlobalTheme.ERROR_COLOR);
-              Text(this.errorMessage)
-                .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-                .fontColor(GlobalTheme.ERROR_COLOR);
-            }
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#FFF2F0')
-            .borderRadius(10)
-            .border({ width: 1, color: '#FFCCC7', style: BorderStyle.Solid });
-          }
-
-          if (this.isLoading) {
-            Loading();
-          } else {
-            Button(this.isLoading ? '登录中...' : '登 录')
-              .width('100%')
-              .height(GlobalTheme.getButtonHeight(this.isElderMode))
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontWeight('bold')
-              .fontColor(this.isFormValid() ? GlobalTheme.BUTTON_TEXT_COLOR : '#999999')
-              .backgroundColor(this.isFormValid() ? GlobalTheme.THEME_COLOR : '#CCCCCC')
-              .borderRadius(GlobalTheme.RADIUS_MD)
-              .enabled(this.isFormValid() && !this.isLoading)
-              .shadow({
-                radius: 12,
-                color: this.isFormValid() ? '#1677FF44' : '#00000000',
-                offsetX: 0,
-                offsetY: 6
-              })
-              .onClick(async () => await this.handleLogin());
-          }
-
-          Row({ space: GlobalTheme.getSpacingSM(this.isElderMode) }) {
-            Text('忘记密码？')
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor(GlobalTheme.THEME_COLOR)
-              .onClick(() => {
-                ToastUtil.showInfo('请联系客服重置密码', 2000);
-              });
-
-            Blank();
-
-            Text('新用户注册')
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor(GlobalTheme.THEME_COLOR)
-              .onClick(() => {
-                try {
-                  router.pushUrl({ url: 'pages/Register' });
-                } catch (error) {
-                  console.error('跳转注册页失败:', error);
-                }
-              });
-          }
-          .width('100%');
-
-          // 家属登录入口
-          Column() {
-            Divider()
-              .width('100%')
-              .color('#E0E0E0')
-              .margin({ top: 20, bottom: 20 });
-
-            Text('其他登录方式')
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor(GlobalTheme.TEXT_SECONDARY)
-              .margin({ bottom: 15 });
-
-            Button('家属登录')
-              .width('100%')
-              .height(GlobalTheme.getButtonHeight(this.isElderMode))
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor(GlobalTheme.THEME_COLOR)
-              .backgroundColor('#FFFFFF')
-              .border({ width: 1, color: GlobalTheme.THEME_COLOR })
-              .borderRadius(GlobalTheme.RADIUS_MD)
-              .onClick(() => {
-                try {
-                  router.pushUrl({ url: 'pages/FamilyLogin' });
-                } catch (error) {
-                  console.error('跳转家属登录页失败:', error);
-                  ToastUtil.showError('跳转失败，请重试');
-                }
-              });
-
-            Button('护士登录')
-              .width('100%')
-              .height(GlobalTheme.getButtonHeight(this.isElderMode))
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor('#2ECC71')
-              .backgroundColor('#FFFFFF')
-              .border({ width: 1, color: '#2ECC71' })
-              .borderRadius(GlobalTheme.RADIUS_MD)
-              .margin({ top: 10 })
-              .onClick(() => {
-                try {
-                  router.pushUrl({ url: 'pages/NurseLogin' });
-                } catch (error) {
-                  console.error('跳转护士登录页失败:', error);
-                  ToastUtil.showError('跳转失败，请重试');
-                }
-              });
-
-            Button('医生登录')
-              .width('100%')
-              .height(GlobalTheme.getButtonHeight(this.isElderMode))
-              .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
-              .fontColor('#1677FF')
-              .backgroundColor('#FFFFFF')
-              .border({ width: 1, color: '#1677FF' })
-              .borderRadius(GlobalTheme.RADIUS_MD)
-              .margin({ top: 10 })
-              .onClick(() => {
-                try {
-                  router.pushUrl({ url: 'pages/DoctorLogin' });
-                } catch (error) {
-                  console.error('跳转医生登录页失败:', error);
-                  ToastUtil.showError('跳转失败，请重试');
-                }
-              });
-
-            Text('家属或护士可使用手机号登录')
-              .fontSize(12)
-              .fontColor(GlobalTheme.TEXT_SECONDARY)
-              .margin({ top: 10 });
-          }
-          .width('100%');
-
-          // 演示账号提示卡片
-          Row({ space: 8 }) {
-            Text('💡')
-              .fontSize(16);
-            Column({ space: 2 }) {
-              Text('演示账号')
-                .fontSize(12)
-                .fontWeight('bold')
-                .fontColor('#666666');
-              Text('138****1234 / 密码：123456')
-                .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                .fontColor('#999999');
-            }
-            .alignItems(HorizontalAlign.Start);
-          }
-          .width('100%')
-          .padding(14)
-          .backgroundColor('#FAFBFF')
-          .borderRadius(10)
-          .border({ width: 1, color: '#E8ECF2', style: BorderStyle.Solid });
-
-          // 管理员登录入口
-          Row({ space: 8 }) {
-            Text('🛡️')
-              .fontSize(16);
-            Text('管理员登录')
-              .fontSize(GlobalTheme.getFontSizeSmall(this.isElderMode))
-              .fontColor('#1E293B')
-              .fontWeight(FontWeight.Medium);
-            Blank();
-            Text('→')
-              .fontSize(16)
-              .fontColor('#1E293B');
-          }
-          .width('100%')
-          .padding(14)
-          .backgroundColor('#F8FAFC')
-          .borderRadius(10)
-          .border({ width: 1, color: '#CBD5E1', style: BorderStyle.Solid })
-          .onClick(() => {
-            router.pushUrl({ url: 'pages/AdminLogin' });
-          });
-
-          // 功能亮点
-          Row({ space: 0 }) {
-            Column({ space: 6 }) {
-              Text('🔒')
-                .fontSize(24);
-              Text('安全加密')
-                .fontSize(11)
-                .fontColor('#666666');
-            }
-            .layoutWeight(1);
-
-            Column({ space: 6 }) {
-              Text('🤖')
-                .fontSize(24);
-              Text('AI智能')
-                .fontSize(11)
-                .fontColor('#666666');
-            }
-            .layoutWeight(1);
-
-            Column({ space: 6 }) {
-              Text('👨‍⚕️')
-                .fontSize(24);
-              Text('专业医生')
-                .fontSize(11)
-                .fontColor('#666666');
-            }
-            .layoutWeight(1);
-
-            Column({ space: 6 }) {
-              Text('📊')
-                .fontSize(24);
-              Text('健康追踪')
-                .fontSize(11)
-                .fontColor('#666666');
-            }
-            .layoutWeight(1);
-          }
-          .width('100%')
-          .padding({ top: 20, bottom: 8 })
+          .width('88%')
+          .padding({ bottom: 40 });
         }
-        .width('85%')
-        .padding({ top: GlobalTheme.getSpacingLG(this.isElderMode), bottom: GlobalTheme.getSpacingLG(this.isElderMode) });
-      }
-      .height(0)
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top);
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
 
-      Footer({ activeIndex: 4 });
+        if (this.isLoading) {
+          Loading()
+        }
+      }
+      .width('100%')
+      .height('100%');
     }
     .width('100%')
-    .height('100%')
-    .backgroundColor(GlobalTheme.BG_COLOR);
+    .height('100%');
+  }
+
+  @Builder
+  RoleButton(params: RoleButtonParams) {
+    Row({ space: 12 }) {
+      Column({ space: 2 }) {
+        Text(params.title)
+          .fontSize(18)
+          .fontWeight('bold')
+          .fontColor('#FFFFFF');
+
+        Text(params.desc)
+          .fontSize(13)
+          .fontColor('#FFFFFFCC');
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start);
+
+      Text('>')
+        .fontSize(22)
+        .fontColor('#FFFFFF')
+        .fontWeight(FontWeight.Lighter);
+    }
+    .width('100%')
+    .height(68)
+    .padding({ left: 24, right: 20 })
+    .backgroundColor('#6BB3FF')
+    .borderRadius(16)
+    .shadow({ radius: 12, color: '#5BA8F530', offsetX: 0, offsetY: 6 })
+    .onClick(() => router.pushUrl({ url: params.route }));
   }
 }

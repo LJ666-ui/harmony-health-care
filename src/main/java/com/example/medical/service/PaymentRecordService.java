@@ -10,4 +10,6 @@ public interface PaymentRecordService extends IService<PaymentRecord> {
     boolean markPaySuccess(String outTradeNo, String tradeNo);
 
     boolean removeByOutTradeNo(String outTradeNo);
+
+    PaymentRecord findUnpaidRecord(Long userId, Long doctorId, String scheduleDate, Integer schedulePeriod);
 }

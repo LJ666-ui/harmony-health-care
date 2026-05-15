@@ -1,5 +1,4 @@
 import { router } from '@kit.ArkUI';
-import { Header } from '../components/Header';
 import { Loading } from '../components/Loading';
 import { GlobalTheme } from '../global';
 import { ToastUtil } from '../common/utils/ToastUtil';
@@ -49,16 +48,21 @@ struct FamilyLogin {
   @State passwordError: string = '';
   @State showPassword: boolean = false;
 
-  // 手机号验证正则
   private phoneRegex: RegExp = /^1[3-9]\d{9}$/;
 
   async aboutToAppear(): Promise<void> {
     if (AppStorage.get<boolean>('isOldModeEnabled') === undefined) {
       AppStorage.setOrCreate<boolean>('isOldModeEnabled', false);
     }
+
+    const isFamilyLoggedIn: boolean = AppStorage.get<boolean>('isFamilyLoggedIn') || false;
+    const familyToken: string | undefined = AppStorage.get<string>('familyToken');
+    if (isFamilyLoggedIn && familyToken && familyToken.length > 0) {
+      router.replaceUrl({ url: 'pages/FamilyHome' });
+      return;
+    }
   }
 
-  // 验证手机号
   private validatePhone(): boolean {
     if (!this.phone) {
       this.phoneError = '请输入手机号';
@@ -72,7 +76,6 @@ struct FamilyLogin {
     return true;
   }
 
-  // 验证密码
   private validatePassword(): boolean {
     if (!this.password) {
       this.passwordError = '请输入密码';
@@ -86,9 +89,13 @@ struct FamilyLogin {
     return true;
   }
 
-  // 处理登录
+  private clearErrors(): void {
+    this.errorMessage = '';
+    this.phoneError = '';
+    this.passwordError = '';
+  }
+
   private async handleLogin(): Promise<void> {
-    // 验证输入
     const isPhoneValid = this.validatePhone();
     const isPasswordValid = this.validatePassword();
 
@@ -112,17 +119,19 @@ struct FamilyLogin {
         console.log('[FamilyLogin] 登录成功,Token:', response.data.token.substring(0, 20) + '...');
         console.log('[FamilyLogin] 家属信息:', JSON.stringify(response.data.familyInfo));
 
-        // 保存Token和家属信息
         const settings = SettingsUtil.getInstance();
         await settings.saveFamilyToken(response.data.token);
         await settings.saveFamilyInfo(response.data.familyInfo);
 
-        // 更新全局状态
         AppStorage.setOrCreate<string>('familyToken', response.data.token);
         AppStorage.setOrCreate<FamilyInfo>('familyInfo', response.data.familyInfo);
         AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', true);
 
-        // 保存用户ID到AppStorage（供其他页面使用）
+        AppStorage.setOrCreate<boolean>('isLoggedIn', false);
+        AppStorage.setOrCreate<boolean>('isNurseLoggedIn', false);
+        AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', false);
+        AppStorage.setOrCreate<boolean>('isAdminLoggedIn', false);
+
         const familyUserId: number = response.data.familyInfo.id || response.data.familyInfo.userId || 0;
         console.log('[FamilyLogin] 保存userId到AppStorage:', familyUserId);
         AppStorage.setOrCreate<number>('userId', familyUserId);
@@ -132,7 +141,6 @@ struct FamilyLogin {
 
         ToastUtil.showSuccess('登录成功');
 
-        // 延迟跳转,确保状态完全同步
         setTimeout(() => {
           console.log('[FamilyLogin] 准备跳转到FamilyHome');
           router.replaceUrl({
@@ -153,146 +161,209 @@ struct FamilyLogin {
   }
 
   build() {
-    Column() {
-      // 顶部导航栏
-      Header({ title: '家属登录' })
-
-      // 主要内容区域
+    Stack({ alignContent: Alignment.TopStart }) {
       Column() {
-        // Logo和标题
-        Column() {
-          Image($r('app.media.startIcon'))
-            .width(80)
-            .height(80)
-            .margin({ bottom: 20 })
+        Image($r('app.media.111'))
+          .width('100%')
+          .height('100%')
+          .objectFit(ImageFit.Cover)
+          .position({ x: 0, y: 0 });
 
-          Text('家属登录')
-            .fontSize(this.isElderMode ? 28 : 24)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(GlobalTheme.TEXT_PRIMARY)
-            .margin({ bottom: 10 })
-
-          Text('使用手机号和密码登录')
-            .fontSize(this.isElderMode ? 18 : 14)
-            .fontColor(GlobalTheme.TEXT_SECONDARY)
-            .margin({ bottom: 40 })
-        }
-        .width('100%')
-        .justifyContent(FlexAlign.Center)
-        .margin({ top: 40 })
-
-        // 登录表单
-        Column() {
-          // 手机号输入
+        Scroll() {
           Column() {
-            TextInput({ placeholder: '请输入手机号', text: this.phone })
-              .type(InputType.PhoneNumber)
-              .fontSize(this.isElderMode ? 20 : 16)
-              .height(this.isElderMode ? 60 : 50)
+            Column() {
+              Image($r('app.media.startIcon'))
+                .width(70)
+                .height(70)
+                .margin({ bottom: 20 })
+                .borderRadius(16)
+
+              Text('家属登录')
+                .fontSize(this.isElderMode ? 28 : 24)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#FFFFFF')
+                .margin({ bottom: 8 })
+
+              Text('使用手机号和密码登录')
+                .fontSize(this.isElderMode ? 15 : 13)
+                .fontColor('#FFFFFF90')
+            }
+            .width('100%')
+            .height(this.isElderMode ? 300 : 260)
+            .justifyContent(FlexAlign.Center)
+            .alignItems(HorizontalAlign.Center)
+            .backgroundColor('#1a2942')
+            .borderRadius({ bottomLeft: 40, bottomRight: 40 })
+
+            Column() {
+              Text('手机号')
+                .fontSize(this.isElderMode ? 15 : 14)
+                .fontColor('#333333')
+                .fontWeight(FontWeight.Medium)
+                .width('100%')
+                .textAlign(TextAlign.Start)
+                .margin({ top: 30, bottom: 8 })
+
+              Row() {
+                TextInput({ placeholder: '请输入11位手机号', text: this.phone })
+                  .type(InputType.PhoneNumber)
+                  .fontSize(this.isElderMode ? 17 : 15)
+                  .height(52)
+                  .layoutWeight(1)
+                  .backgroundColor('#F8FAFC')
+                  .borderRadius(10)
+                  .padding({ left: 16, right: 12 })
+                  .onChange((value: string) => {
+                    this.phone = value.trim();
+                    if (this.phoneError) {
+                      this.validatePhone();
+                    }
+                  })
+              }
               .width('100%')
-              .backgroundColor('#FFFFFF')
-              .borderRadius(8)
-              .padding({ left: 15, right: 15 })
-              .onChange((value: string) => {
-                this.phone = value;
-                this.validatePhone();
+              .backgroundColor('#F8FAFC')
+              .borderRadius(10)
+              .border({
+                width: 1.5,
+                color: this.phoneError ? '#F5222D' : '#E2E8F0'
               })
 
-            if (this.phoneError) {
-              Text(this.phoneError)
-                .fontSize(12)
-                .fontColor('#FF0000')
-                .margin({ top: 5 })
-            }
-          }
-          .width('100%')
-          .margin({ bottom: 20 })
+              if (this.phoneError) {
+                Text(this.phoneError)
+                  .fontSize(this.isElderMode ? 13 : 12)
+                  .fontColor('#F5222D')
+                  .width('100%')
+                  .textAlign(TextAlign.Start)
+                  .margin({ top: 4 })
+              }
 
-          // 密码输入
-          Column() {
-            Row() {
-              TextInput({ placeholder: '请输入密码', text: this.password })
-                .type(this.showPassword ? InputType.Normal : InputType.Password)
-                .fontSize(this.isElderMode ? 20 : 16)
-                .height(this.isElderMode ? 60 : 50)
-                .layoutWeight(1)
-                .backgroundColor('#FFFFFF')
-                .borderRadius(8)
-                .padding({ left: 15, right: 15 })
-                .onChange((value: string) => {
-                  this.password = value;
-                  this.validatePassword();
-                })
+              Text('密码')
+                .fontSize(this.isElderMode ? 15 : 14)
+                .fontColor('#333333')
+                .fontWeight(FontWeight.Medium)
+                .width('100%')
+                .textAlign(TextAlign.Start)
+                .margin({ top: 18, bottom: 8 })
 
-              // 显示/隐藏密码按钮
-              Button(this.showPassword ? '隐藏' : '显示')
-                .fontSize(12)
-                .height(30)
-                .width(50)
-                .margin({ left: 10 })
+              Row() {
+                TextInput({ placeholder: '请输入登录密码', text: this.password })
+                  .type(this.showPassword ? InputType.Normal : InputType.Password)
+                  .fontSize(this.isElderMode ? 17 : 15)
+                  .height(52)
+                  .layoutWeight(1)
+                  .backgroundColor('#F8FAFC')
+                  .borderRadius(10)
+                  .padding({ left: 16, right: 44 })
+                  .onChange((value: string) => {
+                    this.password = value;
+                    if (this.passwordError) {
+                      this.validatePassword();
+                    }
+                  })
+
+                Button() {
+                  Text(this.showPassword ? '🙈' : '👁️')
+                    .fontSize(18)
+                }
+                .type(ButtonType.Normal)
+                .width(40)
+                .height(40)
+                .backgroundColor(Color.Transparent)
+                .position({ x: '100%', y: '50%' })
+                .translate({ x: -46, y: '-50%' })
                 .onClick(() => {
                   this.showPassword = !this.showPassword;
                 })
-            }
-            .width('100%')
+              }
+              .width('100%')
+              .height(52)
+              .backgroundColor('#F8FAFC')
+              .borderRadius(10)
+              .border({
+                width: 1.5,
+                color: this.passwordError ? '#F5222D' : '#E2E8F0'
+              })
 
-            if (this.passwordError) {
-              Text(this.passwordError)
-                .fontSize(12)
-                .fontColor('#FF0000')
-                .margin({ top: 5 })
+              if (this.passwordError) {
+                Text(this.passwordError)
+                  .fontSize(this.isElderMode ? 13 : 12)
+                  .fontColor('#F5222D')
+                  .width('100%')
+                  .textAlign(TextAlign.Start)
+                  .margin({ top: 4 })
+              }
+
+              if (this.errorMessage && !this.phoneError && !this.passwordError) {
+                Row() {
+                  Text('⚠️ ')
+                    .fontSize(14)
+                  Text(this.errorMessage)
+                    .fontSize(this.isElderMode ? 14 : 13)
+                    .fontColor('#F5222D')
+                }
+                .width('100%')
+                .padding({ top: 10, bottom: 10, left: 14, right: 14 })
+                .backgroundColor('#FFF2F0')
+                .borderRadius(8)
+                .margin({ top: 8 })
+              }
+
+              Button(this.isLoading ? '登录中...' : '登 录')
+                .width('100%')
+                .height(this.isElderMode ? 56 : 52)
+                .fontSize(this.isElderMode ? 18 : 17)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#FFFFFF')
+                .backgroundColor(this.isLoading ? '#94A3B8' : '#1a2942')
+                .borderRadius(12)
+                .enabled(!this.isLoading)
+                .onClick(() => {
+                  this.handleLogin();
+                })
+                .margin({ top: 24 })
+
+              Text('首次登录请联系关联用户为您开通登录权限')
+                .fontSize(this.isElderMode ? 14 : 12)
+                .fontColor('#94A3B8')
+                .margin({ top: 20, bottom: 16 })
+                .textAlign(TextAlign.Center)
+
+              Button() {
+                Row() {
+                  Text('← 返回用户端')
+                    .fontSize(this.isElderMode ? 16 : 15)
+                    .fontColor('#1677FF')
+                }
+              }
+              .type(ButtonType.Normal)
+              .height(42)
+              .backgroundColor(Color.Transparent)
+              .border({ width: 1, color: '#91D5FF', style: BorderStyle.Solid })
+              .borderRadius(21)
+              .onClick(() => {
+                router.replaceUrl({
+                  url: 'pages/Login'
+                });
+              })
             }
+            .width('88%')
+            .layoutWeight(1)
           }
           .width('100%')
-          .margin({ bottom: 30 })
-
-          // 错误提示
-          if (this.errorMessage) {
-            Text(this.errorMessage)
-              .fontSize(14)
-              .fontColor('#FF0000')
-              .margin({ bottom: 20 })
-          }
-
-          // 登录按钮
-          Button('登录')
-            .width('100%')
-            .height(this.isElderMode ? 60 : 50)
-            .fontSize(this.isElderMode ? 20 : 18)
-            .fontColor('#FFFFFF')
-            .backgroundColor(GlobalTheme.THEME_COLOR)
-            .borderRadius(8)
-            .enabled(!this.isLoading)
-            .onClick(() => {
-              this.handleLogin();
-            })
-
-          // 返回用户登录
-          Button('用户登录')
-            .fontSize(14)
-            .fontColor(GlobalTheme.THEME_COLOR)
-            .backgroundColor(Color.Transparent)
-            .margin({ top: 20 })
-            .onClick(() => {
-              router.replaceUrl({
-                url: 'pages/Login'
-              });
-            })
         }
-        .width('85%')
-        .padding(20)
-      }
-      .layoutWeight(1)
-      .width('100%')
-      .backgroundColor('#F5F5F5')
+        .width('100%')
+        .height('100%')
+        .scrollBar(BarState.Off)
 
-      // Loading遮罩
-      if (this.isLoading) {
-        Loading()
+        if (this.isLoading) {
+          Loading()
+        }
       }
+      .width('100%')
+      .height('100%');
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F5F5')
+    .backgroundColor('#F0F4F8');
   }
 }

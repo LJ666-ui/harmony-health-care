@@ -1,5 +1,6 @@
 {
   "src": [
+    "pages/SplashPage",
     "pages/Index",
     "pages/Login",
     "pages/Register",
@@ -90,6 +91,7 @@
     "pages/EmergencyContactsPage",
     "pages/FamilyPage",
     "pages/FamilyLogin",
+    "pages/PatientLoginPage",
     "pages/FamilyHome",
     "pages/NurseStationDashboardSimple",
     "pages/SmartWardDevicesSimple",
@@ -129,6 +131,7 @@
     "pages/WatchSportPage",
     "pages/WatchSleepPage",
     "pages/WatchMessagePage",
+    "pages/WatchAIConsultPage",
     "pages/NurseLogin",
     "pages/NurseWorkbench",
     "pages/NurseProfile",
@@ -164,6 +167,7 @@
     "pages/PatientNurseChatPage",
     "pages/NurseFamilyChatPage",
     "pages/FamilyNurseChatPage",
-    "pages/AITestPage"
+    "pages/AITestPage",
+    "pages/DoctorProfilePage"
   ]
 }

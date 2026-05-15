@@ -130,6 +130,10 @@ export class AdminAuthService {
       AppStorage.setOrCreate<string>('adminToken', token);
       AppStorage.setOrCreate<AdminLoginResponse>('adminInfo', adminInfo);
       AppStorage.setOrCreate<boolean>('isAdminLoggedIn', true);
+      AppStorage.setOrCreate<boolean>('isLoggedIn', false);
+      AppStorage.setOrCreate<boolean>('isFamilyLoggedIn', false);
+      AppStorage.setOrCreate<boolean>('isNurseLoggedIn', false);
+      AppStorage.setOrCreate<boolean>('isDoctorLoggedIn', false);
 
       const session: AdminSession = {
         sessionId: `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,

@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import http from '@ohos.net.http';
+import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 import { Header } from '../components/Header';
 import { Loading } from '../components/Loading';
 import { ToastUtil } from '../common/utils/ToastUtil';
@@ -42,8 +43,6 @@ struct DoctorFollowUpPage {
   @State newTime: string = '09:00';
   @State newNotes: string = '';
 
-  private serverUrl: string = 'http://192.168.108.1:8080';
-
   aboutToAppear(): void {
     const params: Object | undefined = router.getParams();
     if (params) {
@@ -65,23 +64,24 @@ struct DoctorFollowUpPage {
 
   private async loadPatients(): Promise<void> {
     try {
-      const response = await http.createHttp().request(
-        `${this.serverUrl}/doctor/patients`,
-        { method: http.RequestMethod.GET, header: { 'Content-Type': 'application/json' }, readTimeout: 10000 }
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.GET,
+        ApiConstants.DOCTOR_PATIENTS,
+        undefined,
+        undefined,
+        { showLoading: false }
       );
-      if (response.responseCode === 200) {
-        const result: Record<string, ESObject> = JSON.parse(response.result as string) as Record<string, ESObject>;
-        if (result['code'] === 200 && result['data']) {
-          const rawData: Object[] = result['data'] as Object[];
-          this.patients = rawData.map((item: Object): PatientItem => {
-            const raw: Record<string, Object> = item as Record<string, Object>;
-            const nameValue: Object | undefined = raw['realName'];
-            return { id: raw['id'] as number || 0, name: nameValue as string || '' };
-          });
-          if (this.patients.length > 0 && this.selectedPatientId === 0) {
-            this.selectedPatientId = this.patients[0].id;
-            this.loadFollowUps();
-          }
+      if (response.success && response.data) {
+        const rawData: Object[] = Array.isArray(response.data) ? response.data as Object[] : [];
+        this.patients = rawData.map((item: Object): PatientItem => {
+          const raw: Record<string, Object> = item as Record<string, Object>;
+          const nameValue: Object | undefined = raw['otherUserName'];
+          const idValue: Object | undefined = raw['otherUserId'];
+          return { id: typeof idValue === 'number' ? idValue : Number(idValue || 0), name: typeof nameValue === 'string' ? nameValue : '' };
+        });
+        if (this.patients.length > 0 && this.selectedPatientId === 0) {
+          this.selectedPatientId = this.patients[0].id;
+          this.loadFollowUps();
         }
       }
     } catch (error) {
@@ -94,39 +94,35 @@ struct DoctorFollowUpPage {
     try {
       hilog.info(0x0000, 'DoctorFollowUpPage', `加载复诊列表，patientId: ${this.selectedPatientId}`);
 
-      const response = await http.createHttp().request(
-        `${this.serverUrl}/medical/follow-up/list?userId=${this.selectedPatientId}`,
-        { method: http.RequestMethod.GET, header: { 'Content-Type': 'application/json' }, readTimeout: 10000 }
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.GET,
+        `${ApiConstants.FOLLOW_UP_LIST}?userId=${this.selectedPatientId}`,
+        undefined,
+        undefined,
+        { showLoading: false }
       );
 
-      if (response.responseCode === 200) {
-        const result: Record<string, ESObject> = JSON.parse(response.result as string) as Record<string, ESObject>;
-        hilog.info(0x0000, 'DoctorFollowUpPage', `API响应: ${JSON.stringify(result).substring(0, 300)}`);
-
-        if (result['code'] === 200 && result['data']) {
-          const rawData: Object[] = result['data'] as Object[];
-          this.followUps = rawData.map((item: Object): FollowUpItem => {
-            const raw: Record<string, Object> = item as Record<string, Object>;
-            return {
-              id: raw['id'] as number || 0,
-              patientId: raw['patientId'] as number || 0,
-              type: raw['type'] as string || 'FOLLOW_UP',
-              title: raw['title'] as string || '',
-              hospitalName: raw['hospitalName'] as string || '',
-              department: raw['department'] as string || '',
-              doctorName: raw['doctorName'] as string || '',
-              followUpDate: raw['followUpDate'] as string || '',
-              followUpTime: raw['followUpTime'] as string || '',
-              status: raw['status'] as string || 'UPCOMING',
-              notes: raw['notes'] as string || ''
-            };
-          });
-          hilog.info(0x0000, 'DoctorFollowUpPage', `加载到 ${this.followUps.length} 条复诊记录`);
-        } else {
-          ToastUtil.showError(result['msg'] as string || '加载失败');
-        }
+      if (response.success && response.data) {
+        const rawData: Object[] = Array.isArray(response.data) ? response.data as Object[] : [];
+        this.followUps = rawData.map((item: Object): FollowUpItem => {
+          const raw: Record<string, Object> = item as Record<string, Object>;
+          return {
+            id: Number(raw['id'] || 0),
+            patientId: Number(raw['patientId'] || 0),
+            type: String(raw['type'] || 'FOLLOW_UP'),
+            title: String(raw['title'] || ''),
+            hospitalName: raw['hospitalName'] ? String(raw['hospitalName']) : undefined,
+            department: raw['department'] ? String(raw['department']) : undefined,
+            doctorName: raw['doctorName'] ? String(raw['doctorName']) : undefined,
+            followUpDate: raw['followUpDate'] ? String(raw['followUpDate']) : undefined,
+            followUpTime: raw['followUpTime'] ? String(raw['followUpTime']) : undefined,
+            status: String(raw['status'] || 'UPCOMING'),
+            notes: raw['notes'] ? String(raw['notes']) : undefined
+          };
+        });
+        hilog.info(0x0000, 'DoctorFollowUpPage', `加载到 ${this.followUps.length} 条复诊记录`);
       } else {
-        ToastUtil.showError(`网络请求失败 (${response.responseCode})`);
+        ToastUtil.showError(response.message || '加载失败');
       }
     } catch (error) {
       hilog.error(0x0000, 'DoctorFollowUpPage', `loadFollowUps error: ${JSON.stringify(error)}`);
@@ -160,28 +156,21 @@ struct DoctorFollowUpPage {
         'status': 'UPCOMING'
       };
 
-      const response = await http.createHttp().request(
-        `${this.serverUrl}/medical/follow-up`,
-        {
-          method: http.RequestMethod.POST,
-          header: { 'Content-Type': 'application/json' },
-          extraData: JSON.stringify(body),
-          readTimeout: 10000
-        }
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.POST,
+        ApiConstants.FOLLOW_UP_CREATE,
+        body,
+        undefined,
+        { showLoading: true, loadingText: '正在添加...' }
       );
 
-      if (response.responseCode === 200) {
-        const result: Record<string, ESObject> = JSON.parse(response.result as string) as Record<string, ESObject>;
-        if (result['code'] === 200) {
-          ToastUtil.showInfo('添加成功');
-          this.showAddDialog = false;
-          this.resetForm();
-          this.loadFollowUps();
-        } else {
-          ToastUtil.showError(result['msg'] as string || '添加失败');
-        }
+      if (response.success) {
+        ToastUtil.showInfo('添加成功');
+        this.showAddDialog = false;
+        this.resetForm();
+        this.loadFollowUps();
       } else {
-        ToastUtil.showError('网络请求失败');
+        ToastUtil.showError(response.message || '添加失败');
       }
     } catch (error) {
       hilog.error(0x0000, 'DoctorFollowUpPage', `addFollowUp error: ${JSON.stringify(error)}`);
@@ -191,24 +180,20 @@ struct DoctorFollowUpPage {
 
   private async updateStatus(id: number, status: string): Promise<void> {
     try {
-      const response = await http.createHttp().request(
-        `${this.serverUrl}/medical/follow-up/${id}/status`,
-        {
-          method: http.RequestMethod.PUT,
-          header: { 'Content-Type': 'application/json' },
-          extraData: JSON.stringify({ status: status }),
-          readTimeout: 10000
-        }
+      const body: Record<string, string> = { 'status': status };
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.PUT,
+        `${ApiConstants.FOLLOW_UP_STATUS}/${id}/status`,
+        body,
+        undefined,
+        { showLoading: false }
       );
 
-      if (response.responseCode === 200) {
-        const result: Record<string, ESObject> = JSON.parse(response.result as string) as Record<string, ESObject>;
-        if (result['code'] === 200) {
-          ToastUtil.showInfo('状态已更新');
-          this.loadFollowUps();
-        } else {
-          ToastUtil.showError(result['msg'] as string || '更新失败');
-        }
+      if (response.success) {
+        ToastUtil.showInfo('状态已更新');
+        this.loadFollowUps();
+      } else {
+        ToastUtil.showError(response.message || '更新失败');
       }
     } catch (error) {
       ToastUtil.showError('更新状态失败');

@@ -215,14 +215,21 @@ public class AppointmentController {
                     map.put("title", "");
                 }
 
+                String aptScheduleDate = null;
+                if (apt.getScheduleDate() != null) {
+                    aptScheduleDate = new java.text.SimpleDateFormat("yyyyMMdd").format(apt.getScheduleDate());
+                }
+
                 LambdaQueryWrapper<PaymentRecord> payWrapper = new LambdaQueryWrapper<>();
                 payWrapper.eq(PaymentRecord::getUserId, apt.getUserId())
                           .eq(PaymentRecord::getDoctorId, apt.getDoctorId())
+                          .eq(PaymentRecord::getScheduleDate, aptScheduleDate)
                           .eq(PaymentRecord::getSchedulePeriod, apt.getSchedulePeriod())
                           .orderByDesc(PaymentRecord::getCreateTime)
                           .last("LIMIT 1");
                 PaymentRecord payRecord = paymentRecordService.getOne(payWrapper);
                 map.put("payStatus", payRecord != null ? payRecord.getStatus() : 0);
+                map.put("outTradeNo", payRecord != null && payRecord.getStatus() == 0 ? payRecord.getOutTradeNo() : "");
 
                 records.add(map);
             }

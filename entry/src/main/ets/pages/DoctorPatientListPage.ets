@@ -1,6 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { http } from '@kit.NetworkKit';
+import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
 import { SettingsUtil } from '../utils/SettingsUtil';
 
 interface PatientInfo {
@@ -57,88 +58,120 @@ struct DoctorPatientListPage {
   private async loadPatients(): Promise<void> {
     try {
       hilog.info(0x0000, 'DoctorPatientListPage', `开始加载患者列表, doctorId=${this.doctorId}`);
-      const serverUrl: string = 'http://192.168.108.1:8080';
-      hilog.info(0x0000, 'DoctorPatientListPage', `请求URL: ${serverUrl}/api/appointment/doctor/${this.doctorId}/patients`);
 
-      const response = await http.createHttp().request(
-        `${serverUrl}/api/appointment/doctor/${this.doctorId}/patients`,
-        {
-          method: http.RequestMethod.GET,
-          header: { 'Content-Type': 'application/json' },
-          readTimeout: 10000,
-          connectTimeout: 10000
-        }
+      const params: Record<string, string> = {
+        'doctorId': this.doctorId.toString()
+      };
+
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.GET,
+        ApiConstants.APPOINTMENT_LIST,
+        undefined,
+        params as Object,
+        { showLoading: false }
       );
 
-      hilog.info(0x0000, 'DoctorPatientListPage', `响应状态码: ${response.responseCode}`);
+      if (response.success && response.data) {
+        const data = response.data as Record<string, Object>;
+        const rawRecords: Object[] = (data['records'] !== undefined)
+          ? (data['records'] as Object[])
+          : (Array.isArray(data) ? data as Object[] : []);
 
-      if (response.responseCode === 200) {
-        const result: Record<string, Object> = JSON.parse(response.result as string) as Record<string, Object>;
-        hilog.info(0x0000, 'DoctorPatientListPage', `解析后的code: ${result['code']}, message: ${result['message']}`);
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-        const data: Object | undefined = result['data'];
-        if (data && typeof data === 'object') {
-          const dataRecord: Record<string, Object> = data as Record<string, Object>;
-          const todayPatientsRaw: Object | undefined = dataRecord['todayPatients'];
-          const historyPatientsRaw: Object | undefined = dataRecord['historyPatients'];
+        const todayList: PatientInfo[] = [];
+        const historyList: PatientInfo[] = [];
 
-          const todayData: Record<string, Object>[] = Array.isArray(todayPatientsRaw) ? todayPatientsRaw as Record<string, Object>[] : [];
-          const historyData: Record<string, Object>[] = Array.isArray(historyPatientsRaw) ? historyPatientsRaw as Record<string, Object>[] : [];
-
-          hilog.info(0x0000, 'DoctorPatientListPage', `今日患者: ${todayData.length}位, 历史患者: ${historyData.length}位`);
-
-          this.todayPatients = this.parsePatientArray(todayData);
-          this.historyPatients = this.parsePatientArray(historyData);
-        }
-
-        this.isLoading = false;
-        
-        if (this.todayPatients.length > 0 || this.historyPatients.length > 0) {
-          hilog.info(0x0000, 'DoctorPatientListPage', `加载完成 - 今日: ${this.todayPatients.length}, 历史: ${this.historyPatients.length}`);
-        } else {
-          hilog.warn(0x0000, 'DoctorPatientListPage', '患者列表为空');
-        }
-      } else {
-        let errorDetail = '';
-        if (response.result) {
-          try {
-            const errorResult: Record<string, Object> = JSON.parse(response.result as string) as Record<string, Object>;
-            errorDetail = (errorResult['message'] as string) || (response.result as string);
-          } catch (e) {
-            errorDetail = response.result as string;
+        for (let i = 0; i < rawRecords.length; i++) {
+          const raw = rawRecords[i] as Record<string, Object>;
+          const patient = this.parsePatientRaw(raw);
+          if (patient) {
+            const scheduleDate = String(raw['scheduleDate'] || '');
+            const isToday = scheduleDate.includes(todayStr);
+            patient.isToday = isToday;
+            if (isToday) {
+              todayList.push(patient);
+            } else {
+              historyList.push(patient);
+            }
           }
         }
 
-        hilog.error(0x0000, 'DoctorPatientListPage',
-          `API返回错误! 状态码: ${response.responseCode}, 详情: ${errorDetail}`);
-
-        this.errorMessage = `加载失败(${response.responseCode}): ${errorDetail}`;
-        this.isLoading = false;
+        this.todayPatients = todayList;
+        this.historyPatients = historyList;
+        hilog.info(0x0000, 'DoctorPatientListPage', `今日: ${todayList.length}, 历史: ${historyList.length}`);
+      } else {
+        this.errorMessage = response.message || '加载失败';
       }
     } catch (error) {
-      let errorMsg = '未知错误';
-      if (error) {
-        if (typeof error === 'string') {
-          errorMsg = error;
-        } else {
-          errorMsg = JSON.stringify(error);
-        }
-      }
-      
-      hilog.error(0x0000, 'DoctorPatientListPage', `loadPatients 异常: ${errorMsg}`);
-      
-      if (errorMsg.includes('timeout') || errorMsg.includes('超时')) {
-        this.errorMessage = '⏰ 网络超时，请检查后端服务是否启动';
-      } else if (errorMsg.includes('refused') || errorMsg.includes('ECONNREFUSED')) {
-        this.errorMessage = '❌ 无法连接后端，请确认localhost:8080是否可访问';
-      } else if (errorMsg.includes('ENOTFOUND')) {
-        this.errorMessage = '🌐 DNS解析失败，请检查网络设置';
-      } else {
-        this.errorMessage = `❌ 加载失败: ${errorMsg.substring(0, 100)}`;
-      }
-      
+      hilog.error(0x0000, 'DoctorPatientListPage', `loadPatients异常: ${JSON.stringify(error)}`);
+      this.errorMessage = '网络错误，请检查连接';
+    } finally {
       this.isLoading = false;
     }
+  }
+
+  private parsePatientRaw(raw: Record<string, Object>): PatientInfo | null {
+    if (raw == null) return null;
+
+    const patient: PatientInfo = {} as PatientInfo;
+
+    const patientIdVal: Object | undefined = raw['userId'];
+    patient.patientId = typeof patientIdVal === 'number' ? patientIdVal : Number(patientIdVal || 0);
+
+    const nameVal: Object | undefined = raw['doctorName'];
+    patient.name = typeof nameVal === 'string' ? nameVal : '未知';
+
+    const phoneVal: Object | undefined = raw['phone'];
+    patient.phone = typeof phoneVal === 'string' ? phoneVal : '';
+
+    const avatarVal: Object | undefined = raw['avatar'];
+    patient.avatar = typeof avatarVal === 'string' ? avatarVal : '';
+
+    patient.isToday = false;
+
+    const appointmentIdVal: Object | undefined = raw['id'];
+    if (appointmentIdVal !== undefined && appointmentIdVal !== null) {
+      patient.appointmentId = typeof appointmentIdVal === 'number' ? appointmentIdVal : Number(appointmentIdVal);
+    }
+
+    const scheduleDateVal: Object | undefined = raw['scheduleDate'];
+    if (scheduleDateVal !== undefined && scheduleDateVal !== null) {
+      patient.scheduleDate = String(scheduleDateVal);
+    }
+
+    const schedulePeriodVal: Object | undefined = raw['schedulePeriod'];
+    if (schedulePeriodVal !== undefined && schedulePeriodVal !== null) {
+      patient.schedulePeriod = Number(schedulePeriodVal);
+    }
+
+    const statusVal: Object | undefined = raw['status'];
+    if (statusVal !== undefined && statusVal !== null) {
+      patient.status = Number(statusVal);
+    }
+
+    const feeVal: Object | undefined = raw['fee'];
+    if (feeVal !== undefined && feeVal !== null) {
+      patient.fee = Number(feeVal);
+    }
+
+    const appointmentNoVal: Object | undefined = raw['appointmentNo'];
+    if (appointmentNoVal !== undefined && appointmentNoVal !== null) {
+      patient.appointmentNo = String(appointmentNoVal);
+    }
+
+    const periodMap: Record<number, string> = { 1: '上午', 2: '下午', 3: '晚上' };
+    if (patient.schedulePeriod) {
+      patient.periodText = periodMap[patient.schedulePeriod] || '';
+    }
+
+    const statusMap: Record<number, string> = { 0: '待就诊', 1: '已就诊', 2: '已取消', 3: '已过期' };
+    if (patient.status !== undefined) {
+      patient.statusText = statusMap[patient.status] || '未知';
+    }
+
+    return patient;
   }
 
   private parsePatientArray(rawArray: Record<string, Object>[]): PatientInfo[] {

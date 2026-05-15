@@ -73,11 +73,23 @@ struct HerbalDetailPage {
 
     const params: Record<string, Object> | undefined = router.getParams() as Record<string, Object> | undefined;
 
-    if (params && params['herbalName']) {
-      this.herbalName = params['herbalName'] as string;
+    if (params) {
+      const herbalId = params['herbalId'] || params['id'];
+      const herbalName = params['herbalName'];
 
       try {
-        const response: BaseResponse<Object> = await HttpUtil.get<Object>('/herbal/info/by-name?name=' + encodeURIComponent(this.herbalName));
+        let response: BaseResponse<Object>;
+
+        if (herbalName) {
+          this.herbalName = herbalName as string;
+          response = await HttpUtil.get<Object>('/herbal/info/by-name?name=' + encodeURIComponent(this.herbalName));
+        } else if (herbalId) {
+          response = await HttpUtil.get<Object>('/herbal/info/' + herbalId);
+        } else {
+          this.isLoading = false;
+          return;
+        }
+
         if (response.success && response.data) {
           const data: Record<string, Object> = response.data as Record<string, Object>;
           this.herbal = {
@@ -105,9 +117,12 @@ struct HerbalDetailPage {
             dosage: (data['usageDosage'] as string) || '',
             caution: (data['contraindication'] as string) || ''
           } as HerbalInfo;
+        } else {
+          ToastUtil.showError(response.message || 'id无效或药材已删除', 2000);
         }
       } catch (error) {
         console.error('加载药材详情失败:', error);
+        ToastUtil.showError('加载失败，请重试', 2000);
       } finally {
         this.isLoading = false;
       }

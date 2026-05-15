@@ -47,45 +47,49 @@ export struct ARView {
  */
 @Component
 export struct DirectionArrow {
-  @Prop arrowDirection: number = 0;  // 朝向角度(0-360度)
-  @Prop arrowColor: string = '#52C41A';  // 箭头颜色
-  @Prop arrowSize: number = 100;  // 箭头大小
-  
+  @Prop arrowDirection: number = 0;
+  @Prop arrowColor: string = '#52C41A';
+  @Prop arrowSize: number = 100;
+
+  private arrowSettings: RenderingContextSettings = new RenderingContextSettings(true);
+  private arrowContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.arrowSettings);
+
   build() {
     Stack() {
-      // 使用Canvas绘制箭头
-      Canvas(this.createArrowContext())
+      Canvas(this.arrowContext)
         .width(this.arrowSize)
         .height(this.arrowSize)
         .rotate({ angle: this.arrowDirection })
+        .onReady(() => {
+          this.drawArrow();
+        })
     }
     .width(this.arrowSize)
     .height(this.arrowSize)
   }
-  
-  private createArrowContext(): CanvasRenderingContext2D {
-    const settings = new RenderingContextSettings(true);
-    const ctx = new CanvasRenderingContext2D(settings);
-    
-    // 绘制箭头形状
+
+  private drawArrow(): void {
+    const ctx = this.arrowContext;
+    const halfSize = this.arrowSize / 2;
+
+    ctx.clearRect(0, 0, this.arrowSize, this.arrowSize);
+    ctx.save();
+    ctx.translate(halfSize, halfSize);
+
     ctx.fillStyle = this.arrowColor;
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 3;
-    
-    const halfSize = this.arrowSize / 2;
-    ctx.translate(halfSize, halfSize);
-    
+
     ctx.beginPath();
-    ctx.moveTo(0, -halfSize * 0.8);  // 箭头尖端
-    ctx.lineTo(-halfSize * 0.5, halfSize * 0.3);  // 左侧
-    ctx.lineTo(0, halfSize * 0.1);  // 底部中心
-    ctx.lineTo(halfSize * 0.5, halfSize * 0.3);  // 右侧
+    ctx.moveTo(0, -halfSize * 0.8);
+    ctx.lineTo(-halfSize * 0.5, halfSize * 0.3);
+    ctx.lineTo(0, halfSize * 0.1);
+    ctx.lineTo(halfSize * 0.5, halfSize * 0.3);
     ctx.closePath();
-    
+
     ctx.fill();
     ctx.stroke();
-    
-    return ctx;
+    ctx.restore();
   }
 }
 
@@ -103,19 +107,17 @@ export struct NavigationProgress {
   
   build() {
     Column() {
-      // 进度条
       Progress({
-        value: this.totalDistance - this.currentDistance,
-        total: this.totalDistance,
+        value: this.totalDistance > 0 ? this.totalDistance - this.currentDistance : 0,
+        total: this.totalDistance > 0 ? this.totalDistance : 1,
         type: ProgressType.Linear
       })
         .width('100%')
         .height(8)
         .color('#52C41A')
       
-      // 距离和时间信息
       Row() {
-        Text(`剩余 ${this.currentDistance.toFixed(0)} 米`)
+        Text(`剩余 ${Math.round(this.currentDistance)} 米`)
           .fontSize(14)
           .fontColor('#333333')
         
@@ -251,19 +253,8 @@ export struct DestinationCard {
         offsetY: 1
       })
       .onClick(() => {
-        console.log(`[DestinationCard] 点击卡片: ${this.destination?.name}`);
+        console.log(`[DestinationCard] click: ${this.destination?.name}`);
         this.onCardClick();
-      })
-      // 添加点击效果
-      .stateStyles({
-        normal: {
-          .scale({ x: 1.0, y: 1.0 })
-          .backgroundColor('#FFFFFF')
-        },
-        pressed: {
-          .scale({ x: 0.98, y: 0.98 })
-          .backgroundColor('#F5F5F5')
-        }
       })
     }
   }

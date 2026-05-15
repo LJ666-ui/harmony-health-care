@@ -5,7 +5,7 @@ import { common } from '@kit.AbilityKit';
 import { Header } from '../components/Header';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
-import { HttpUtil, BaseResponse, HttpMethod } from '../common/utils/HttpUtil';
+import { HttpUtil, BaseResponse, HttpMethod, RequestOptions } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { ToastUtil } from '../common/utils/ToastUtil';
 import { DoctorInfo, DoctorInfoHelper } from '../models/DoctorModel';
@@ -44,8 +44,10 @@ struct DoctorDetailPage {
   @State remainingStock: number = 0;
   @State doctorName: string = '';
   @State showPayDialog: boolean = false;
-  @State payForm: string = '';
+  @State payUrl: string = '';
   @State currentOutTradeNo: string = '';
+  @State payDialogReady: boolean = false;
+  @State payLoadError: boolean = false;
 
   private dates: string[] = [];
   private weekDays: string[] = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -291,11 +293,18 @@ struct DoctorDetailPage {
           
           this.loadRealTimeStock();
           
-          if (payNow && payDataResult['payForm']) {
-            this.payForm = String(payDataResult['payForm']);
+          if (payNow && payDataResult['payUrl']) {
+            this.payUrl = String(payDataResult['payUrl']);
             this.showPayDialog = true;
             
-            hilog.info(0x0000, TAG, '显示支付页面: outTradeNo=%{public}s', this.currentOutTradeNo);
+            hilog.info(0x0000, TAG, '显示支付页面: outTradeNo=%{public}s, payUrl长度=%{public}d',
+              this.currentOutTradeNo, this.payUrl.length);
+
+            setTimeout(() => {
+              if (this.payDialogReady) {
+                this.loadPayUrlToWebView();
+              }
+            }, 300);
           } else {
             ToastUtil.showSuccess('挂号成功！订单已保留20分钟，请尽快完成支付', 3000);
             
@@ -322,13 +331,65 @@ struct DoctorDetailPage {
 
   closePayDialog(): void {
     this.showPayDialog = false;
-    this.payForm = '';
+    this.payUrl = '';
+    this.payDialogReady = false;
+    this.payLoadError = false;
     
     ToastUtil.showSuccess('订单已保留，您可以稍后在"我的预约"中完成支付', 2500);
     
     setTimeout(() => {
       router.back();
     }, 1200);
+  }
+
+  private loadPayUrlToWebView(): void {
+    if (this.payUrl && this.payUrl.length > 0) {
+      try {
+        this.webController.loadUrl(this.payUrl);
+        hilog.info(0x0000, TAG, 'loadPayUrlToWebView: 已加载支付URL, 长度=%{public}d', this.payUrl.length);
+      } catch (error) {
+        hilog.error(0x0000, TAG, 'loadPayUrlToWebView: 加载失败 %{public}s', String(error));
+      }
+    } else {
+      hilog.warn(0x0000, TAG, 'loadPayUrlToWebView: payUrl为空');
+    }
+  }
+
+  private async mockPayment(): Promise<void> {
+    if (!this.currentOutTradeNo) {
+      ToastUtil.showError('订单号不存在', 1500);
+      return;
+    }
+
+    try {
+      hilog.info(0x0000, TAG, '模拟支付: outTradeNo=%{public}s', this.currentOutTradeNo);
+
+      const mockBody: Record<string, string> = { 'outTradeNo': this.currentOutTradeNo };
+
+      const res: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.POST,
+        ApiConstants.PAY_MOCK,
+        mockBody as Object,
+        undefined,
+        { showLoading: true, loadingText: '正在处理模拟支付...' } as RequestOptions
+      );
+
+      if (res.success) {
+        ToastUtil.showSuccess('模拟支付成功！', 2000);
+        this.showPayDialog = false;
+        this.payUrl = '';
+        this.payLoadError = false;
+        this.loadRealTimeStock();
+        setTimeout(() => {
+          router.back();
+        }, 1000);
+      } else {
+        ToastUtil.showError('模拟支付失败：' + String(res.message || '未知错误'), 2000);
+      }
+    } catch (error) {
+      ToastUtil.showError('网络错误，请稍后重试', 1500);
+      hilog.error(0x0000, TAG, '模拟支付异常: %{public}s', String(error));
+    }
   }
 
   async confirmPayment(): Promise<void> {
@@ -894,8 +955,30 @@ struct DoctorDetailPage {
           .textAlign(TextAlign.Center)
           .margin({ top: 8, bottom: 16 })
 
-        if (this.payForm) {
-          Web({ src: 'about:blank', controller: this.webController })
+        if (this.payLoadError) {
+          Column() {
+            Text('⚠️ 支付宝沙箱暂不可用')
+              .fontSize(16)
+              .fontColor('#FF4D4F')
+              .fontWeight(FontWeight.Bold)
+              .margin({ bottom: 8 })
+
+            Text('支付宝沙箱环境不稳定，可能返回错误。您可以使用模拟支付完成测试。')
+              .fontSize(13)
+              .fontColor('#666666')
+              .textAlign(TextAlign.Center)
+              .margin({ bottom: 16 })
+
+            Text('订单号: ' + this.currentOutTradeNo)
+              .fontSize(12)
+              .fontColor('#999999')
+          }
+          .width('100%')
+          .height(200)
+          .justifyContent(FlexAlign.Center)
+          .padding({ left: 20, right: 20 })
+        } else if (this.payUrl) {
+          Web({ src: '', controller: this.webController })
             .width('100%')
             .height(400)
             .borderRadius(10)
@@ -905,6 +988,20 @@ struct DoctorDetailPage {
             .javaScriptAccess(true)
             .mixedMode(MixedMode.All)
             .zoomAccess(true)
+            .onControllerAttached(() => {
+              hilog.info(0x0000, TAG, 'WebView onControllerAttached 触发');
+              this.payDialogReady = true;
+              this.loadPayUrlToWebView();
+            })
+            .onAppear(() => {
+              hilog.info(0x0000, TAG, 'WebView onAppear 触发, payDialogReady=%{public}b, payUrl长度=%{public}d',
+                this.payDialogReady, this.payUrl.length);
+              if (this.payDialogReady && this.payUrl) {
+                setTimeout(() => {
+                  this.loadPayUrlToWebView();
+                }, 100);
+              }
+            })
             .onPageBegin((event) => {
               const url = event?.url || '';
               hilog.info(0x0000, TAG, 'WebView页面开始加载 url=%{public}s', url);
@@ -917,37 +1014,14 @@ struct DoctorDetailPage {
             .onPageEnd((event) => {
               const url = event?.url || '';
               hilog.info(0x0000, TAG, 'WebView页面加载完成 url=%{public}s', url);
+
+              if (url && url.includes('alipaydev.com/error')) {
+                hilog.error(0x0000, TAG, '检测到支付宝沙箱错误页面');
+                this.payLoadError = true;
+                return;
+              }
               
-              if (url === 'about:blank' && this.payForm) {
-                const safeForm = this.payForm
-                  .replace(/\\/g, '\\\\')
-                  .replace(/'/g, "\\'")
-                  .replace(/"/g, '\\"')
-                  .replace(/\n/g, '\\n')
-                  .replace(/\r/g, '\\r')
-                  .replace(/\t/g, '\\t');
-                  
-                this.webController.runJavaScript(`
-                  (function() {
-                    try {
-                      document.open();
-                      document.write('${safeForm}');
-                      document.close();
-                      
-                      setTimeout(function() {
-                        var forms = document.getElementsByTagName('form');
-                        if (forms.length > 0) {
-                          console.log('自动提交表单...');
-                          forms[0].submit();
-                        }
-                      }, 500);
-                    } catch(e) {
-                      console.error('表单注入失败:', e.message);
-                    }
-                  })();
-                `);
-                hilog.info(0x0000, TAG, '已注入WAP支付宝表单到WebView');
-              } else if (url && url.includes('return_url') || url?.includes('success')) {
+              if (url && (url.includes('return_url') || url.includes('success') || url.includes('payresult'))) {
                 hilog.info(0x0000, TAG, '检测到支付返回页面');
                 ToastUtil.showSuccess('支付完成，请确认支付状态', 2000);
               }
@@ -959,7 +1033,7 @@ struct DoctorDetailPage {
                 requestUrl, errorMsg);
               
               if ((requestUrl as string).includes('alipay.com')) {
-                ToastUtil.showWarning('支付宝页面加载异常，请稍后重试', 2500);
+                this.payLoadError = true;
               }
             })
             .onUrlLoadIntercept((data) => {
@@ -1013,17 +1087,31 @@ struct DoctorDetailPage {
             this.closePayDialog();
           });
 
-        Button('我已支付')
-          .layoutWeight(1)
-          .height(44)
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor('#FFFFFF')
-          .backgroundColor('#52C41A')
-          .borderRadius(22)
-          .onClick(() => {
-            this.confirmPayment();
-          });
+        if (this.payLoadError) {
+          Button('模拟支付')
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#1890FF')
+            .borderRadius(22)
+            .onClick(() => {
+              this.mockPayment();
+            });
+        } else {
+          Button('我已支付')
+            .layoutWeight(1)
+            .height(44)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FFFFFF')
+            .backgroundColor('#52C41A')
+            .borderRadius(22)
+            .onClick(() => {
+              this.confirmPayment();
+            });
+        }
       }
       .width('100%')
       .margin({ top: 20 })

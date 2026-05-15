@@ -324,373 +324,361 @@ struct HealthPage {
   }
 
   @Builder buildRehabContent() {
-    Scroll() {
-      Column({ space: AccessibilityConfig.getSpacingMD() }) {
-        ForEach(this.rehabServices, (service: ServiceCard) => {
-          Row({ space: AccessibilityConfig.getSpacingMD() }) {
-            Column() {
-              Text(service.icon)
-                .fontSize(this.isElderMode ? 28 : 22)
-                .fontColor(AccessibilityConfig.getThemeColor());
-            }
-            .width(64)
-            .height(64)
-            .backgroundColor(AccessibilityConfig.getThemeColor() + '20')
-            .borderRadius(32)
-            .justifyContent(FlexAlign.Center)
-            .alignItems(HorizontalAlign.Center);
-
-            Column({ space: 4 }) {
-              Text(service.title)
-                .fontSize(this.isElderMode ? 16 : 14)
-                .fontWeight(FontWeight.Bold)
-                .fontColor('#333333');
-
-              Text(service.description)
-                .fontSize(this.isElderMode ? 13 : 11)
-                .fontColor('#666666');
-            }
-            .layoutWeight(1)
-            .alignItems(HorizontalAlign.Start)
-            .margin({ left: AccessibilityConfig.getSpacingMD() });
-
-            Text('›')
-              .fontSize(this.isElderMode ? 18 : 14)
-              .fontColor('#CCCCCC');
+    Column({ space: AccessibilityConfig.getSpacingMD() }) {
+      ForEach(this.rehabServices, (service: ServiceCard) => {
+        Row({ space: AccessibilityConfig.getSpacingMD() }) {
+          Column() {
+            Text(service.icon)
+              .fontSize(this.isElderMode ? 28 : 22)
+              .fontColor(AccessibilityConfig.getThemeColor());
           }
-          .width('100%')
-          .padding(AccessibilityConfig.getSpacingMD())
-          .backgroundColor('#FAFAFA')
-          .borderRadius(10)
-          .onClick(() => {
-            router.pushUrl({ url: service.url });
-          });
-        }, (service: ServiceCard) => service.id.toString())
+          .width(64)
+          .height(64)
+          .backgroundColor(AccessibilityConfig.getThemeColor() + '20')
+          .borderRadius(32)
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center);
 
-        Column({ space: 12 }) {
-          Text('推荐康复计划')
-            .fontSize(this.isElderMode ? 16 : 14)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333333')
+          Column({ space: 4 }) {
+            Text(service.title)
+              .fontSize(this.isElderMode ? 16 : 14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#333333');
 
-          Row({ space: 12 }) {
-            ForEach(['上肢训练', '平衡练习', '呼吸训练'], (rehabItem: string) => {
-              Column({ space: 8 }) {
-                Text(rehabItem === '上肢训练' ? '💪' : rehabItem === '平衡练习' ? '🚶' : '🫁')
-                  .fontSize(28)
-
-                Text(rehabItem)
-                  .fontSize(12)
-                  .fontColor('#666666')
-
-                Text('30分钟')
-                  .fontSize(10)
-                  .fontColor('#999999')
-              }
-              .flexGrow(1)
-              .height(100)
-              .justifyContent(FlexAlign.Center)
-              .backgroundColor('#F5F5F5')
-              .borderRadius(10)
-            }, (rehabItem: string) => rehabItem)
+            Text(service.description)
+              .fontSize(this.isElderMode ? 13 : 11)
+              .fontColor('#666666');
           }
+          .layoutWeight(1)
+          .alignItems(HorizontalAlign.Start)
+          .margin({ left: AccessibilityConfig.getSpacingMD() });
+
+          Text('›')
+            .fontSize(this.isElderMode ? 18 : 14)
+            .fontColor('#CCCCCC');
         }
         .width('100%')
-        .padding(16)
-        .backgroundColor('#FFFFFF')
+        .padding(AccessibilityConfig.getSpacingMD())
+        .backgroundColor('#FAFAFA')
         .borderRadius(10)
-        .border({ width: 1, color: '#F0F0F0' })
+        .onClick(() => {
+          router.pushUrl({ url: service.url });
+        });
+      }, (service: ServiceCard) => service.id.toString())
+
+      Column({ space: 12 }) {
+        Text('推荐康复计划')
+          .fontSize(this.isElderMode ? 16 : 14)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+
+        Row({ space: 12 }) {
+          ForEach(['上肢训练', '平衡练习', '呼吸训练'], (rehabItem: string) => {
+            Column({ space: 8 }) {
+              Text(rehabItem === '上肢训练' ? '💪' : rehabItem === '平衡练习' ? '🚶' : '🫁')
+                .fontSize(28)
+
+              Text(rehabItem)
+                .fontSize(12)
+                .fontColor('#666666')
+
+              Text('30分钟')
+                .fontSize(10)
+                .fontColor('#999999')
+            }
+            .flexGrow(1)
+            .height(100)
+            .justifyContent(FlexAlign.Center)
+            .backgroundColor('#F5F5F5')
+            .borderRadius(10)
+          }, (rehabItem: string) => rehabItem)
+        }
       }
+      .width('100%')
       .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(10)
+      .border({ width: 1, color: '#F0F0F0' })
     }
-    .scrollBar(BarState.Off)
-    .height(300)
+    .padding(16)
+    .layoutWeight(1)
   }
 
   @Builder buildAiAssessContent() {
-    Scroll() {
-      Column({ space: 16 }) {
-        Column({ space: 12 }) {
-          Row({ space: 8 }) {
-            Text('🧠')
-              .fontSize(24)
+    Column({ space: 16 }) {
+      Column({ space: 12 }) {
+        Row({ space: 8 }) {
+          Text('🧠')
+            .fontSize(24)
 
-            Text('端侧AI风险评估引擎')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#333333')
-          }
-
-          Row({ space: 8 }) {
-            Text('上次评估:')
-              .fontSize(13)
-              .fontColor('#666666')
-
-            Text('2026-04-15')
-              .fontSize(13)
-              .fontColor(AccessibilityConfig.getThemeColor())
-
-            Text('结果: 低风险')
-              .fontSize(13)
-              .fontColor('#4CAF50')
-              .backgroundColor('#4CAF5020')
-              .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-              .borderRadius(10)
-          }
-
-          Row({ space: 12 }) {
-            Button('立即重新评估')
-              .height(36)
-              .fontSize(13)
-              .backgroundColor(AccessibilityConfig.getThemeColor())
-              .onClick(() => {
-                router.pushUrl({ url: 'pages/RiskAssessmentPage' });
-              })
-
-            Button('查看历史报告')
-              .height(36)
-              .fontSize(13)
-              .backgroundColor('#F5F5F5')
-              .fontColor('#666666')
-              .onClick(() => {
-                router.pushUrl({ url: 'pages/RiskHistoryPage' });
-              })
-          }
-          .width('100%')
-        }
-        .width('100%')
-        .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(10)
-        .border({ width: 1, color: '#F0F0F0' })
-
-        Column({ space: 12 }) {
-          Text('⚡ What-if 模拟')
-            .fontSize(15)
+          Text('端侧AI风险评估引擎')
+            .fontSize(16)
             .fontWeight(FontWeight.Bold)
             .fontColor('#333333')
-
-          Column({ space: 8 }) {
-            ForEach(this.whatIfItems, (item: WhatIfItem) => {
-              Row() {
-                Text(item.label)
-                  .fontSize(13)
-                  .fontColor('#666666')
-                  .layoutWeight(1)
-
-                Text(item.impact)
-                  .fontSize(13)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor(item.color)
-              }
-              .width('100%')
-              .padding(12)
-              .backgroundColor('#FAFAFA')
-              .borderRadius(8)
-            }, (item: WhatIfItem) => item.label)
-          }
         }
-        .width('100%')
-        .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(10)
-        .border({ width: 1, color: '#F0F0F0' })
-      }
-      .padding(16)
-    }
-    .scrollBar(BarState.Off)
-    .height(300)
-  }
 
-  @Builder buildMonitoringContent() {
-    Scroll() {
-      Column({ space: 16 }) {
-        Column({ space: 12 }) {
-          Row({ space: 8 }) {
-            Text('📊')
-              .fontSize(24)
+        Row({ space: 8 }) {
+          Text('上次评估:')
+            .fontSize(13)
+            .fontColor('#666666')
 
-            Text('患者实时监控系统')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#333333')
-          }
+          Text('2026-04-15')
+            .fontSize(13)
+            .fontColor(AccessibilityConfig.getThemeColor())
 
-          Row({ space: 8 }) {
-            Text('● 正常')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor('#4CAF50')
-
-            Text('(最后更新: 刚刚)')
-              .fontSize(12)
-              .fontColor('#999999')
-              .layoutWeight(1)
-          }
-
-          Column({ space: 10 }) {
-            ForEach(this.vitalSigns, (vital: VitalSignItem) => {
-              Row({ space: 12 }) {
-                Column({ space: 4 }) {
-                  Text(vital.name)
-                    .fontSize(12)
-                    .fontColor('#666666')
-
-                  Text(vital.value)
-                    .fontSize(18)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor(vital.color)
-
-                  Text(vital.unit)
-                    .fontSize(10)
-                    .fontColor('#999999')
-                }
-                .layoutWeight(1)
-                .alignItems(HorizontalAlign.Start)
-
-                Column()
-                  .width(40)
-                  .height(40)
-                  .backgroundColor(vital.color + '20')
-                  .borderRadius(20)
-                  .justifyContent(FlexAlign.Center)
-              }
-              .width('100%')
-              .padding(12)
-              .backgroundColor('#FAFAFA')
-              .borderRadius(8)
-            }, (vital: VitalSignItem) => vital.name)
-          }
+          Text('结果: 低风险')
+            .fontSize(13)
+            .fontColor('#4CAF50')
+            .backgroundColor('#4CAF5020')
+            .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+            .borderRadius(10)
         }
-        .width('100%')
-        .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(10)
-        .border({ width: 1, color: '#F0F0F0' })
 
         Row({ space: 12 }) {
-          Button('进入监控面板 →')
-            .flexGrow(1)
-            .height(38)
+          Button('立即重新评估')
+            .height(36)
             .fontSize(13)
             .backgroundColor(AccessibilityConfig.getThemeColor())
             .onClick(() => {
-              router.pushUrl({ url: 'pages/MonitoringDashboard' });
+              router.pushUrl({ url: 'pages/RiskAssessmentPage' });
             })
 
-          Button('告警历史 →')
-            .flexGrow(1)
-            .height(38)
+          Button('查看历史报告')
+            .height(36)
             .fontSize(13)
             .backgroundColor('#F5F5F5')
             .fontColor('#666666')
             .onClick(() => {
-              router.pushUrl({ url: 'pages/AlertHistoryPage' });
+              router.pushUrl({ url: 'pages/RiskHistoryPage' });
             })
         }
         .width('100%')
       }
+      .width('100%')
       .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(10)
+      .border({ width: 1, color: '#F0F0F0' })
+
+      Column({ space: 12 }) {
+        Text('⚡ What-if 模拟')
+          .fontSize(15)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+
+        Column({ space: 8 }) {
+          ForEach(this.whatIfItems, (item: WhatIfItem) => {
+            Row() {
+              Text(item.label)
+                .fontSize(13)
+                .fontColor('#666666')
+                .layoutWeight(1)
+
+              Text(item.impact)
+                .fontSize(13)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(item.color)
+            }
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#FAFAFA')
+            .borderRadius(8)
+          }, (item: WhatIfItem) => item.label)
+        }
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(10)
+      .border({ width: 1, color: '#F0F0F0' })
     }
-    .scrollBar(BarState.Off)
-    .height(300)
+    .padding(16)
+    .layoutWeight(1)
   }
 
-  @Builder buildDigitalTwinContent() {
-    Scroll() {
-      Column({ space: 16 }) {
-        Column({ space: 12 }) {
-          Row({ space: 8 }) {
-            Text('👤')
-              .fontSize(24)
+  @Builder buildMonitoringContent() {
+    Column({ space: 16 }) {
+      Column({ space: 12 }) {
+        Row({ space: 8 }) {
+          Text('📊')
+            .fontSize(24)
 
-            Text('患者数字孪生系统')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .fontColor('#333333')
-          }
-
-          Column() {
-            Text('🔄')
-              .fontSize(64)
-              .fontColor(AccessibilityConfig.getThemeColor())
-
-            Text('3D人体模型预览')
-              .fontSize(14)
-              .fontColor('#666666')
-
-            Text('点击进入完整数字孪生系统，查看器官健康状态可视化')
-              .fontSize(12)
-              .fontColor('#999999')
-              .textAlign(TextAlign.Center)
-              .maxLines(2)
-          }
-          .width('100%')
-          .height(160)
-          .justifyContent(FlexAlign.Center)
-          .backgroundColor('#F8F9FF')
-          .borderRadius(10)
-          .onClick(() => {
-            router.pushUrl({ url: 'pages/DigitalTwinPage' });
-          })
-        }
-        .width('100%')
-        .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(10)
-        .border({ width: 1, color: '#F0F0F0' })
-
-        Column({ space: 12 }) {
-          Text('器官健康状态')
-            .fontSize(15)
+          Text('患者实时监控系统')
+            .fontSize(16)
             .fontWeight(FontWeight.Bold)
             .fontColor('#333333')
+        }
 
-          Row({ space: 10 }) {
-            ForEach(this.organStatuses, (organ: OrganStatusItem) => {
-              Column({ space: 6 }) {
-                Text(organ.name)
+        Row({ space: 8 }) {
+          Text('● 正常')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#4CAF50')
+
+          Text('(最后更新: 刚刚)')
+            .fontSize(12)
+            .fontColor('#999999')
+            .layoutWeight(1)
+        }
+
+        Column({ space: 10 }) {
+          ForEach(this.vitalSigns, (vital: VitalSignItem) => {
+            Row({ space: 12 }) {
+              Column({ space: 4 }) {
+                Text(vital.name)
                   .fontSize(12)
                   .fontColor('#666666')
 
-                Text(`${organ.percent}%`)
+                Text(vital.value)
                   .fontSize(18)
                   .fontWeight(FontWeight.Bold)
-                  .fontColor(organ.color)
+                  .fontColor(vital.color)
 
-                Text(organ.status)
+                Text(vital.unit)
                   .fontSize(10)
-                  .fontColor(organ.color)
-                  .backgroundColor(organ.color + '20')
-                  .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                  .borderRadius(8)
+                  .fontColor('#999999')
               }
-              .flexGrow(1)
-              .height(90)
-              .justifyContent(FlexAlign.Center)
-              .backgroundColor('#FAFAFA')
-              .borderRadius(8)
-            }, (organ: OrganStatusItem) => organ.name)
-          }
-        }
-        .width('100%')
-        .padding(16)
-        .backgroundColor('#FFFFFF')
-        .borderRadius(10)
-        .border({ width: 1, color: '#F0F0F0' })
+              .layoutWeight(1)
+              .alignItems(HorizontalAlign.Start)
 
-        Button('进入数字孪生 →')
-          .width('100%')
-          .height(42)
-          .fontSize(14)
+              Column()
+                .width(40)
+                .height(40)
+                .backgroundColor(vital.color + '20')
+                .borderRadius(20)
+                .justifyContent(FlexAlign.Center)
+            }
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#FAFAFA')
+            .borderRadius(8)
+          }, (vital: VitalSignItem) => vital.name)
+        }
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(10)
+      .border({ width: 1, color: '#F0F0F0' })
+
+      Row({ space: 12 }) {
+        Button('进入监控面板 →')
+          .flexGrow(1)
+          .height(38)
+          .fontSize(13)
           .backgroundColor(AccessibilityConfig.getThemeColor())
           .onClick(() => {
-            router.pushUrl({ url: 'pages/DigitalTwinPage' });
+            router.pushUrl({ url: 'pages/MonitoringDashboard' });
+          })
+
+        Button('告警历史 →')
+          .flexGrow(1)
+          .height(38)
+          .fontSize(13)
+          .backgroundColor('#F5F5F5')
+          .fontColor('#666666')
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/AlertHistoryPage' });
           })
       }
-      .padding(16)
+      .width('100%')
     }
-    .scrollBar(BarState.Off)
-    .height(300)
+    .padding(16)
+    .layoutWeight(1)
+  }
+
+  @Builder buildDigitalTwinContent() {
+    Column({ space: 16 }) {
+      Column({ space: 12 }) {
+        Row({ space: 8 }) {
+          Text('👤')
+            .fontSize(24)
+
+          Text('患者数字孪生系统')
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#333333')
+        }
+
+        Column() {
+          Text('🔄')
+            .fontSize(64)
+            .fontColor(AccessibilityConfig.getThemeColor())
+
+          Text('3D人体模型预览')
+            .fontSize(14)
+            .fontColor('#666666')
+
+          Text('点击进入完整数字孪生系统，查看器官健康状态可视化')
+            .fontSize(12)
+            .fontColor('#999999')
+            .textAlign(TextAlign.Center)
+            .maxLines(2)
+        }
+        .width('100%')
+        .height(160)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F8F9FF')
+        .borderRadius(10)
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/DigitalTwinPage' });
+        })
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(10)
+      .border({ width: 1, color: '#F0F0F0' })
+
+      Column({ space: 12 }) {
+        Text('器官健康状态')
+          .fontSize(15)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333333')
+
+        Row({ space: 10 }) {
+          ForEach(this.organStatuses, (organ: OrganStatusItem) => {
+            Column({ space: 6 }) {
+              Text(organ.name)
+                .fontSize(12)
+                .fontColor('#666666')
+
+              Text(`${organ.percent}%`)
+                .fontSize(18)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(organ.color)
+
+              Text(organ.status)
+                .fontSize(10)
+                .fontColor(organ.color)
+                .backgroundColor(organ.color + '20')
+                .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+                .borderRadius(8)
+            }
+            .flexGrow(1)
+            .height(90)
+            .justifyContent(FlexAlign.Center)
+            .backgroundColor('#FAFAFA')
+            .borderRadius(8)
+          }, (organ: OrganStatusItem) => organ.name)
+        }
+      }
+      .width('100%')
+      .padding(16)
+      .backgroundColor('#FFFFFF')
+      .borderRadius(10)
+      .border({ width: 1, color: '#F0F0F0' })
+
+      Button('进入数字孪生 →')
+        .width('100%')
+        .height(42)
+        .fontSize(14)
+        .backgroundColor(AccessibilityConfig.getThemeColor())
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/DigitalTwinPage' });
+        })
+    }
+    .padding(16)
+    .layoutWeight(1)
   }
 }

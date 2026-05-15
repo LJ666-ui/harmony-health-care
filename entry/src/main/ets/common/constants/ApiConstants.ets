@@ -303,12 +303,15 @@ interface ApiConstantsInterface {
 
   // 支付
   PAY_CREATE: string;
+  PAY_RESUME: string;
   PAY_STATUS: string;
   PAY_NOTIFY: string;
+  PAY_MOCK: string;
 
   // 排班
   SCHEDULE_ADD: string;
   SCHEDULE_LIST: string;
+  SCHEDULE_DELETE: string;
   SCHEDULE_DOCTOR_DATE: string;
   SCHEDULE_STOCK_QUERY: string;
 
@@ -317,6 +320,18 @@ interface ApiConstantsInterface {
   ADMIN_INFO: string;
   ADMIN_LOGOUT: string;
   ADMIN_USER_LIST: string;
+  ADMIN_FAMILY_LIST: string;
+  ADMIN_FAMILY_DETAIL: string;
+  ADMIN_FAMILY_ADD: string;
+  ADMIN_FAMILY_UPDATE: string;
+  ADMIN_FAMILY_DELETE: string;
+  ADMIN_ADMIN_LIST: string;
+  ADMIN_ADMIN_ADD: string;
+  ADMIN_ADMIN_UPDATE: string;
+  ADMIN_ADMIN_DELETE: string;
+  ADMIN_ADMIN_RESET_PASSWORD: string;
+  ADMIN_ADMIN_TOGGLE_STATUS: string;
+  ADMIN_DASHBOARD_DETAIL: string;
 
   // 护理记录
   NURSING_RECORD_CREATE: string;
@@ -326,6 +341,12 @@ interface ApiConstantsInterface {
   NURSING_RECORD_DETAIL: string;
   NURSING_RECORD_UPDATE: string;
   NURSING_RECORD_DELETE: string;
+
+  // 复诊管理
+  FOLLOW_UP_LIST: string;
+  FOLLOW_UP_CREATE: string;
+  FOLLOW_UP_STATUS: string;
+  FOLLOW_UP_DETAIL: string;
 }
 
 // 最终接口常量实现（统一标准，无冲突，无重复）
@@ -549,9 +570,9 @@ export const ApiConstants: ApiConstantsInterface = {
   APPOINTMENT_STATISTICS: '/appointment/statistics/',
   APPOINTMENT_QUEUE_INFO: '/appointment/queue-info',
   APPOINTMENT_QUEUE_REALTIME: '/appointment/queue-realtime',
-  APPOINTMENT_CHECK_IN: '/appointment/check-in',
+  APPOINTMENT_CHECK_IN: '/appointment',
   APPOINTMENT_ONLINE_JOIN: '/appointment/online-join',
-  APPOINTMENT_COMPLETE: '/appointment/complete',
+  APPOINTMENT_COMPLETE: '/appointment',
   APPOINTMENT_CHECK_EXPIRED: '/appointment/check-expired',
 
   EXAMINATION_REPORT_LIST: '/examination/report/list',
@@ -560,11 +581,14 @@ export const ApiConstants: ApiConstantsInterface = {
   EXAMINATION_REPORT_INIT_DEMO: '/examination/report/init-demo',
 
   PAY_CREATE: '/pay/create',
+  PAY_RESUME: '/pay/resume',
   PAY_STATUS: '/pay/status',
   PAY_NOTIFY: '/pay/notify',
+  PAY_MOCK: '/pay/mock',
 
   SCHEDULE_ADD: '/schedule/add',
   SCHEDULE_LIST: '/schedule/list',
+  SCHEDULE_DELETE: '/schedule',
   SCHEDULE_DOCTOR_DATE: '/schedule/doctor/',
   SCHEDULE_STOCK_QUERY: '/schedule/stock/query',
 
@@ -572,6 +596,18 @@ export const ApiConstants: ApiConstantsInterface = {
   ADMIN_INFO: '/admin/info',
   ADMIN_LOGOUT: '/admin/logout',
   ADMIN_USER_LIST: '/admin/user/list',
+  ADMIN_FAMILY_LIST: '/admin/family/list',
+  ADMIN_FAMILY_DETAIL: '/admin/family/detail/',
+  ADMIN_FAMILY_ADD: '/admin/family/add',
+  ADMIN_FAMILY_UPDATE: '/admin/family/update',
+  ADMIN_FAMILY_DELETE: '/admin/family/delete/',
+  ADMIN_ADMIN_LIST: '/admin/admin/list',
+  ADMIN_ADMIN_ADD: '/admin/admin/add',
+  ADMIN_ADMIN_UPDATE: '/admin/admin/update',
+  ADMIN_ADMIN_DELETE: '/admin/admin/delete/',
+  ADMIN_ADMIN_RESET_PASSWORD: '/admin/admin/reset-password',
+  ADMIN_ADMIN_TOGGLE_STATUS: '/admin/admin/toggle-status',
+  ADMIN_DASHBOARD_DETAIL: '/admin/dashboard/detail',
 
   // ✅ 统一护理记录接口（和后端完全匹配）
   NURSING_RECORD_CREATE: '/nursing/record/create',
@@ -580,5 +616,10 @@ export const ApiConstants: ApiConstantsInterface = {
   NURSING_RECORD_BY_NURSE: '/nursing/record/nurse',
   NURSING_RECORD_DETAIL: '/nursing/record/detail',
   NURSING_RECORD_UPDATE: '/nursing/record/update',
-  NURSING_RECORD_DELETE: '/nursing/record/delete'
+  NURSING_RECORD_DELETE: '/nursing/record/delete',
+
+  FOLLOW_UP_LIST: '/medical/follow-up/list',
+  FOLLOW_UP_CREATE: '/medical/follow-up',
+  FOLLOW_UP_STATUS: '/medical/follow-up',
+  FOLLOW_UP_DETAIL: '/medical/follow-up'
 };

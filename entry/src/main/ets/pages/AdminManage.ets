@@ -1,20 +1,38 @@
 import { router } from '@kit.ArkUI';
 import { GlobalTheme } from '../global';
-import { AdminMock, AdminInfo } from '../mock/adminMock';
+import { HttpUtil, BaseResponse, HttpMethod, RequestOptions } from '../common/utils/HttpUtil';
+import { ApiConstants } from '../common/constants/ApiConstants';
+import { ToastUtil } from '../common/utils/ToastUtil';
 import { CurrentAdmin } from '../services/AdminAuthService';
+
+interface AdminItem {
+  id: number;
+  username: string;
+  realName: string;
+  phone: string;
+  email: string;
+  avatar: string;
+  role: number;
+  status: number;
+  lastLoginTime: string;
+  lastLoginIp: string;
+  createTime: string;
+}
 
 @Entry
 @Component
 struct AdminManage {
   @StorageLink('isOldModeEnabled') isElderMode: boolean = false;
-  @State currentAdmin: AdminInfo | null = null;
+  @State currentAdmin: CurrentAdmin | null = null;
   @State searchText: string = '';
   @State filterRole: number = -1;
-  @State filteredAdmins: AdminInfo[] = [];
+  @State adminList: AdminItem[] = [];
+  @State totalRecords: number = 0;
+  @State isLoading: boolean = false;
   @State showAddModal: boolean = false;
   @State showResetModal: boolean = false;
   @State editMode: boolean = false;
-  @State selectedAdmin: AdminInfo | null = null;
+  @State selectedAdmin: AdminItem | null = null;
   @State accessDenied: boolean = false;
 
   @State formUsername: string = '';
@@ -29,46 +47,86 @@ struct AdminManage {
   @State resetNewPwd: string = '';
   @State resetConfirmPwd: string = '';
 
+  private getRoleName(role: number): string {
+    if (role === 1) return '超级管理员';
+    if (role === 2) return '普通管理员';
+    return '未知';
+  }
+
+  private getRoleColor(role: number): string {
+    if (role === 1) return '#8B5CF6';
+    return '#1677FF';
+  }
+
+  private getStatusName(status: number): string {
+    if (status === 1) return '正常';
+    return '禁用';
+  }
+
+  private getStatusColor(status: number): string {
+    if (status === 1) return '#52C41A';
+    return '#FF4D4F';
+  }
+
   aboutToAppear(): void {
-    const currentAdminData: CurrentAdmin | null = AppStorage.get<CurrentAdmin>('currentAdmin') || null;
-    if (currentAdminData) {
-      this.currentAdmin = {
-        id: currentAdminData.id,
-        username: currentAdminData.username,
-        password: '',
-        real_name: currentAdminData.realName,
-        phone: currentAdminData.phone,
-        email: currentAdminData.email,
-        avatar: '',
-        role: currentAdminData.role,
-        status: currentAdminData.status,
-        last_login_time: '',
-        last_login_ip: '',
-        create_time: '',
-        is_deleted: 0
-      };
-    }
+    this.currentAdmin = AppStorage.get<CurrentAdmin>('currentAdmin') || null;
     if (!this.currentAdmin || this.currentAdmin.role !== 1) {
       this.accessDenied = true;
     } else {
-      this.filterAdmins();
+      this.loadAdminList();
     }
   }
 
-  private filterAdmins(): void {
-    let result: AdminInfo[] = [...AdminMock.admins];
-    if (this.searchText) {
-      const keyword: string = this.searchText.toLowerCase();
-      result = result.filter(a =>
-        a.username.toLowerCase().includes(keyword) ||
-        a.real_name.toLowerCase().includes(keyword) ||
-        a.phone.includes(keyword)
+  private async loadAdminList(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const params: Record<string, Object> = {};
+      if (this.searchText.trim()) {
+        params['keyword'] = this.searchText.trim();
+      }
+      if (this.filterRole >= 0) {
+        params['role'] = String(this.filterRole);
+      }
+
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.GET,
+        ApiConstants.ADMIN_ADMIN_LIST,
+        undefined,
+        Object.keys(params).length > 0 ? params as Object : undefined,
+        { isAdmin: true } as RequestOptions
       );
+
+      if (response.success && response.data) {
+        const data = response.data as Record<string, Object>;
+        const records = data['records'];
+        if (Array.isArray(records)) {
+          this.adminList = records.map((r: Object): AdminItem => {
+            const item = r as Record<string, Object>;
+            return {
+              id: Number(item['id']) || 0,
+              username: String(item['username'] || ''),
+              realName: String(item['realName'] || item['real_name'] || ''),
+              phone: String(item['phone'] || ''),
+              email: String(item['email'] || ''),
+              avatar: String(item['avatar'] || ''),
+              role: Number(item['role']) || 2,
+              status: Number(item['status']) || 0,
+              lastLoginTime: String(item['lastLoginTime'] || item['last_login_time'] || ''),
+              lastLoginIp: String(item['lastLoginIp'] || item['last_login_ip'] || ''),
+              createTime: String(item['createTime'] || item['create_time'] || '')
+            };
+          });
+          this.totalRecords = Number(data['total']) || 0;
+        }
+      } else {
+        ToastUtil.showError(response.message || '加载管理员列表失败', 2000);
+      }
+    } catch (error) {
+      console.error('[AdminManage] 加载失败:', error);
+      ToastUtil.showError('网络错误，请检查后端服务', 2000);
+    } finally {
+      this.isLoading = false;
     }
-    if (this.filterRole >= 0) {
-      result = result.filter(a => a.role === this.filterRole);
-    }
-    this.filteredAdmins = result;
   }
 
   private openAddModal(): void {
@@ -84,11 +142,11 @@ struct AdminManage {
     this.showAddModal = true;
   }
 
-  private openEditModal(admin: AdminInfo): void {
+  private openEditModal(admin: AdminItem): void {
     this.editMode = true;
     this.selectedAdmin = admin;
     this.formUsername = admin.username;
-    this.formRealName = admin.real_name;
+    this.formRealName = admin.realName;
     this.formPhone = admin.phone;
     this.formEmail = admin.email;
     this.formRole = admin.role;
@@ -98,101 +156,166 @@ struct AdminManage {
     this.showAddModal = true;
   }
 
-  private saveAdmin(): void {
+  private async saveAdmin(): Promise<void> {
     if (!this.formUsername.trim() || !this.formRealName.trim()) {
+      ToastUtil.showError('用户名和真实姓名不能为空', 1500);
       return;
     }
-    if (this.editMode && this.selectedAdmin) {
-      const idx: number = AdminMock.admins.findIndex(a => a.id === this.selectedAdmin!.id);
-      if (idx >= 0) {
-        AdminMock.admins[idx].username = this.formUsername;
-        AdminMock.admins[idx].real_name = this.formRealName;
-        AdminMock.admins[idx].phone = this.formPhone;
-        AdminMock.admins[idx].email = this.formEmail;
-        AdminMock.admins[idx].role = this.formRole;
-        AdminMock.admins[idx].status = this.formStatus;
-        if (this.formPassword && this.formPassword.length >= 6) {
-          AdminMock.admins[idx].password = this.formPassword;
+
+    try {
+      if (this.editMode && this.selectedAdmin) {
+        const body: Record<string, Object> = {
+          'id': this.selectedAdmin.id,
+          'realName': this.formRealName,
+          'phone': this.formPhone,
+          'email': this.formEmail,
+          'role': this.formRole,
+          'status': this.formStatus
+        };
+        const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+          HttpMethod.POST,
+          ApiConstants.ADMIN_ADMIN_UPDATE,
+          body as Object,
+          undefined,
+          { isAdmin: true } as RequestOptions
+        );
+        if (response.success) {
+          ToastUtil.showSuccess('更新成功', 1500);
+          this.showAddModal = false;
+          this.loadAdminList();
+        } else {
+          ToastUtil.showError(response.message || '更新失败', 2000);
         }
-        if (this.selectedAdmin.id === this.currentAdmin!.id) {
-          AppStorage.setOrCreate<AdminInfo>('currentAdmin', AdminMock.admins[idx]);
-          this.currentAdmin = AdminMock.admins[idx];
+      } else {
+        if (!this.formPassword || this.formPassword.length < 6) {
+          ToastUtil.showError('新增管理员密码不能少于6位', 1500);
+          return;
+        }
+        if (this.formPassword !== this.formConfirmPwd) {
+          ToastUtil.showError('两次密码不一致', 1500);
+          return;
+        }
+        const body: Record<string, Object> = {
+          'username': this.formUsername,
+          'realName': this.formRealName,
+          'password': this.formPassword,
+          'phone': this.formPhone,
+          'email': this.formEmail,
+          'role': this.formRole
+        };
+        const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+          HttpMethod.POST,
+          ApiConstants.ADMIN_ADMIN_ADD,
+          body as Object,
+          undefined,
+          { isAdmin: true } as RequestOptions
+        );
+        if (response.success) {
+          ToastUtil.showSuccess('添加成功', 1500);
+          this.showAddModal = false;
+          this.loadAdminList();
+        } else {
+          ToastUtil.showError(response.message || '添加失败', 2000);
         }
       }
-    } else {
-      if (!this.formPassword || this.formPassword.length < 6) {
-        return;
+    } catch (error) {
+      console.error('[AdminManage] 保存失败:', error);
+      ToastUtil.showError('网络错误，请稍后重试', 2000);
+    }
+  }
+
+  private async deleteAdmin(admin: AdminItem): Promise<void> {
+    if (admin.id === this.currentAdmin!.id) {
+      ToastUtil.showError('不能删除自己', 1500);
+      return;
+    }
+    try {
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.POST,
+        ApiConstants.ADMIN_ADMIN_DELETE + admin.id,
+        undefined,
+        undefined,
+        { isAdmin: true } as RequestOptions
+      );
+      if (response.success) {
+        ToastUtil.showSuccess('删除成功', 1500);
+        this.loadAdminList();
+      } else {
+        ToastUtil.showError(response.message || '删除失败', 2000);
       }
-      const newId: number = AdminMock.admins.length > 0 ?
-        AdminMock.admins[AdminMock.admins.length - 1].id + 1 : 1;
-      AdminMock.admins.push({
-        id: newId,
-        username: this.formUsername,
-        password: this.formPassword,
-        real_name: this.formRealName,
-        phone: this.formPhone,
-        email: this.formEmail,
-        avatar: '',
-        role: this.formRole,
-        status: this.formStatus,
-        last_login_time: '',
-        last_login_ip: '',
-        create_time: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        is_deleted: 0
-      });
+    } catch (error) {
+      console.error('[AdminManage] 删除失败:', error);
+      ToastUtil.showError('网络错误', 2000);
     }
-    this.showAddModal = false;
-    this.filterAdmins();
   }
 
-  private deleteAdmin(admin: AdminInfo): void {
+  private async toggleStatus(admin: AdminItem): Promise<void> {
     if (admin.id === this.currentAdmin!.id) {
+      ToastUtil.showError('不能禁用自己', 1500);
       return;
     }
-    const superAdminCount: number = AdminMock.admins.filter(a => a.role === 1 && a.is_deleted === 0).length;
-    if (admin.role === 1 && superAdminCount <= 1) {
-      return;
-    }
-    const idx: number = AdminMock.admins.findIndex(a => a.id === admin.id);
-    if (idx >= 0) {
-      AdminMock.admins.splice(idx, 1);
-      this.filterAdmins();
+    try {
+      const body: Record<string, Object> = { 'id': admin.id };
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.POST,
+        ApiConstants.ADMIN_ADMIN_TOGGLE_STATUS,
+        body as Object,
+        undefined,
+        { isAdmin: true } as RequestOptions
+      );
+      if (response.success) {
+        ToastUtil.showSuccess(response.message || '操作成功', 1500);
+        this.loadAdminList();
+      } else {
+        ToastUtil.showError(response.message || '操作失败', 2000);
+      }
+    } catch (error) {
+      console.error('[AdminManage] 切换状态失败:', error);
+      ToastUtil.showError('网络错误', 2000);
     }
   }
 
-  private toggleStatus(admin: AdminInfo): void {
-    if (admin.id === this.currentAdmin!.id) {
-      return;
-    }
-    const idx: number = AdminMock.admins.findIndex(a => a.id === admin.id);
-    if (idx >= 0) {
-      AdminMock.admins[idx].status = admin.status === 1 ? 0 : 1;
-      this.filterAdmins();
-    }
-  }
-
-  private openResetModal(admin: AdminInfo): void {
+  private openResetModal(admin: AdminItem): void {
     this.selectedAdmin = admin;
-    this.resetTargetName = admin.real_name;
+    this.resetTargetName = admin.realName;
     this.resetNewPwd = '';
     this.resetConfirmPwd = '';
     this.showResetModal = true;
   }
 
-  private confirmResetPwd(): void {
+  private async confirmResetPwd(): Promise<void> {
     if (!this.resetNewPwd || this.resetNewPwd.length < 6) {
+      ToastUtil.showError('密码长度不能少于6位', 1500);
       return;
     }
     if (this.resetNewPwd !== this.resetConfirmPwd) {
+      ToastUtil.showError('两次密码不一致', 1500);
       return;
     }
-    if (this.selectedAdmin) {
-      const idx: number = AdminMock.admins.findIndex(a => a.id === this.selectedAdmin!.id);
-      if (idx >= 0) {
-        AdminMock.admins[idx].password = this.resetNewPwd;
+    if (!this.selectedAdmin) return;
+
+    try {
+      const body: Record<string, Object> = {
+        'id': this.selectedAdmin.id,
+        'newPassword': this.resetNewPwd
+      };
+      const response: BaseResponse<Object> = await HttpUtil.request<Object>(
+        HttpMethod.POST,
+        ApiConstants.ADMIN_ADMIN_RESET_PASSWORD,
+        body as Object,
+        undefined,
+        { isAdmin: true } as RequestOptions
+      );
+      if (response.success) {
+        ToastUtil.showSuccess('重置密码成功', 1500);
+        this.showResetModal = false;
+      } else {
+        ToastUtil.showError(response.message || '重置密码失败', 2000);
       }
+    } catch (error) {
+      console.error('[AdminManage] 重置密码失败:', error);
+      ToastUtil.showError('网络错误', 2000);
     }
-    this.showResetModal = false;
   }
 
   build() {
@@ -302,7 +425,7 @@ struct AdminManage {
           .padding({ left: 12 })
           .onChange((value: string) => {
             this.searchText = value;
-            this.filterAdmins();
+            this.loadAdminList();
           });
         if (this.searchText) {
           Button({ type: ButtonType.Normal }) {
@@ -317,7 +440,7 @@ struct AdminManage {
           .margin({ left: 8 })
           .onClick(() => {
             this.searchText = '';
-            this.filterAdmins();
+            this.loadAdminList();
           });
         }
       }
@@ -336,7 +459,7 @@ struct AdminManage {
           .borderRadius(6)
           .onClick(() => {
             this.filterRole = -1;
-            this.filterAdmins();
+            this.loadAdminList();
           });
 
         Button('超级管理员')
@@ -348,7 +471,7 @@ struct AdminManage {
           .borderRadius(6)
           .onClick(() => {
             this.filterRole = 1;
-            this.filterAdmins();
+            this.loadAdminList();
           });
 
         Button('普通管理员')
@@ -360,11 +483,11 @@ struct AdminManage {
           .borderRadius(6)
           .onClick(() => {
             this.filterRole = 2;
-            this.filterAdmins();
+            this.loadAdminList();
           });
       }
 
-      Text(`共 ${this.filteredAdmins.length} 条记录`)
+      Text(`共 ${this.totalRecords} 条记录`)
         .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
         .fontColor(GlobalTheme.TEXT_HINT)
         .width('100%');
@@ -380,26 +503,26 @@ struct AdminManage {
   AdminList() {
     Scroll() {
       Column({ space: 8 }) {
-        ForEach(this.filteredAdmins, (admin: AdminInfo) => {
+        ForEach(this.adminList, (admin: AdminItem) => {
           Column({ space: 10 }) {
             Row() {
               Column({ space: 4 }) {
                 Row({ space: 8 }) {
-                  Text(admin.real_name)
+                  Text(admin.realName)
                     .fontSize(GlobalTheme.getFontSizeBody(this.isElderMode))
                     .fontWeight(FontWeight.Medium)
                     .fontColor(GlobalTheme.TEXT_PRIMARY);
-                  Text(AdminMock.getRoleName(admin.role))
+                  Text(this.getRoleName(admin.role))
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                    .fontColor(AdminMock.getRoleColor(admin.role))
+                    .fontColor(this.getRoleColor(admin.role))
                     .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                    .backgroundColor(AdminMock.getRoleColor(admin.role) + '15')
+                    .backgroundColor(this.getRoleColor(admin.role) + '15')
                     .borderRadius(4);
-                  Text(AdminMock.getStatusName(admin.status))
+                  Text(this.getStatusName(admin.status))
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
-                    .fontColor(AdminMock.getStatusColor(admin.status))
+                    .fontColor(this.getStatusColor(admin.status))
                     .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-                    .backgroundColor(AdminMock.getStatusColor(admin.status) + '15')
+                    .backgroundColor(this.getStatusColor(admin.status) + '15')
                     .borderRadius(4);
                   if (admin.id === this.currentAdmin!.id) {
                     Text('当前')
@@ -424,8 +547,8 @@ struct AdminManage {
                   Text(`📧 ${admin.email || '未填写'}`)
                     .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                     .fontColor(GlobalTheme.TEXT_HINT);
-                  if (admin.last_login_time) {
-                    Text(`🕐 ${admin.last_login_time}`)
+                  if (admin.lastLoginTime) {
+                    Text(`🕐 ${admin.lastLoginTime}`)
                       .fontSize(GlobalTheme.getFontSizeTiny(this.isElderMode))
                       .fontColor(GlobalTheme.TEXT_HINT);
                   }
@@ -498,7 +621,7 @@ struct AdminManage {
           .backgroundColor('#FFFFFF')
           .borderRadius(10)
           .border({ width: 1, color: '#E2E8F0', style: BorderStyle.Solid });
-        }, (admin: AdminInfo) => `${admin.id}`);
+        }, (admin: AdminItem) => `${admin.id}`);
       }
       .padding({ left: 12, right: 12, top: 8, bottom: 24 });
     }

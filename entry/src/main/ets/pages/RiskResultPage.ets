@@ -2,6 +2,9 @@ import { router } from '@kit.ArkUI';
 import { RiskAssessmentResult, RiskItem as AIRiskItem, RiskLevel as AIRiskLevelType, RadarDataItem, getRiskColor, getRiskLabel } from '../models/AIModels';
 import { RadarChart } from '../components/RadarChart';
 import { getRadarDataFromResult } from '../mock/riskAssessmentMock';
+import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
+import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
+import { GlobalVoiceAssistant } from '../components/GlobalVoiceAssistant';
 
 class AssessmentData {
   age: string = '';
@@ -69,6 +72,10 @@ struct RiskResultPage {
   @State assessmentData: AssessmentData = new AssessmentData();
   @State aiResult: RiskAssessmentResult | null = null;
   @State overallScore: number = 0;
+  @State aiDeepAnalysis: string = '';
+  @State isAiAnalyzing: boolean = false;
+  @State showAiAnalysis: boolean = false;
+  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
 
   aboutToAppear(): void {
     const params = router.getParams() as PageParams;
@@ -135,6 +142,37 @@ struct RiskResultPage {
       url: 'pages/RiskDetailPage',
       params: { assessmentData: this.assessmentData, aiResult: this.aiResult }
     });
+  }
+
+  async getAIDeepAnalysis(): Promise<void> {
+    if (this.isAiAnalyzing) return;
+    this.isAiAnalyzing = true;
+    this.showAiAnalysis = true;
+    this.aiDeepAnalysis = '正在生成AI深度解读...';
+
+    try {
+      const riskSummary = `综合评分:${this.overallScore}分, 风险等级:${this.riskLevel.level}。` +
+        this.riskItems.map(item => `${item.name}:${item.level}(${item.value})`).join('; ') +
+        `建议:${this.aiSuggestions.join('; ')}`;
+
+      const userId = String(AppStorage.get('userId') || 'anonymous');
+      const request = AIRequestBuilder.createWithIntent(
+        `请作为专业健康顾问，对以下风险评估结果进行深度解读，给出个性化建议：${riskSummary}`,
+        'risk_deep_analysis',
+        userId
+      );
+      request.preferences = { preferredAgent: 'deepseek' };
+
+      const response = await this.orchestrator.process(request);
+      this.aiDeepAnalysis = typeof response.output.content === 'string'
+        ? response.output.content
+        : JSON.stringify(response.output.content);
+    } catch (error) {
+      this.aiDeepAnalysis = 'AI深度解读暂时不可用，请稍后重试。当前建议：' +
+        this.aiSuggestions.slice(0, 3).join('\n');
+    } finally {
+      this.isAiAnalyzing = false;
+    }
   }
 
   handleShare() {
@@ -375,7 +413,8 @@ struct RiskResultPage {
   }
 
   build() {
-    Column() {
+    Stack() {
+      Column() {
       Row() {
         Text('← 返回')
           .fontSize(16)
@@ -605,7 +644,66 @@ struct RiskResultPage {
             .backgroundColor('#F8FAFF')
             .borderRadius(16)
             .border({ width: 1, color: '#E8F0FF', style: BorderStyle.Solid })
-            .margin({ top: 24, bottom: 24 });
+            .margin({ top: 24, bottom: 12 });
+
+            if (!this.showAiAnalysis) {
+              Button('🧠 AI 深度解读')
+                .width('100%')
+                .height(48)
+                .fontSize(15)
+                .fontWeight('bold')
+                .fontColor('#FFFFFF')
+                .backgroundColor('#6366F1')
+                .borderRadius(24)
+                .shadow({ radius: 10, color: '#6366F144', offsetX: 0, offsetY: 4 })
+                .margin({ bottom: 24 })
+                .onClick(() => this.getAIDeepAnalysis());
+            }
+
+            if (this.showAiAnalysis) {
+              Column({ space: 12 }) {
+                Row() {
+                  Row({ space: 8 }) {
+                    Text('🧠')
+                      .fontSize(20);
+                    Text('AI 深度解读')
+                      .fontSize(17)
+                      .fontWeight('bold')
+                      .fontColor('#333333');
+                  }
+                  Blank();
+                  if (this.isAiAnalyzing) {
+                    LoadingProgress()
+                      .width(20)
+                      .height(20)
+                      .color('#6366F1');
+                  } else {
+                    Text('DeepSeek')
+                      .fontSize(11)
+                      .fontColor('#6366F1')
+                      .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+                      .backgroundColor('#EEF2FF')
+                      .borderRadius(8);
+                  }
+                }
+                .width('100%');
+
+                Scroll() {
+                  Text(this.aiDeepAnalysis)
+                    .fontSize(14)
+                    .fontColor('#475569')
+                    .lineHeight(24)
+                }
+                .width('100%')
+                .constraintSize({ maxHeight: 240 })
+              }
+              .width('100%')
+              .padding(18)
+              .backgroundColor('#FAFAFE')
+              .borderRadius(16)
+              .border({ width: 1, color: '#E0E7FF', style: BorderStyle.Solid })
+              .margin({ bottom: 24 });
+            }
 
             Column({ space: 12 }) {
               Button('查看详细报告')
@@ -759,5 +857,10 @@ struct RiskResultPage {
     .width('100%')
     .height('100%')
     .backgroundColor('#F5F7FA');
+
+      GlobalVoiceAssistant()
+    }
+    .width('100%')
+    .height('100%')
   }
 }

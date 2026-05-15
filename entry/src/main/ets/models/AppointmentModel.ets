@@ -16,6 +16,7 @@ export class AppointmentItem {
   departmentName: string = '';
   title: string = '';
   payStatus: number = 0;
+  outTradeNo: string = '';
 
   static getStatusText(status: number): string {
     const map: Record<number, string> = {

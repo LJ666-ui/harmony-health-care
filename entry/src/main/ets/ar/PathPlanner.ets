@@ -296,7 +296,6 @@ export class PathPlanner {
     }
 
     // 3. 构建邻居关系(同楼层节点间的连接)
-    // 简化实现:假设同楼层所有节点都可达
     const floorNodes = new Map<number, GraphNode[]>();
     for (const node of this.graph.values()) {
       if (!floorNodes.has(node.floor)) {
@@ -305,15 +304,21 @@ export class PathPlanner {
       floorNodes.get(node.floor)!.push(node);
     }
 
-    // 为同楼层节点建立邻居关系
+    const neighborDistanceThreshold = 35;
     for (const nodes of floorNodes.values()) {
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
-          nodes[i].neighbors.push(nodes[j].id);
-          nodes[j].neighbors.push(nodes[i].id);
+          const distance = this.getDistance(nodes[i].position, nodes[j].position);
+          if (distance <= neighborDistanceThreshold) {
+            nodes[i].neighbors.push(nodes[j].id);
+            nodes[j].neighbors.push(nodes[i].id);
+          }
         }
       }
     }
+
+    // 4. 确保图连通性:如果图不连通,添加必要的远距离边
+    this.ensureGraphConnectivity();
   }
 
   /**
@@ -321,7 +326,77 @@ export class PathPlanner {
    * @param floor 楼层号
    */
   private getFloorHeight(floor: number): number {
-    return floor * 3; // 每层3米高
+    return floor * 3;
+  }
+
+  private ensureGraphConnectivity(): void {
+    const visited: Set<string> = new Set();
+    const components: string[][] = [];
+
+    for (const nodeId of this.graph.keys()) {
+      if (!visited.has(nodeId)) {
+        const component: string[] = [];
+        const queue: string[] = [nodeId];
+        visited.add(nodeId);
+
+        while (queue.length > 0) {
+          const current = queue.shift()!;
+          component.push(current);
+
+          const node = this.graph.get(current);
+          if (node) {
+            for (const neighborId of node.neighbors) {
+              if (!visited.has(neighborId) && this.graph.has(neighborId)) {
+                visited.add(neighborId);
+                queue.push(neighborId);
+              }
+            }
+          }
+        }
+
+        components.push(component);
+      }
+    }
+
+    if (components.length <= 1) {
+      return;
+    }
+
+    console.log(`[PathPlanner] 图有${components.length}个连通分量,正在连接...`);
+
+    for (let i = 1; i < components.length; i++) {
+      let minDist = Infinity;
+      let bestFrom = '';
+      let bestTo = '';
+
+      for (const nodeIdA of components[0]) {
+        const nodeA = this.graph.get(nodeIdA);
+        if (!nodeA) continue;
+
+        for (const nodeIdB of components[i]) {
+          const nodeB = this.graph.get(nodeIdB);
+          if (!nodeB) continue;
+
+          if (nodeA.floor === nodeB.floor) {
+            const dist = this.getDistance(nodeA.position, nodeB.position);
+            if (dist < minDist) {
+              minDist = dist;
+              bestFrom = nodeIdA;
+              bestTo = nodeIdB;
+            }
+          }
+        }
+      }
+
+      if (bestFrom !== '' && bestTo !== '') {
+        const fromNode = this.graph.get(bestFrom)!;
+        const toNode = this.graph.get(bestTo)!;
+        fromNode.neighbors.push(bestTo);
+        toNode.neighbors.push(bestFrom);
+        components[0] = components[0].concat(components[i]);
+        console.log(`[PathPlanner] 连接分量: ${bestFrom} <-> ${bestTo}, 距离: ${minDist.toFixed(1)}m`);
+      }
+    }
   }
 
   /**
@@ -877,7 +952,7 @@ export class PathPlanner {
   ): NavigationDestination[] {
     if (!this.buildingData) return [];
 
-    let candidates = [...this.buildingData.pois];
+    let candidates = this.buildingData.pois.slice();
     const scoredCandidates: ScoredCandidate[] = [];
 
     for (const poi of candidates) {

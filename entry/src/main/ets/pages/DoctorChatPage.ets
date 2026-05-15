@@ -387,6 +387,20 @@ struct DoctorChatPage {
     return msg.senderId === this.currentUserId;
   }
 
+  getSenderName(msg: ChatMsg): string {
+    if (this.isMine(msg)) {
+      return this.isDoctor ? '我(医生)' : '我';
+    }
+    return this.isDoctor ? '患者' : this.otherUserName + ' 医生';
+  }
+
+  getSenderAvatar(msg: ChatMsg): string {
+    if (this.isMine(msg)) {
+      return this.isDoctor ? '👨‍⚕️' : '👤';
+    }
+    return this.isDoctor ? '👤' : '👨‍⚕️';
+  }
+
   formatTime(timeStr: string): string {
     if (!timeStr) { return ''; }
     const date: Date = new Date(timeStr);
@@ -602,49 +616,73 @@ struct DoctorChatPage {
           .height('100%')
           .justifyContent(FlexAlign.Center);
         } else {
-          Column({ space: 8 }) {
-            ForEach(this.messages, (msg: ChatMsg) => {
-              Row() {
-                if (!this.isMine(msg)) {
-                  Column() {
+          Column({ space: 12 }) {
+            ForEach(this.messages, (msg: ChatMsg, index: number) => {
+              if (!this.isMine(msg)) {
+                Row({ space: 8 }) {
+                  Text(this.getSenderAvatar(msg))
+                    .fontSize(36)
+                    .width(40)
+                    .height(40)
+                    .textAlign(TextAlign.Center)
+                    .backgroundColor('#F0F2F5')
+                    .borderRadius(20);
+
+                  Column({ space: 4 }) {
+                    Text(this.getSenderName(msg))
+                      .fontSize(11)
+                      .fontColor('#999999')
+                      .textAlign(TextAlign.Start);
                     Text(msg.content)
                       .fontSize(15)
                       .fontColor('#333333')
                       .constraintSize({ maxWidth: '70%' })
                       .padding({ top: 10, bottom: 10, left: 14, right: 14 })
                       .borderRadius({ topLeft: 4, topRight: 16, bottomLeft: 16, bottomRight: 16 })
-                      .backgroundColor('#F0F2F5');
-
+                      .backgroundColor('#FFFFFF')
+                      .shadow({ radius: 2, color: '#00000008', offsetX: 0, offsetY: 1 });
                     Text(this.formatTime(msg.createTime))
                       .fontSize(10)
                       .fontColor('#BBBBBB')
-                      .margin({ top: 4 });
+                      .textAlign(TextAlign.Start);
                   }
                   .alignItems(HorizontalAlign.Start);
                 }
-
-                Blank();
-
-                if (this.isMine(msg)) {
-                  Column() {
+                .width('100%')
+                .alignItems(VerticalAlign.Top)
+              } else {
+                Row({ space: 8 }) {
+                  Blank();
+                  Column({ space: 4 }) {
+                    Text(this.getSenderName(msg))
+                      .fontSize(11)
+                      .fontColor('#999999')
+                      .textAlign(TextAlign.End);
                     Text(msg.content)
                       .fontSize(15)
                       .fontColor('#FFFFFF')
                       .constraintSize({ maxWidth: '70%' })
                       .padding({ top: 10, bottom: 10, left: 14, right: 14 })
                       .borderRadius({ topLeft: 16, topRight: 4, bottomLeft: 16, bottomRight: 16 })
-                      .backgroundColor(this.isDoctor ? '#36CFC9' : '#1677FF');
-
+                      .backgroundColor(this.isDoctor ? '#36CFC9' : '#1677FF')
+                      .shadow({ radius: 3, color: this.isDoctor ? '#36CFC933' : '#1677FF33', offsetX: 0, offsetY: 2 });
                     Text(this.formatTime(msg.createTime))
                       .fontSize(10)
                       .fontColor('#BBBBBB')
-                      .margin({ top: 4 });
+                      .textAlign(TextAlign.End);
                   }
                   .alignItems(HorizontalAlign.End);
+                  Text(this.getSenderAvatar(msg))
+                    .fontSize(36)
+                    .width(40)
+                    .height(40)
+                    .textAlign(TextAlign.Center)
+                    .backgroundColor(this.isDoctor ? '#E6FFF9' : '#E6F0FF')
+                    .borderRadius(20);
                 }
+                .width('100%')
+                .alignItems(VerticalAlign.Top);
               }
-              .width('100%')
-              .padding({ left: 12, right: 12, top: 4, bottom: 4 });
             }, (msg: ChatMsg) => msg.id.toString());
           }
           .width('100%')

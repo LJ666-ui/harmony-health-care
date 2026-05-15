@@ -77,7 +77,7 @@ struct DestinationSelectPage {
       
       // 加载所有POI
       this.destinationList = this.planner.getAllPOIs();
-      this.filteredList = [...this.destinationList];
+      this.filteredList = this.destinationList.slice();
       
       // 计算分类统计
       this.calculateCategoryStats();
@@ -193,7 +193,7 @@ struct DestinationSelectPage {
     if (!this.isInitialized) return;
 
     if (this.selectedCategory === null) {
-      this.filteredList = [...this.destinationList];
+      this.filteredList = this.destinationList.slice();
     } else {
       this.filteredList = this.planner.getDestinationsByCategory(this.selectedCategory);
     }
@@ -724,10 +724,8 @@ struct DestinationSelectPage {
     .borderRadius(12)
     .shadow({ radius: 2, color: '#00000008', offsetY: 1 })
     .onClick(() => {
-      // 整个卡片可点击
       console.log(`[DestinationSelectPage] 点击POI卡片: ${destination.name} (${destination.id})`);
       
-      // 触觉反馈（如果设备支持）
       try {
         vibrator.startVibration({
           type: 'time',
@@ -737,21 +735,9 @@ struct DestinationSelectPage {
           usage: 'touch'
         });
       } catch (e) {
-        // 忽略震动错误
       }
       
       this.selectAndNavigate(destination);
-    })
-    // 添加点击效果
-    .stateStyles({
-      normal: {
-        .scale({ x: 1.0, y: 1.0 })
-        .backgroundColor('#FFFFFF')
-      },
-      pressed: {
-        .scale({ x: 0.98, y: 0.98 })  // 按下时轻微缩小
-        .backgroundColor('#F5F5F5')     // 背景变灰
-      }
     })
   }
 

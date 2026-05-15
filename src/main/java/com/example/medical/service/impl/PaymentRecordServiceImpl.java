@@ -37,4 +37,17 @@ public class PaymentRecordServiceImpl extends ServiceImpl<PaymentRecordMapper, P
         wrapper.eq(PaymentRecord::getOutTradeNo, outTradeNo);
         return remove(wrapper);
     }
+
+    @Override
+    public PaymentRecord findUnpaidRecord(Long userId, Long doctorId, String scheduleDate, Integer schedulePeriod) {
+        LambdaQueryWrapper<PaymentRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PaymentRecord::getUserId, userId)
+               .eq(PaymentRecord::getDoctorId, doctorId)
+               .eq(PaymentRecord::getScheduleDate, scheduleDate)
+               .eq(PaymentRecord::getSchedulePeriod, schedulePeriod)
+               .eq(PaymentRecord::getStatus, 0)
+               .orderByDesc(PaymentRecord::getCreateTime)
+               .last("LIMIT 1");
+        return getOne(wrapper);
+    }
 }

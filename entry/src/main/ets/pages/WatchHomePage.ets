@@ -1,167 +1,110 @@
-/**
- * 手环手表专用主页面
- * 精简版健康护理应用，只保留核心功能
- */
 import { router } from '@kit.ArkUI';
-import { DeviceTypeUtil, DeviceType } from '../utils/DeviceTypeUtil';
-import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 
-interface QuickAction {
-  id: string;
-  icon: string;
-  title: string;
-  pageUrl: string;
-  color: string;
+interface Position {
+  x: string;
+  y: string;
 }
 
 @Entry
 @Component
 struct WatchHomePage {
   @State currentTime: string = '';
-  @State currentDeviceType: DeviceType = DeviceType.UNKNOWN;
-  @State aiHealthSummary: string = '';
-  @State aiSmartRecommendation: string = '';
-  private deviceUtil: DeviceTypeUtil = DeviceTypeUtil.getInstance();
-  private orchestrator: AIOrchestrator = AIOrchestrator.getInstance();
-
-  // 快捷功能列表
-  quickActions: QuickAction[] = [
-    { id: 'health', icon: '❤️', title: '健康监测', pageUrl: 'pages/WatchHealthMonitorPage', color: '#E74C3C' },
-    { id: 'medication', icon: '💊', title: '用药提醒', pageUrl: 'pages/WatchMedicationPage', color: '#3498DB' },
-    { id: 'emergency', icon: '🆘', title: '紧急呼叫', pageUrl: 'pages/WatchEmergencyPage', color: '#E67E22' },
-    { id: 'sport', icon: '🏃', title: '运动记录', pageUrl: 'pages/WatchSportPage', color: '#2ECC71' },
-    { id: 'sleep', icon: '😴', title: '睡眠监测', pageUrl: 'pages/WatchSleepPage', color: '#9B59B6' },
-    { id: 'message', icon: '💬', title: '消息通知', pageUrl: 'pages/WatchMessagePage', color: '#F39C12' }
+  @State rotationAngle: number = 0;
+  @State selectedIndex: number = 0;
+  private rotateTimer: number = -1;
+  private buttonPositions: Position[] = [
+    { x: '50%', y: '10%' },
+    { x: '79%', y: '23%' },
+    { x: '79%', y: '77%' },
+    { x: '50%', y: '90%' },
+    { x: '21%', y: '77%' },
+    { x: '21%', y: '23%' },
+    { x: '10%', y: '50%' },
+    { x: '90%', y: '50%' }
   ];
 
   aboutToAppear(): void {
-    this.currentDeviceType = this.deviceUtil.getDeviceType();
     this.updateTime();
-    // 每分钟更新一次时间
-    setInterval(() => {
-      this.updateTime();
-    }, 60000);
+    setInterval(() => { this.updateTime(); }, 1000);
+    this.startRotation();
+  }
+
+  aboutToDisappear(): void {
+    if (this.rotateTimer !== -1) { clearInterval(this.rotateTimer); this.rotateTimer = -1; }
+  }
+
+  startRotation(): void {
+    this.rotateTimer = setInterval(() => { this.rotationAngle = (this.rotationAngle + 0.08) % 360; }, 40);
   }
 
   updateTime(): void {
     const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    this.currentTime = `${hours}:${minutes}`;
-  }
-
-  async generateHealthSummary(): Promise<void> {
-    try {
-      const response = await this.orchestrator.process({
-        requestId: Date.now().toString(),
-        userId: AppStorage.get('userId')?.toString() || '0',
-        input: {
-          type: 'text',
-          content: '请生成今日健康数据摘要和关键指标'
-        }
-      });
-      this.aiHealthSummary = response.output.content as string;
-    } catch (error) {
-      console.error('[WatchHomePage] AI健康摘要生成失败:', error);
-      this.aiHealthSummary = '';
-    }
-  }
-
-  async getSmartRecommendation(): Promise<void> {
-    try {
-      const response = await this.orchestrator.process({
-        requestId: Date.now().toString(),
-        userId: AppStorage.get('userId')?.toString() || '0',
-        input: {
-          type: 'text',
-          content: '基于当前时间和用户习惯，给出智能功能推荐'
-        }
-      });
-      this.aiSmartRecommendation = response.output.content as string;
-    } catch (error) {
-      console.error('[WatchHomePage] AI智能推荐失败:', error);
-      this.aiSmartRecommendation = '';
-    }
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    this.currentTime = `${h}.${m}`;
   }
 
   build() {
-    Column() {
-      // 顶部时间显示
+    Stack({ alignContent: Alignment.Center }) {
+      Circle()
+        .width('96%')
+        .height('96%')
+        .fill('#1a1f2e')
+        .stroke('#FFFFFF')
+        .strokeWidth(3)
+
       Column() {
-        Text(this.currentTime)
-          .fontSize(this.deviceUtil.getAdaptiveFontSize(32))
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#FFFFFF')
-
-        Text(this.getDateString())
-          .fontSize(this.deviceUtil.getAdaptiveFontSize(12))
-          .fontColor('#FFFFFF')
-          .opacity(0.8)
-          .margin({ top: 4 })
+        Text(this.currentTime).fontSize(42).fontWeight(FontWeight.Bold).fontColor('#E8EAED').letterSpacing(2)
+        Text(this.getDateString()).fontSize(12).fontColor('#9AA0A6').margin({ top: 4 })
       }
-      .width('100%')
-      .height(this.deviceUtil.getAdaptiveSpacing(80))
-      .justifyContent(FlexAlign.Center)
-      .linearGradient({
-        angle: 135,
-        colors: [['#667eea', 0], ['#764ba2', 1]]
-      })
 
-      // 快捷功能网格
-      Grid() {
-        ForEach(this.quickActions, (action: QuickAction) => {
-          GridItem() {
-            this.buildQuickActionItem(action)
-          }
-        }, (action: QuickAction) => action.id)
+      Stack() {
+        this.buildBtn('🤖', 'AI问诊', '#5B7FFF', 0, () => { router.pushUrl({ url: 'pages/WatchAIConsultPage' }) })
+        this.buildBtn('🩺', '健康监测', '#3498DB', 1, () => { router.pushUrl({ url: 'pages/WatchHealthMonitorPage' }) })
+        this.buildBtn('💚', '睡眠监测', '#2ECC71', 2, () => { router.pushUrl({ url: 'pages/WatchSleepPage' }) })
+        this.buildBtn('🆘', 'SOS紧急', '#E74C3C', 3, () => { router.pushUrl({ url: 'pages/WatchEmergencyPage' }) })
+        this.buildBtn('💊', '用药提醒', '#F59E0B', 4, () => { router.pushUrl({ url: 'pages/WatchMedicationPage' }) })
+        this.buildBtn('📡', '紧急呼叫', '#16A085', 5, () => { router.pushUrl({ url: 'pages/WatchEmergencyPage' }) })
+        this.buildBtn('🏃', '运动记录', '#06B6D4', 6, () => { router.pushUrl({ url: 'pages/WatchSportPage' }) })
+        this.buildBtn('😴', '睡眠分析', '#A855F7', 7, () => { router.pushUrl({ url: 'pages/WatchSleepPage' }) })
       }
-      .columnsTemplate('1fr 1fr')
-      .rowsTemplate('1fr 1fr 1fr')
-      .columnsGap(this.deviceUtil.getAdaptiveSpacing(8))
-      .rowsGap(this.deviceUtil.getAdaptiveSpacing(8))
-      .width('95%')
-      .layoutWeight(1)
-      .padding(this.deviceUtil.getAdaptiveSpacing(12))
+      .rotate({ angle: this.rotationAngle })
+      .width('88%').height('88%')
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#F5F5F5')
+    .width('100%').height('100%')
+    .backgroundColor('#12151f')
   }
 
-  @Builder buildQuickActionItem(action: QuickAction) {
-    Column() {
-      Text(action.icon)
-        .fontSize(this.deviceUtil.getAdaptiveFontSize(28))
-
-      Text(action.title)
-        .fontSize(this.deviceUtil.getAdaptiveFontSize(11))
-        .fontColor('#333333')
-        .margin({ top: this.deviceUtil.getAdaptiveSpacing(4) })
+  @Builder buildBtn(icon: string, label: string, color: string, index: number, action: () => void) {
+    Stack() {
+      Circle()
+        .width(this.selectedIndex === index ? 50 : 46)
+        .height(this.selectedIndex === index ? 50 : 46)
+        .fill(undefined)
+        .stroke('#FCD34D')
+        .strokeWidth(2)
+      
+      Column() {
+        Text(icon).fontSize(this.selectedIndex === index ? 16 : 14)
+        Text(label).fontSize(6).fontColor('#FFFFFF').fontWeight(FontWeight.Bold).margin({ top: 1 }).maxLines(1)
+      }
+      .width(this.selectedIndex === index ? 44 : 40)
+      .height(this.selectedIndex === index ? 44 : 40)
+      .borderRadius(this.selectedIndex === index ? 22 : 20)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(color)
     }
-    .width('100%')
-    .height('100%')
-    .justifyContent(FlexAlign.Center)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(this.deviceUtil.getAdaptiveSpacing(12))
-    .shadow({
-      radius: 4,
-      color: 'rgba(0, 0, 0, 0.1)',
-      offsetX: 0,
-      offsetY: 2
-    })
+    .position({ x: this.buttonPositions[index].x, y: this.buttonPositions[index].y })
+    .markAnchor({ x: '50%', y: '50%' })
     .onClick(() => {
-      router.pushUrl({ url: action.pageUrl }).catch((error: Error) => {
-        console.error(`[WatchHomePage] 跳转失败: ${error.message}`);
-      });
+      this.selectedIndex = index;
+      action();
     })
   }
 
   getDateString(): string {
     const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
     const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    const weekDay = weekDays[now.getDay()];
-    return `${month}月${day}日 ${weekDay}`;
+    return `${now.getMonth() + 1}月 ${weekDays[now.getDay()]}`;
   }
 }

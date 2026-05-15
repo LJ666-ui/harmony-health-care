@@ -27,7 +27,13 @@ struct AdminLogin {
   }
 
   build() {
-    Column() {
+    Stack({ alignContent: Alignment.TopStart }) {
+      Image($r('app.media.111'))
+        .width('100%')
+        .height('100%')
+        .objectFit(ImageFit.Cover);
+
+      Column() {
       Column() {
         Text('🛡️')
           .fontSize(56)
@@ -162,8 +168,8 @@ struct AdminLogin {
       .padding({ left: 24, right: 24, top: 32, bottom: 24 });
     }
     .width('100%')
-    .height('100%')
-    .backgroundColor('#F5F7FA');
+    .height('100%');
+    }
   }
 
   private async handleLogin(): Promise<void> {

@@ -116,13 +116,34 @@ export default class EntryAbility extends UIAbility {
     this.initBreakpointSystem(windowStage);
     this.setWindowLayoutFullScreen(windowStage);
 
-    windowStage.loadContent('pages/Index', (err) => {
+    const startPage = this.detectStartPage();
+    hilog.info(DOMAIN, 'testTag', '%{public}s', `Start page: ${startPage}`);
+
+    windowStage.loadContent(startPage, (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
         return;
       }
       hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
     });
+  }
+
+  private detectStartPage(): string {
+    try {
+      const displayInfo = display.getDefaultDisplaySync();
+      const width = displayInfo.width;
+      const height = displayInfo.height;
+      const minDim = Math.min(width, height);
+      const maxDim = Math.max(width, height);
+      const ratio = maxDim / minDim;
+
+      if (minDim < 500 && ratio < 1.3) {
+        return 'pages/WatchHomePage';
+      }
+      return 'pages/Index';
+    } catch (error) {
+      return 'pages/Index';
+    }
   }
 
   private initBreakpointSystem(windowStage: window.WindowStage): void {

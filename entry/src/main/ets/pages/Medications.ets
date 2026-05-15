@@ -7,6 +7,7 @@ import { HttpUtil, BaseResponse } from '../common/utils/HttpUtil';
 import { ApiConstants } from '../common/constants/ApiConstants';
 import { AIOrchestrator } from '../ai/orchestrator/AIOrchestrator';
 import { AIRequestBuilder } from '../ai/utils/AIRequestBuilder';
+import { GlobalVoiceAssistant } from '../components/GlobalVoiceAssistant';
 
 interface MedicineItem {
   id: number;
@@ -339,7 +340,8 @@ struct Medications {
   }
 
   build() {
-    Column() {
+    Stack() {
+      Column() {
       Header({ title: '用药管理', showBack: true });
 
       Row() {
@@ -400,6 +402,115 @@ struct Medications {
         });
       })
       .margin({ bottom: 12, left: '5%', right: '5%' })
+
+      Row({ space: 8 }) {
+        Row() {
+          Text('🧠')
+            .fontSize(16)
+          Text('AI用药解读')
+            .fontSize(13)
+            .fontColor('#6366F1')
+            .fontWeight(FontWeight.Medium)
+        }
+        .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+        .backgroundColor('#EEF2FF')
+        .borderRadius(18)
+        .onClick(() => {
+          if (this.filteredMedicines.length > 0) {
+            const names = this.filteredMedicines.slice(0, 5).map(m => m.name);
+            this.checkDrugInteractions(names);
+          } else {
+            ToastUtil.showInfo('请先加载药品数据');
+          }
+        })
+
+        Row() {
+          Text('⚠️')
+            .fontSize(16)
+          Text('药物交互检查')
+            .fontSize(13)
+            .fontColor('#F59E0B')
+            .fontWeight(FontWeight.Medium)
+        }
+        .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+        .backgroundColor('#FFFBEB')
+        .borderRadius(18)
+        .onClick(() => {
+          if (this.filteredMedicines.length > 0) {
+            const names = this.filteredMedicines.slice(0, 5).map(m => m.name);
+            this.checkDrugInteractions(names);
+          } else {
+            ToastUtil.showInfo('请先加载药品数据');
+          }
+        })
+      }
+      .width('90%')
+      .margin({ bottom: 12, left: '5%', right: '5%' })
+
+      if (this.interactionWarnings.length > 0) {
+        Column({ space: 8 }) {
+          Row() {
+            Text('⚠️')
+              .fontSize(16)
+            Text('AI药物交互提醒')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#F59E0B')
+            Blank()
+            Text('✕')
+              .fontSize(14)
+              .fontColor('#999999')
+              .onClick(() => { this.interactionWarnings = []; })
+          }
+          .width('100%')
+          ForEach(this.interactionWarnings, (warning: string, index: number) => {
+            Text(warning)
+              .fontSize(12)
+              .fontColor('#92400E')
+              .lineHeight(18)
+              .width('100%')
+          })
+        }
+        .width('90%')
+        .padding(14)
+        .backgroundColor('#FFFBEB')
+        .borderRadius(12)
+        .border({ width: 1, color: '#FDE68A' })
+        .margin({ bottom: 12, left: '5%', right: '5%' })
+      }
+
+      if (this.aiDrugInfo) {
+        Column({ space: 8 }) {
+          Row() {
+            Text('🧠')
+              .fontSize(16)
+            Text('AI用药解读')
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#6366F1')
+            Blank()
+            Text('✕')
+              .fontSize(14)
+              .fontColor('#999999')
+              .onClick(() => { this.aiDrugInfo = ''; })
+          }
+          .width('100%')
+          Scroll() {
+            Text(this.aiDrugInfo)
+              .fontSize(12)
+              .fontColor('#475569')
+              .lineHeight(20)
+          }
+          .width('100%')
+          .constraintSize({ maxHeight: 120 })
+        }
+        .width('90%')
+        .padding(14)
+        .backgroundColor('#FAFAFE')
+        .borderRadius(12)
+        .border({ width: 1, color: '#E0E7FF' })
+        .margin({ bottom: 12, left: '5%', right: '5%' })
+      }
 
       Text('药品分类')
         .fontSize(GlobalTheme.getFontSizeSubtitle(this.isElderMode))
@@ -537,5 +648,10 @@ struct Medications {
     .width('100%')
     .height('100%')
     .backgroundColor(GlobalTheme.BG_COLOR);
+
+      GlobalVoiceAssistant()
+    }
+    .width('100%')
+    .height('100%')
   }
 }

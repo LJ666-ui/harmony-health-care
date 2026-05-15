@@ -58,10 +58,10 @@ export const mockUsers: MockUser[] = [
   }
 ];
 
-export function findMockUser(username: string, password: string): MockUser | null {
+export function findMockUser(account: string, password: string): MockUser | null {
   for (let i = 0; i < mockUsers.length; i++) {
     const user = mockUsers[i];
-    if (user.username === username && user.password === password) {
+    if ((user.username === account || user.phone === account) && user.password === password) {
       return user;
     }
   }

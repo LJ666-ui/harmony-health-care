@@ -37,7 +37,7 @@ interface SendCodeResponse {
 }
 
 interface LoginRequestData {
-  username: string;
+  phone: string;
   password: string;
 }
 
@@ -368,7 +368,7 @@ struct Register {
         setTimeout(async () => {
           try {
             const loginRequest: LoginRequestData = {
-              username: this.username,
+              phone: this.username,
               password: this.password
             };
             const loginResponse = await HttpUtil.post<LoginResponseData>('/user/login', loginRequest, { skipAuth: true });

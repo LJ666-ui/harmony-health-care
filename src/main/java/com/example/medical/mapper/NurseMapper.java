@@ -17,7 +17,7 @@ public interface NurseMapper extends BaseMapper<Nurse> {
      */
     @Select("SELECT n.* FROM nurse n " +
             "INNER JOIN user u ON n.user_id = u.id " +
-            "WHERE u.phone = #{phone} AND n.is_deleted = 0")
+            "WHERE u.phone = #{phone} AND n.is_deleted = 0 LIMIT 1")
     Nurse selectByPhone(@Param("phone") String phone);
 
     /**

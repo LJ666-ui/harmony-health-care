@@ -1,175 +1,291 @@
 /**
- * AI智能问诊Skill
- * 触发词: "我不舒服"、"问诊"、"AI医生"、"头疼/肚子疼"
+ * S2 - AI智能问诊技能
+ * 
+ * 属性 | 属性值
+ * Skill ID | 医疗.ai.consultation
+ * Skill 名称 | AI 智能问诊
+ * 触发描述 | "我头疼"、"头疼怎么办"、"打开 AI 问诊"、"身体不适"
+ * 处理流程 | 提取症状 → 调用 DeepSeek 分析 → 生成生活建议回复 → 打开 AiChatPage
+ * 预计耗时 | ~3000ms (含 API 调用)
+ * 触发动作 | 打开 AiChatPage 引导用户手动输入
  */
 
-import {
-  XiaoyiSkillDefinition,
-  XiaoyiSkillRequest,
-  XiaoyiSkillResponse
-} from '../types/XiaoyiTypes';
+import { router } from '@kit.ArkUI';
+import { symptomAnalysisPrompt } from '../../skill-offline-package/prompts/symptom_analysis';
+import { AIService } from '../services/AIService';
+
+interface SymptomInfo {
+  mainSymptom: string;
+  duration?: string;
+  severity?: 'mild' | 'moderate' | 'severe';
+  accompanyingSymptoms?: string[];
+  additionalInfo?: string;
+}
+
+interface ConsultationResult {
+  possibleCauses: Array<{ cause: string; probability: number }>;
+  recommendations: string[];
+  urgencyLevel: 'low' | 'medium' | 'high' | 'emergency';
+  shouldSeeDoctor: boolean;
+  suggestedDepartment?: string;
+  lifestyleAdvice: string;
+  disclaimer: string;
+}
 
 export class AIConsultationSkill {
-
-  getDefinition(): XiaoyiSkillDefinition {
-    return {
-      config: {
-        skillId: 'medical.ai.consultation',
-        skillName: 'AI智能问诊',
-        skillDescription: '启动AI智能体进行医疗问诊，支持症状分析、用药咨询、康复建议等',
-        version: '1.0.0',
-        author: '星云医疗团队'
-      },
-      intentPatterns: [
-        {
-          pattern: '不舒服|难受|身体不适|生病了|看病|问诊',
-          confidence: 0.9,
-          parameters: ['symptom'],
-          examples: ['小艺，我不舒服', '我身体不舒服，帮我问问医生', '我想问诊']
-        },
-        {
-          pattern: '(头|胃|肚子|胸|腰|腿).*(疼|痛|胀|酸)',
-          confidence: 0.92,
-          parameters: ['symptom'],
-          examples: ['我头疼', '肚子疼怎么办', '胸闷气短']
-        },
-        {
-          pattern: 'AI.*问诊|智能.*医生|在线.*咨询',
-          confidence: 0.88,
-          parameters: [],
-          examples: ['打开AI问诊', '找AI医生聊聊', '在线咨询']
-        }
-      ],
-      handler: 'handleAIConsultation',
-      needAuth: true,
-      responseType: 'voice+ui',
-      fallbackAction: 'openAiChatPage',
-      estimatedTime: 3000
-    };
+  private static readonly SKILL_ID = '医疗.ai.consultation';
+  
+  /**
+   * 检查是否匹配该技能
+   */
+  static match(query: string): boolean {
+    const triggers = [
+      '我头疼', '头疼怎么办', '头痛',
+      '肚子疼', '胃疼', '腹痛',
+      '发烧', '咳嗽', '恶心', '呕吐',
+      '不舒服', '难受', '身体不适',
+      '看医生', '问诊', '看病',
+      '打开 AI 问诊', 'AI 问诊', '智能问诊',
+      '我感觉', '我觉得', '好像得了'
+    ];
+    
+    return triggers.some(trigger => query.includes(trigger));
   }
 
-  async handle(request: XiaoyiSkillRequest): Promise<XiaoyiSkillResponse> {
-    const startTime = Date.now();
-
+  /**
+   * 执行AI智能问诊
+   */
+  static async execute(query: string): Promise<ConsultationResult> {
+    // 步骤1：提取症状信息
+    const symptomInfo = this.extractSymptoms(query);
+    
+    // 步骤2：紧急情况检测
+    if (this.isEmergency(symptomInfo)) {
+      return this.generateEmergencyResponse();
+    }
+    
+    // 步骤3：调用DeepSeek分析
     try {
-      console.info(`[AIConsultationSkill] 处理请求: query=${request.query}`);
-
-      // 提取用户描述的症状
-      const symptom = this.extractSymptom(request.query);
-      console.info(`[AIConsultationSkill] 提取的症状: ${symptom}`);
-
-      // 调用DeepSeek大模型进行分析（这里应该调用实际的AI服务）
-      const aiAnalysis = await this.callDeepSeekForAnalysis(symptom, request.userId);
-
-      // 构建语音回复
-      const voiceResponse = this.generateVoiceResponse(symptom, aiAnalysis);
-
-      // 构建UI响应 - 打开AI聊天页面并预填内容
-      const uiResponse = {
-        pageRoute: 'pages/AiChatPage',
-        pageTitle: 'AI智能问诊',
-        data: {
-          prefillMessage: request.query,
-          symptom: symptom,
-          initialAnalysis: aiAnalysis,
-          sessionId: request.sessionId
-        },
-        displayMode: 'fullScreen' as const
-      };
-
-      return {
-        skillId: request.skillId,
-        success: true,
-        voiceResponse,
-        uiResponse,
-        action: {
-          type: 'navigate',
-          target: 'pages/AiChatPage',
-          params: { prefillMessage: request.query }
-        },
-        followUpSuggestions: [
-          '查看详细诊断建议',
-          '预约挂号',
-          '查看相关科普文章'
-        ],
-        processingTime: Date.now() - startTime
-      };
+      const analysisResult = await this.callDeepSeekAnalysis(symptomInfo);
+      
+      // 步骤4：生成结构化回复
+      return this.formatConsultationResponse(analysisResult, symptomInfo);
+      
     } catch (error) {
-      console.error('[AIConsultationSkill] 处理失败:', error);
-      return {
-        skillId: request.skillId,
-        success: false,
-        voiceResponse: '抱歉，AI问诊服务暂时不可用。您可以尝试重新提问，或直接前往医院就诊。',
-        processingTime: Date.now() - startTime,
-        errorCode: 'AI_SERVICE_ERROR',
-        errorMessage: error.message
-      };
+      console.error('AI问诊分析失败:', error);
+      return this.generateFallbackResponse(symptomInfo);
     }
   }
 
-  private extractSymptom(query: string): string {
-    // 简单的提取逻辑（实际可使用NLP）
-    const symptoms = ['头疼', '头晕', '发烧', '咳嗽', '胃疼', '肚子疼', '胸闷', '腰疼', '腿疼'];
+  /**
+   * 从用户输入中提取症状信息
+   */
+  private static extractSymptoms(query: string): SymptomInfo {
+    const symptomPatterns = {
+      headache: /头疼|头痛|头晕|眩晕/,
+      stomachache: /肚(子)?疼|胃疼|腹痛|腹泻/,
+      fever: /发烧|发热|体温高/,
+      cough: /咳嗽|咳嗦|嗓子疼|咽痛/,
+      nausea: /恶心|呕吐|想吐/,
+      fatigue: /疲劳|乏力|没劲|累/,
+      chestPain: /胸闷|胸痛|心慌/
+    };
 
-    for (const s of symptoms) {
-      if (query.includes(s)) {
-        return s;
+    let mainSymptom = '';
+    const accompanyingSymptoms: string[] = [];
+
+    for (const [symptom, pattern] of Object.entries(symptomPatterns)) {
+      if (pattern.test(query)) {
+        if (!mainSymptom) {
+          mainSymptom = symptom;
+        } else {
+          accompanyingSymptoms.push(symptom);
+        }
       }
     }
 
-    // 如果没有匹配到具体症状，返回整个查询
-    return query.replace(/(小艺|帮|我|一下|怎么|怎么办)/g, '').trim() || '身体不适';
+    // 提取持续时间
+    const durationMatch = query.match(/(\d+)(天|小时|周|月)/);
+    const duration = durationMatch ? durationMatch[0] : undefined;
+
+    // 提取严重程度
+    let severity: 'mild' | 'moderate' | 'severe' = 'mild';
+    if (query.includes('严重') || query.includes('剧烈') || query.includes('受不了')) {
+      severity = 'severe';
+    } else if (query.includes('有点') || query.includes('稍微') || query.includes('有些')) {
+      severity = 'mild';
+    } else {
+      severity = 'moderate';
+    }
+
+    return {
+      mainSymptom: mainSymptom || 'general_discomfort',
+      duration,
+      severity,
+      accompanyingSymptoms: accompanyingSymptoms.length > 0 ? accompanyingSymptoms : undefined,
+      additionalInfo: query
+    };
   }
 
-  private async callDeepSeekForAnalysis(symptom: string, userId: string): Promise<any> {
-    try {
-      // 这里应该调用后端的AIClient或前端的SiliconFlowClient
-      // 目前返回模拟数据用于演示
+  /**
+   * 紧急情况检测
+   */
+  private static isEmergency(symptomInfo: SymptomInfo): boolean {
+    const emergencyKeywords = [
+      '胸痛', '呼吸困难', '窒息', '意识不清', '昏迷',
+      '大出血', '吐血', '便血', '休克',
+      '中毒', '过敏反应', '过敏性休克',
+      '自杀', '自残', '不想活'
+    ];
 
-      console.info(`[AIConsultationSkill] 调用DeepSeek分析症状: ${symptom}`);
-
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 返回模拟的分析结果
-      return {
-        possibleCauses: [
-          '可能原因1：疲劳或睡眠不足',
-          '可能原因2：压力过大或情绪紧张',
-          '可能原因3：需要进一步检查以明确诊断'
-        ],
-        recommendations: [
-          '建议充分休息，保证7-8小时睡眠',
-          '注意观察症状是否持续或加重',
-          '如伴有其他不适，请及时就医'
-        ],
-        riskLevel: 'low', // low, medium, high
-        suggestedDepartment: '内科',
-        urgency: 'normal' // normal, urgent, emergency
-      };
-    } catch (error) {
-      console.error('[AIConsultationSkill] DeepSeek调用失败:', error);
-      return null;
-    }
+    return emergencyKeywords.some(keyword => 
+      symptomInfo.additionalInfo?.includes(keyword) ||
+      symptomInfo.mainSymptom.includes(keyword)
+    );
   }
 
-  private generateVoiceResponse(symptom: string, analysis: any): string {
-    if (!analysis) {
-      return `您说的${symptom}我已经记录下来了，让我为您连接AI医生进行详细分析。`;
+  /**
+   * 生成紧急响应
+   */
+  private static generateEmergencyResponse(): ConsultationResult {
+    return {
+      possibleCauses: [{ cause: '需要紧急医疗关注', probability: 100 }],
+      recommendations: [
+        '🚨 立即拨打急救电话 120',
+        '🏥 前往最近的急诊科',
+        '⛔ 不要驾车，让他人送医或叫救护车',
+        '📱 告知家人您的位置'
+      ],
+      urgencyLevel: 'emergency',
+      shouldSeeDoctor: true,
+      suggestedDepartment: '急诊科',
+      lifestyleAdvice: '在等待救援时保持冷静，松开紧身衣物',
+      disclaimer: '⚠️ 您的情况可能危及生命，请立即寻求专业医疗帮助！'
+    };
+  }
+
+  /**
+   * 调用DeepSeek进行症状分析
+   */
+  private static async callDeepSeekAnalysis(symptomInfo: SymptomInfo): Promise<any> {
+    const prompt = symptomAnalysisPrompt
+      .replace('{SYMPTOM}', symptomInfo.mainSymptom)
+      .replace('{DURATION}', symptomInfo.duration || '未知')
+      .replace('{SEVERITY}', symptomInfo.severity)
+      .replace('{ACCOMPANYING}', symptomInfo.accompanyingSymptoms?.join(', ') || '无');
+
+    const aiService = AIService.getInstance();
+    const response = await aiService.chat(prompt);
+
+    return JSON.parse(response);
+  }
+
+  /**
+   * 格式化问诊响应
+   */
+  private static formatConsultationResponse(analysis: any, symptomInfo: SymptomInfo): ConsultationResult {
+    return {
+      possibleCauses: analysis.possibleCauses || [],
+      recommendations: analysis.recommendations || [],
+      urgencyLevel: analysis.urgencyLevel || 'medium',
+      shouldSeeDoctor: analysis.shouldSeeDoctor || false,
+      suggestedDepartment: analysis.suggestedDepartment,
+      lifestyleAdvice: analysis.lifestyleAdvice || '注意休息，多喝水',
+      disclaimer: '⚕️ 本AI助手提供的建议仅供参考，不能替代专业医生诊断。如症状持续或加重，请及时就医。'
+    };
+  }
+
+  /**
+   * 降级响应（当API调用失败时）
+   */
+  private static generateFallbackResponse(symptomInfo: SymptomInfo): ConsultationResult {
+    const symptomName = this.getSymptomDisplayName(symptomInfo.mainSymptom);
+    
+    return {
+      possibleCauses: [{ cause: `${symptomName}可能由多种原因引起`, probability: 0 }],
+      recommendations: [
+        '注意休息，保证充足睡眠',
+        '多喝温水',
+        '观察症状变化',
+        '如症状持续超过3天，建议就医'
+      ],
+      urgencyLevel: 'low',
+      shouldSeeDoctor: false,
+      lifestyleAdvice: '保持良好的作息和饮食习惯',
+      disclaimer: '⚠️ AI服务暂时不可用，以上为通用建议。如感不适，请及时就医。'
+    };
+  }
+
+  /**
+   * 获取症状的中文名称
+   */
+  private static getSymptomDisplayName(symptom: string): string {
+    const names: Record<string, string> = {
+      headache: '头痛',
+      stomachache: '腹痛',
+      fever: '发热',
+      cough: '咳嗽',
+      nausea: '恶心呕吐',
+      fatigue: '疲劳乏力',
+      chestPain: '胸闷胸痛',
+      general_discomfort: '身体不适'
+    };
+    return names[symptom] || symptom;
+  }
+
+  /**
+   * 打开AiChatPage引导用户深入交互
+   */
+  static openAiChatPage(initialQuery?: string): void {
+    router.pushUrl({
+      url: 'pages/AiChatPage',
+      params: {
+        initialQuery: initialQuery || '',
+        skillId: this.SKILL_ID
+      }
+    });
+  }
+
+  /**
+   * 格式化输出给用户
+   */
+  static formatResult(result: ConsultationResult): string {
+    let output = `🩺 **AI智能问诊结果**\n\n`;
+    
+    // 可能的原因
+    if (result.possibleCauses.length > 0) {
+      output += `🔍 **可能原因**:\n`;
+      result.possibleCauses.forEach((cause, index) => {
+        output += `${index + 1}. ${cause.cause} (${cause.probability}%)\n`;
+      });
+      output += '\n';
     }
-
-    let response = `关于您提到的${symptom}，AI医生初步分析如下：\n\n`;
-    response += `可能的原因包括：${analysis.possibleCauses?.join('、') || '需要进一步检查'}。\n\n`;
-    response += `建议您：${analysis.recommendations?.[0] || '注意休息'}`;
-
-    if (analysis.riskLevel === 'high') {
-      response += '\n\n⚠️ 您的症状可能需要尽快就医，建议您立即拨打120或前往最近的急诊。';
-    } else if (analysis.suggestedDepartment) {
-      response += `\n\n如需进一步诊疗，建议挂${analysis.suggestedDepartment}。`;
+    
+    // 建议
+    if (result.recommendations.length > 0) {
+      output += `💡 **建议措施**:\n`;
+      result.recommendations.forEach(rec => {
+        output += `• ${rec}\n`;
+      });
+      output += '\n';
     }
-
-    response += '\n\n已为您打开AI对话界面，您可以继续详细描述症状。';
-
-    return response;
+    
+    // 生活建议
+    if (result.lifestyleAdvice) {
+      output += `🌿 **生活调理**: ${result.lifestyleAdvice}\n\n`;
+    }
+    
+    // 就医建议
+    if (result.shouldSeeDoctor) {
+      output += `🏥 **就医建议**: 建议前往${result.suggestedDepartment || '相关科室'}就诊\n\n`;
+    }
+    
+    // 免责声明
+    output += `${result.disclaimer}\n\n`;
+    
+    // 继续对话引导
+    output += `💬 需要更详细的问诊？点击进入"AI智能问诊"页面继续对话`;
+    
+    return output;
   }
 }

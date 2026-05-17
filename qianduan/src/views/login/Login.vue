@@ -2,12 +2,15 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { storage } from '@/utils/storage'
 import { ElMessage } from 'element-plus'
+import FaceLogin from '@/components/FaceLogin.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const loginType = ref('user')
+const loginMode = ref('password')
 const form = ref({ phone: '', username: '', password: '' })
 const loading = ref(false)
 
@@ -67,6 +70,18 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+const handleFaceLoginSuccess = (userData) => {
+  userStore.token = userData.token
+  userStore.userInfo = { userId: userData.userId, username: userData.username, realName: userData.realName, userType: userData.userType }
+  storage.setUserInfo({ userId: userData.userId, username: userData.username, realName: userData.realName, userType: userData.userType })
+  const userType = userData.userType
+  if (userType === 2) router.push('/admin/home')
+  else if (userType === 1) router.push('/doctor/home')
+  else if (userType === 3) router.push('/nurse/home')
+  else if (userType === 4) router.push('/family/home')
+  else router.push('/user/home')
+}
 </script>
 
 <template>
@@ -89,7 +104,20 @@ const handleLogin = async () => {
         </div>
       </div>
 
-      <el-form :model="form" class="login-form">
+      <div class="mode-switch">
+        <div :class="['mode-btn', { active: loginMode === 'password' }]" @click="loginMode = 'password'">
+          🔑 密码登录
+        </div>
+        <div :class="['mode-btn', { active: loginMode === 'face' }]" @click="loginMode = 'face'">
+          📷 人脸识别
+        </div>
+      </div>
+
+      <div v-if="loginMode === 'face'" class="face-login-area">
+        <FaceLogin @login-success="handleFaceLoginSuccess" />
+      </div>
+
+      <el-form v-else :model="form" class="login-form">
         <el-form-item v-if="loginType === 'admin'">
           <el-input v-model="form.username" placeholder="管理员用户名" prefix-icon="User" size="large" />
         </el-form-item>
@@ -115,15 +143,22 @@ const handleLogin = async () => {
 
 <style lang="scss" scoped>
 .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.login-box { width: 460px; background: #fff; border-radius: 16px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.login-box { width: 520px; background: #fff; border-radius: 16px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
 .login-header { text-align: center; margin-bottom: 20px; h1 { font-size: 26px; color: #333; margin-bottom: 8px; } p { color: #999; font-size: 14px; } }
-.login-type-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; justify-content: center;
+.login-type-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; justify-content: center;
   .type-btn { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; padding: 8px 14px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-size: 13px; color: #666;
     &:hover { border-color: #667eea; color: #667eea; }
     &.active { border-color: #667eea; background: #f0f0ff; color: #667eea; font-weight: 600; }
     .type-icon { font-size: 16px; }
   }
 }
+.mode-switch { display: flex; gap: 0; margin-bottom: 20px; border-radius: 10px; overflow: hidden; border: 2px solid #e2e8f0;
+  .mode-btn { flex: 1; text-align: center; padding: 10px; cursor: pointer; transition: all 0.3s; font-size: 14px; color: #666; font-weight: 500;
+    &:hover { background: #f5f7fa; }
+    &.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+  }
+}
+.face-login-area { margin-bottom: 16px; }
 .login-form { margin-bottom: 16px; }
 .login-btn { width: 100%; height: 48px; font-size: 16px; }
 .register-link { text-align: center; color: #666; font-size: 14px; a { color: #667eea; margin-left: 5px; text-decoration: none; cursor: pointer; &:hover { text-decoration: underline; } } }

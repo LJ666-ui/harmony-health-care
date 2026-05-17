@@ -19,6 +19,13 @@ const menuItems = [
   { path: '/doctor/medication', name: '用药管理', icon: '💊' },
   { path: '/doctor/patients', name: '患者管理', icon: '👥' },
   { path: '/doctor/consultation', name: '在线问诊', icon: '💬' },
+  { path: '/doctor/digital-twin', name: '健康画像', icon: '🫀' },
+  { path: '/doctor/ar-rehab', name: 'AR康复', icon: '🏋️' },
+  { path: '/doctor/knowledge-qa', name: '图谱问答', icon: '🔬' },
+  { path: '/doctor/emotion', name: '情感分析', icon: '💭' },
+  { path: '/doctor/virtual-ward', name: '虚拟病房', icon: '🏥' },
+  { path: '/doctor/drug-interaction', name: '药物检测', icon: '💊' },
+  { path: '/doctor/dialect', name: '方言问诊', icon: '🗣️' },
   { path: '/doctor/profile', name: '个人设置', icon: '👤' },
   { path: '/doctor/settings', name: '系统设置', icon: '⚙️' }
 ]
@@ -89,7 +96,10 @@ const handleLogout = () => {
   .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: #4caf50; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; flex-shrink: 0; }
   .user-detail { .user-name { font-size: 14px; font-weight: 500; } .user-role { font-size: 12px; color: rgba(255,255,255,0.6); } }
 }
-.sidebar-menu { border-right: none; background: transparent; margin-top: 10px; flex: 1;
+.sidebar-menu { border-right: none; background: transparent; margin-top: 10px; flex: 1; overflow-y: auto; overflow-x: hidden;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 2px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; &:hover { background: rgba(255,255,255,0.3); } }
   .el-menu-item { color: rgba(255,255,255,0.7); margin: 4px 10px; border-radius: 8px; height: 44px; line-height: 44px;
     &:hover, &.is-active { background: rgba(76,175,80,0.3); color: #fff; }
     .menu-icon { font-size: 18px; margin-right: 8px; }

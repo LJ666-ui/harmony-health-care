@@ -17,6 +17,7 @@ const menuItems = [
   { path: '/nurse/vital-signs', name: '生命体征', icon: '❤️' },
   { path: '/nurse/nursing-record', name: '护理记录', icon: '📝' },
   { path: '/nurse/medication-exec', name: '执行医嘱', icon: '💊' },
+  { path: '/nurse/virtual-ward', name: '虚拟病房', icon: '🏥' },
   { path: '/nurse/profile', name: '个人设置', icon: '👤' },
   { path: '/nurse/settings', name: '系统设置', icon: '⚙️' }
 ]
@@ -87,7 +88,10 @@ const handleLogout = () => {
   .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: #9c27b0; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; flex-shrink: 0; }
   .user-detail { .user-name { font-size: 14px; font-weight: 500; } .user-role { font-size: 12px; color: rgba(255,255,255,0.6); } }
 }
-.sidebar-menu { border-right: none; background: transparent; margin-top: 10px; flex: 1;
+.sidebar-menu { border-right: none; background: transparent; margin-top: 10px; flex: 1; overflow-y: auto; overflow-x: hidden;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 2px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; &:hover { background: rgba(255,255,255,0.3); } }
   .el-menu-item { color: rgba(255,255,255,0.7); margin: 4px 10px; border-radius: 8px; height: 44px; line-height: 44px;
     &:hover, &.is-active { background: rgba(156,39,176,0.3); color: #fff; }
     .menu-icon { font-size: 18px; margin-right: 8px; }

@@ -25,6 +25,15 @@ const menuItems = [
   { path: '/user/herbal', name: '中药材百科', icon: '🌿' },
   { path: '/user/doctor-search', name: '医生查询', icon: '🔍' },
   { path: '/user/consultation', name: '在线问诊', icon: '💬' },
+  { path: '/user/pre-diagnosis', name: 'AI预问诊', icon: '🧠' },
+  { path: '/user/digital-twin', name: '健康画像', icon: '🫀' },
+  { path: '/user/ar-rehab', name: 'AR康复', icon: '🏋️' },
+  { path: '/user/knowledge-qa', name: '图谱问答', icon: '🔬' },
+  { path: '/user/emotion', name: '情感分析', icon: '💭' },
+  { path: '/user/game', name: '健康游戏', icon: '🎮' },
+  { path: '/user/dialect', name: '方言问诊', icon: '🗣️' },
+  { path: '/user/virtual-ward', name: '虚拟病房', icon: '🏥' },
+  { path: '/user/drug-interaction', name: '药物检测', icon: '💊' },
   { path: '/user/profile', name: '个人设置', icon: '👤' },
   { path: '/user/settings', name: '系统设置', icon: '⚙️' }
 ]
@@ -194,6 +203,26 @@ const handleLogout = () => {
   background: transparent;
   margin-top: 10px;
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
 
   .el-menu-item {
     color: rgba(255, 255, 255, 0.7);
